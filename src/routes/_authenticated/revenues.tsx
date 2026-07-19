@@ -3,19 +3,20 @@ import { TrendingUp } from "lucide-react";
 import { ModulePlaceholder } from "@/components/module-placeholder";
 
 export const Route = createFileRoute("/_authenticated/revenues")({
-  head: () => ({ meta: [{ title: "Revenues — HALAL ERP" }] }),
+  head: () => ({ meta: [{ title: "Recettes — HALAL ERP" }] }),
   component: () => (
     <ModulePlaceholder
-      title="Revenues"
-      description="All incoming cash by source and period."
+      title="Recettes"
+      description="Ensemble des entrées d'argent par source et par période."
       icon={<TrendingUp className="h-6 w-6" />}
+      primaryAction="Nouvelle recette"
       features={[
-        "Source: farm, transport, other",
-        "Amount, date, method",
-        "Attach receipts",
-        "Group by category / entity",
+        "Source : exploitation, transport, autre",
+        "Montant en FCFA, date, méthode",
+        "Pièces justificatives",
+        "Regroupement par catégorie ou entité",
       ]}
-      notionMapping="Notion DB: Revenues · relates Farms, Vehicles, Motorcycles"
+      notionMapping="Base Notion : Recettes · liée aux Exploitations, Véhicules, Motos"
     />
   ),
 });

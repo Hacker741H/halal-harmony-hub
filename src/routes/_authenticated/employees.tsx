@@ -3,20 +3,20 @@ import { Users } from "lucide-react";
 import { ModulePlaceholder } from "@/components/module-placeholder";
 
 export const Route = createFileRoute("/_authenticated/employees")({
-  head: () => ({ meta: [{ title: "Employees — HALAL ERP" }] }),
+  head: () => ({ meta: [{ title: "Employés — HALAL ERP" }] }),
   component: () => (
     <ModulePlaceholder
-      title="Employees"
-      description="Manage staff records, roles, contracts and assignments."
+      title="Employés"
+      description="Fiches du personnel : identité, poste, contrat, salaire et documents."
       icon={<Users className="h-6 w-6" />}
+      primaryAction="Nouvel employé"
       features={[
-        "Profiles with contact, ID and emergency info",
-        "Role and department assignments",
-        "Link to driver, vehicle or motorcycle assignments",
-        "Contract history and salary records",
-        "Document tracker (ID, permits, medical)",
+        "Matricule, nom, poste, téléphone, e-mail",
+        "Contrat, date d'embauche et salaire de base",
+        "Documents administratifs et pièces d'identité",
+        "Historique des affectations et des versements",
       ]}
-      notionMapping="Notion DB: Employees · fields: name, role, department, phone, hire_date, status, docs[]"
+      notionMapping="Base Notion : Employés · liée aux Chauffeurs, Contrats, Versements"
     />
   ),
 });

@@ -3,19 +3,20 @@ import { Package } from "lucide-react";
 import { ModulePlaceholder } from "@/components/module-placeholder";
 
 export const Route = createFileRoute("/_authenticated/inventory")({
-  head: () => ({ meta: [{ title: "Inventory — HALAL ERP" }] }),
+  head: () => ({ meta: [{ title: "Stock — HALAL ERP" }] }),
   component: () => (
     <ModulePlaceholder
-      title="Inventory"
-      description="Parts, tools and farm supplies with stock levels."
+      title="Stock & fournitures"
+      description="Pièces, outils et intrants agricoles avec suivi des niveaux."
       icon={<Package className="h-6 w-6" />}
+      primaryAction="Nouvel article"
       features={[
-        "Items with SKU, category, unit",
-        "Stock in / out movements",
-        "Low-stock alerts",
-        "Supplier link",
+        "SKU, catégorie, unité, prix moyen",
+        "Mouvements d'entrée / sortie",
+        "Alertes de seuil bas",
+        "Lien fournisseur",
       ]}
-      notionMapping="Notion DB: Inventory · relates Suppliers, Expenses"
+      notionMapping="Base Notion : Stock · liée aux Fournisseurs, Dépenses"
     />
   ),
 });

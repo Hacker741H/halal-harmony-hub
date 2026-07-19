@@ -3,19 +3,20 @@ import { BarChart3 } from "lucide-react";
 import { ModulePlaceholder } from "@/components/module-placeholder";
 
 export const Route = createFileRoute("/_authenticated/reports")({
-  head: () => ({ meta: [{ title: "Reports — HALAL ERP" }] }),
+  head: () => ({ meta: [{ title: "Rapports — HALAL ERP" }] }),
   component: () => (
     <ModulePlaceholder
-      title="Reports"
-      description="Generate financial and operational reports."
+      title="Rapports & analyses"
+      description="Rapports financiers, opérationnels et rapports d'entretien."
       icon={<BarChart3 className="h-6 w-6" />}
+      primaryAction="Générer un rapport"
       features={[
-        "Monthly P&L",
-        "Fleet utilization",
-        "Farm yield vs cost",
-        "PDF and Excel export",
+        "Compte de résultat mensuel et annuel",
+        "Rentabilité par exploitation et par véhicule",
+        "Rapports d'entretien de la flotte",
+        "Export PDF / Excel",
       ]}
-      notionMapping="Aggregates all Notion databases"
+      notionMapping="Vue agrégée — non stockée dans Notion"
     />
   ),
 });

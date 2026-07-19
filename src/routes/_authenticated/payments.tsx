@@ -3,19 +3,20 @@ import { CreditCard } from "lucide-react";
 import { ModulePlaceholder } from "@/components/module-placeholder";
 
 export const Route = createFileRoute("/_authenticated/payments")({
-  head: () => ({ meta: [{ title: "Payments — HALAL ERP" }] }),
+  head: () => ({ meta: [{ title: "Versements — HALAL ERP" }] }),
   component: () => (
     <ModulePlaceholder
-      title="Payments"
-      description="All outgoing and incoming payments across the ERP."
+      title="Versements"
+      description="Paiements sortants : salaires, loyers, fournisseurs, partenaires."
       icon={<CreditCard className="h-6 w-6" />}
+      primaryAction="Nouveau versement"
       features={[
-        "Beneficiary: farm, employee, vehicle, supplier",
-        "Method: cash, bank transfer, Wave, mobile money",
-        "Status: pending, paid, failed",
-        "Receipt PDF generation",
+        "Bénéficiaire (employé, fournisseur, propriétaire)",
+        "Montant, date, mode (espèces, virement, Wave)",
+        "Référence et pièce justificative",
+        "Rapprochement avec les contrats",
       ]}
-      notionMapping="Notion DB: Payments · relates Farms, Employees, Vehicles"
+      notionMapping="Base Notion : Versements · liée aux Employés, Contrats"
     />
   ),
 });

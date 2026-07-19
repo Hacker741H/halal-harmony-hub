@@ -7,15 +7,16 @@ export const Route = createFileRoute("/_authenticated/documents")({
   component: () => (
     <ModulePlaceholder
       title="Documents"
-      description="Central library for contracts, licenses, insurance and IDs."
+      description="Bibliothèque centralisée avec suivi des dates d'expiration."
       icon={<FileText className="h-6 w-6" />}
+      primaryAction="Téléverser un document"
       features={[
-        "Upload PDF, image, spreadsheet",
-        "Link to any entity (employee, vehicle, farm…)",
-        "Expiration date tracking with alerts",
-        "Version history",
+        "Assurances, visites techniques, cartes grises",
+        "Permis, contrats, baux, factures",
+        "Alertes automatiques à 30, 15 et 7 jours",
+        "Recherche plein texte",
       ]}
-      notionMapping="Notion DB: Documents · polymorphic relation to any entity"
+      notionMapping="Base Notion : Documents · liée à toutes les entités"
     />
   ),
 });

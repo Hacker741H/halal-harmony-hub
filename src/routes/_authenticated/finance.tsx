@@ -3,20 +3,21 @@ import { Wallet } from "lucide-react";
 import { ModulePlaceholder } from "@/components/module-placeholder";
 
 export const Route = createFileRoute("/_authenticated/finance")({
-  head: () => ({ meta: [{ title: "Finance — HALAL ERP" }] }),
+  head: () => ({ meta: [{ title: "Finances — HALAL ERP" }] }),
   component: () => (
     <ModulePlaceholder
-      title="Finance"
-      description="Consolidated cash flow across revenues, expenses and payments."
+      title="Finances"
+      description="Trésorerie consolidée : recettes, dépenses et versements."
       icon={<Wallet className="h-6 w-6" />}
+      primaryAction="Nouvelle opération"
       features={[
-        "Balance sheet by period",
-        "Profit and loss overview",
-        "Multi-currency support (XOF primary)",
-        "Export to Excel / PDF",
-        "Future Wave payment integration",
+        "Bilan par période (jour, mois, année)",
+        "Compte de résultat et marge",
+        "Devise principale : XOF (FCFA)",
+        "Export Excel / PDF",
+        "Intégration future avec Wave et Orange Money",
       ]}
-      notionMapping="Aggregates Revenues, Expenses, Payments"
+      notionMapping="Agrégation des Recettes, Dépenses et Versements"
     />
   ),
 });

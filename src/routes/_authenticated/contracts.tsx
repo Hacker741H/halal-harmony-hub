@@ -3,19 +3,20 @@ import { FileSignature } from "lucide-react";
 import { ModulePlaceholder } from "@/components/module-placeholder";
 
 export const Route = createFileRoute("/_authenticated/contracts")({
-  head: () => ({ meta: [{ title: "Contracts — HALAL ERP" }] }),
+  head: () => ({ meta: [{ title: "Contrats — HALAL ERP" }] }),
   component: () => (
     <ModulePlaceholder
-      title="Contracts"
-      description="Agreements across farms, suppliers, employees and partners."
+      title="Contrats"
+      description="Accords avec exploitations, fournisseurs, employés et partenaires."
       icon={<FileSignature className="h-6 w-6" />}
+      primaryAction="Nouveau contrat"
       features={[
-        "Parties, subject, amount and duration",
-        "Linked entity (farm, vehicle, employee)",
-        "Renewal alerts",
-        "Attached PDF documents",
+        "Parties, objet, montant et durée",
+        "Entité liée (exploitation, véhicule, employé)",
+        "Alertes de renouvellement",
+        "Documents PDF joints",
       ]}
-      notionMapping="Notion DB: Contracts · relates Farms, Employees, Payments"
+      notionMapping="Base Notion : Contrats · liée aux Exploitations, Employés, Versements"
     />
   ),
 });

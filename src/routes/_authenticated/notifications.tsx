@@ -7,14 +7,16 @@ export const Route = createFileRoute("/_authenticated/notifications")({
   component: () => (
     <ModulePlaceholder
       title="Notifications"
-      description="In-app alerts, email and future push notifications."
+      description="Alertes documents, seuils de stock, échéances de contrats."
       icon={<Bell className="h-6 w-6" />}
+      primaryAction="Marquer tout comme lu"
       features={[
-        "Document expirations",
-        "Payment due reminders",
-        "Contract renewals",
-        "System sync events",
+        "Alertes automatiques 30 / 15 / 7 jours avant échéance",
+        "Notifications par rôle et par module",
+        "Historique complet des alertes",
+        "Envoi par e-mail (option)",
       ]}
+      notionMapping="Générées côté ERP — non stockées dans Notion"
     />
   ),
 });

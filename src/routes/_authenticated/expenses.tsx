@@ -3,19 +3,20 @@ import { TrendingDown } from "lucide-react";
 import { ModulePlaceholder } from "@/components/module-placeholder";
 
 export const Route = createFileRoute("/_authenticated/expenses")({
-  head: () => ({ meta: [{ title: "Expenses — HALAL ERP" }] }),
+  head: () => ({ meta: [{ title: "Dépenses — HALAL ERP" }] }),
   component: () => (
     <ModulePlaceholder
-      title="Expenses"
-      description="Track spending by category, entity and supplier."
+      title="Dépenses"
+      description="Suivi des dépenses par catégorie, entité et période."
       icon={<TrendingDown className="h-6 w-6" />}
+      primaryAction="Nouvelle dépense"
       features={[
-        "Category: fuel, maintenance, salary, farm inputs, other",
-        "Linked entity (vehicle, motorcycle, farm, employee)",
-        "Attach invoices",
-        "Recurring expense support",
+        "Catégorie : carburant, entretien, salaires, fournitures…",
+        "Montant en FCFA, date, mode de paiement",
+        "Entité concernée (moto, véhicule, exploitation)",
+        "Pièces justificatives PDF/image",
       ]}
-      notionMapping="Notion DB: Expenses · relates Vehicles, Motorcycles, Farms, Employees"
+      notionMapping="Base Notion : Dépenses · liée aux Véhicules, Motos, Exploitations"
     />
   ),
 });

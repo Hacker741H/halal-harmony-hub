@@ -3,19 +3,21 @@ import { Settings } from "lucide-react";
 import { ModulePlaceholder } from "@/components/module-placeholder";
 
 export const Route = createFileRoute("/_authenticated/settings")({
-  head: () => ({ meta: [{ title: "Company Settings — HALAL ERP" }] }),
+  head: () => ({ meta: [{ title: "Paramètres — HALAL ERP" }] }),
   component: () => (
     <ModulePlaceholder
-      title="Company Settings"
-      description="Company profile, currency, Notion integration and preferences."
+      title="Paramètres de l'entreprise"
+      description="Profil, devise, intégration Notion et préférences globales."
       icon={<Settings className="h-6 w-6" />}
+      primaryAction="Enregistrer les paramètres"
       features={[
-        "Company info, logo, legal identifiers",
-        "Currency, timezone, language",
-        "Notion API token and database mapping",
-        "Wave payment API keys",
-        "Backup and export",
+        "Informations légales, logo, identifiants fiscaux",
+        "Devise (XOF), fuseau horaire, langue",
+        "Jeton d'API Notion et correspondance des bases",
+        "Clés API Wave / Orange Money",
+        "Sauvegardes et exports",
       ]}
+      notionMapping="Table company_settings — un seul enregistrement"
     />
   ),
 });

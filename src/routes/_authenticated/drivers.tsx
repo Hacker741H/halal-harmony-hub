@@ -3,19 +3,20 @@ import { UserCog } from "lucide-react";
 import { ModulePlaceholder } from "@/components/module-placeholder";
 
 export const Route = createFileRoute("/_authenticated/drivers")({
-  head: () => ({ meta: [{ title: "Drivers — HALAL ERP" }] }),
+  head: () => ({ meta: [{ title: "Chauffeurs — HALAL ERP" }] }),
   component: () => (
     <ModulePlaceholder
-      title="Drivers"
-      description="License tracking and vehicle assignments for all drivers."
+      title="Chauffeurs"
+      description="Suivi des permis et affectations aux véhicules et motos."
       icon={<UserCog className="h-6 w-6" />}
+      primaryAction="Nouveau chauffeur"
       features={[
-        "License number, category and expiration",
-        "Assigned motorcycle or vehicle",
-        "Trip history and mileage",
-        "Incident reports",
+        "Numéro et catégorie de permis, date d'expiration",
+        "Moto ou véhicule affecté",
+        "Historique des courses et kilométrage",
+        "Rapports d'incidents",
       ]}
-      notionMapping="Notion DB: Drivers · linked to Employees, Motorcycles, Vehicles"
+      notionMapping="Base Notion : Chauffeurs · liée aux Employés, Motos, Véhicules"
     />
   ),
 });
