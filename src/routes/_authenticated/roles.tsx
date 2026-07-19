@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ShieldCheck } from "lucide-react";
 import { ModulePlaceholder } from "@/components/module-placeholder";
 
-export const Route = createFileRoute("/roles")({
+export const Route = createFileRoute("/_authenticated/roles")({
   head: () => ({ meta: [{ title: "Roles & Permissions — HALAL ERP" }] }),
   component: () => (
     <ModulePlaceholder

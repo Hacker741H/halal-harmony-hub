@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { FileSignature } from "lucide-react";
 import { ModulePlaceholder } from "@/components/module-placeholder";
 
-export const Route = createFileRoute("/contracts")({
+export const Route = createFileRoute("/_authenticated/contracts")({
   head: () => ({ meta: [{ title: "Contracts — HALAL ERP" }] }),
   component: () => (
     <ModulePlaceholder

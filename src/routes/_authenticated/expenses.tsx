@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { TrendingDown } from "lucide-react";
 import { ModulePlaceholder } from "@/components/module-placeholder";
 
-export const Route = createFileRoute("/expenses")({
+export const Route = createFileRoute("/_authenticated/expenses")({
   head: () => ({ meta: [{ title: "Expenses — HALAL ERP" }] }),
   component: () => (
     <ModulePlaceholder

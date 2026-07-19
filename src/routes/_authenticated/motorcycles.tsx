@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Bike } from "lucide-react";
 import { ModulePlaceholder } from "@/components/module-placeholder";
 
-export const Route = createFileRoute("/motorcycles")({
+export const Route = createFileRoute("/_authenticated/motorcycles")({
   head: () => ({ meta: [{ title: "Motorcycles — HALAL ERP" }] }),
   component: () => (
     <ModulePlaceholder

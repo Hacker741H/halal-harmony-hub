@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Sprout } from "lucide-react";
 import { ModulePlaceholder } from "@/components/module-placeholder";
 
-export const Route = createFileRoute("/farms")({
+export const Route = createFileRoute("/_authenticated/farms")({
   head: () => ({ meta: [{ title: "Farms & Plantations — HALAL ERP" }] }),
   component: () => (
     <ModulePlaceholder

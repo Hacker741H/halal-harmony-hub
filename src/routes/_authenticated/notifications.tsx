@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Bell } from "lucide-react";
 import { ModulePlaceholder } from "@/components/module-placeholder";
 
-export const Route = createFileRoute("/notifications")({
+export const Route = createFileRoute("/_authenticated/notifications")({
   head: () => ({ meta: [{ title: "Notifications — HALAL ERP" }] }),
   component: () => (
     <ModulePlaceholder

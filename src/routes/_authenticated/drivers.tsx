@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { UserCog } from "lucide-react";
 import { ModulePlaceholder } from "@/components/module-placeholder";
 
-export const Route = createFileRoute("/drivers")({
+export const Route = createFileRoute("/_authenticated/drivers")({
   head: () => ({ meta: [{ title: "Drivers — HALAL ERP" }] }),
   component: () => (
     <ModulePlaceholder
