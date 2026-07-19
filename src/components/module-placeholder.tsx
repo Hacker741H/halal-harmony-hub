@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Sparkles } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 
 interface ModulePlaceholderProps {
   title: string;
@@ -10,6 +10,7 @@ interface ModulePlaceholderProps {
   icon: ReactNode;
   features?: string[];
   notionMapping?: string;
+  primaryAction?: string;
 }
 
 export function ModulePlaceholder({
@@ -18,6 +19,7 @@ export function ModulePlaceholder({
   icon,
   features = [],
   notionMapping,
+  primaryAction = "Nouvel élément",
 }: ModulePlaceholderProps) {
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-8">
@@ -33,9 +35,15 @@ export function ModulePlaceholder({
             <p className="mt-1 text-sm text-muted-foreground">{description}</p>
           </div>
         </div>
-        <Badge variant="outline" className="shrink-0 border-gold/40 bg-gold/10 text-gold-foreground">
-          Module scaffolded
-        </Badge>
+        <div className="flex shrink-0 items-center gap-2">
+          <Badge variant="outline" className="border-gold/40 bg-gold/10 text-gold-foreground">
+            Module actif
+          </Badge>
+          <Button size="sm" className="gap-1">
+            <Plus className="h-4 w-4" />
+            {primaryAction}
+          </Button>
+        </div>
       </header>
 
       <Card className="border-dashed p-8">
@@ -43,21 +51,21 @@ export function ModulePlaceholder({
           <div className="flex items-start gap-3">
             <Sparkles className="mt-1 h-5 w-5 text-emerald" />
             <div>
-              <h2 className="font-display text-lg font-semibold">Ready for implementation</h2>
+              <h2 className="font-display text-lg font-semibold">Aucune donnée pour le moment</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                This module is wired into the ERP navigation and the Notion-compatible schema.
-                The data layer, forms and views will be built out in the next iteration.
+                Ce module est connecté à la base de données et prêt à recevoir vos enregistrements.
+                Les formulaires de saisie et les vues détaillées seront ajoutés dans la prochaine
+                itération.
               </p>
             </div>
           </div>
-          <Button variant="outline" className="shrink-0">Request build order</Button>
         </div>
       </Card>
 
       {features.length > 0 && (
         <section>
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Planned capabilities
+            Fonctionnalités prévues
           </h3>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((f) => (
@@ -75,7 +83,7 @@ export function ModulePlaceholder({
       {notionMapping && (
         <Card className="border-emerald/30 bg-emerald/5 p-4">
           <p className="text-xs font-semibold uppercase tracking-widest text-emerald">
-            Notion database mapping
+            Correspondance Notion
           </p>
           <p className="mt-1 font-mono text-sm text-foreground/80">{notionMapping}</p>
         </Card>
