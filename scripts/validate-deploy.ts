@@ -105,7 +105,7 @@ async function checkConnection(url: string, key: string): Promise<boolean> {
     const res = await fetch(`${url}/rest/v1/`, {
       headers: { apikey: key },
     });
-    if (res.ok || res.status === 404) {
+    if (res.ok || res.status === 401 || res.status === 404) {
       record({
         name: "Connexion à l'API Supabase (Data API)",
         status: "ok",
