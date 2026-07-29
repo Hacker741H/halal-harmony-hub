@@ -17,6 +17,7 @@
     "security:cleanup-users": "tsx scripts/cleanup-security-test-users.ts",
     "security:test-users": "tsx scripts/test-security-users.ts",
     "security:cleanup-orphan-documents": "tsx scripts/cleanup-orphan-documents.ts",
+    "deploy:prod": "tsx scripts/deploy-prod.ts",
     "validate:deploy": "bun run scripts/validate-deploy.ts",
     "predeploy": "bun run validate:deploy"
   },
