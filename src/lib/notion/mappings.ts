@@ -8,7 +8,7 @@ import type { NotionDatabaseMapping } from "./types";
  * No API call is made from this file. It is consumed by the (future)
  * importer in `sync-adapter.ts`.
  */
-export const NOTION_MAPPINGS: NotionDatabaseMapping[] = [
+const DECLARED_NOTION_MAPPINGS: NotionDatabaseMapping[] = [
   {
     moduleKey: "employees",
     label: "Employés",
@@ -54,13 +54,13 @@ export const NOTION_MAPPINGS: NotionDatabaseMapping[] = [
     label: "Véhicules",
     table: "vehicles",
     properties: [
-      { column: "immatriculation", notionProperty: "Immatriculation", type: "title" },
-      { column: "marque", notionProperty: "Marque", type: "select" },
-      { column: "modele", notionProperty: "Modèle", type: "rich_text" },
+      { column: "registration", notionProperty: "Immatriculation", type: "title" },
+      { column: "brand", notionProperty: "Marque", type: "select" },
+      { column: "model", notionProperty: "Modèle", type: "rich_text" },
       { column: "type", notionProperty: "Type", type: "select" },
-      { column: "annee", notionProperty: "Année", type: "number" },
+      { column: "year", notionProperty: "Année", type: "number" },
       { column: "kilometrage", notionProperty: "Kilométrage", type: "number" },
-      { column: "statut", notionProperty: "Statut", type: "status" },
+      { column: "status", notionProperty: "Statut", type: "status" },
     ],
   },
   {
@@ -161,6 +161,18 @@ export const NOTION_MAPPINGS: NotionDatabaseMapping[] = [
     ],
   },
 ];
+
+const ARCHIVED_FINANCE_TABLES = new Set([
+  "expenses",
+  "payments",
+  "revenues",
+]);
+
+// Historical financial tables remain available for rollback only. They must
+// never be exposed to a future importer as writable module mappings.
+export const NOTION_MAPPINGS = DECLARED_NOTION_MAPPINGS.filter(
+  (mapping) => !ARCHIVED_FINANCE_TABLES.has(mapping.table),
+);
 
 export function getMapping(moduleKey: string): NotionDatabaseMapping | undefined {
   return NOTION_MAPPINGS.find((m) => m.moduleKey === moduleKey);

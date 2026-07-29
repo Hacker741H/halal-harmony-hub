@@ -1,22 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CreditCard } from "lucide-react";
-import { ModulePlaceholder } from "@/components/module-placeholder";
+import { Landmark } from "lucide-react";
+
+import { FinanceOperationPage } from "@/components/finance/finance-operation-page";
+import { DepositForm } from "@/components/finance/forms/DepositForm";
 
 export const Route = createFileRoute("/_authenticated/payments")({
   head: () => ({ meta: [{ title: "Versements — HALAL ERP" }] }),
-  component: () => (
-    <ModulePlaceholder
-      title="Versements"
-      description="Paiements sortants : salaires, loyers, fournisseurs, partenaires."
-      icon={<CreditCard className="h-6 w-6" />}
-      primaryAction="Nouveau versement"
-      features={[
-        "Bénéficiaire (employé, fournisseur, propriétaire)",
-        "Montant, date, mode (espèces, virement, Wave)",
-        "Référence et pièce justificative",
-        "Rapprochement avec les contrats",
-      ]}
-      notionMapping="Base Notion : Versements · liée aux Employés, Contrats"
-    />
-  ),
+  component: PaymentsPage,
 });
+
+function PaymentsPage() {
+  return (
+    <FinanceOperationPage
+      title="Versements"
+      description="Fonds ajoutés à un wallet dans le journal financier."
+      type="DEPOSIT"
+      icon={<Landmark className="h-8 w-8 text-primary" />}
+      createLabel="Nouveau versement"
+      Form={DepositForm}
+    />
+  );
+}

@@ -9,33 +9,49 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as AuthenticatedVehiclesRouteImport } from './routes/_authenticated/vehicles'
-import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedRolesRouteImport } from './routes/_authenticated/roles'
-import { Route as AuthenticatedRevenuesRouteImport } from './routes/_authenticated/revenues'
-import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
-import { Route as AuthenticatedPaymentsRouteImport } from './routes/_authenticated/payments'
-import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
-import { Route as AuthenticatedMotorcyclesRouteImport } from './routes/_authenticated/motorcycles'
-import { Route as AuthenticatedInventoryRouteImport } from './routes/_authenticated/inventory'
-import { Route as AuthenticatedFinanceRouteImport } from './routes/_authenticated/finance'
-import { Route as AuthenticatedFarmsRouteImport } from './routes/_authenticated/farms'
-import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticated/expenses'
-import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
-import { Route as AuthenticatedDriversRouteImport } from './routes/_authenticated/drivers'
-import { Route as AuthenticatedDocumentsRouteImport } from './routes/_authenticated/documents'
 import { Route as AuthenticatedContractsRouteImport } from './routes/_authenticated/contracts'
+import { Route as AuthenticatedDocumentsRouteImport } from './routes/_authenticated/documents'
+import { Route as AuthenticatedDriversRouteImport } from './routes/_authenticated/drivers'
+import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
+import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticated/expenses'
+import { Route as AuthenticatedFarmsRouteImport } from './routes/_authenticated/farms'
+import { Route as AuthenticatedFinanceRouteImport } from './routes/_authenticated/finance'
+import { Route as AuthenticatedInventoryRouteImport } from './routes/_authenticated/inventory'
+import { Route as AuthenticatedMaintenanceRouteImport } from './routes/_authenticated/maintenance'
+import { Route as AuthenticatedMotorcyclesRouteImport } from './routes/_authenticated/motorcycles'
+import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
+import { Route as AuthenticatedPaymentsRouteImport } from './routes/_authenticated/payments'
+import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
+import { Route as AuthenticatedRevenuesRouteImport } from './routes/_authenticated/revenues'
+import { Route as AuthenticatedRolesRouteImport } from './routes/_authenticated/roles'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedStocksRouteImport } from './routes/_authenticated/stocks'
+import { Route as AuthenticatedVehiclesRouteImport } from './routes/_authenticated/vehicles'
+import { Route as AuthenticatedWalletsRouteImport } from './routes/_authenticated/wallets'
+import { Route as AuthenticatedContractsIndexRouteImport } from './routes/_authenticated/contracts/index'
+import { Route as AuthenticatedContractsContractIdRouteImport } from './routes/_authenticated/contracts/$contractId'
+import { Route as AuthenticatedDocumentsDocumentIdRouteImport } from './routes/_authenticated/documents/$documentId'
+import { Route as AuthenticatedDriversIndexRouteImport } from './routes/_authenticated/drivers/index'
+import { Route as AuthenticatedDriversDriverIdRouteImport } from './routes/_authenticated/drivers/$driverId'
+import { Route as AuthenticatedEmployeesIndexRouteImport } from './routes/_authenticated/employees/index'
+import { Route as AuthenticatedEmployeesEmployeeIdRouteImport } from './routes/_authenticated/employees/$employeeId'
+import { Route as AuthenticatedFarmsFarmIdRouteImport } from './routes/_authenticated/farms/$farmId'
+import { Route as AuthenticatedMotorcyclesMotorcycleIdRouteImport } from './routes/_authenticated/motorcycles/$motorcycleId'
+import { Route as AuthenticatedVehiclesIndexRouteImport } from './routes/_authenticated/vehicles/index'
+import { Route as AuthenticatedVehiclesVehicleIdRouteImport } from './routes/_authenticated/vehicles/$vehicleId'
+import { Route as AuthenticatedWalletsIndexRouteImport } from './routes/_authenticated/wallets/index'
+import { Route as AuthenticatedWalletsWalletIdRouteImport } from './routes/_authenticated/wallets/$walletId'
 
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
@@ -43,40 +59,50 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedVehiclesRoute = AuthenticatedVehiclesRouteImport.update({
-  id: '/vehicles',
-  path: '/vehicles',
+const AuthenticatedContractsRoute = AuthenticatedContractsRouteImport.update({
+  id: '/contracts',
+  path: '/contracts',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
+const AuthenticatedDocumentsRoute = AuthenticatedDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedRolesRoute = AuthenticatedRolesRouteImport.update({
-  id: '/roles',
-  path: '/roles',
+const AuthenticatedDriversRoute = AuthenticatedDriversRouteImport.update({
+  id: '/drivers',
+  path: '/drivers',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedRevenuesRoute = AuthenticatedRevenuesRouteImport.update({
-  id: '/revenues',
-  path: '/revenues',
+const AuthenticatedEmployeesRoute = AuthenticatedEmployeesRouteImport.update({
+  id: '/employees',
+  path: '/employees',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
+const AuthenticatedExpensesRoute = AuthenticatedExpensesRouteImport.update({
+  id: '/expenses',
+  path: '/expenses',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedPaymentsRoute = AuthenticatedPaymentsRouteImport.update({
-  id: '/payments',
-  path: '/payments',
+const AuthenticatedFarmsRoute = AuthenticatedFarmsRouteImport.update({
+  id: '/farms',
+  path: '/farms',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedNotificationsRoute =
-  AuthenticatedNotificationsRouteImport.update({
-    id: '/notifications',
-    path: '/notifications',
+const AuthenticatedFinanceRoute = AuthenticatedFinanceRouteImport.update({
+  id: '/finance',
+  path: '/finance',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedInventoryRoute = AuthenticatedInventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMaintenanceRoute =
+  AuthenticatedMaintenanceRouteImport.update({
+    id: '/maintenance',
+    path: '/maintenance',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedMotorcyclesRoute =
@@ -85,108 +111,235 @@ const AuthenticatedMotorcyclesRoute =
     path: '/motorcycles',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedInventoryRoute = AuthenticatedInventoryRouteImport.update({
-  id: '/inventory',
-  path: '/inventory',
+const AuthenticatedNotificationsRoute =
+  AuthenticatedNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPaymentsRoute = AuthenticatedPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedFinanceRoute = AuthenticatedFinanceRouteImport.update({
-  id: '/finance',
-  path: '/finance',
+const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedFarmsRoute = AuthenticatedFarmsRouteImport.update({
-  id: '/farms',
-  path: '/farms',
+const AuthenticatedRevenuesRoute = AuthenticatedRevenuesRouteImport.update({
+  id: '/revenues',
+  path: '/revenues',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedExpensesRoute = AuthenticatedExpensesRouteImport.update({
-  id: '/expenses',
-  path: '/expenses',
+const AuthenticatedRolesRoute = AuthenticatedRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedEmployeesRoute = AuthenticatedEmployeesRouteImport.update({
-  id: '/employees',
-  path: '/employees',
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedDriversRoute = AuthenticatedDriversRouteImport.update({
-  id: '/drivers',
-  path: '/drivers',
+const AuthenticatedStocksRoute = AuthenticatedStocksRouteImport.update({
+  id: '/stocks',
+  path: '/stocks',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedDocumentsRoute = AuthenticatedDocumentsRouteImport.update({
-  id: '/documents',
-  path: '/documents',
+const AuthenticatedVehiclesRoute = AuthenticatedVehiclesRouteImport.update({
+  id: '/vehicles',
+  path: '/vehicles',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedContractsRoute = AuthenticatedContractsRouteImport.update({
-  id: '/contracts',
-  path: '/contracts',
+const AuthenticatedWalletsRoute = AuthenticatedWalletsRouteImport.update({
+  id: '/wallets',
+  path: '/wallets',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedContractsIndexRoute =
+  AuthenticatedContractsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedContractsRoute,
+  } as any)
+const AuthenticatedContractsContractIdRoute =
+  AuthenticatedContractsContractIdRouteImport.update({
+    id: '/$contractId',
+    path: '/$contractId',
+    getParentRoute: () => AuthenticatedContractsRoute,
+  } as any)
+const AuthenticatedDocumentsDocumentIdRoute =
+  AuthenticatedDocumentsDocumentIdRouteImport.update({
+    id: '/$documentId',
+    path: '/$documentId',
+    getParentRoute: () => AuthenticatedDocumentsRoute,
+  } as any)
+const AuthenticatedDriversIndexRoute =
+  AuthenticatedDriversIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedDriversRoute,
+  } as any)
+const AuthenticatedDriversDriverIdRoute =
+  AuthenticatedDriversDriverIdRouteImport.update({
+    id: '/$driverId',
+    path: '/$driverId',
+    getParentRoute: () => AuthenticatedDriversRoute,
+  } as any)
+const AuthenticatedEmployeesIndexRoute =
+  AuthenticatedEmployeesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedEmployeesRoute,
+  } as any)
+const AuthenticatedEmployeesEmployeeIdRoute =
+  AuthenticatedEmployeesEmployeeIdRouteImport.update({
+    id: '/$employeeId',
+    path: '/$employeeId',
+    getParentRoute: () => AuthenticatedEmployeesRoute,
+  } as any)
+const AuthenticatedFarmsFarmIdRoute =
+  AuthenticatedFarmsFarmIdRouteImport.update({
+    id: '/$farmId',
+    path: '/$farmId',
+    getParentRoute: () => AuthenticatedFarmsRoute,
+  } as any)
+const AuthenticatedMotorcyclesMotorcycleIdRoute =
+  AuthenticatedMotorcyclesMotorcycleIdRouteImport.update({
+    id: '/$motorcycleId',
+    path: '/$motorcycleId',
+    getParentRoute: () => AuthenticatedMotorcyclesRoute,
+  } as any)
+const AuthenticatedVehiclesIndexRoute =
+  AuthenticatedVehiclesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedVehiclesRoute,
+  } as any)
+const AuthenticatedVehiclesVehicleIdRoute =
+  AuthenticatedVehiclesVehicleIdRouteImport.update({
+    id: '/$vehicleId',
+    path: '/$vehicleId',
+    getParentRoute: () => AuthenticatedVehiclesRoute,
+  } as any)
+const AuthenticatedWalletsIndexRoute =
+  AuthenticatedWalletsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedWalletsRoute,
+  } as any)
+const AuthenticatedWalletsWalletIdRoute =
+  AuthenticatedWalletsWalletIdRouteImport.update({
+    id: '/$walletId',
+    path: '/$walletId',
+    getParentRoute: () => AuthenticatedWalletsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
-  '/contracts': typeof AuthenticatedContractsRoute
-  '/documents': typeof AuthenticatedDocumentsRoute
-  '/drivers': typeof AuthenticatedDriversRoute
-  '/employees': typeof AuthenticatedEmployeesRoute
+  '/contracts': typeof AuthenticatedContractsRouteWithChildren
+  '/documents': typeof AuthenticatedDocumentsRouteWithChildren
+  '/drivers': typeof AuthenticatedDriversRouteWithChildren
+  '/employees': typeof AuthenticatedEmployeesRouteWithChildren
   '/expenses': typeof AuthenticatedExpensesRoute
-  '/farms': typeof AuthenticatedFarmsRoute
+  '/farms': typeof AuthenticatedFarmsRouteWithChildren
   '/finance': typeof AuthenticatedFinanceRoute
   '/inventory': typeof AuthenticatedInventoryRoute
-  '/motorcycles': typeof AuthenticatedMotorcyclesRoute
+  '/maintenance': typeof AuthenticatedMaintenanceRoute
+  '/motorcycles': typeof AuthenticatedMotorcyclesRouteWithChildren
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/payments': typeof AuthenticatedPaymentsRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/revenues': typeof AuthenticatedRevenuesRoute
   '/roles': typeof AuthenticatedRolesRoute
   '/settings': typeof AuthenticatedSettingsRoute
-  '/vehicles': typeof AuthenticatedVehiclesRoute
+  '/stocks': typeof AuthenticatedStocksRoute
+  '/vehicles': typeof AuthenticatedVehiclesRouteWithChildren
+  '/wallets': typeof AuthenticatedWalletsRouteWithChildren
+  '/contracts/$contractId': typeof AuthenticatedContractsContractIdRoute
+  '/documents/$documentId': typeof AuthenticatedDocumentsDocumentIdRoute
+  '/drivers/$driverId': typeof AuthenticatedDriversDriverIdRoute
+  '/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
+  '/farms/$farmId': typeof AuthenticatedFarmsFarmIdRoute
+  '/motorcycles/$motorcycleId': typeof AuthenticatedMotorcyclesMotorcycleIdRoute
+  '/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
+  '/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
+  '/contracts/': typeof AuthenticatedContractsIndexRoute
+  '/drivers/': typeof AuthenticatedDriversIndexRoute
+  '/employees/': typeof AuthenticatedEmployeesIndexRoute
+  '/vehicles/': typeof AuthenticatedVehiclesIndexRoute
+  '/wallets/': typeof AuthenticatedWalletsIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
-  '/contracts': typeof AuthenticatedContractsRoute
-  '/documents': typeof AuthenticatedDocumentsRoute
-  '/drivers': typeof AuthenticatedDriversRoute
-  '/employees': typeof AuthenticatedEmployeesRoute
+  '/documents': typeof AuthenticatedDocumentsRouteWithChildren
   '/expenses': typeof AuthenticatedExpensesRoute
-  '/farms': typeof AuthenticatedFarmsRoute
+  '/farms': typeof AuthenticatedFarmsRouteWithChildren
   '/finance': typeof AuthenticatedFinanceRoute
   '/inventory': typeof AuthenticatedInventoryRoute
-  '/motorcycles': typeof AuthenticatedMotorcyclesRoute
+  '/maintenance': typeof AuthenticatedMaintenanceRoute
+  '/motorcycles': typeof AuthenticatedMotorcyclesRouteWithChildren
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/payments': typeof AuthenticatedPaymentsRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/revenues': typeof AuthenticatedRevenuesRoute
   '/roles': typeof AuthenticatedRolesRoute
   '/settings': typeof AuthenticatedSettingsRoute
-  '/vehicles': typeof AuthenticatedVehiclesRoute
+  '/stocks': typeof AuthenticatedStocksRoute
   '/': typeof AuthenticatedIndexRoute
+  '/contracts/$contractId': typeof AuthenticatedContractsContractIdRoute
+  '/documents/$documentId': typeof AuthenticatedDocumentsDocumentIdRoute
+  '/drivers/$driverId': typeof AuthenticatedDriversDriverIdRoute
+  '/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
+  '/farms/$farmId': typeof AuthenticatedFarmsFarmIdRoute
+  '/motorcycles/$motorcycleId': typeof AuthenticatedMotorcyclesMotorcycleIdRoute
+  '/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
+  '/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
+  '/contracts': typeof AuthenticatedContractsIndexRoute
+  '/drivers': typeof AuthenticatedDriversIndexRoute
+  '/employees': typeof AuthenticatedEmployeesIndexRoute
+  '/vehicles': typeof AuthenticatedVehiclesIndexRoute
+  '/wallets': typeof AuthenticatedWalletsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/_authenticated/contracts': typeof AuthenticatedContractsRoute
-  '/_authenticated/documents': typeof AuthenticatedDocumentsRoute
-  '/_authenticated/drivers': typeof AuthenticatedDriversRoute
-  '/_authenticated/employees': typeof AuthenticatedEmployeesRoute
+  '/_authenticated/contracts': typeof AuthenticatedContractsRouteWithChildren
+  '/_authenticated/documents': typeof AuthenticatedDocumentsRouteWithChildren
+  '/_authenticated/drivers': typeof AuthenticatedDriversRouteWithChildren
+  '/_authenticated/employees': typeof AuthenticatedEmployeesRouteWithChildren
   '/_authenticated/expenses': typeof AuthenticatedExpensesRoute
-  '/_authenticated/farms': typeof AuthenticatedFarmsRoute
+  '/_authenticated/farms': typeof AuthenticatedFarmsRouteWithChildren
   '/_authenticated/finance': typeof AuthenticatedFinanceRoute
   '/_authenticated/inventory': typeof AuthenticatedInventoryRoute
-  '/_authenticated/motorcycles': typeof AuthenticatedMotorcyclesRoute
+  '/_authenticated/maintenance': typeof AuthenticatedMaintenanceRoute
+  '/_authenticated/motorcycles': typeof AuthenticatedMotorcyclesRouteWithChildren
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
   '/_authenticated/payments': typeof AuthenticatedPaymentsRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/revenues': typeof AuthenticatedRevenuesRoute
   '/_authenticated/roles': typeof AuthenticatedRolesRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
-  '/_authenticated/vehicles': typeof AuthenticatedVehiclesRoute
+  '/_authenticated/stocks': typeof AuthenticatedStocksRoute
+  '/_authenticated/vehicles': typeof AuthenticatedVehiclesRouteWithChildren
+  '/_authenticated/wallets': typeof AuthenticatedWalletsRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/contracts/$contractId': typeof AuthenticatedContractsContractIdRoute
+  '/_authenticated/documents/$documentId': typeof AuthenticatedDocumentsDocumentIdRoute
+  '/_authenticated/drivers/$driverId': typeof AuthenticatedDriversDriverIdRoute
+  '/_authenticated/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
+  '/_authenticated/farms/$farmId': typeof AuthenticatedFarmsFarmIdRoute
+  '/_authenticated/motorcycles/$motorcycleId': typeof AuthenticatedMotorcyclesMotorcycleIdRoute
+  '/_authenticated/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
+  '/_authenticated/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
+  '/_authenticated/contracts/': typeof AuthenticatedContractsIndexRoute
+  '/_authenticated/drivers/': typeof AuthenticatedDriversIndexRoute
+  '/_authenticated/employees/': typeof AuthenticatedEmployeesIndexRoute
+  '/_authenticated/vehicles/': typeof AuthenticatedVehiclesIndexRoute
+  '/_authenticated/wallets/': typeof AuthenticatedWalletsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -201,6 +354,7 @@ export interface FileRouteTypes {
     | '/farms'
     | '/finance'
     | '/inventory'
+    | '/maintenance'
     | '/motorcycles'
     | '/notifications'
     | '/payments'
@@ -208,18 +362,31 @@ export interface FileRouteTypes {
     | '/revenues'
     | '/roles'
     | '/settings'
+    | '/stocks'
     | '/vehicles'
+    | '/wallets'
+    | '/contracts/$contractId'
+    | '/documents/$documentId'
+    | '/drivers/$driverId'
+    | '/employees/$employeeId'
+    | '/farms/$farmId'
+    | '/motorcycles/$motorcycleId'
+    | '/vehicles/$vehicleId'
+    | '/wallets/$walletId'
+    | '/contracts/'
+    | '/drivers/'
+    | '/employees/'
+    | '/vehicles/'
+    | '/wallets/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
-    | '/contracts'
     | '/documents'
-    | '/drivers'
-    | '/employees'
     | '/expenses'
     | '/farms'
     | '/finance'
     | '/inventory'
+    | '/maintenance'
     | '/motorcycles'
     | '/notifications'
     | '/payments'
@@ -227,8 +394,21 @@ export interface FileRouteTypes {
     | '/revenues'
     | '/roles'
     | '/settings'
-    | '/vehicles'
+    | '/stocks'
     | '/'
+    | '/contracts/$contractId'
+    | '/documents/$documentId'
+    | '/drivers/$driverId'
+    | '/employees/$employeeId'
+    | '/farms/$farmId'
+    | '/motorcycles/$motorcycleId'
+    | '/vehicles/$vehicleId'
+    | '/wallets/$walletId'
+    | '/contracts'
+    | '/drivers'
+    | '/employees'
+    | '/vehicles'
+    | '/wallets'
   id:
     | '__root__'
     | '/_authenticated'
@@ -241,6 +421,7 @@ export interface FileRouteTypes {
     | '/_authenticated/farms'
     | '/_authenticated/finance'
     | '/_authenticated/inventory'
+    | '/_authenticated/maintenance'
     | '/_authenticated/motorcycles'
     | '/_authenticated/notifications'
     | '/_authenticated/payments'
@@ -248,8 +429,23 @@ export interface FileRouteTypes {
     | '/_authenticated/revenues'
     | '/_authenticated/roles'
     | '/_authenticated/settings'
+    | '/_authenticated/stocks'
     | '/_authenticated/vehicles'
+    | '/_authenticated/wallets'
     | '/_authenticated/'
+    | '/_authenticated/contracts/$contractId'
+    | '/_authenticated/documents/$documentId'
+    | '/_authenticated/drivers/$driverId'
+    | '/_authenticated/employees/$employeeId'
+    | '/_authenticated/farms/$farmId'
+    | '/_authenticated/motorcycles/$motorcycleId'
+    | '/_authenticated/vehicles/$vehicleId'
+    | '/_authenticated/wallets/$walletId'
+    | '/_authenticated/contracts/'
+    | '/_authenticated/drivers/'
+    | '/_authenticated/employees/'
+    | '/_authenticated/vehicles/'
+    | '/_authenticated/wallets/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -259,18 +455,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/': {
@@ -280,102 +476,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/vehicles': {
-      id: '/_authenticated/vehicles'
-      path: '/vehicles'
-      fullPath: '/vehicles'
-      preLoaderRoute: typeof AuthenticatedVehiclesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/settings': {
-      id: '/_authenticated/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/roles': {
-      id: '/_authenticated/roles'
-      path: '/roles'
-      fullPath: '/roles'
-      preLoaderRoute: typeof AuthenticatedRolesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/revenues': {
-      id: '/_authenticated/revenues'
-      path: '/revenues'
-      fullPath: '/revenues'
-      preLoaderRoute: typeof AuthenticatedRevenuesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports': {
-      id: '/_authenticated/reports'
-      path: '/reports'
-      fullPath: '/reports'
-      preLoaderRoute: typeof AuthenticatedReportsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/payments': {
-      id: '/_authenticated/payments'
-      path: '/payments'
-      fullPath: '/payments'
-      preLoaderRoute: typeof AuthenticatedPaymentsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/notifications': {
-      id: '/_authenticated/notifications'
-      path: '/notifications'
-      fullPath: '/notifications'
-      preLoaderRoute: typeof AuthenticatedNotificationsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/motorcycles': {
-      id: '/_authenticated/motorcycles'
-      path: '/motorcycles'
-      fullPath: '/motorcycles'
-      preLoaderRoute: typeof AuthenticatedMotorcyclesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/inventory': {
-      id: '/_authenticated/inventory'
-      path: '/inventory'
-      fullPath: '/inventory'
-      preLoaderRoute: typeof AuthenticatedInventoryRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/finance': {
-      id: '/_authenticated/finance'
-      path: '/finance'
-      fullPath: '/finance'
-      preLoaderRoute: typeof AuthenticatedFinanceRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/farms': {
-      id: '/_authenticated/farms'
-      path: '/farms'
-      fullPath: '/farms'
-      preLoaderRoute: typeof AuthenticatedFarmsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/expenses': {
-      id: '/_authenticated/expenses'
-      path: '/expenses'
-      fullPath: '/expenses'
-      preLoaderRoute: typeof AuthenticatedExpensesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/employees': {
-      id: '/_authenticated/employees'
-      path: '/employees'
-      fullPath: '/employees'
-      preLoaderRoute: typeof AuthenticatedEmployeesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/drivers': {
-      id: '/_authenticated/drivers'
-      path: '/drivers'
-      fullPath: '/drivers'
-      preLoaderRoute: typeof AuthenticatedDriversRouteImport
+    '/_authenticated/contracts': {
+      id: '/_authenticated/contracts'
+      path: '/contracts'
+      fullPath: '/contracts'
+      preLoaderRoute: typeof AuthenticatedContractsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/documents': {
@@ -385,53 +490,378 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDocumentsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/contracts': {
-      id: '/_authenticated/contracts'
-      path: '/contracts'
-      fullPath: '/contracts'
-      preLoaderRoute: typeof AuthenticatedContractsRouteImport
+    '/_authenticated/drivers': {
+      id: '/_authenticated/drivers'
+      path: '/drivers'
+      fullPath: '/drivers'
+      preLoaderRoute: typeof AuthenticatedDriversRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/employees': {
+      id: '/_authenticated/employees'
+      path: '/employees'
+      fullPath: '/employees'
+      preLoaderRoute: typeof AuthenticatedEmployeesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/expenses': {
+      id: '/_authenticated/expenses'
+      path: '/expenses'
+      fullPath: '/expenses'
+      preLoaderRoute: typeof AuthenticatedExpensesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/farms': {
+      id: '/_authenticated/farms'
+      path: '/farms'
+      fullPath: '/farms'
+      preLoaderRoute: typeof AuthenticatedFarmsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/finance': {
+      id: '/_authenticated/finance'
+      path: '/finance'
+      fullPath: '/finance'
+      preLoaderRoute: typeof AuthenticatedFinanceRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/inventory': {
+      id: '/_authenticated/inventory'
+      path: '/inventory'
+      fullPath: '/inventory'
+      preLoaderRoute: typeof AuthenticatedInventoryRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/maintenance': {
+      id: '/_authenticated/maintenance'
+      path: '/maintenance'
+      fullPath: '/maintenance'
+      preLoaderRoute: typeof AuthenticatedMaintenanceRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/motorcycles': {
+      id: '/_authenticated/motorcycles'
+      path: '/motorcycles'
+      fullPath: '/motorcycles'
+      preLoaderRoute: typeof AuthenticatedMotorcyclesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/notifications': {
+      id: '/_authenticated/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AuthenticatedNotificationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/payments': {
+      id: '/_authenticated/payments'
+      path: '/payments'
+      fullPath: '/payments'
+      preLoaderRoute: typeof AuthenticatedPaymentsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports': {
+      id: '/_authenticated/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AuthenticatedReportsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/revenues': {
+      id: '/_authenticated/revenues'
+      path: '/revenues'
+      fullPath: '/revenues'
+      preLoaderRoute: typeof AuthenticatedRevenuesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/roles': {
+      id: '/_authenticated/roles'
+      path: '/roles'
+      fullPath: '/roles'
+      preLoaderRoute: typeof AuthenticatedRolesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/stocks': {
+      id: '/_authenticated/stocks'
+      path: '/stocks'
+      fullPath: '/stocks'
+      preLoaderRoute: typeof AuthenticatedStocksRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/vehicles': {
+      id: '/_authenticated/vehicles'
+      path: '/vehicles'
+      fullPath: '/vehicles'
+      preLoaderRoute: typeof AuthenticatedVehiclesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/wallets': {
+      id: '/_authenticated/wallets'
+      path: '/wallets'
+      fullPath: '/wallets'
+      preLoaderRoute: typeof AuthenticatedWalletsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/contracts/': {
+      id: '/_authenticated/contracts/'
+      path: '/'
+      fullPath: '/contracts/'
+      preLoaderRoute: typeof AuthenticatedContractsIndexRouteImport
+      parentRoute: typeof AuthenticatedContractsRoute
+    }
+    '/_authenticated/contracts/$contractId': {
+      id: '/_authenticated/contracts/$contractId'
+      path: '/$contractId'
+      fullPath: '/contracts/$contractId'
+      preLoaderRoute: typeof AuthenticatedContractsContractIdRouteImport
+      parentRoute: typeof AuthenticatedContractsRoute
+    }
+    '/_authenticated/documents/$documentId': {
+      id: '/_authenticated/documents/$documentId'
+      path: '/$documentId'
+      fullPath: '/documents/$documentId'
+      preLoaderRoute: typeof AuthenticatedDocumentsDocumentIdRouteImport
+      parentRoute: typeof AuthenticatedDocumentsRoute
+    }
+    '/_authenticated/drivers/': {
+      id: '/_authenticated/drivers/'
+      path: '/'
+      fullPath: '/drivers/'
+      preLoaderRoute: typeof AuthenticatedDriversIndexRouteImport
+      parentRoute: typeof AuthenticatedDriversRoute
+    }
+    '/_authenticated/drivers/$driverId': {
+      id: '/_authenticated/drivers/$driverId'
+      path: '/$driverId'
+      fullPath: '/drivers/$driverId'
+      preLoaderRoute: typeof AuthenticatedDriversDriverIdRouteImport
+      parentRoute: typeof AuthenticatedDriversRoute
+    }
+    '/_authenticated/employees/': {
+      id: '/_authenticated/employees/'
+      path: '/'
+      fullPath: '/employees/'
+      preLoaderRoute: typeof AuthenticatedEmployeesIndexRouteImport
+      parentRoute: typeof AuthenticatedEmployeesRoute
+    }
+    '/_authenticated/employees/$employeeId': {
+      id: '/_authenticated/employees/$employeeId'
+      path: '/$employeeId'
+      fullPath: '/employees/$employeeId'
+      preLoaderRoute: typeof AuthenticatedEmployeesEmployeeIdRouteImport
+      parentRoute: typeof AuthenticatedEmployeesRoute
+    }
+    '/_authenticated/farms/$farmId': {
+      id: '/_authenticated/farms/$farmId'
+      path: '/$farmId'
+      fullPath: '/farms/$farmId'
+      preLoaderRoute: typeof AuthenticatedFarmsFarmIdRouteImport
+      parentRoute: typeof AuthenticatedFarmsRoute
+    }
+    '/_authenticated/motorcycles/$motorcycleId': {
+      id: '/_authenticated/motorcycles/$motorcycleId'
+      path: '/$motorcycleId'
+      fullPath: '/motorcycles/$motorcycleId'
+      preLoaderRoute: typeof AuthenticatedMotorcyclesMotorcycleIdRouteImport
+      parentRoute: typeof AuthenticatedMotorcyclesRoute
+    }
+    '/_authenticated/vehicles/': {
+      id: '/_authenticated/vehicles/'
+      path: '/'
+      fullPath: '/vehicles/'
+      preLoaderRoute: typeof AuthenticatedVehiclesIndexRouteImport
+      parentRoute: typeof AuthenticatedVehiclesRoute
+    }
+    '/_authenticated/vehicles/$vehicleId': {
+      id: '/_authenticated/vehicles/$vehicleId'
+      path: '/$vehicleId'
+      fullPath: '/vehicles/$vehicleId'
+      preLoaderRoute: typeof AuthenticatedVehiclesVehicleIdRouteImport
+      parentRoute: typeof AuthenticatedVehiclesRoute
+    }
+    '/_authenticated/wallets/': {
+      id: '/_authenticated/wallets/'
+      path: '/'
+      fullPath: '/wallets/'
+      preLoaderRoute: typeof AuthenticatedWalletsIndexRouteImport
+      parentRoute: typeof AuthenticatedWalletsRoute
+    }
+    '/_authenticated/wallets/$walletId': {
+      id: '/_authenticated/wallets/$walletId'
+      path: '/$walletId'
+      fullPath: '/wallets/$walletId'
+      preLoaderRoute: typeof AuthenticatedWalletsWalletIdRouteImport
+      parentRoute: typeof AuthenticatedWalletsRoute
     }
   }
 }
 
+interface AuthenticatedContractsRouteChildren {
+  AuthenticatedContractsContractIdRoute: typeof AuthenticatedContractsContractIdRoute
+  AuthenticatedContractsIndexRoute: typeof AuthenticatedContractsIndexRoute
+}
+
+const AuthenticatedContractsRouteChildren: AuthenticatedContractsRouteChildren =
+  {
+    AuthenticatedContractsContractIdRoute:
+      AuthenticatedContractsContractIdRoute,
+    AuthenticatedContractsIndexRoute: AuthenticatedContractsIndexRoute,
+  }
+
+const AuthenticatedContractsRouteWithChildren =
+  AuthenticatedContractsRoute._addFileChildren(
+    AuthenticatedContractsRouteChildren,
+  )
+
+interface AuthenticatedDocumentsRouteChildren {
+  AuthenticatedDocumentsDocumentIdRoute: typeof AuthenticatedDocumentsDocumentIdRoute
+}
+
+const AuthenticatedDocumentsRouteChildren: AuthenticatedDocumentsRouteChildren =
+  {
+    AuthenticatedDocumentsDocumentIdRoute:
+      AuthenticatedDocumentsDocumentIdRoute,
+  }
+
+const AuthenticatedDocumentsRouteWithChildren =
+  AuthenticatedDocumentsRoute._addFileChildren(
+    AuthenticatedDocumentsRouteChildren,
+  )
+
+interface AuthenticatedDriversRouteChildren {
+  AuthenticatedDriversDriverIdRoute: typeof AuthenticatedDriversDriverIdRoute
+  AuthenticatedDriversIndexRoute: typeof AuthenticatedDriversIndexRoute
+}
+
+const AuthenticatedDriversRouteChildren: AuthenticatedDriversRouteChildren = {
+  AuthenticatedDriversDriverIdRoute: AuthenticatedDriversDriverIdRoute,
+  AuthenticatedDriversIndexRoute: AuthenticatedDriversIndexRoute,
+}
+
+const AuthenticatedDriversRouteWithChildren =
+  AuthenticatedDriversRoute._addFileChildren(AuthenticatedDriversRouteChildren)
+
+interface AuthenticatedEmployeesRouteChildren {
+  AuthenticatedEmployeesEmployeeIdRoute: typeof AuthenticatedEmployeesEmployeeIdRoute
+  AuthenticatedEmployeesIndexRoute: typeof AuthenticatedEmployeesIndexRoute
+}
+
+const AuthenticatedEmployeesRouteChildren: AuthenticatedEmployeesRouteChildren =
+  {
+    AuthenticatedEmployeesEmployeeIdRoute:
+      AuthenticatedEmployeesEmployeeIdRoute,
+    AuthenticatedEmployeesIndexRoute: AuthenticatedEmployeesIndexRoute,
+  }
+
+const AuthenticatedEmployeesRouteWithChildren =
+  AuthenticatedEmployeesRoute._addFileChildren(
+    AuthenticatedEmployeesRouteChildren,
+  )
+
+interface AuthenticatedFarmsRouteChildren {
+  AuthenticatedFarmsFarmIdRoute: typeof AuthenticatedFarmsFarmIdRoute
+}
+
+const AuthenticatedFarmsRouteChildren: AuthenticatedFarmsRouteChildren = {
+  AuthenticatedFarmsFarmIdRoute: AuthenticatedFarmsFarmIdRoute,
+}
+
+const AuthenticatedFarmsRouteWithChildren =
+  AuthenticatedFarmsRoute._addFileChildren(AuthenticatedFarmsRouteChildren)
+
+interface AuthenticatedMotorcyclesRouteChildren {
+  AuthenticatedMotorcyclesMotorcycleIdRoute: typeof AuthenticatedMotorcyclesMotorcycleIdRoute
+}
+
+const AuthenticatedMotorcyclesRouteChildren: AuthenticatedMotorcyclesRouteChildren =
+  {
+    AuthenticatedMotorcyclesMotorcycleIdRoute:
+      AuthenticatedMotorcyclesMotorcycleIdRoute,
+  }
+
+const AuthenticatedMotorcyclesRouteWithChildren =
+  AuthenticatedMotorcyclesRoute._addFileChildren(
+    AuthenticatedMotorcyclesRouteChildren,
+  )
+
+interface AuthenticatedVehiclesRouteChildren {
+  AuthenticatedVehiclesVehicleIdRoute: typeof AuthenticatedVehiclesVehicleIdRoute
+  AuthenticatedVehiclesIndexRoute: typeof AuthenticatedVehiclesIndexRoute
+}
+
+const AuthenticatedVehiclesRouteChildren: AuthenticatedVehiclesRouteChildren = {
+  AuthenticatedVehiclesVehicleIdRoute: AuthenticatedVehiclesVehicleIdRoute,
+  AuthenticatedVehiclesIndexRoute: AuthenticatedVehiclesIndexRoute,
+}
+
+const AuthenticatedVehiclesRouteWithChildren =
+  AuthenticatedVehiclesRoute._addFileChildren(
+    AuthenticatedVehiclesRouteChildren,
+  )
+
+interface AuthenticatedWalletsRouteChildren {
+  AuthenticatedWalletsWalletIdRoute: typeof AuthenticatedWalletsWalletIdRoute
+  AuthenticatedWalletsIndexRoute: typeof AuthenticatedWalletsIndexRoute
+}
+
+const AuthenticatedWalletsRouteChildren: AuthenticatedWalletsRouteChildren = {
+  AuthenticatedWalletsWalletIdRoute: AuthenticatedWalletsWalletIdRoute,
+  AuthenticatedWalletsIndexRoute: AuthenticatedWalletsIndexRoute,
+}
+
+const AuthenticatedWalletsRouteWithChildren =
+  AuthenticatedWalletsRoute._addFileChildren(AuthenticatedWalletsRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedContractsRoute: typeof AuthenticatedContractsRoute
-  AuthenticatedDocumentsRoute: typeof AuthenticatedDocumentsRoute
-  AuthenticatedDriversRoute: typeof AuthenticatedDriversRoute
-  AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRoute
+  AuthenticatedContractsRoute: typeof AuthenticatedContractsRouteWithChildren
+  AuthenticatedDocumentsRoute: typeof AuthenticatedDocumentsRouteWithChildren
+  AuthenticatedDriversRoute: typeof AuthenticatedDriversRouteWithChildren
+  AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRouteWithChildren
   AuthenticatedExpensesRoute: typeof AuthenticatedExpensesRoute
-  AuthenticatedFarmsRoute: typeof AuthenticatedFarmsRoute
+  AuthenticatedFarmsRoute: typeof AuthenticatedFarmsRouteWithChildren
   AuthenticatedFinanceRoute: typeof AuthenticatedFinanceRoute
   AuthenticatedInventoryRoute: typeof AuthenticatedInventoryRoute
-  AuthenticatedMotorcyclesRoute: typeof AuthenticatedMotorcyclesRoute
+  AuthenticatedMaintenanceRoute: typeof AuthenticatedMaintenanceRoute
+  AuthenticatedMotorcyclesRoute: typeof AuthenticatedMotorcyclesRouteWithChildren
   AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
   AuthenticatedPaymentsRoute: typeof AuthenticatedPaymentsRoute
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedRevenuesRoute: typeof AuthenticatedRevenuesRoute
   AuthenticatedRolesRoute: typeof AuthenticatedRolesRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
-  AuthenticatedVehiclesRoute: typeof AuthenticatedVehiclesRoute
+  AuthenticatedStocksRoute: typeof AuthenticatedStocksRoute
+  AuthenticatedVehiclesRoute: typeof AuthenticatedVehiclesRouteWithChildren
+  AuthenticatedWalletsRoute: typeof AuthenticatedWalletsRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedContractsRoute: AuthenticatedContractsRoute,
-  AuthenticatedDocumentsRoute: AuthenticatedDocumentsRoute,
-  AuthenticatedDriversRoute: AuthenticatedDriversRoute,
-  AuthenticatedEmployeesRoute: AuthenticatedEmployeesRoute,
+  AuthenticatedContractsRoute: AuthenticatedContractsRouteWithChildren,
+  AuthenticatedDocumentsRoute: AuthenticatedDocumentsRouteWithChildren,
+  AuthenticatedDriversRoute: AuthenticatedDriversRouteWithChildren,
+  AuthenticatedEmployeesRoute: AuthenticatedEmployeesRouteWithChildren,
   AuthenticatedExpensesRoute: AuthenticatedExpensesRoute,
-  AuthenticatedFarmsRoute: AuthenticatedFarmsRoute,
+  AuthenticatedFarmsRoute: AuthenticatedFarmsRouteWithChildren,
   AuthenticatedFinanceRoute: AuthenticatedFinanceRoute,
   AuthenticatedInventoryRoute: AuthenticatedInventoryRoute,
-  AuthenticatedMotorcyclesRoute: AuthenticatedMotorcyclesRoute,
+  AuthenticatedMaintenanceRoute: AuthenticatedMaintenanceRoute,
+  AuthenticatedMotorcyclesRoute: AuthenticatedMotorcyclesRouteWithChildren,
   AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
   AuthenticatedPaymentsRoute: AuthenticatedPaymentsRoute,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedRevenuesRoute: AuthenticatedRevenuesRoute,
   AuthenticatedRolesRoute: AuthenticatedRolesRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
-  AuthenticatedVehiclesRoute: AuthenticatedVehiclesRoute,
+  AuthenticatedStocksRoute: AuthenticatedStocksRoute,
+  AuthenticatedVehiclesRoute: AuthenticatedVehiclesRouteWithChildren,
+  AuthenticatedWalletsRoute: AuthenticatedWalletsRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 

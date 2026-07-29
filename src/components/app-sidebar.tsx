@@ -1,4 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   Users,
@@ -33,6 +34,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { getNotificationSummary } from "@/lib/notifications.functions";
 
 const apercu = [
   { title: "Tableau de bord", url: "/", icon: LayoutDashboard },
@@ -45,18 +47,23 @@ const operations = [
   { title: "Véhicules", url: "/vehicles", icon: Car },
   { title: "Exploitations", url: "/farms", icon: Sprout },
   { title: "Contrats", url: "/contracts", icon: FileSignature },
-  { title: "Entretiens", url: "/reports", icon: Wrench },
+  { title: "Entretiens", url: "/maintenance", icon: Wrench },
 ];
 
 const finances = [
+  { title: "Wallets", url: "/wallets", icon: Wallet },
+
   { title: "Finances", url: "/finance", icon: Wallet },
+
   { title: "Recettes", url: "/revenues", icon: TrendingUp },
+
   { title: "Dépenses", url: "/expenses", icon: TrendingDown },
+
   { title: "Versements", url: "/payments", icon: CreditCard },
 ];
 
 const espace = [
-  { title: "Stock", url: "/inventory", icon: Package },
+  { title: "Stocks", url: "/stocks", icon: Package },
   { title: "Documents", url: "/documents", icon: FileText },
   { title: "Rapports", url: "/reports", icon: BarChart3 },
   { title: "Notifications", url: "/notifications", icon: Bell },
@@ -71,6 +78,12 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const { data: notificationSummary } = useQuery({
+    queryKey: ["notification-summary"],
+    queryFn: () => getNotificationSummary(),
+    refetchInterval: 60_000,
+  });
+  const unreadNotifications = notificationSummary?.unread ?? 0;
   const isActive = (url: string) => (url === "/" ? pathname === "/" : pathname.startsWith(url));
 
   const renderGroup = (label: string, items: typeof operations) => (
@@ -84,6 +97,14 @@ export function AppSidebar() {
                 <Link to={item.url} className="flex items-center gap-3">
                   <item.icon className="h-4 w-4 shrink-0" />
                   <span className="truncate">{item.title}</span>
+                  {item.url === "/notifications" && unreadNotifications > 0 && (
+                    <span
+                      className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground"
+                      aria-label={`${unreadNotifications} notifications non lues`}
+                    >
+                      {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                    </span>
+                  )}
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -106,7 +127,7 @@ export function AppSidebar() {
                 HALAL ERP
               </p>
               <p className="truncate text-[10px] uppercase tracking-widest text-sidebar-foreground/60">
-                Suite de gestion
+                Entreprise KEITA
               </p>
             </div>
           )}

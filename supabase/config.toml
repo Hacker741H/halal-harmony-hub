@@ -1,1 +1,4 @@
-project_id = "rpdhmranermceanyginr"
+project_id = "iljetumzbqtrjvtdlynj"
+
+[functions.generate-notifications]
+verify_jwt = false

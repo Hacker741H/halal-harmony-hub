@@ -1,22 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { TrendingUp } from "lucide-react";
-import { ModulePlaceholder } from "@/components/module-placeholder";
+
+import { FinanceOperationPage } from "@/components/finance/finance-operation-page";
+import { RevenueForm } from "@/components/finance/forms/RevenueForm";
 
 export const Route = createFileRoute("/_authenticated/revenues")({
   head: () => ({ meta: [{ title: "Recettes — HALAL ERP" }] }),
-  component: () => (
-    <ModulePlaceholder
-      title="Recettes"
-      description="Ensemble des entrées d'argent par source et par période."
-      icon={<TrendingUp className="h-6 w-6" />}
-      primaryAction="Nouvelle recette"
-      features={[
-        "Source : exploitation, transport, autre",
-        "Montant en FCFA, date, méthode",
-        "Pièces justificatives",
-        "Regroupement par catégorie ou entité",
-      ]}
-      notionMapping="Base Notion : Recettes · liée aux Exploitations, Véhicules, Motos"
-    />
-  ),
+  component: RevenuesPage,
 });
+
+function RevenuesPage() {
+  return (
+    <FinanceOperationPage
+      title="Recettes"
+      description="Entrées d'argent enregistrées dans le journal financier."
+      type="REVENUE"
+      icon={<TrendingUp className="h-8 w-8 text-primary" />}
+      createLabel="Nouvelle recette"
+      Form={RevenueForm}
+    />
+  );
+}
