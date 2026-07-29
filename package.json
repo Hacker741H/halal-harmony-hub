@@ -16,7 +16,9 @@
     "security:provision-users": "tsx scripts/provision-security-test-users.ts",
     "security:cleanup-users": "tsx scripts/cleanup-security-test-users.ts",
     "security:test-users": "tsx scripts/test-security-users.ts",
-    "security:cleanup-orphan-documents": "tsx scripts/cleanup-orphan-documents.ts"
+    "security:cleanup-orphan-documents": "tsx scripts/cleanup-orphan-documents.ts",
+    "validate:deploy": "bun run scripts/validate-deploy.ts",
+    "predeploy": "bun run validate:deploy"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
