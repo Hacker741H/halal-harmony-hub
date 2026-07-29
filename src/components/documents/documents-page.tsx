@@ -104,7 +104,7 @@ export function DocumentsPage() {
 
   return <div className="space-y-6 p-4 md:p-6">
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div><h1 className="text-2xl font-bold">Documents</h1><p className="text-sm text-muted-foreground">Bibliothèque documentaire et échéances ERP.</p></div>
+      <div><h1 className="text-2xl font-bold">Documents</h1><p className="text-sm text-muted-foreground">Tout est carré : les preuves parlent quand les mots s’arrêtent.</p></div>
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}><DialogTrigger asChild><Button><FilePlus2 className="mr-2 h-4 w-4" />Téléverser</Button></DialogTrigger><DialogContent className="max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>Nouveau document</DialogTitle></DialogHeader><DocumentUpload onSuccess={() => { setDialogOpen(false); void refreshLibrary(); }} /></DialogContent></Dialog>
     </div>
 

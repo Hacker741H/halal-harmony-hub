@@ -151,7 +151,7 @@ function StocksPage() {
           </h1>
 
           <p className="text-muted-foreground">
-            Gestion de votre inventaire.
+            Savoir ce qu’on a, c’est déjà savoir où l’on va.
           </p>
 
         </div>

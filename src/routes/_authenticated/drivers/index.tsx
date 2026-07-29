@@ -65,7 +65,7 @@ function DriversPage() {
             <UserCheck className="h-7 w-7" />
             Chauffeurs
           </h1>
-          <p className="text-muted-foreground">Gestion des chauffeurs.</p>
+          <p className="text-muted-foreground">Le trajet est long, mais la destination vaut le silence.</p>
         </div>
 
         <Dialog

@@ -122,7 +122,7 @@ function MotorcyclesPage() {
           </h1>
 
           <p className="text-muted-foreground">
-            Gestion du parc de motos
+            Deux roues, une mission : avancer sans perdre le contrôle.
           </p>
         </div>
 

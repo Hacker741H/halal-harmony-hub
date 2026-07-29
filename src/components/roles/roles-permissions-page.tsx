@@ -143,7 +143,7 @@ export function RolesPermissionsPage() {
         <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="flex items-center gap-2 text-3xl font-bold"><ShieldCheck className="h-7 w-7" /> Rôles & permissions</h1>
-            <p className="mt-1 text-muted-foreground">Les droits effectifs sont l’union des rôles attribués à un utilisateur.</p>
+            <p className="mt-1 text-muted-foreground">Les bons accès aux bonnes personnes : le contrôle reste à la maison.</p>
           </div>
           <Badge variant="outline">Contrôles garantis par Supabase</Badge>
         </header>

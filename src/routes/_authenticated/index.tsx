@@ -112,8 +112,7 @@ function Dashboard() {
                 <span className="text-emerald-300">Voici le rythme de HALAL &amp; CO.</span>
               </h1>
               <p className="mt-4 max-w-xl text-sm leading-6 text-emerald-50/70 sm:text-base">
-                Le point de départ de votre journée : trésorerie, mobilité, équipes et
-                exploitations, réunies pour faire avancer l'entreprise avec justesse.
+                HALAL &amp; CO : vision du quartier, gestion de patron.
               </p>
             </div>
             <div className="xl:hidden">

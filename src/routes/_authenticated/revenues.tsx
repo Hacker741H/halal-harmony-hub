@@ -13,7 +13,7 @@ function RevenuesPage() {
   return (
     <FinanceOperationPage
       title="Recettes"
-      description="Entrées d'argent enregistrées dans le journal financier."
+      description="Chaque entrée raconte le prix des efforts d’hier."
       type="REVENUE"
       icon={<TrendingUp className="h-8 w-8 text-primary" />}
       createLabel="Nouvelle recette"

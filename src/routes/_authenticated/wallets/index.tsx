@@ -57,7 +57,7 @@ function WalletsPage() {
               </p>
               <h1 className="mt-3 text-4xl font-bold tracking-tight">Wallets</h1>
               <p className="mt-2 max-w-xl text-emerald-100">
-                Cliquez sur un wallet pour consulter toutes ses opérations.
+                Chaque franc a une direction. À vous de la décider.
               </p>
             </div>
             <Button

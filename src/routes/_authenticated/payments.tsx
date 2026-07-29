@@ -13,7 +13,7 @@ function PaymentsPage() {
   return (
     <FinanceOperationPage
       title="Versements"
-      description="Fonds ajoutés à un wallet dans le journal financier."
+      description="Des mouvements propres pour une trésorerie qui respire."
       type="DEPOSIT"
       icon={<Landmark className="h-8 w-8 text-primary" />}
       createLabel="Nouveau versement"

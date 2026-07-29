@@ -69,7 +69,7 @@ function VehiclesPage() {
             <Car className="h-7 w-7" />
             Véhicules
           </h1>
-          <p className="text-muted-foreground">Gestion complète de votre flotte.</p>
+          <p className="text-muted-foreground">La route nous teste, l’organisation nous fait gagner.</p>
         </div>
 
         <Dialog

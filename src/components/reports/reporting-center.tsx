@@ -544,7 +544,7 @@ export function ReportingCenter({ search, onSearchChange }: ReportingCenterProps
     <div className="space-y-6">
       <Card>
         <CardHeader className="gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div><CardTitle className="flex items-center gap-2"><BarChart3 className="h-5 w-5" />Centre de rapports de gestion</CardTitle><CardDescription>Sources opérationnelles en temps réel, fuseau Africa/Dakar. Les transferts internes sont neutres dans le flux global.</CardDescription></div>
+          <div><CardTitle className="flex items-center gap-2"><BarChart3 className="h-5 w-5" />Centre de rapports de gestion</CardTitle><CardDescription>Les bilans parlent fort pour ceux qui savent lire entre les lignes.</CardDescription></div>
           <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" />Imprimer</Button>{reportType === "FINANCE" && <Button variant="outline" disabled={exportMutation.isPending} onClick={() => exportMutation.mutate()}>{exportMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}Exporter CSV</Button>}</div>
         </CardHeader>
       </Card>

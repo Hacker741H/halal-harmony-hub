@@ -139,7 +139,7 @@ function MaintenancePage() {
             Entretiens
           </h1>
           <p className="text-muted-foreground">
-            Suivi unifié des entretiens des motos et véhicules.
+            Prendre soin du matériel, c’est protéger la route du succès.
           </p>
         </div>
         <div className="flex gap-2">

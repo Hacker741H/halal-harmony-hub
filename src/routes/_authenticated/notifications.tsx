@@ -122,7 +122,7 @@ function NotificationsPage() {
             <Bell className="h-7 w-7" /> Centre de notifications
           </h1>
           <p className="mt-1 text-muted-foreground">
-            Échéances et anomalies détectées dans les modules de l’ERP.
+            Une alerte à temps vaut mieux qu’un problème trop tard.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

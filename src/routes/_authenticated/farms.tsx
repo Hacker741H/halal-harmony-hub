@@ -107,7 +107,7 @@ function FarmsPage() {
           </h1>
 
           <p className="text-muted-foreground">
-            Gestion complète de vos plantations.
+            On sème avec patience, on récolte avec vision.
           </p>
 
         </div>

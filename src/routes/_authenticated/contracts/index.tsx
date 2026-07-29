@@ -29,7 +29,7 @@ function ContractsPage() {
             <FileSignature className="h-7 w-7" />
             Contrats
           </h1>
-          <p className="text-muted-foreground">Contrats liés aux entités de l'ERP.</p>
+          <p className="text-muted-foreground">La parole vaut cher quand l’ambition prend de la valeur.</p>
         </div>
         <Button onClick={() => setOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />

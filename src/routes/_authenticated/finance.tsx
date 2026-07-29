@@ -232,7 +232,7 @@ const [type, setType] = useState<
               </h1>
 
               <p className="text-muted-foreground">
-                Gérez toutes les opérations financières de HALAL ERP.
+                Les rêves coûtent cher, donc on pilote chaque dépense.
               </p>
             </div>
 
