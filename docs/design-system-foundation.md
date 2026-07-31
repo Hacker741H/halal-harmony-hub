@@ -36,7 +36,7 @@ Les primitives existantes restent les points d'entrée à utiliser :
 
 ## Thème
 
-Les tokens clair et sombre font partie du socle. Leur branchement au navigateur et les préférences d'apparence sont traités par le Product Shell afin de rester locaux à l'interface et de ne toucher à aucune donnée ERP.
+Les tokens clair et sombre font partie du socle. Le `ThemeProvider`, monté à la racine par le Product Shell, garde un premier rendu déterministe pour le SSR puis applique la préférence locale côté navigateur. En mode système, il suit immédiatement les changements de préférence du système d'exploitation sans toucher aux données ERP.
 
 ## Règles d'adoption
 

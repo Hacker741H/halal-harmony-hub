@@ -9,25 +9,18 @@ import {
   Scripts,
   useNavigate,
 } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import { Bell, LogOut, Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { ProductHeader } from "@/components/shell/product-header";
+import { ShellPreferencesProvider, useShellPreferences } from "@/components/shell/shell-preferences";
+import { ThemeProvider } from "@/components/ui/theme-provider";
 
 function NotFoundComponent() {
   return (
@@ -108,14 +101,14 @@ function useSession() {
   const router = useRouter();
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      const u = data.user;
-      if (u) setSession({ email: u.email ?? undefined, fullName: (u.user_metadata as { full_name?: string } | null)?.full_name });
+      const user = data.user;
+      if (user) setSession({ email: user.email ?? undefined, fullName: (user.user_metadata as { full_name?: string } | null)?.full_name });
       else setSession(null);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
-      if (s?.user) {
-        setSession({ email: s.user.email ?? undefined, fullName: (s.user.user_metadata as { full_name?: string } | null)?.full_name });
+      if (nextSession?.user) {
+        setSession({ email: nextSession.user.email ?? undefined, fullName: (nextSession.user.user_metadata as { full_name?: string } | null)?.full_name });
       } else {
         setSession(null);
       }
@@ -126,11 +119,11 @@ function useSession() {
   return session;
 }
 
-function TopBar() {
+function AuthenticatedShell() {
   const session = useSession();
   const navigate = useNavigate();
-  const initials = (session?.fullName ?? session?.email ?? "?")
-    .split(/\s|@/).filter(Boolean).slice(0, 2).map((s) => s[0]!.toUpperCase()).join("");
+  const pathname = useRouterState({ select: (router) => router.location.pathname });
+  const { sidebarWidth, density } = useShellPreferences();
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -138,70 +131,41 @@ function TopBar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-3 backdrop-blur sm:px-6">
-      <SidebarTrigger className="shrink-0" />
-      <div className="relative hidden max-w-md flex-1 sm:block">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Rechercher un élément, un document, un contrat…" className="h-9 pl-9" />
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": sidebarWidth === "compact" ? "14rem" : "17rem",
+        } as CSSProperties
+      }
+    >
+      <div className="flex min-h-screen w-full bg-background" data-density={density}>
+        <AppSidebar />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <ProductHeader user={session} onSignOut={signOut} />
+          <main className="flex-1 overflow-x-hidden">
+            <div key={pathname} className="animate-fade-in">
+              <Outlet />
+            </div>
+          </main>
+        </div>
       </div>
-      <div className="ml-auto flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-4 w-4" />
-          <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-gold" />
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="grid h-8 w-8 place-items-center rounded-full bg-gradient-primary text-xs font-semibold text-primary-foreground">
-              {initials || "HE"}
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel className="text-xs">
-              <div className="font-medium">{session?.fullName ?? "Utilisateur"}</div>
-              <div className="text-muted-foreground">{session?.email ?? "—"}</div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link to="/settings">Paramètres</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
-              <LogOut className="mr-2 h-4 w-4" /> Se déconnecter
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </header>
+    </SidebarProvider>
   );
 }
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const pathname = useRouterState({ select: (router) => router.location.pathname });
   const isAuthRoute = pathname.startsWith("/auth");
-
-  if (isAuthRoute) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <Outlet />
-        <Toaster />
-      </QueryClientProvider>
-    );
-  }
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <AppSidebar />
-          <div className="flex flex-1 flex-col">
-            <TopBar />
-            <main className="flex-1">
-              <Outlet />
-            </main>
-          </div>
-        </div>
-        <Toaster />
-      </SidebarProvider>
+      <ThemeProvider>
+        <ShellPreferencesProvider>
+          {isAuthRoute ? <Outlet /> : <AuthenticatedShell />}
+          <Toaster />
+        </ShellPreferencesProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
