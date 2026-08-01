@@ -18,6 +18,9 @@ type TransportBudgetLineRow = { id: string; mission_id: string; category: string
 type TransportExpenseRow = { id: string; mission_id: string; wallet_id: string; category: string; amount: number; expense_date: string; status: string; description: string | null; receipt_document_id: string | null; created_by: string | null; updated_by: string | null; created_at: string; updated_at: string; confirmed_at: string | null; cancelled_at: string | null }
 type TransportInvoiceRow = { id: string; invoice_number: string; mission_id: string; client_id: string; status: string; issue_date: string | null; due_date: string | null; subtotal_amount: number; tax_rate: number; tax_amount: number; total_amount: number; notes: string | null; cancelled_reason: string | null; created_by: string | null; updated_by: string | null; created_at: string; updated_at: string; issued_at: string | null; cancelled_at: string | null }
 type TransportPaymentRow = { id: string; invoice_id: string; mission_id: string; wallet_id: string; amount: number; payment_date: string; status: string; payment_kind: string; reference: string | null; notes: string | null; created_by: string | null; updated_by: string | null; created_at: string; updated_at: string; confirmed_at: string | null; cancelled_at: string | null }
+type FieldWalletAssignmentRow = { id: string; user_id: string; wallet_id: string; assignment_type: string; label: string | null; is_active: boolean; assigned_by: string | null; assigned_at: string; revoked_at: string | null; created_at: string; updated_at: string }
+type FieldReportRow = { id: string; report_number: string; report_type: string; period_start: string; period_end: string; status: string; notes: string | null; created_by: string; submitted_at: string | null; reviewed_at: string | null; reviewed_by: string | null; review_note: string | null; created_at: string; updated_at: string }
+type FieldDeclarationRow = { id: string; report_id: string; declaration_type: string; status: string; amount: number; occurred_at: string; field_wallet_id: string; destination_wallet_id: string | null; category: string; description: string | null; reference: string | null; client_id: string | null; farm_id: string | null; inventory_item_id: string | null; document_id: string | null; client_submission_id: string | null; created_by: string; submitted_at: string | null; confirmed_at: string | null; confirmed_by: string | null; rejected_at: string | null; rejected_by: string | null; rejection_reason: string | null; created_at: string; updated_at: string }
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
@@ -1834,6 +1837,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      field_wallet_assignments: {
+        Row: FieldWalletAssignmentRow
+        Insert: { id?: string; user_id: string; wallet_id: string; assignment_type?: string; label?: string | null; is_active?: boolean; assigned_by?: string | null; assigned_at?: string; revoked_at?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; user_id?: string; wallet_id?: string; assignment_type?: string; label?: string | null; is_active?: boolean; assigned_by?: string | null; assigned_at?: string; revoked_at?: string | null; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
+      field_reports: {
+        Row: FieldReportRow
+        Insert: { id?: string; report_number: string; report_type: string; period_start: string; period_end: string; status?: string; notes?: string | null; created_by: string; submitted_at?: string | null; reviewed_at?: string | null; reviewed_by?: string | null; review_note?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; report_number?: string; report_type?: string; period_start?: string; period_end?: string; status?: string; notes?: string | null; created_by?: string; submitted_at?: string | null; reviewed_at?: string | null; reviewed_by?: string | null; review_note?: string | null; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
+      field_declarations: {
+        Row: FieldDeclarationRow
+        Insert: { id?: string; report_id: string; declaration_type: string; status?: string; amount: number; occurred_at?: string; field_wallet_id: string; destination_wallet_id?: string | null; category: string; description?: string | null; reference?: string | null; client_id?: string | null; farm_id?: string | null; inventory_item_id?: string | null; document_id?: string | null; client_submission_id?: string | null; created_by: string; submitted_at?: string | null; confirmed_at?: string | null; confirmed_by?: string | null; rejected_at?: string | null; rejected_by?: string | null; rejection_reason?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; report_id?: string; declaration_type?: string; status?: string; amount?: number; occurred_at?: string; field_wallet_id?: string; destination_wallet_id?: string | null; category?: string; description?: string | null; reference?: string | null; client_id?: string | null; farm_id?: string | null; inventory_item_id?: string | null; document_id?: string | null; client_submission_id?: string | null; created_by?: string; submitted_at?: string | null; confirmed_at?: string | null; confirmed_by?: string | null; rejected_at?: string | null; rejected_by?: string | null; rejection_reason?: string | null; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
+      finance_field_declaration_links: {
+        Row: { operation_id: string; declaration_id: string; created_at: string }
+        Insert: { operation_id: string; declaration_id: string; created_at?: string }
+        Update: { operation_id?: string; declaration_id?: string; created_at?: string }
+        Relationships: []
       }
       finance_payment_links: {
         Row: {
@@ -5028,6 +5055,36 @@ export type Database = {
       finance_delete_operation: {
         Args: { p_operation_id: string }
         Returns: boolean
+      }
+      assign_field_wallet: {
+        Args: { p_assignment: Json }
+        Returns: FieldWalletAssignmentRow
+        SetofOptions: { from: "*"; to: "field_wallet_assignments"; isOneToOne: true; isSetofReturn: false }
+      }
+      create_field_report: {
+        Args: { p_report: Json }
+        Returns: FieldReportRow
+        SetofOptions: { from: "*"; to: "field_reports"; isOneToOne: true; isSetofReturn: false }
+      }
+      create_field_declaration: {
+        Args: { p_report_id: string; p_declaration: Json }
+        Returns: FieldDeclarationRow
+        SetofOptions: { from: "*"; to: "field_declarations"; isOneToOne: true; isSetofReturn: false }
+      }
+      submit_field_report: {
+        Args: { p_report_id: string }
+        Returns: FieldReportRow
+        SetofOptions: { from: "*"; to: "field_reports"; isOneToOne: true; isSetofReturn: false }
+      }
+      confirm_field_declaration: {
+        Args: { p_declaration_id: string }
+        Returns: FieldDeclarationRow
+        SetofOptions: { from: "*"; to: "field_declarations"; isOneToOne: true; isSetofReturn: false }
+      }
+      reject_field_declaration: {
+        Args: { p_declaration_id: string; p_reason: string }
+        Returns: FieldDeclarationRow
+        SetofOptions: { from: "*"; to: "field_declarations"; isOneToOne: true; isSetofReturn: false }
       }
       finance_require_write_role: { Args: never; Returns: undefined }
       finance_update_operation: {

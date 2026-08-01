@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">HALAL Field</title>
+  <rect width="512" height="512" rx="112" fill="#0d5c3f"/>
+  <path fill="#f6f1df" d="M145 292c0-92 75-167 167-167h55v55c0 92-75 167-167 167h-55v-55Zm70-20c49 0 88-39 88-88v-5h-5c-49 0-88 39-88 88v5h5Z"/>
+  <path fill="#bde3be" d="M256 391c-16 0-29-13-29-29V218c0-16 13-29 29-29s29 13 29 29v144c0 16-13 29-29 29Z"/>
+</svg>

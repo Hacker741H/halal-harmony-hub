@@ -1,0 +1,19 @@
+{
+  "name": "HALAL Field",
+  "short_name": "HALAL Field",
+  "description": "Saisie terrain contrôlée pour HALAL ERP.",
+  "lang": "fr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8faf8",
+  "theme_color": "#0d5c3f",
+  "icons": [
+    {
+      "src": "/pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

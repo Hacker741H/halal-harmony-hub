@@ -19,6 +19,7 @@ import {
   PackageCheck,
   Settings,
   ShieldCheck,
+  Smartphone,
   Sprout,
   TrendingDown,
   TrendingUp,
@@ -44,6 +45,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useShellPreferences } from "@/components/shell/shell-preferences";
+import { usePermissions } from "@/hooks/use-permissions";
 import { getNotificationSummary } from "@/lib/notifications.functions";
 import { cn } from "@/lib/utils";
 
@@ -53,6 +55,7 @@ type NavigationRoute =
   | "/drivers"
   | "/clients"
   | "/courses"
+  | "/field"
   | "/vehicles"
   | "/motorcycles"
   | "/maintenance"
@@ -75,6 +78,7 @@ interface NavigationItem {
   url?: NavigationRoute;
   icon: LucideIcon;
   disabled?: boolean;
+  permission?: string;
 }
 
 interface NavigationGroup {
@@ -118,6 +122,12 @@ const navigationGroups: readonly NavigationGroup[] = [
     ],
   },
   {
+    label: "Terrain",
+    items: [
+      { title: "HALAL Field", url: "/field", icon: Smartphone, permission: "field.reports.read" },
+    ],
+  },
+  {
     label: "Agriculture & stocks",
     items: [
       { title: "Fermes", url: "/farms", icon: Sprout },
@@ -150,6 +160,7 @@ const navigationGroups: readonly NavigationGroup[] = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const { density } = useShellPreferences();
+  const { can } = usePermissions();
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (router) => router.location.pathname });
   const { data: notificationSummary } = useQuery({
@@ -178,8 +189,10 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className={cn("px-2 py-3", groupSpacing)}>
-        {navigationGroups.map((group) => (
-          <SidebarGroup key={group.label} className="p-0">
+        {navigationGroups.map((group) => {
+          const visibleItems = group.items.filter((item) => !item.permission || can(item.permission));
+          if (visibleItems.length === 0) return null;
+          return <SidebarGroup key={group.label} className="p-0">
             {!collapsed ? (
               <SidebarGroupLabel className="h-auto px-2 pb-1.5 pt-2 text-overline text-sidebar-foreground/45">
                 {group.label}
@@ -187,7 +200,7 @@ export function AppSidebar() {
             ) : null}
             <SidebarGroupContent>
               <SidebarMenu className={groupSpacing}>
-                {group.items.map((item) => (
+                {visibleItems.map((item) => (
                   <SidebarMenuItem key={`${group.label}-${item.title}`}>
                     {item.disabled ? <div className="flex h-9 items-center gap-3 rounded-md px-2.5 text-sidebar-foreground/45" aria-disabled="true">
                       <item.icon className="size-4 shrink-0" aria-hidden="true" />
@@ -215,8 +228,8 @@ export function AppSidebar() {
                 ))}
               </SidebarMenu>
             </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+          </SidebarGroup>;
+        })}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-3">

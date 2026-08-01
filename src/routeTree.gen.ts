@@ -20,6 +20,7 @@ import { Route as AuthenticatedDriversRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
 import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticated/expenses'
 import { Route as AuthenticatedFarmsRouteImport } from './routes/_authenticated/farms'
+import { Route as AuthenticatedFieldRouteImport } from './routes/_authenticated/field'
 import { Route as AuthenticatedFinanceRouteImport } from './routes/_authenticated/finance'
 import { Route as AuthenticatedInventoryRouteImport } from './routes/_authenticated/inventory'
 import { Route as AuthenticatedMaintenanceRouteImport } from './routes/_authenticated/maintenance'
@@ -45,6 +46,8 @@ import { Route as AuthenticatedDriversDriverIdRouteImport } from './routes/_auth
 import { Route as AuthenticatedEmployeesIndexRouteImport } from './routes/_authenticated/employees/index'
 import { Route as AuthenticatedEmployeesEmployeeIdRouteImport } from './routes/_authenticated/employees/$employeeId'
 import { Route as AuthenticatedFarmsFarmIdRouteImport } from './routes/_authenticated/farms/$farmId'
+import { Route as AuthenticatedFieldIndexRouteImport } from './routes/_authenticated/field/index'
+import { Route as AuthenticatedFieldReportIdRouteImport } from './routes/_authenticated/field/$reportId'
 import { Route as AuthenticatedMotorcyclesMotorcycleIdRouteImport } from './routes/_authenticated/motorcycles/$motorcycleId'
 import { Route as AuthenticatedVehiclesIndexRouteImport } from './routes/_authenticated/vehicles/index'
 import { Route as AuthenticatedVehiclesVehicleIdRouteImport } from './routes/_authenticated/vehicles/$vehicleId'
@@ -80,6 +83,11 @@ const AuthenticatedCoursesRoute = AuthenticatedCoursesRouteImport.update({
   path: '/courses',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDocumentsRoute = AuthenticatedDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDriversRoute = AuthenticatedDriversRouteImport.update({
   id: '/drivers',
   path: '/drivers',
@@ -98,6 +106,11 @@ const AuthenticatedExpensesRoute = AuthenticatedExpensesRouteImport.update({
 const AuthenticatedFarmsRoute = AuthenticatedFarmsRouteImport.update({
   id: '/farms',
   path: '/farms',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedFieldRoute = AuthenticatedFieldRouteImport.update({
+  id: '/field',
+  path: '/field',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedFinanceRoute = AuthenticatedFinanceRouteImport.update({
@@ -240,6 +253,17 @@ const AuthenticatedFarmsFarmIdRoute =
     path: '/$farmId',
     getParentRoute: () => AuthenticatedFarmsRoute,
   } as any)
+const AuthenticatedFieldIndexRoute = AuthenticatedFieldIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedFieldRoute,
+} as any)
+const AuthenticatedFieldReportIdRoute =
+  AuthenticatedFieldReportIdRouteImport.update({
+    id: '/$reportId',
+    path: '/$reportId',
+    getParentRoute: () => AuthenticatedFieldRoute,
+  } as any)
 const AuthenticatedMotorcyclesMotorcycleIdRoute =
   AuthenticatedMotorcyclesMotorcycleIdRouteImport.update({
     id: '/$motorcycleId',
@@ -282,6 +306,7 @@ export interface FileRoutesByFullPath {
   '/employees': typeof AuthenticatedEmployeesRouteWithChildren
   '/expenses': typeof AuthenticatedExpensesRoute
   '/farms': typeof AuthenticatedFarmsRouteWithChildren
+  '/field': typeof AuthenticatedFieldRouteWithChildren
   '/finance': typeof AuthenticatedFinanceRoute
   '/inventory': typeof AuthenticatedInventoryRoute
   '/maintenance': typeof AuthenticatedMaintenanceRoute
@@ -302,6 +327,7 @@ export interface FileRoutesByFullPath {
   '/drivers/$driverId': typeof AuthenticatedDriversDriverIdRoute
   '/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
   '/farms/$farmId': typeof AuthenticatedFarmsFarmIdRoute
+  '/field/$reportId': typeof AuthenticatedFieldReportIdRoute
   '/motorcycles/$motorcycleId': typeof AuthenticatedMotorcyclesMotorcycleIdRoute
   '/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
   '/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
@@ -310,6 +336,7 @@ export interface FileRoutesByFullPath {
   '/courses/': typeof AuthenticatedCoursesIndexRoute
   '/drivers/': typeof AuthenticatedDriversIndexRoute
   '/employees/': typeof AuthenticatedEmployeesIndexRoute
+  '/field/': typeof AuthenticatedFieldIndexRoute
   '/vehicles/': typeof AuthenticatedVehiclesIndexRoute
   '/wallets/': typeof AuthenticatedWalletsIndexRoute
 }
@@ -337,6 +364,7 @@ export interface FileRoutesByTo {
   '/drivers/$driverId': typeof AuthenticatedDriversDriverIdRoute
   '/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
   '/farms/$farmId': typeof AuthenticatedFarmsFarmIdRoute
+  '/field/$reportId': typeof AuthenticatedFieldReportIdRoute
   '/motorcycles/$motorcycleId': typeof AuthenticatedMotorcyclesMotorcycleIdRoute
   '/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
   '/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
@@ -345,6 +373,7 @@ export interface FileRoutesByTo {
   '/courses': typeof AuthenticatedCoursesIndexRoute
   '/drivers': typeof AuthenticatedDriversIndexRoute
   '/employees': typeof AuthenticatedEmployeesIndexRoute
+  '/field': typeof AuthenticatedFieldIndexRoute
   '/vehicles': typeof AuthenticatedVehiclesIndexRoute
   '/wallets': typeof AuthenticatedWalletsIndexRoute
 }
@@ -360,6 +389,7 @@ export interface FileRoutesById {
   '/_authenticated/employees': typeof AuthenticatedEmployeesRouteWithChildren
   '/_authenticated/expenses': typeof AuthenticatedExpensesRoute
   '/_authenticated/farms': typeof AuthenticatedFarmsRouteWithChildren
+  '/_authenticated/field': typeof AuthenticatedFieldRouteWithChildren
   '/_authenticated/finance': typeof AuthenticatedFinanceRoute
   '/_authenticated/inventory': typeof AuthenticatedInventoryRoute
   '/_authenticated/maintenance': typeof AuthenticatedMaintenanceRoute
@@ -381,6 +411,7 @@ export interface FileRoutesById {
   '/_authenticated/drivers/$driverId': typeof AuthenticatedDriversDriverIdRoute
   '/_authenticated/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
   '/_authenticated/farms/$farmId': typeof AuthenticatedFarmsFarmIdRoute
+  '/_authenticated/field/$reportId': typeof AuthenticatedFieldReportIdRoute
   '/_authenticated/motorcycles/$motorcycleId': typeof AuthenticatedMotorcyclesMotorcycleIdRoute
   '/_authenticated/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
   '/_authenticated/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
@@ -389,6 +420,7 @@ export interface FileRoutesById {
   '/_authenticated/courses/': typeof AuthenticatedCoursesIndexRoute
   '/_authenticated/drivers/': typeof AuthenticatedDriversIndexRoute
   '/_authenticated/employees/': typeof AuthenticatedEmployeesIndexRoute
+  '/_authenticated/field/': typeof AuthenticatedFieldIndexRoute
   '/_authenticated/vehicles/': typeof AuthenticatedVehiclesIndexRoute
   '/_authenticated/wallets/': typeof AuthenticatedWalletsIndexRoute
 }
@@ -405,6 +437,7 @@ export interface FileRouteTypes {
     | '/employees'
     | '/expenses'
     | '/farms'
+    | '/field'
     | '/finance'
     | '/inventory'
     | '/maintenance'
@@ -425,6 +458,7 @@ export interface FileRouteTypes {
     | '/drivers/$driverId'
     | '/employees/$employeeId'
     | '/farms/$farmId'
+    | '/field/$reportId'
     | '/motorcycles/$motorcycleId'
     | '/vehicles/$vehicleId'
     | '/wallets/$walletId'
@@ -433,6 +467,7 @@ export interface FileRouteTypes {
     | '/courses/'
     | '/drivers/'
     | '/employees/'
+    | '/field/'
     | '/vehicles/'
     | '/wallets/'
   fileRoutesByTo: FileRoutesByTo
@@ -460,6 +495,7 @@ export interface FileRouteTypes {
     | '/drivers/$driverId'
     | '/employees/$employeeId'
     | '/farms/$farmId'
+    | '/field/$reportId'
     | '/motorcycles/$motorcycleId'
     | '/vehicles/$vehicleId'
     | '/wallets/$walletId'
@@ -468,6 +504,7 @@ export interface FileRouteTypes {
     | '/courses'
     | '/drivers'
     | '/employees'
+    | '/field'
     | '/vehicles'
     | '/wallets'
   id:
@@ -482,6 +519,7 @@ export interface FileRouteTypes {
     | '/_authenticated/employees'
     | '/_authenticated/expenses'
     | '/_authenticated/farms'
+    | '/_authenticated/field'
     | '/_authenticated/finance'
     | '/_authenticated/inventory'
     | '/_authenticated/maintenance'
@@ -503,6 +541,7 @@ export interface FileRouteTypes {
     | '/_authenticated/drivers/$driverId'
     | '/_authenticated/employees/$employeeId'
     | '/_authenticated/farms/$farmId'
+    | '/_authenticated/field/$reportId'
     | '/_authenticated/motorcycles/$motorcycleId'
     | '/_authenticated/vehicles/$vehicleId'
     | '/_authenticated/wallets/$walletId'
@@ -511,6 +550,7 @@ export interface FileRouteTypes {
     | '/_authenticated/courses/'
     | '/_authenticated/drivers/'
     | '/_authenticated/employees/'
+    | '/_authenticated/field/'
     | '/_authenticated/vehicles/'
     | '/_authenticated/wallets/'
   fileRoutesById: FileRoutesById
@@ -564,8 +604,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCoursesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/documents': {
       id: '/_authenticated/documents'
       path: '/documents'
@@ -599,6 +637,13 @@ declare module '@tanstack/react-router' {
       path: '/farms'
       fullPath: '/farms'
       preLoaderRoute: typeof AuthenticatedFarmsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/field': {
+      id: '/_authenticated/field'
+      path: '/field'
+      fullPath: '/field'
+      preLoaderRoute: typeof AuthenticatedFieldRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/finance': {
@@ -776,6 +821,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFarmsFarmIdRouteImport
       parentRoute: typeof AuthenticatedFarmsRoute
     }
+    '/_authenticated/field/': {
+      id: '/_authenticated/field/'
+      path: '/'
+      fullPath: '/field/'
+      preLoaderRoute: typeof AuthenticatedFieldIndexRouteImport
+      parentRoute: typeof AuthenticatedFieldRoute
+    }
+    '/_authenticated/field/$reportId': {
+      id: '/_authenticated/field/$reportId'
+      path: '/$reportId'
+      fullPath: '/field/$reportId'
+      preLoaderRoute: typeof AuthenticatedFieldReportIdRouteImport
+      parentRoute: typeof AuthenticatedFieldRoute
+    }
     '/_authenticated/motorcycles/$motorcycleId': {
       id: '/_authenticated/motorcycles/$motorcycleId'
       path: '/$motorcycleId'
@@ -913,6 +972,19 @@ const AuthenticatedFarmsRouteChildren: AuthenticatedFarmsRouteChildren = {
 const AuthenticatedFarmsRouteWithChildren =
   AuthenticatedFarmsRoute._addFileChildren(AuthenticatedFarmsRouteChildren)
 
+interface AuthenticatedFieldRouteChildren {
+  AuthenticatedFieldReportIdRoute: typeof AuthenticatedFieldReportIdRoute
+  AuthenticatedFieldIndexRoute: typeof AuthenticatedFieldIndexRoute
+}
+
+const AuthenticatedFieldRouteChildren: AuthenticatedFieldRouteChildren = {
+  AuthenticatedFieldReportIdRoute: AuthenticatedFieldReportIdRoute,
+  AuthenticatedFieldIndexRoute: AuthenticatedFieldIndexRoute,
+}
+
+const AuthenticatedFieldRouteWithChildren =
+  AuthenticatedFieldRoute._addFileChildren(AuthenticatedFieldRouteChildren)
+
 interface AuthenticatedMotorcyclesRouteChildren {
   AuthenticatedMotorcyclesMotorcycleIdRoute: typeof AuthenticatedMotorcyclesMotorcycleIdRoute
 }
@@ -965,6 +1037,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRouteWithChildren
   AuthenticatedExpensesRoute: typeof AuthenticatedExpensesRoute
   AuthenticatedFarmsRoute: typeof AuthenticatedFarmsRouteWithChildren
+  AuthenticatedFieldRoute: typeof AuthenticatedFieldRouteWithChildren
   AuthenticatedFinanceRoute: typeof AuthenticatedFinanceRoute
   AuthenticatedInventoryRoute: typeof AuthenticatedInventoryRoute
   AuthenticatedMaintenanceRoute: typeof AuthenticatedMaintenanceRoute
@@ -990,6 +1063,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRouteWithChildren,
   AuthenticatedExpensesRoute: AuthenticatedExpensesRoute,
   AuthenticatedFarmsRoute: AuthenticatedFarmsRouteWithChildren,
+  AuthenticatedFieldRoute: AuthenticatedFieldRouteWithChildren,
   AuthenticatedFinanceRoute: AuthenticatedFinanceRoute,
   AuthenticatedInventoryRoute: AuthenticatedInventoryRoute,
   AuthenticatedMaintenanceRoute: AuthenticatedMaintenanceRoute,
