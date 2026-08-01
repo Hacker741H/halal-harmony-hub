@@ -5673,6 +5673,7 @@ export type Database = {
         }
       }
       create_transport_mission: { Args: { p_mission: Json }; Returns: TransportMissionRow; SetofOptions: { from: "transport_missions"; to: "transport_missions"; isOneToOne: true; isSetofReturn: false } }
+      delete_transport_mission: { Args: { p_mission_id: string }; Returns: boolean }
       update_transport_mission: { Args: { p_mission_id: string; p_values: Json }; Returns: TransportMissionRow; SetofOptions: { from: "transport_missions"; to: "transport_missions"; isOneToOne: true; isSetofReturn: false } }
       set_transport_mission_status: { Args: { p_mission_id: string; p_status: string; p_reason?: string | null }; Returns: TransportMissionRow; SetofOptions: { from: "transport_missions"; to: "transport_missions"; isOneToOne: true; isSetofReturn: false } }
       create_transport_mission_budget_line: { Args: { p_mission_id: string; p_line: Json }; Returns: TransportBudgetLineRow; SetofOptions: { from: "transport_mission_budget_lines"; to: "transport_mission_budget_lines"; isOneToOne: true; isSetofReturn: false } }

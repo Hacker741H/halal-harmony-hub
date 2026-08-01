@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -10,6 +10,7 @@ import {
   Plus,
   ReceiptText,
   Route as RouteIcon,
+  Trash2,
   WalletCards,
   type LucideIcon,
 } from "lucide-react";
@@ -41,12 +42,14 @@ import {
   createCourseExpense,
   createCourseInvoice,
   createCoursePayment,
+  deleteCourse,
   getCourse,
   getCourseHistory,
   issueCourseInvoice,
   setCourseStatus,
   type Course,
   type CourseExpense,
+  type CourseHistoryEntry,
   type CourseInvoice,
   type CoursePayment,
 } from "@/lib/courses.functions";
@@ -92,11 +95,17 @@ function invoiceDue(invoice: CourseInvoice, payments: CoursePayment[]) {
 
 function CourseDetailsPage() {
   const { courseId } = Route.useParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { can } = usePermissions();
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [paymentInvoiceId, setPaymentInvoiceId] = useState<string | null>(null);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [archiveReason, setArchiveReason] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [cancellationTarget, setCancellationTarget] = useState<{ kind: "expense" | "payment"; id: string } | null>(null);
+  const [cancellationReason, setCancellationReason] = useState("");
 
   const courseQuery = useQuery({ queryKey: ["course", courseId], queryFn: () => getCourse({ data: courseId }) });
   const historyQuery = useQuery({ queryKey: ["course-history", courseId], queryFn: () => getCourseHistory({ data: courseId }) });
@@ -110,6 +119,15 @@ function CourseDetailsPage() {
     mutationFn: ({ status, reason }: { status: CourseStatus; reason?: string | null }) =>
       setCourseStatus({ data: { id: courseId, status, reason: reason ?? null } }),
     onSuccess: () => { toast.success("Statut de la Course mis à jour."); refresh(); },
+    onError: notificationError,
+  });
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteCourse({ data: { id: courseId } }),
+    onSuccess: () => {
+      toast.success("Course supprimée.");
+      void queryClient.invalidateQueries({ queryKey: ["courses"] });
+      void navigate({ to: "/courses" });
+    },
     onError: notificationError,
   });
   const confirmExpense = useMutation({
@@ -138,7 +156,7 @@ function CourseDetailsPage() {
     onError: notificationError,
   });
 
-  if (courseQuery.isPending) return <div className="p-6 text-muted-foreground">Chargement de la Course…</div>;
+  if (courseQuery.isPending) return <CourseDetailsSkeleton />;
   if (courseQuery.isError || !courseQuery.data) {
     return <div className="space-y-4 p-6"><p className="text-destructive">Course introuvable ou non autorisée.</p><Button asChild variant="outline"><Link to="/courses"><ArrowLeft className="mr-2 size-4" />Retour aux Courses</Link></Button></div>;
   }
@@ -149,13 +167,11 @@ function CourseDetailsPage() {
   const paymentInvoice = detail.invoices.find((invoice) => invoice.id === paymentInvoiceId) ?? null;
   const hasActiveInvoice = detail.invoices.some((invoice) => invoice.status !== "CANCELLED");
 
-  const setStatus = (status: Exclude<CourseStatus, "DRAFT">) => {
-    const needsReason = status === "CANCELLED" || status === "CLOSED";
-    const reason = needsReason
-      ? window.prompt(status === "CANCELLED" ? "Justification de l’annulation :" : "Justification de dérogation (laissez vide si les règles sont satisfaites) :")
+  const setStatus = (status: Exclude<CourseStatus, "DRAFT" | "CANCELLED">) => {
+    const reason = status === "CLOSED"
+      ? window.prompt("Justification de dérogation (laissez vide si les règles sont satisfaites) :")
       : null;
-    if (status === "CANCELLED" && !reason?.trim()) return;
-    statusMutation.mutate({ status, reason });
+    statusMutation.mutate({ status, reason: reason?.trim() || null });
   };
 
   const invoiceSummary = !detail.invoices.length
@@ -174,15 +190,20 @@ function CourseDetailsPage() {
         {course.status === "PLANNED" && can("missions.dispatch") ? <Button onClick={() => setStatus("IN_PROGRESS")}>Démarrer</Button> : null}
         {course.status === "IN_PROGRESS" && can("missions.update") ? <Button onClick={() => setStatus("COMPLETED")}>Terminer</Button> : null}
         {course.status === "COMPLETED" && can("missions.close") ? <Button onClick={() => setStatus("CLOSED")}>Clôturer</Button> : null}
-        {course.status !== "CLOSED" && course.status !== "CANCELLED" && can("missions.cancel") ? <Button variant="outline" onClick={() => setStatus("CANCELLED")}>Archiver</Button> : null}
+        {["DRAFT", "PLANNED"].includes(course.status) && can("missions.delete") ? <Button variant="outline" onClick={() => setDeleteOpen(true)}><Trash2 className="mr-2 size-4" />Supprimer</Button> : null}
+        {course.status !== "CLOSED" && course.status !== "CANCELLED" && can("missions.cancel") ? <Button variant="outline" onClick={() => setArchiveOpen(true)}>Archiver</Button> : null}
       </div>
     </header>
 
-    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
       <Metric icon={BadgeDollarSign} label="Montant transport" value={formatAmount(course.quoted_amount)} />
+      <Metric icon={ClipboardList} label="Budget prévu" value={canFinance ? formatAmount(financial?.budget_amount) : "Accès limité"} />
+      <Metric icon={Fuel} label="Dépenses validées" value={canFinance ? formatAmount(financial?.actual_expenses) : "Accès limité"} />
+      <Metric icon={ReceiptText} label="Facturé" value={canFinance ? formatAmount(financial?.invoiced_amount) : "Accès limité"} />
+      <Metric icon={WalletCards} label="Encaissé" value={canFinance ? formatAmount(financial?.received_amount) : "Accès limité"} />
       <Metric icon={ReceiptText} label="Résultat brut" value={canFinance ? formatAmount(financial?.gross_result) : "Accès limité"} />
-      <Metric icon={WalletCards} label="Résultat encaissé" value={canFinance ? formatAmount(financial?.cash_result) : "Accès limité"} />
       <Metric icon={Landmark} label="Reste à encaisser" value={canFinance ? formatAmount(financial?.amount_due) : "Accès limité"} />
+      <Metric icon={WalletCards} label="Résultat de trésorerie" value={canFinance ? formatAmount(financial?.cash_result) : "Accès limité"} />
       <Metric icon={Flag} label="Progression" value={course.status === "CLOSED" ? "Soldée" : course.status === "COMPLETED" ? "À clôturer" : COURSE_STATUS_LABELS[course.status as CourseStatus]} />
     </section>
 
@@ -220,29 +241,35 @@ function CourseDetailsPage() {
 
       <TabsContent value="budget"><Card><CardHeader><CardTitle>Budget prévisionnel</CardTitle></CardHeader><CardContent>{detail.budgets.length ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{detail.budgets.map((line) => <div key={line.id} className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">{COURSE_EXPENSE_CATEGORY_LABELS[line.category as keyof typeof COURSE_EXPENSE_CATEGORY_LABELS] ?? line.category}</p><p className="mt-2 text-h3">{formatAmount(line.planned_amount)}</p></div>)}</div> : <Empty message="Aucun budget prévisionnel n’a été saisi. Il n’existe donc aucune hypothèse financière à afficher." />}</CardContent></Card></TabsContent>
 
-      {canFinance ? <TabsContent value="expenses"><div className="space-y-4"><div className="flex justify-end">{can("missions.expenses.manage") && course.status !== "CLOSED" && course.status !== "CANCELLED" ? <Button onClick={() => setExpenseOpen(true)}><Plus className="mr-2 size-4" />Ajouter une dépense</Button> : null}</div><ExpensesPanel expenses={detail.expenses} canConfirm={can("missions.expenses.confirm")} confirmPending={confirmExpense.isPending} cancelPending={cancelExpense.isPending} onConfirm={(id) => confirmExpense.mutate(id)} onCancel={(id) => { const reason = window.prompt("Justification de l’annulation :"); if (reason?.trim()) cancelExpense.mutate({ id, reason }); }} /></div></TabsContent> : null}
+      {canFinance ? <TabsContent value="expenses"><div className="space-y-4"><div className="flex justify-end">{can("missions.expenses.manage") && course.status !== "CLOSED" && course.status !== "CANCELLED" ? <Button onClick={() => setExpenseOpen(true)}><Plus className="mr-2 size-4" />Ajouter une dépense</Button> : null}</div><ExpensesPanel expenses={detail.expenses} canConfirm={can("missions.expenses.confirm")} confirmPending={confirmExpense.isPending} cancelPending={cancelExpense.isPending} onConfirm={(id) => confirmExpense.mutate(id)} onCancel={(id) => setCancellationTarget({ kind: "expense", id })} /></div></TabsContent> : null}
 
       {canFinance ? <TabsContent value="invoice"><div className="space-y-4"><div className="flex justify-end">{can("missions.invoice") && !hasActiveInvoice && course.status !== "CLOSED" && course.status !== "CANCELLED" ? <Button onClick={() => setInvoiceOpen(true)}><Plus className="mr-2 size-4" />Créer la facture</Button> : null}</div><InvoicePanel invoices={detail.invoices} payments={detail.payments} course={course} clientName={detail.clientName} canIssue={can("missions.invoice")} canReceivePayments={can("missions.payments")} issuing={issueInvoice.isPending} onIssue={(id) => issueInvoice.mutate(id)} onRecordPayment={setPaymentInvoiceId} /></div></TabsContent> : null}
 
-      {canFinance ? <TabsContent value="payments"><PaymentsPanel invoices={detail.invoices} payments={detail.payments} canConfirm={can("missions.payments")} confirmPending={confirmPayment.isPending} cancelPending={cancelPayment.isPending} onConfirm={(id) => confirmPayment.mutate(id)} onCancel={(id) => { const reason = window.prompt("Justification de l’annulation :"); if (reason?.trim()) cancelPayment.mutate({ id, reason }); }} /></TabsContent> : null}
+      {canFinance ? <TabsContent value="payments"><PaymentsPanel invoices={detail.invoices} payments={detail.payments} canConfirm={can("missions.payments")} confirmPending={confirmPayment.isPending} cancelPending={cancelPayment.isPending} onConfirm={(id) => confirmPayment.mutate(id)} onCancel={(id) => setCancellationTarget({ kind: "payment", id })} /></TabsContent> : null}
 
-      {canFinance ? <TabsContent value="profitability"><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric icon={BadgeDollarSign} label="Transport" value={formatAmount(financial?.quoted_amount)} /><Metric icon={ClipboardList} label="Budget prévu" value={formatAmount(financial?.budget_amount)} /><Metric icon={Fuel} label="Dépenses réelles" value={formatAmount(financial?.actual_expenses)} /><Metric icon={WalletCards} label="Montant encaissé" value={formatAmount(financial?.received_amount)} /><Metric icon={Landmark} label="Résultat brut" value={formatAmount(financial?.gross_result)} /><Metric icon={Landmark} label="Résultat encaissé" value={formatAmount(financial?.cash_result)} /><Metric icon={RouteIcon} label="Coût / km" value={financial?.cost_per_km === null || financial?.cost_per_km === undefined ? "Disponible lorsque les deux kilométrages sont valides" : formatAmount(financial.cost_per_km)} /><Metric icon={Flag} label="Écart prévu / réel" value={financial ? formatAmount(financial.budget_amount - financial.actual_expenses) : "—"} /></div></TabsContent> : null}
+      {canFinance ? <TabsContent value="profitability"><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric icon={BadgeDollarSign} label="Transport" value={formatAmount(financial?.quoted_amount)} /><Metric icon={ClipboardList} label="Budget prévu" value={formatAmount(financial?.budget_amount)} /><Metric icon={Fuel} label="Dépenses réelles" value={formatAmount(financial?.actual_expenses)} /><Metric icon={ReceiptText} label="Facturé" value={formatAmount(financial?.invoiced_amount)} /><Metric icon={WalletCards} label="Montant encaissé" value={formatAmount(financial?.received_amount)} /><Metric icon={Landmark} label="Reste à encaisser" value={formatAmount(financial?.amount_due)} /><Metric icon={Landmark} label="Résultat brut" value={formatAmount(financial?.gross_result)} /><Metric icon={WalletCards} label="Résultat de trésorerie" value={formatAmount(financial?.cash_result)} /><Metric icon={RouteIcon} label="Coût / km" value={financial?.cost_per_km === null || financial?.cost_per_km === undefined ? "Disponible lorsque les deux kilométrages sont valides" : formatAmount(financial.cost_per_km)} /><Metric icon={Flag} label="Écart prévu / réel" value={financial ? formatAmount(financial.budget_amount - financial.actual_expenses) : "—"} /></div></TabsContent> : null}
 
       <TabsContent value="documents"><EntityDocumentsTab entityId={courseId} relation="mission" /></TabsContent>
-      <TabsContent value="history"><Card><CardHeader><CardTitle>Historique audité</CardTitle></CardHeader><CardContent>{historyQuery.isPending ? <p className="text-sm text-muted-foreground">Chargement de l’historique…</p> : historyQuery.isError ? <p className="text-sm text-destructive">Impossible de charger l’historique.</p> : historyQuery.data?.length ? <ol className="space-y-3">{historyQuery.data.map((entry) => <li key={entry.id} className="rounded-xl border p-4"><p className="font-medium">{historyLabel(entry.source_type, entry.action)}</p><p className="mt-1 text-sm text-muted-foreground">{formatDate(entry.created_at)}</p></li>)}</ol> : <Empty message="Aucun événement visible pour cette Course." />}</CardContent></Card></TabsContent>
+      <TabsContent value="history"><Card><CardHeader><CardTitle>Historique audité</CardTitle></CardHeader><CardContent>{historyQuery.isPending ? <p className="text-sm text-muted-foreground">Chargement de l’historique…</p> : historyQuery.isError ? <p className="text-sm text-destructive">Impossible de charger l’historique.</p> : historyQuery.data?.length ? <ol className="space-y-3">{historyQuery.data.map((entry) => <li key={entry.id} className="rounded-xl border p-4"><p className="font-medium">{historyLabel(entry.source_type, entry.action)}</p><p className="mt-1 text-sm text-muted-foreground">{formatDate(entry.created_at)} · {entry.performed_by ? `Utilisateur ${entry.performed_by.slice(0, 8)}` : "Utilisateur système"}</p><HistorySnapshot label="Avant" value={entry.before_value} /><HistorySnapshot label="Après" value={entry.after_value} /></li>)}</ol> : <Empty message="Aucun événement visible pour cette Course." />}</CardContent></Card></TabsContent>
     </Tabs>
 
     <Dialog open={expenseOpen} onOpenChange={setExpenseOpen}><DialogContent><DialogHeader><DialogTitle>Ajouter une dépense</DialogTitle></DialogHeader><ExpenseForm missionId={courseId} onSuccess={() => { setExpenseOpen(false); refresh(); }} /></DialogContent></Dialog>
     <Dialog open={invoiceOpen} onOpenChange={setInvoiceOpen}><DialogContent><DialogHeader><DialogTitle>Créer une facture</DialogTitle></DialogHeader><InvoiceForm missionId={courseId} defaultAmount={course.quoted_amount} onSuccess={() => { setInvoiceOpen(false); refresh(); }} /></DialogContent></Dialog>
     <Dialog open={paymentInvoiceId !== null} onOpenChange={(open) => { if (!open) setPaymentInvoiceId(null); }}><DialogContent><DialogHeader><DialogTitle>Enregistrer un paiement</DialogTitle></DialogHeader>{paymentInvoice ? <PaymentForm invoiceId={paymentInvoice.id} due={invoiceDue(paymentInvoice, detail.payments)} onSuccess={() => { setPaymentInvoiceId(null); refresh(); }} /> : null}</DialogContent></Dialog>
+    <Dialog open={archiveOpen} onOpenChange={(open) => { setArchiveOpen(open); if (!open) setArchiveReason(""); }}><DialogContent><DialogHeader><DialogTitle>Archiver la Course</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-muted-foreground">L’archivage conserve la Course, ses factures, ses paiements et ses écritures financières. Il ne supprime aucune donnée.</p><Field label="Justification"><Textarea value={archiveReason} onChange={(event) => setArchiveReason(event.target.value)} placeholder="Expliquez la raison de l’archivage" /></Field><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setArchiveOpen(false)}>Annuler</Button><Button variant="destructive" disabled={archiveReason.trim().length < 3 || statusMutation.isPending} onClick={() => statusMutation.mutate({ status: "CANCELLED", reason: archiveReason.trim() }, { onSuccess: () => { setArchiveOpen(false); setArchiveReason(""); } })}>{statusMutation.isPending ? "Archivage…" : "Archiver"}</Button></div></div></DialogContent></Dialog>
+    <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}><DialogContent><DialogHeader><DialogTitle>Supprimer la Course</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-muted-foreground">Cette action est réservée aux brouillons et aux Courses planifiées sans dépense, facture, paiement ou document lié. Les autres Courses doivent être archivées.</p><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setDeleteOpen(false)}>Annuler</Button><Button variant="destructive" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate()}>{deleteMutation.isPending ? "Suppression…" : "Supprimer définitivement"}</Button></div></div></DialogContent></Dialog>
+    <Dialog open={cancellationTarget !== null} onOpenChange={(open) => { if (!open) { setCancellationTarget(null); setCancellationReason(""); } }}><DialogContent><DialogHeader><DialogTitle>{cancellationTarget?.kind === "expense" ? "Annuler la dépense" : "Annuler le paiement"}</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-muted-foreground">{cancellationTarget?.kind === "expense" ? "Une dépense validée est conservée et compensée par une contre-écriture dans le journal financier." : "Un paiement confirmé est conservé et compensé par une contre-écriture dans le journal financier."}</p><Field label="Justification"><Textarea value={cancellationReason} onChange={(event) => setCancellationReason(event.target.value)} placeholder="Expliquez la correction" /></Field><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => { setCancellationTarget(null); setCancellationReason(""); }}>Retour</Button><Button variant="destructive" disabled={cancellationReason.trim().length < 3 || cancelExpense.isPending || cancelPayment.isPending} onClick={() => { if (!cancellationTarget) return; const onSuccess = () => { setCancellationTarget(null); setCancellationReason(""); }; if (cancellationTarget.kind === "expense") cancelExpense.mutate({ id: cancellationTarget.id, reason: cancellationReason.trim() }, { onSuccess }); else cancelPayment.mutate({ id: cancellationTarget.id, reason: cancellationReason.trim() }, { onSuccess }); }}>{cancelExpense.isPending || cancelPayment.isPending ? "Annulation…" : "Confirmer l’annulation"}</Button></div></div></DialogContent></Dialog>
   </div>;
 }
 
 function notificationError(error: unknown) { toast.error(error instanceof Error ? error.message : "L’action n’a pas pu être effectuée."); }
+function CourseDetailsSkeleton() { return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8" aria-label="Chargement de la Course"><div className="h-7 w-32 animate-pulse rounded bg-muted" /><div className="h-10 w-72 animate-pulse rounded bg-muted" /><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">{Array.from({ length: 9 }, (_, index) => <div key={index} className="h-32 animate-pulse rounded-xl border bg-card" />)}</div><div className="h-96 animate-pulse rounded-xl border bg-card" /></div>; }
 function Metric({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) { return <Card variant="kpi" className="p-4"><div className="flex items-start justify-between gap-3"><p className="text-label text-muted-foreground">{label}</p><div className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary"><Icon className="size-4" /></div></div><p className="mt-4 break-words text-h3 tabular-nums">{value}</p></Card>; }
 function Info({ label, value }: { label: string; value: string }) { return <div><p className="text-sm font-medium">{label}</p><p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{value}</p></div>; }
 function Empty({ message }: { message: string }) { return <p className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">{message}</p>; }
-function historyLabel(source: string, action: string) { const names: Record<string, string> = { COURSE: "Course", COURSE_EXPENSE: "Dépense", COURSE_INVOICE: "Facture", COURSE_PAYMENT: "Paiement" }; const actions: Record<string, string> = { CREATE: "créé", UPDATE: "mis à jour", CLOSE: "clôturé", CANCEL: "annulé" }; return `${names[source] ?? source} ${actions[action] ?? action}`; }
+function historyLabel(source: string, action: string) { const names: Record<string, string> = { COURSE: "Course", COURSE_EXPENSE: "Dépense", COURSE_INVOICE: "Facture", COURSE_PAYMENT: "Paiement" }; const actions: Record<string, string> = { CREATE: "créé", UPDATE: "mis à jour", CLOSE: "clôturé", CANCEL: source === "COURSE" ? "archivé" : "annulé", DELETE: "supprimé", ARCHIVE: "archivé", RESTORE: "restauré", REPLACE: "remplacé" }; return `${names[source] ?? source} ${actions[action] ?? action}`; }
+function HistorySnapshot({ label, value }: { label: string; value: CourseHistoryEntry["before_value"] }) { const summary = historyValueSummary(value); return summary ? <p className="mt-2 text-sm text-muted-foreground"><span className="font-medium text-foreground">{label} :</span> {summary}</p> : null; }
+function historyValueSummary(value: CourseHistoryEntry["before_value"]): string | null { if (!value || typeof value !== "object" || Array.isArray(value)) return null; const labels: Record<string, string> = { status: "Statut", amount: "Montant", total_amount: "Total", planned_amount: "Budget", mission_number: "Course", invoice_number: "Facture", category: "Catégorie" }; const details = Object.entries(value).flatMap(([key, raw]) => { if (!(key in labels) || (typeof raw !== "string" && typeof raw !== "number")) return []; return [`${labels[key]} : ${typeof raw === "number" ? formatAmount(raw) : raw}`]; }); return details.length ? details.join(" · ") : "Modification enregistrée dans l’audit"; }
 
 function ExpensesPanel({ expenses, canConfirm, confirmPending, cancelPending, onConfirm, onCancel }: { expenses: CourseExpense[]; canConfirm: boolean; confirmPending: boolean; cancelPending: boolean; onConfirm: (id: string) => void; onCancel: (id: string) => void }) {
   if (!expenses.length) return <Empty message="Aucune dépense n’est enregistrée. Une dépense n’impacte le wallet qu’après validation." />;

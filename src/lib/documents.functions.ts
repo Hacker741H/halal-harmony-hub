@@ -28,9 +28,27 @@ export const DOCUMENT_TYPES = [
   "PERMIS",
   "CONTRAT",
   "FACTURE",
+  "BON_DE_MISSION",
+  "BON_DE_SORTIE",
+  "BON_DE_LIVRAISON",
+  "RECU",
   "CERTIFICAT",
   "AUTRE",
 ] as const;
+
+export const DOCUMENT_TYPE_LABELS: Record<(typeof DOCUMENT_TYPES)[number], string> = {
+  ASSURANCE: "Assurance",
+  CARTE_GRISE: "Carte grise",
+  PERMIS: "Permis",
+  CONTRAT: "Contrat",
+  FACTURE: "Facture",
+  BON_DE_MISSION: "Bon de mission",
+  BON_DE_SORTIE: "Bon de sortie",
+  BON_DE_LIVRAISON: "Bon de livraison",
+  RECU: "Reçu",
+  CERTIFICAT: "Certificat",
+  AUTRE: "Autre",
+};
 
 export type DocumentStatus = "VALID" | "EXPIRING" | "EXPIRED";
 

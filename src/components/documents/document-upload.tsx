@@ -15,6 +15,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import {
   createDocument,
+  DOCUMENT_TYPE_LABELS,
+  DOCUMENT_TYPES,
   type DocumentRelation,
 } from "@/lib/documents.functions";
 
@@ -153,13 +155,11 @@ export function DocumentUpload({ entityId, relation, onSuccess }: Props) {
         <Select value={type} onValueChange={setType}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="AUTRE">Autre</SelectItem>
-            <SelectItem value="PERMIS">Permis</SelectItem>
-            <SelectItem value="ASSURANCE">Assurance</SelectItem>
-            <SelectItem value="CARTE_GRISE">Carte grise</SelectItem>
-            <SelectItem value="CONTRAT">Contrat</SelectItem>
-            <SelectItem value="FACTURE">Facture</SelectItem>
-            <SelectItem value="CERTIFICAT">Certificat</SelectItem>
+            {DOCUMENT_TYPES.map((documentType) => (
+              <SelectItem key={documentType} value={documentType}>
+                {DOCUMENT_TYPE_LABELS[documentType]}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
