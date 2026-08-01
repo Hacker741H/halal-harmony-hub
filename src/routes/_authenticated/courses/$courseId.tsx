@@ -3,14 +3,22 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   BadgeDollarSign,
+  Car,
+  CircleDollarSign,
   ClipboardList,
+  Clock3,
   Flag,
   Fuel,
   Landmark,
+  MapPinned,
+  Package,
   Plus,
   ReceiptText,
   Route as RouteIcon,
   Trash2,
+  TrendingDown,
+  TrendingUp,
+  UserRound,
   WalletCards,
   type LucideIcon,
 } from "lucide-react";
@@ -25,6 +33,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,7 +57,9 @@ import {
   issueCourseInvoice,
   setCourseStatus,
   type Course,
+  type CourseBudgetLine,
   type CourseExpense,
+  type CourseFinancialSummary,
   type CourseHistoryEntry,
   type CourseInvoice,
   type CoursePayment,
@@ -179,7 +190,11 @@ function CourseDetailsPage() {
     : `${detail.invoices.length} facture${detail.invoices.length > 1 ? "s" : ""} · ${detail.invoices.filter((invoice) => invoice.status === "PAID").length} réglée${detail.invoices.filter((invoice) => invoice.status === "PAID").length > 1 ? "s" : ""}`;
 
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
-    <header className="flex flex-col gap-4 border-b pb-5 lg:flex-row lg:items-end lg:justify-between">
+    <section className="relative isolate overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/10 via-surface-elevated to-surface px-5 py-6 shadow-md sm:px-7 sm:py-7 lg:px-8">
+      <div className="pointer-events-none absolute -right-20 -top-20 size-72 rounded-full bg-primary/15 blur-3xl" aria-hidden="true" />
+      <div className="pointer-events-none absolute -bottom-28 left-1/3 size-64 rounded-full bg-info/10 blur-3xl" aria-hidden="true" />
+      <div className="relative">
+    <header className="flex flex-col gap-5 border-b border-primary/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
       <div>
         <Button asChild variant="ghost" className="px-0"><Link to="/courses"><ArrowLeft className="mr-2 size-4" />Courses</Link></Button>
         <div className="mt-2 flex flex-wrap items-center gap-3"><h1 className="text-h1">{course.mission_number}</h1><Badge variant={statusVariant(course.status)} appearance="soft">{COURSE_STATUS_LABELS[course.status as CourseStatus]}</Badge></div>
@@ -195,7 +210,21 @@ function CourseDetailsPage() {
       </div>
     </header>
 
-    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+    <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <CockpitStat icon={BadgeDollarSign} label="Montant transport" value={formatAmount(course.quoted_amount)} detail="Montant prévu du transport" tone="info" />
+      <CockpitStat icon={Fuel} label="Dépenses réelles" value={canFinance ? formatAmount(financial?.actual_expenses) : "Accès limité"} detail={canFinance ? "Dépenses validées" : "Accès financier requis"} tone="warning" />
+      <CockpitStat icon={financial?.gross_result !== null && financial?.gross_result !== undefined && financial.gross_result < 0 ? TrendingDown : TrendingUp} label="Résultat brut" value={canFinance ? formatAmount(financial?.gross_result) : "Accès limité"} detail={canFinance ? "Transport moins dépenses" : "Accès financier requis"} tone={financial?.gross_result !== null && financial?.gross_result !== undefined && financial.gross_result < 0 ? "danger" : "success"} />
+      <CockpitStat icon={WalletCards} label="Reste à encaisser" value={canFinance ? formatAmount(financial?.amount_due) : "Accès limité"} detail={canFinance ? "Solde client actuel" : "Accès financier requis"} tone="warning" />
+    </div>
+    <p className="mt-4 text-caption text-muted-foreground">Les montants proviennent du résumé financier calculé de cette Course.</p>
+    <div className="mt-5 grid gap-3 border-t border-primary/10 pt-5 sm:grid-cols-2 xl:grid-cols-4">
+      <CockpitIdentity icon={Package} label="Marchandise" value={course.cargo_description ?? "À préciser"} />
+      <CockpitIdentity icon={Car} label="Véhicule" value={detail.vehicle ? `${detail.vehicle.registration}${detail.vehicle.brand ? ` · ${detail.vehicle.brand}` : ""}` : "Non affecté"} />
+      <CockpitIdentity icon={UserRound} label="Chauffeur" value={detail.driver?.name ?? "Non affecté"} />
+      <CockpitIdentity icon={Clock3} label="Départ prévu" value={formatDate(course.planned_departure_at)} />
+    </div>
+
+    <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
       <Metric icon={BadgeDollarSign} label="Montant transport" value={formatAmount(course.quoted_amount)} />
       <Metric icon={ClipboardList} label="Budget prévu" value={canFinance ? formatAmount(financial?.budget_amount) : "Accès limité"} />
       <Metric icon={Fuel} label="Dépenses validées" value={canFinance ? formatAmount(financial?.actual_expenses) : "Accès limité"} />
@@ -205,10 +234,12 @@ function CourseDetailsPage() {
       <Metric icon={Landmark} label="Reste à encaisser" value={canFinance ? formatAmount(financial?.amount_due) : "Accès limité"} />
       <Metric icon={WalletCards} label="Résultat de trésorerie" value={canFinance ? formatAmount(financial?.cash_result) : "Accès limité"} />
       <Metric icon={Flag} label="Progression" value={course.status === "CLOSED" ? "Soldée" : course.status === "COMPLETED" ? "À clôturer" : COURSE_STATUS_LABELS[course.status as CourseStatus]} />
+    </div>
+      </div>
     </section>
 
     <Tabs defaultValue="overview" className="space-y-5">
-      <TabsList className="h-auto max-w-full flex-wrap justify-start">
+      <TabsList className="h-auto max-w-full justify-start gap-1 overflow-x-auto rounded-xl border border-border/80 bg-surface-elevated/80 p-1.5">
         <TabsTrigger value="overview">Vue générale</TabsTrigger><TabsTrigger value="transport">Transport</TabsTrigger><TabsTrigger value="vehicle">Véhicule</TabsTrigger><TabsTrigger value="driver">Chauffeur</TabsTrigger><TabsTrigger value="budget">Budget</TabsTrigger>
         {canFinance ? <><TabsTrigger value="expenses">Dépenses</TabsTrigger><TabsTrigger value="invoice">Facture</TabsTrigger><TabsTrigger value="payments">Paiements</TabsTrigger><TabsTrigger value="profitability">Rentabilité</TabsTrigger></> : null}
         <TabsTrigger value="documents">Documents</TabsTrigger><TabsTrigger value="history">Historique</TabsTrigger>
@@ -239,18 +270,18 @@ function CourseDetailsPage() {
         <div><p className="text-sm font-medium">Historique et documents</p><p className="mt-1 text-sm text-muted-foreground">Les informations du chauffeur restent centralisées dans sa fiche.</p><Button asChild className="mt-3" variant="outline" size="sm"><Link to="/drivers/$driverId" params={{ driverId: detail.driver.id }}>Ouvrir le chauffeur</Link></Button></div>
       </div> : <Empty message="Aucun chauffeur n’est affecté à cette Course." />}</CardContent></Card></TabsContent>
 
-      <TabsContent value="budget"><Card><CardHeader><CardTitle>Budget prévisionnel</CardTitle></CardHeader><CardContent>{detail.budgets.length ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{detail.budgets.map((line) => <div key={line.id} className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">{COURSE_EXPENSE_CATEGORY_LABELS[line.category as keyof typeof COURSE_EXPENSE_CATEGORY_LABELS] ?? line.category}</p><p className="mt-2 text-h3">{formatAmount(line.planned_amount)}</p></div>)}</div> : <Empty message="Aucun budget prévisionnel n’a été saisi. Il n’existe donc aucune hypothèse financière à afficher." />}</CardContent></Card></TabsContent>
+      <TabsContent value="budget"><BudgetPerformance budgets={detail.budgets} expenses={detail.expenses} canReadFinance={canFinance} /></TabsContent>
 
       {canFinance ? <TabsContent value="expenses"><div className="space-y-4"><div className="flex justify-end">{can("missions.expenses.manage") && course.status !== "CLOSED" && course.status !== "CANCELLED" ? <Button onClick={() => setExpenseOpen(true)}><Plus className="mr-2 size-4" />Ajouter une dépense</Button> : null}</div><ExpensesPanel expenses={detail.expenses} canConfirm={can("missions.expenses.confirm")} confirmPending={confirmExpense.isPending} cancelPending={cancelExpense.isPending} onConfirm={(id) => confirmExpense.mutate(id)} onCancel={(id) => setCancellationTarget({ kind: "expense", id })} /></div></TabsContent> : null}
 
       {canFinance ? <TabsContent value="invoice"><div className="space-y-4"><div className="flex justify-end">{can("missions.invoice") && !hasActiveInvoice && course.status !== "CLOSED" && course.status !== "CANCELLED" ? <Button onClick={() => setInvoiceOpen(true)}><Plus className="mr-2 size-4" />Créer la facture</Button> : null}</div><InvoicePanel invoices={detail.invoices} payments={detail.payments} course={course} clientName={detail.clientName} canIssue={can("missions.invoice")} canReceivePayments={can("missions.payments")} issuing={issueInvoice.isPending} onIssue={(id) => issueInvoice.mutate(id)} onRecordPayment={setPaymentInvoiceId} /></div></TabsContent> : null}
 
-      {canFinance ? <TabsContent value="payments"><PaymentsPanel invoices={detail.invoices} payments={detail.payments} canConfirm={can("missions.payments")} confirmPending={confirmPayment.isPending} cancelPending={cancelPayment.isPending} onConfirm={(id) => confirmPayment.mutate(id)} onCancel={(id) => setCancellationTarget({ kind: "payment", id })} /></TabsContent> : null}
+      {canFinance ? <TabsContent value="payments" className="space-y-4"><PaymentSummary invoices={detail.invoices} payments={detail.payments} financial={financial} /><PaymentsPanel invoices={detail.invoices} payments={detail.payments} canConfirm={can("missions.payments")} confirmPending={confirmPayment.isPending} cancelPending={cancelPayment.isPending} onConfirm={(id) => confirmPayment.mutate(id)} onCancel={(id) => setCancellationTarget({ kind: "payment", id })} /></TabsContent> : null}
 
       {canFinance ? <TabsContent value="profitability"><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric icon={BadgeDollarSign} label="Transport" value={formatAmount(financial?.quoted_amount)} /><Metric icon={ClipboardList} label="Budget prévu" value={formatAmount(financial?.budget_amount)} /><Metric icon={Fuel} label="Dépenses réelles" value={formatAmount(financial?.actual_expenses)} /><Metric icon={ReceiptText} label="Facturé" value={formatAmount(financial?.invoiced_amount)} /><Metric icon={WalletCards} label="Montant encaissé" value={formatAmount(financial?.received_amount)} /><Metric icon={Landmark} label="Reste à encaisser" value={formatAmount(financial?.amount_due)} /><Metric icon={Landmark} label="Résultat brut" value={formatAmount(financial?.gross_result)} /><Metric icon={WalletCards} label="Résultat de trésorerie" value={formatAmount(financial?.cash_result)} /><Metric icon={RouteIcon} label="Coût / km" value={financial?.cost_per_km === null || financial?.cost_per_km === undefined ? "Disponible lorsque les deux kilométrages sont valides" : formatAmount(financial.cost_per_km)} /><Metric icon={Flag} label="Écart prévu / réel" value={financial ? formatAmount(financial.budget_amount - financial.actual_expenses) : "—"} /></div></TabsContent> : null}
 
-      <TabsContent value="documents"><EntityDocumentsTab entityId={courseId} relation="mission" /></TabsContent>
-      <TabsContent value="history"><Card><CardHeader><CardTitle>Historique audité</CardTitle></CardHeader><CardContent>{historyQuery.isPending ? <p className="text-sm text-muted-foreground">Chargement de l’historique…</p> : historyQuery.isError ? <p className="text-sm text-destructive">Impossible de charger l’historique.</p> : historyQuery.data?.length ? <ol className="space-y-3">{historyQuery.data.map((entry) => <li key={entry.id} className="rounded-xl border p-4"><p className="font-medium">{historyLabel(entry.source_type, entry.action)}</p><p className="mt-1 text-sm text-muted-foreground">{formatDate(entry.created_at)} · {entry.performed_by ? `Utilisateur ${entry.performed_by.slice(0, 8)}` : "Utilisateur système"}</p><HistorySnapshot label="Avant" value={entry.before_value} /><HistorySnapshot label="Après" value={entry.after_value} /></li>)}</ol> : <Empty message="Aucun événement visible pour cette Course." />}</CardContent></Card></TabsContent>
+      <TabsContent value="documents" className="space-y-4"><Card variant="information" className="border-primary/15"><CardContent className="flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-label text-primary">Documents de transport</p><p className="mt-1 text-sm text-muted-foreground">Facture, bons de mission, de sortie ou de livraison et reçus restent liés à cette Course.</p></div><ReceiptText className="size-5 text-primary" aria-hidden="true" /></CardContent></Card><EntityDocumentsTab entityId={courseId} relation="mission" /></TabsContent>
+      <TabsContent value="history"><Card variant="section"><CardHeader><CardTitle>Historique audité</CardTitle><p className="text-sm text-muted-foreground">Chaque action importante reste consultable avec sa date et son contexte.</p></CardHeader><CardContent>{historyQuery.isPending ? <HistoryTimelineSkeleton /> : historyQuery.isError ? <p className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">Impossible de charger l’historique.</p> : historyQuery.data?.length ? <ol className="relative space-y-5 border-l border-primary/20 pl-5">{historyQuery.data.map((entry) => <li key={entry.id} className="relative"><span className="absolute -left-[1.65rem] top-1.5 grid size-3 place-items-center rounded-full border-2 border-surface-elevated bg-primary" aria-hidden="true" /><div className="rounded-xl border border-border/80 bg-surface/60 p-4"><p className="font-medium text-foreground">{historyLabel(entry.source_type, entry.action)}</p><p className="mt-1 text-caption">{formatDate(entry.created_at)} · {entry.performed_by ? `Utilisateur ${entry.performed_by.slice(0, 8)}` : "Utilisateur système"}</p><HistorySnapshot label="Avant" value={entry.before_value} /><HistorySnapshot label="Après" value={entry.after_value} /></div></li>)}</ol> : <Empty message="Aucun événement visible pour cette Course." />}</CardContent></Card></TabsContent>
     </Tabs>
 
     <Dialog open={expenseOpen} onOpenChange={setExpenseOpen}><DialogContent><DialogHeader><DialogTitle>Ajouter une dépense</DialogTitle></DialogHeader><ExpenseForm missionId={courseId} onSuccess={() => { setExpenseOpen(false); refresh(); }} /></DialogContent></Dialog>
@@ -264,7 +295,48 @@ function CourseDetailsPage() {
 
 function notificationError(error: unknown) { toast.error(error instanceof Error ? error.message : "L’action n’a pas pu être effectuée."); }
 function CourseDetailsSkeleton() { return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8" aria-label="Chargement de la Course"><div className="h-7 w-32 animate-pulse rounded bg-muted" /><div className="h-10 w-72 animate-pulse rounded bg-muted" /><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">{Array.from({ length: 9 }, (_, index) => <div key={index} className="h-32 animate-pulse rounded-xl border bg-card" />)}</div><div className="h-96 animate-pulse rounded-xl border bg-card" /></div>; }
-function Metric({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) { return <Card variant="kpi" className="p-4"><div className="flex items-start justify-between gap-3"><p className="text-label text-muted-foreground">{label}</p><div className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary"><Icon className="size-4" /></div></div><p className="mt-4 break-words text-h3 tabular-nums">{value}</p></Card>; }
+
+function CockpitStat({ icon: Icon, label, value, detail, tone }: { icon: LucideIcon; label: string; value: string; detail: string; tone: "info" | "success" | "warning" | "danger" }) {
+  const tones = { info: "bg-info/10 text-info", success: "bg-success/10 text-success", warning: "bg-warning/15 text-warning-foreground", danger: "bg-destructive/10 text-destructive" };
+  return <Card variant="glass" className="border-border/70 bg-surface/75 p-4 transition-[border-color,box-shadow,transform] transition-ui hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-sm motion-reduce:transform-none motion-reduce:transition-none"><div className="flex items-start justify-between gap-3"><p className="text-label text-muted-foreground">{label}</p><div className={`grid size-9 place-items-center rounded-xl ${tones[tone]}`}><Icon className="size-4" aria-hidden="true" /></div></div><p className="mt-5 truncate text-[clamp(1.25rem,1.8vw,1.8rem)] font-semibold leading-none tracking-[-0.03em] tabular-nums text-foreground" title={value}>{value}</p><p className="mt-3 truncate text-caption" title={detail}>{detail}</p></Card>;
+}
+
+function CockpitIdentity({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+  return <div className="flex min-w-0 items-center gap-2.5"><div className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><Icon className="size-3.5" aria-hidden="true" /></div><div className="min-w-0"><p className="text-caption">{label}</p><p className="truncate text-body-sm font-medium text-foreground" title={value}>{value}</p></div></div>;
+}
+
+function Metric({ icon: Icon, label, value, tone = "primary" }: { icon: LucideIcon; label: string; value: string; tone?: "primary" | "info" | "success" | "warning" | "danger" | "neutral" }) {
+  const tones = { primary: "bg-primary/10 text-primary", info: "bg-info/10 text-info", success: "bg-success/10 text-success", warning: "bg-warning/15 text-warning-foreground", danger: "bg-destructive/10 text-destructive", neutral: "bg-muted text-muted-foreground" };
+  return <Card variant="kpi" className="relative overflow-hidden border-border/80 p-4 transition-[border-color,box-shadow,transform] transition-ui hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-sm motion-reduce:transform-none motion-reduce:transition-none"><div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-primary/60 via-primary/15 to-transparent" aria-hidden="true" /><div className="flex items-start justify-between gap-3"><p className="pt-1 text-label text-muted-foreground">{label}</p><div className={`grid size-9 place-items-center rounded-xl ${tones[tone]}`}><Icon className="size-4" aria-hidden="true" /></div></div><p className="mt-5 truncate text-h3 tabular-nums text-foreground" title={value}>{value}</p></Card>;
+}
+
+function PaymentSummary({ invoices, payments, financial }: { invoices: CourseInvoice[]; payments: CoursePayment[]; financial: CourseFinancialSummary | null }) {
+  const invoiced = Number(financial?.invoiced_amount ?? 0);
+  const received = Number(financial?.received_amount ?? 0);
+  const percentage = invoiced > 0 ? Math.min(100, Math.max(0, (received / invoiced) * 100)) : 0;
+  const confirmedPayments = payments.filter((payment) => payment.status === "CONFIRMED").length;
+  return <Card variant="information" className="border-primary/15"><CardContent className="grid gap-5 p-5 sm:grid-cols-[minmax(0,1fr)_minmax(15rem,0.8fr)] sm:items-center"><div><div className="flex items-center gap-2"><CircleDollarSign className="size-4 text-primary" aria-hidden="true" /><p className="text-label text-primary">Situation des paiements</p></div><p className="mt-2 text-body-sm text-muted-foreground">{confirmedPayments} paiement{confirmedPayments > 1 ? "s" : ""} confirmé{confirmedPayments > 1 ? "s" : ""} · {invoices.length} facture{invoices.length > 1 ? "s" : ""} liée{invoices.length > 1 ? "s" : ""}</p></div><div><div className="flex items-baseline justify-between gap-4"><p className="text-caption">Encaissement</p><p className="text-body-sm font-semibold tabular-nums text-foreground">{formatAmount(received)} / {formatAmount(invoiced)}</p></div><Progress className="mt-2 h-2.5 bg-primary/15" value={percentage} aria-label={`${Math.round(percentage)} % facturé encaissé`} /><p className="mt-2 text-caption">Reste à encaisser : <span className="font-medium text-foreground">{formatAmount(Number(financial?.amount_due ?? 0))}</span></p></div></CardContent></Card>;
+}
+
+function BudgetPerformance({ budgets, expenses, canReadFinance }: { budgets: CourseBudgetLine[]; expenses: CourseExpense[]; canReadFinance: boolean }) {
+  const categories = new Map<string, { planned: number; actual: number }>();
+  budgets.forEach((line) => categories.set(line.category, { planned: Number(line.planned_amount), actual: 0 }));
+  expenses.filter((expense) => expense.status === "PAID").forEach((expense) => {
+    const current = categories.get(expense.category) ?? { planned: 0, actual: 0 };
+    categories.set(expense.category, { ...current, actual: current.actual + Number(expense.amount) });
+  });
+
+  if (!categories.size) return <Card><CardHeader><CardTitle>Budget prévisionnel</CardTitle></CardHeader><CardContent><Empty message="Aucun budget prévisionnel ni aucune dépense validée n’est disponible pour cette Course." /></CardContent></Card>;
+
+  return <Card variant="section"><CardHeader><CardTitle>Budget et dépenses par catégorie</CardTitle><p className="text-sm text-muted-foreground">Le réel reprend uniquement les dépenses déjà validées.</p></CardHeader><CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{Array.from(categories.entries()).map(([category, values]) => {
+    const difference = values.planned - values.actual;
+    const progress = values.planned > 0 ? Math.min(100, (values.actual / values.planned) * 100) : 0;
+    const isOverBudget = values.planned > 0 && values.actual > values.planned;
+    return <div key={category} className="rounded-xl border border-border/80 bg-surface/50 p-4"><div className="flex items-start justify-between gap-3"><p className="text-body-sm font-semibold text-foreground">{COURSE_EXPENSE_CATEGORY_LABELS[category as keyof typeof COURSE_EXPENSE_CATEGORY_LABELS] ?? category}</p><Badge variant={isOverBudget ? "danger" : "info"} appearance="soft">{isOverBudget ? "À surveiller" : "Suivi"}</Badge></div><dl className="mt-4 space-y-2"><Summary label="Budget" value={formatAmount(values.planned)} /><Summary label="Réel" value={canReadFinance ? formatAmount(values.actual) : "Accès limité"} /><Summary label="Écart" value={canReadFinance ? formatAmount(difference) : "Accès limité"} /></dl>{canReadFinance ? <Progress className="mt-4 h-2 bg-muted" value={progress} aria-label={`${Math.round(progress)} % du budget consommé`} /> : null}</div>;
+  })}</CardContent></Card>;
+}
+
+function HistoryTimelineSkeleton() { return <div className="space-y-4" aria-label="Chargement de l’historique">{Array.from({ length: 4 }, (_, index) => <div key={index} className="flex gap-3"><div className="mt-1 size-3 rounded-full bg-primary/15" /><div className="flex-1 space-y-2 rounded-xl border p-4"><div className="h-4 w-2/5 animate-pulse rounded bg-muted" /><div className="h-3 w-3/5 animate-pulse rounded bg-muted" /></div></div>)}</div>; }
 function Info({ label, value }: { label: string; value: string }) { return <div><p className="text-sm font-medium">{label}</p><p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{value}</p></div>; }
 function Empty({ message }: { message: string }) { return <p className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">{message}</p>; }
 function historyLabel(source: string, action: string) { const names: Record<string, string> = { COURSE: "Course", COURSE_EXPENSE: "Dépense", COURSE_INVOICE: "Facture", COURSE_PAYMENT: "Paiement" }; const actions: Record<string, string> = { CREATE: "créé", UPDATE: "mis à jour", CLOSE: "clôturé", CANCEL: source === "COURSE" ? "archivé" : "annulé", DELETE: "supprimé", ARCHIVE: "archivé", RESTORE: "restauré", REPLACE: "remplacé" }; return `${names[source] ?? source} ${actions[action] ?? action}`; }
@@ -273,7 +345,7 @@ function historyValueSummary(value: CourseHistoryEntry["before_value"]): string 
 
 function ExpensesPanel({ expenses, canConfirm, confirmPending, cancelPending, onConfirm, onCancel }: { expenses: CourseExpense[]; canConfirm: boolean; confirmPending: boolean; cancelPending: boolean; onConfirm: (id: string) => void; onCancel: (id: string) => void }) {
   if (!expenses.length) return <Empty message="Aucune dépense n’est enregistrée. Une dépense n’impacte le wallet qu’après validation." />;
-  return <Card><CardContent className="p-0"><div className="divide-y">{expenses.map((expense) => <div key={expense.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">{COURSE_EXPENSE_CATEGORY_LABELS[expense.category as keyof typeof COURSE_EXPENSE_CATEGORY_LABELS] ?? expense.category} · {formatAmount(expense.amount)}</p><p className="mt-1 text-sm text-muted-foreground">{formatDate(expense.expense_date)} · Wallet {expense.wallet_id.slice(0, 8)} · {expense.description ?? "Sans description"}</p></div><div className="flex items-center gap-2"><Badge variant={statusVariant(expense.status)} appearance="soft">{expense.status === "PAID" ? "Validée" : expense.status === "ENGAGED" ? "Engagée" : expense.status === "CANCELLED" ? "Annulée" : "Prévue"}</Badge>{canConfirm && expense.status !== "PAID" && expense.status !== "CANCELLED" ? <Button size="sm" onClick={() => onConfirm(expense.id)} disabled={confirmPending}>Valider</Button> : null}{canConfirm && expense.status !== "CANCELLED" ? <Button size="sm" variant="outline" onClick={() => onCancel(expense.id)} disabled={cancelPending}>Annuler</Button> : null}</div></div>)}</div></CardContent></Card>;
+  return <div className="grid gap-3">{expenses.map((expense) => <Card key={expense.id} variant="compact" className="border-border/80 p-4 transition-[border-color,box-shadow] transition-ui hover:border-primary/25 hover:shadow-sm"><CardContent className="flex flex-col gap-4 p-0 lg:flex-row lg:items-center lg:justify-between"><div className="flex min-w-0 items-start gap-3"><div className="grid size-9 shrink-0 place-items-center rounded-xl bg-warning/15 text-warning-foreground"><Fuel className="size-4" aria-hidden="true" /></div><div className="min-w-0"><p className="font-semibold text-foreground">{COURSE_EXPENSE_CATEGORY_LABELS[expense.category as keyof typeof COURSE_EXPENSE_CATEGORY_LABELS] ?? expense.category}</p><p className="mt-1 text-caption">{formatDate(expense.expense_date)} · Wallet {expense.wallet_id.slice(0, 8)} · {expense.description ?? "Sans description"}</p></div></div><div className="flex flex-wrap items-center gap-2 lg:justify-end"><p className="mr-auto text-body-sm font-semibold tabular-nums text-foreground lg:mr-2">{formatAmount(expense.amount)}</p><Badge variant={statusVariant(expense.status)} appearance="soft">{expense.status === "PAID" ? "Validée" : expense.status === "ENGAGED" ? "Engagée" : expense.status === "CANCELLED" ? "Annulée" : "Prévue"}</Badge>{canConfirm && expense.status !== "PAID" && expense.status !== "CANCELLED" ? <Button size="sm" onClick={() => onConfirm(expense.id)} disabled={confirmPending}>Valider</Button> : null}{canConfirm && expense.status !== "CANCELLED" ? <Button size="sm" variant="outline" onClick={() => onCancel(expense.id)} disabled={cancelPending}>Annuler</Button> : null}</div></CardContent></Card>)}</div>;
 }
 
 function InvoicePanel({ invoices, payments, course, clientName, canIssue, canReceivePayments, issuing, onIssue, onRecordPayment }: { invoices: CourseInvoice[]; payments: CoursePayment[]; course: Pick<Course, "mission_number" | "departure_location" | "destination_location">; clientName: string | null; canIssue: boolean; canReceivePayments: boolean; issuing: boolean; onIssue: (id: string) => void; onRecordPayment: (id: string) => void }) {
@@ -284,7 +356,7 @@ function InvoicePanel({ invoices, payments, course, clientName, canIssue, canRec
 function PaymentsPanel({ invoices, payments, canConfirm, confirmPending, cancelPending, onConfirm, onCancel }: { invoices: CourseInvoice[]; payments: CoursePayment[]; canConfirm: boolean; confirmPending: boolean; cancelPending: boolean; onConfirm: (id: string) => void; onCancel: (id: string) => void }) {
   const invoiceNumbers = new Map(invoices.map((invoice) => [invoice.id, invoice.invoice_number]));
   if (!payments.length) return <Empty message="Aucun paiement n’est reçu. Un paiement confirmé crédite le wallet sélectionné." />;
-  return <Card><CardContent className="p-0"><div className="divide-y">{payments.map((payment) => <div key={payment.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">{formatAmount(payment.amount)} · {payment.payment_kind === "ADVANCE" ? "Acompte" : payment.payment_kind === "SETTLEMENT" ? "Règlement" : "Paiement"}</p><p className="mt-1 text-sm text-muted-foreground">{invoiceNumbers.get(payment.invoice_id) ?? "Facture non accessible"} · {formatDate(payment.payment_date)} · {payment.reference ?? "Sans référence"}</p></div><div className="flex items-center gap-2"><Badge variant={statusVariant(payment.status)} appearance="soft">{payment.status === "CONFIRMED" ? "Confirmé" : payment.status === "RECEIVED" ? "Reçu" : payment.status === "CANCELLED" ? "Annulé" : "Prévu"}</Badge>{canConfirm && payment.status !== "CONFIRMED" && payment.status !== "CANCELLED" ? <Button size="sm" disabled={confirmPending} onClick={() => onConfirm(payment.id)}>Confirmer</Button> : null}{canConfirm && payment.status !== "CANCELLED" ? <Button size="sm" variant="outline" disabled={cancelPending} onClick={() => onCancel(payment.id)}>Annuler</Button> : null}</div></div>)}</div></CardContent></Card>;
+  return <Card variant="section"><CardContent className="p-5"><ol className="relative space-y-5 border-l border-primary/20 pl-5">{payments.map((payment) => <li key={payment.id} className="relative"><span className="absolute -left-[1.65rem] top-2 grid size-3 place-items-center rounded-full border-2 border-surface-elevated bg-primary" aria-hidden="true" /><div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface/60 p-4 lg:flex-row lg:items-center lg:justify-between"><div><p className="font-semibold text-foreground">{formatAmount(payment.amount)} · {payment.payment_kind === "ADVANCE" ? "Acompte" : payment.payment_kind === "SETTLEMENT" ? "Règlement" : "Paiement"}</p><p className="mt-1 text-caption">{invoiceNumbers.get(payment.invoice_id) ?? "Facture non accessible"} · {formatDate(payment.payment_date)} · {payment.reference ?? "Sans référence"}</p></div><div className="flex flex-wrap items-center gap-2"><Badge variant={statusVariant(payment.status)} appearance="soft">{payment.status === "CONFIRMED" ? "Confirmé" : payment.status === "RECEIVED" ? "Reçu" : payment.status === "CANCELLED" ? "Annulé" : "Prévu"}</Badge>{canConfirm && payment.status !== "CONFIRMED" && payment.status !== "CANCELLED" ? <Button size="sm" disabled={confirmPending} onClick={() => onConfirm(payment.id)}>Confirmer</Button> : null}{canConfirm && payment.status !== "CANCELLED" ? <Button size="sm" variant="outline" disabled={cancelPending} onClick={() => onCancel(payment.id)}>Annuler</Button> : null}</div></div></li>)}</ol></CardContent></Card>;
 }
 
 function Summary({ label, value }: { label: string; value: string }) { return <div className="flex items-baseline justify-between gap-4"><dt className="text-muted-foreground">{label}</dt><dd className="font-medium tabular-nums">{value}</dd></div>; }
