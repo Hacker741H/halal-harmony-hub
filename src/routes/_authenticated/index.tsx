@@ -79,7 +79,7 @@ type DashboardRoute =
   | "/expenses"
   | "/payments"
   | "/documents"
-  | "/notifications";
+  | "/notifications"
   | "/courses";
 
 function Dashboard() {
