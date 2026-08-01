@@ -14,6 +14,7 @@ DECLARE
   v_other_vehicle_id uuid;
   v_draft_course public.transport_missions;
   v_archived_course public.transport_missions;
+  v_planned_deletion_course public.transport_missions;
   v_accepted_course public.transport_missions;
   v_departure_at timestamptz := date_trunc('hour', now()) + interval '1 day';
   v_arrival_at timestamptz := date_trunc('hour', now()) + interval '1 day 4 hours';
@@ -30,6 +31,7 @@ DECLARE
   v_after_balance numeric;
   v_balance_after_expense_confirmation numeric;
   v_balance_after_payment_confirmation numeric;
+  v_deletion_confirmed boolean;
   v_closure_refused boolean := false;
   v_summary record;
   v_suffix text := substr(replace(gen_random_uuid()::text, '-', ''), 1, 10);
@@ -80,7 +82,8 @@ BEGIN
 
   v_client := public.create_client(jsonb_build_object('kind','ORGANIZATION','display_name','Client Course test ' || v_suffix,'country_code','SN','telephone','+221 77 ' || substr(v_suffix,1,6),'email','course-' || lower(v_suffix) || '@example.test','registration_identifier_type',null,'registration_identifier_value',null));
   v_draft_course := public.create_transport_mission(jsonb_build_object('client_id',v_client.id,'quoted_amount',0));
-  IF NOT public.delete_transport_mission(v_draft_course.id) THEN
+  v_deletion_confirmed := public.delete_transport_mission(v_draft_course.id);
+  IF v_deletion_confirmed IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'A draft Course without dependencies must be deleted through its dedicated RPC';
   END IF;
   IF EXISTS (SELECT 1 FROM public.transport_missions WHERE id=v_draft_course.id)
@@ -92,6 +95,15 @@ BEGIN
   IF v_archived_course.status <> 'CANCELLED'
     OR NOT EXISTS (SELECT 1 FROM public.business_finance_audit WHERE source_type='COURSE' AND source_id=v_archived_course.id AND action='CANCEL') THEN
     RAISE EXCEPTION 'Archiving a Course must retain the row and create an audit event';
+  END IF;
+  v_planned_deletion_course := public.create_transport_mission(jsonb_build_object('client_id',v_client.id,'vehicle_id',v_other_vehicle_id,'driver_id',v_other_driver_id,'departure_location','Dakar','destination_location','Thiès','cargo_description','Suppression planifiée de test','planned_departure_at',v_departure_at,'planned_arrival_at',v_arrival_at,'quoted_amount',1000));
+  v_planned_deletion_course := public.set_transport_mission_status(v_planned_deletion_course.id,'PLANNED',null);
+  v_deletion_confirmed := public.delete_transport_mission(v_planned_deletion_course.id);
+  IF v_deletion_confirmed IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'A planned Course without dependencies must be deleted through its dedicated RPC';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.transport_missions WHERE id=v_planned_deletion_course.id) THEN
+    RAISE EXCEPTION 'A planned Course without dependencies must be deleted through its dedicated RPC';
   END IF;
   v_course := public.create_transport_mission(jsonb_build_object('client_id',v_client.id,'vehicle_id',v_vehicle_id,'driver_id',v_driver_id,'departure_location','Dakar','destination_location','Thiès','cargo_description','Marchandise de test','planned_departure_at',v_departure_at,'planned_arrival_at',v_arrival_at,'quoted_amount',100000));
   IF v_course.status <> 'DRAFT' OR v_course.mission_number IS NULL THEN RAISE EXCEPTION 'Course creation failed'; END IF;
@@ -126,10 +138,6 @@ BEGIN
   v_accepted_course := public.set_transport_mission_status(v_accepted_course.id,'PLANNED',null);
   IF v_accepted_course.status <> 'PLANNED' THEN
     RAISE EXCEPTION 'A Course with another vehicle and driver must be accepted';
-  END IF;
-  IF NOT public.delete_transport_mission(v_accepted_course.id)
-    OR EXISTS (SELECT 1 FROM public.transport_missions WHERE id=v_accepted_course.id) THEN
-    RAISE EXCEPTION 'A planned Course without dependencies must be deleted through its dedicated RPC';
   END IF;
   PERFORM public.create_transport_mission_budget_line(v_course.id,jsonb_build_object('category','FUEL','planned_amount',25000));
   v_expense := public.create_transport_mission_expense(v_course.id,jsonb_build_object('wallet_id',v_wallet_id,'category','FUEL','amount',10000,'expense_date',current_date,'status','ENGAGED'));
