@@ -17,6 +17,7 @@ import {
   Sprout,
   TrendingDown,
   TrendingUp,
+  Truck,
   UserRoundCheck,
   Users,
   WalletCards,
@@ -61,6 +62,7 @@ const emptyStats: DashboardStats = {
     stocksFaibles: 0,
     entretiensEnRetard: 0,
   },
+  courses: { active: 0, completed: 0, late: 0, receivable: null, totalResult: null, topClients: [], topVehicles: [], topDrivers: [] },
 };
 
 type DashboardRoute =
@@ -78,6 +80,7 @@ type DashboardRoute =
   | "/payments"
   | "/documents"
   | "/notifications";
+  | "/courses";
 
 function Dashboard() {
   const fetchStats = useServerFn(getDashboardStats);
@@ -220,6 +223,13 @@ function Dashboard() {
               icon={Users}
               tone="primary"
               to="/employees"
+            />            <KpiCard
+              label="Courses actives"
+              value={isLoading ? null : formatNumber(stats.courses.active)}
+              detail={`${formatNumber(stats.courses.completed)} terminée${stats.courses.completed > 1 ? "s" : ""}`}
+              icon={Truck}
+              tone={stats.courses.late > 0 ? "warning" : "info"}
+              to="/courses"
             />
           </div>
         </section>
@@ -367,6 +377,27 @@ function Dashboard() {
           </Card>
         </section>
 
+        <section className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.9fr)]">
+          <Card variant="section" className="p-5 sm:p-6">
+            <SectionHeading
+              eyebrow="Exploitation"
+              title="Courses de transport"
+              description="Lecture consolidée des Courses actives, de leur encaissement et du résultat disponible."
+              action={<Link className="inline-flex items-center gap-1 text-body-sm font-medium text-primary transition-colors transition-ui-fast hover:text-primary/80 focus-visible:outline-none" to="/courses">Ouvrir les Courses <ChevronRight aria-hidden="true" /></Link>}
+            />
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <PerformanceTotal label="Actives" value={isLoading ? null : formatNumber(stats.courses.active)} tone={stats.courses.late > 0 ? "warning" : "success"} />
+              <PerformanceTotal label="Terminées" value={isLoading ? null : formatNumber(stats.courses.completed)} tone="success" />
+              <PerformanceTotal label="À encaisser" value={isLoading ? null : stats.courses.receivable === null ? "Accès limité" : formatXOF(stats.courses.receivable)} tone="warning" />
+              <PerformanceTotal label="Résultat encaissé" value={isLoading ? null : stats.courses.totalResult === null ? "Accès limité" : formatXOF(stats.courses.totalResult)} tone={stats.courses.totalResult !== null && stats.courses.totalResult < 0 ? "danger" : "success"} />
+            </div>
+            {stats.courses.late > 0 ? <p className="mt-5 rounded-lg border border-warning/25 bg-warning/10 px-3 py-2.5 text-caption text-warning-foreground">{formatNumber(stats.courses.late)} Course{stats.courses.late > 1 ? "s" : ""} active{stats.courses.late > 1 ? "s" : ""} dépasse{stats.courses.late > 1 ? "nt" : ""} l’arrivée prévue.</p> : null}
+          </Card>
+          <Card variant="compact" className="p-5 sm:p-6">
+            <SectionHeading eyebrow="Classements" title="Le transport en un regard" />
+            {isLoading ? <ActivitySkeleton /> : stats.courses.topClients.length ? <div className="mt-5 space-y-3"><RankedCourseEntities title="Top clients" entries={stats.courses.topClients} /><RankedCourseEntities title="Top véhicules" entries={stats.courses.topVehicles} /><RankedCourseEntities title="Top chauffeurs" entries={stats.courses.topDrivers} /></div> : <div className="mt-5"><EmptyActivity /></div>}
+          </Card>
+        </section>
         <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]">
           <Card variant="section" className="p-5 sm:p-6">
             <SectionHeading
@@ -376,6 +407,7 @@ function Dashboard() {
             />
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <QuickAction to="/vehicles" icon={Car} label="Nouveau véhicule" description="Ouvrir la gestion du parc" />
+              <QuickAction to="/courses" icon={Truck} label="Nouvelle Course" description="Planifier un transport" />
               <QuickAction to="/contracts" icon={UserRoundCheck} label="Nouveau contrat" description="Ouvrir les contrats" />
               <QuickAction to="/payments" icon={Landmark} label="Nouveau paiement" description="Ouvrir les versements" />
               <QuickAction to="/maintenance" icon={Activity} label="Nouvelle maintenance" description="Ouvrir les entretiens" />
@@ -599,6 +631,10 @@ function ActivitySkeleton() {
   );
 }
 
+function RankedCourseEntities({ title, entries }: { title: string; entries: Array<{ id: string; label: string; value: number }> }) {
+  if (!entries.length) return null;
+  return <div><p className="text-label text-muted-foreground">{title}</p><ol className="mt-2 space-y-1.5">{entries.map((entry, index) => <li key={entry.id} className="flex items-center gap-3 rounded-lg border border-border/60 px-3 py-2 text-body-sm"><span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary/10 text-caption font-semibold text-primary">{index + 1}</span><span className="min-w-0 flex-1 truncate font-medium text-foreground">{entry.label}</span><span className="shrink-0 text-caption tabular-nums text-muted-foreground">{formatXOFCompact(entry.value)}</span></li>)}</ol></div>;
+}
 function EmptyActivity() {
   return (
     <div className="rounded-xl border border-dashed px-4 py-8 text-center">

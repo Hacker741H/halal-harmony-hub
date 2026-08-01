@@ -5,18 +5,24 @@ import {
   BarChart3,
   Bell,
   Bike,
+  Building2,
   Car,
+  CalendarClock,
+  ClipboardCheck,
   CreditCard,
   FileSignature,
   FileText,
   LayoutDashboard,
   Leaf,
+  MapPinned,
   Package,
+  PackageCheck,
   Settings,
   ShieldCheck,
   Sprout,
   TrendingDown,
   TrendingUp,
+  Truck,
   UserCog,
   Users,
   Wallet,
@@ -45,6 +51,8 @@ type NavigationRoute =
   | "/"
   | "/employees"
   | "/drivers"
+  | "/clients"
+  | "/courses"
   | "/vehicles"
   | "/motorcycles"
   | "/maintenance"
@@ -64,8 +72,9 @@ type NavigationRoute =
 
 interface NavigationItem {
   title: string;
-  url: NavigationRoute;
+  url?: NavigationRoute;
   icon: LucideIcon;
+  disabled?: boolean;
 }
 
 interface NavigationGroup {
@@ -85,6 +94,7 @@ const navigationGroups: readonly NavigationGroup[] = [
   {
     label: "Ressources",
     items: [
+      { title: "Clients", url: "/clients", icon: Building2 },
       { title: "Employés", url: "/employees", icon: Users },
       { title: "Chauffeurs", url: "/drivers", icon: UserCog },
     ],
@@ -98,7 +108,17 @@ const navigationGroups: readonly NavigationGroup[] = [
     ],
   },
   {
-    label: "Exploitations",
+    label: "EXPLOITATION",
+    items: [
+      { title: "Courses", url: "/courses", icon: Truck },
+      { title: "Planning", icon: CalendarClock, disabled: true },
+      { title: "Affectations", icon: ClipboardCheck, disabled: true },
+      { title: "Départs", icon: MapPinned, disabled: true },
+      { title: "Livraisons", icon: PackageCheck, disabled: true },
+    ],
+  },
+  {
+    label: "Agriculture & stocks",
     items: [
       { title: "Fermes", url: "/farms", icon: Sprout },
       { title: "Contrats", url: "/contracts", icon: FileSignature },
@@ -169,13 +189,16 @@ export function AppSidebar() {
               <SidebarMenu className={groupSpacing}>
                 {group.items.map((item) => (
                   <SidebarMenuItem key={`${group.label}-${item.title}`}>
-                    <SidebarMenuButton
+                    {item.disabled ? <div className="flex h-9 items-center gap-3 rounded-md px-2.5 text-sidebar-foreground/45" aria-disabled="true">
+                      <item.icon className="size-4 shrink-0" aria-hidden="true" />
+                      {!collapsed ? <><span className="truncate">{item.title}</span><span className="ml-auto rounded-full border border-sidebar-border px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide">Bientôt disponible</span></> : null}
+                    </div> : <SidebarMenuButton
                       asChild
-                      isActive={isActive(item.url)}
+                      isActive={isActive(item.url!)}
                       tooltip={item.title}
                       className="h-9 rounded-md px-2.5 text-sidebar-foreground/75 transition-[background-color,color,transform] transition-ui-fast hover:translate-x-px hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-primary data-[active=true]:font-semibold data-[active=true]:text-sidebar-primary-foreground data-[active=true]:shadow-xs group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:!p-2.5"
                     >
-                      <Link to={item.url} className="flex items-center gap-3">
+                      <Link to={item.url!} className="flex items-center gap-3">
                         <item.icon className="size-4 shrink-0" aria-hidden="true" />
                         <span className="truncate">{item.title}</span>
                         {item.url === "/notifications" && unreadNotifications > 0 ? (
@@ -187,7 +210,7 @@ export function AppSidebar() {
                           </span>
                         ) : null}
                       </Link>
-                    </SidebarMenuButton>
+                    </SidebarMenuButton>}
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>

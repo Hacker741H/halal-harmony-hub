@@ -7,7 +7,7 @@ import { DocumentUpload } from "@/components/documents/document-upload";
 import { Button } from "@/components/ui/button";
 import { archiveDocument, getDocumentsForRelation, type DocumentRelation } from "@/lib/documents.functions";
 
-type Props = { entityId: string; relation: Extract<DocumentRelation, "employee" | "driver" | "vehicle" | "motorcycle" | "farm" | "contract"> };
+type Props = { entityId: string; relation: Extract<DocumentRelation, "client" | "employee" | "driver" | "vehicle" | "motorcycle" | "farm" | "contract" | "mission"> };
 
 export function EntityDocumentsTab({ entityId, relation }: Props) {
   const queryClient = useQueryClient();

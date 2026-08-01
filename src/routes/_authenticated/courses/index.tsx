@@ -1,0 +1,28 @@
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { Plus, Route as RouteIcon } from "lucide-react";
+import { useState } from "react";
+
+import { CourseTable } from "@/components/courses/course-table";
+import { CourseWizard } from "@/components/courses/course-wizard";
+import { ClientSelect, DriverSelect, VehicleSelect } from "@/components/selects/entity-selects";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { usePermissions } from "@/hooks/use-permissions";
+import { COURSE_STATUS_LABELS, COURSE_STATUSES, getCourses } from "@/lib/courses.functions";
+
+export const Route = createFileRoute("/_authenticated/courses/")({ component: CoursesPage });
+
+function CoursesPage() {
+  const navigate = useNavigate(); const { can } = usePermissions();
+  const [search, setSearch] = useState(""); const [status, setStatus] = useState<string>("ALL"); const [clientId, setClientId] = useState(""); const [driverId, setDriverId] = useState(""); const [vehicleId, setVehicleId] = useState(""); const [from, setFrom] = useState(""); const [to, setTo] = useState(""); const [page, setPage] = useState(1); const [wizardOpen, setWizardOpen] = useState(false);
+  const pageSize = 20;
+  const coursesQuery = useQuery({ queryKey: ["courses", { page, search, status, clientId, driverId, vehicleId, from, to }], queryFn: () => getCourses({ data: { page, pageSize, search, status: status === "ALL" ? null : status as (typeof COURSE_STATUSES)[number], clientId: clientId || null, driverId: driverId || null, vehicleId: vehicleId || null, from: from || null, to: to || null } }) });
+  const total = coursesQuery.data?.total ?? 0; const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  function resetFilters() { setSearch(""); setStatus("ALL"); setClientId(""); setDriverId(""); setVehicleId(""); setFrom(""); setTo(""); setPage(1); }
+  return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8"><header className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-overline text-primary">Exploitation</p><h1 className="mt-1 flex items-center gap-3 text-h1"><RouteIcon className="size-7 text-primary" />Courses</h1><p className="mt-2 text-body-sm text-muted-foreground">Le centre opérationnel qui relie chaque transport à son client, ses coûts et ses encaissements.</p></div>{can("missions.create") ? <Button onClick={() => setWizardOpen(true)}><Plus className="mr-2 size-4" />Nouvelle Course</Button> : null}</header><Card variant="section"><CardContent className="space-y-4 p-4 sm:p-5"><div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_180px_170px_170px]"><Input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Rechercher un numéro, itinéraire, marchandise ou référence…" aria-label="Rechercher une Course" /><Select value={status} onValueChange={(value) => { setStatus(value); setPage(1); }}><SelectTrigger><SelectValue placeholder="Tous les statuts" /></SelectTrigger><SelectContent><SelectItem value="ALL">Tous les statuts</SelectItem>{COURSE_STATUSES.map((item) => <SelectItem key={item} value={item}>{COURSE_STATUS_LABELS[item]}</SelectItem>)}</SelectContent></Select><div className="space-y-1"><Label className="text-xs">Du</Label><Input type="date" value={from} onChange={(event) => { setFrom(event.target.value); setPage(1); }} /></div><div className="space-y-1"><Label className="text-xs">Au</Label><Input type="date" value={to} onChange={(event) => { setTo(event.target.value); setPage(1); }} /></div></div><div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"><ClientSelect value={clientId} onValueChange={(value) => { setClientId(value); setPage(1); }} placeholder="Filtrer par client" /><DriverSelect value={driverId} onValueChange={(value) => { setDriverId(value); setPage(1); }} placeholder="Filtrer par chauffeur" /><VehicleSelect value={vehicleId} onValueChange={(value) => { setVehicleId(value); setPage(1); }} placeholder="Filtrer par véhicule" /><Button variant="ghost" onClick={resetFilters}>Réinitialiser</Button></div><p className="text-sm text-muted-foreground">{total} Course{total > 1 ? "s" : ""} trouvée{total > 1 ? "s" : ""}</p></CardContent></Card><CourseTable courses={coursesQuery.data?.courses ?? []} loading={coursesQuery.isPending} error={coursesQuery.isError} canReadFinance={can("missions.finance.read")} /><div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Page {page} sur {totalPages}</p><div className="flex gap-2"><Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>Précédent</Button><Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((current) => current + 1)}>Suivant</Button></div></div><Dialog open={wizardOpen} onOpenChange={setWizardOpen}><DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto"><DialogHeader><DialogTitle>Nouvelle Course</DialogTitle></DialogHeader><CourseWizard onSuccess={(courseId) => { setWizardOpen(false); void navigate({ to: "/courses/$courseId", params: { courseId } }); }} /></DialogContent></Dialog></div>;
+}

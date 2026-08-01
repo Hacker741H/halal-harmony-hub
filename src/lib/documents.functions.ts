@@ -8,12 +8,14 @@ import type { Database, Tables } from "@/integrations/supabase/types";
 export type Document = Tables<"documents">;
 
 export const DOCUMENT_RELATIONS = [
+  "client",
   "employee",
   "driver",
   "vehicle",
   "motorcycle",
   "farm",
   "contract",
+  "mission",
   "vehicle_maintenance",
   "motorcycle_maintenance",
 ] as const;
@@ -57,9 +59,8 @@ const createDocumentSchema = z
   })
   .strict();
 
-const legacyRelationByDocumentRelation: Record<
-  DocumentRelation,
-  Exclude<Document["entity_type"], null>
+const legacyRelationByDocumentRelation: Partial<
+  Record<DocumentRelation, Exclude<Document["entity_type"], null>>
 > = {
   employee: "employe",
   driver: "chauffeur",
@@ -167,12 +168,14 @@ const documentLibrarySchema = z
   .strict();
 
 const relationTables = {
+    client: "document_transport_client_links",
     employee: "document_employee_links",
     driver: "document_driver_links",
     vehicle: "document_vehicle_links",
     motorcycle: "document_motorcycle_links",
     farm: "document_farm_links",
     contract: "document_contract_links",
+    mission: "document_transport_mission_links",
     vehicle_maintenance: "document_vehicle_maintenance_links",
     motorcycle_maintenance: "document_motorcycle_maintenance_links",
   } as const;
@@ -238,12 +241,14 @@ export const getDocument = createServerFn({ method: "GET" })
 export type DocumentEntityLink = { relation: DocumentRelation; entityId: string; label: string; route: string };
 
 const relationMetadata: Record<DocumentRelation, Omit<DocumentEntityLink, "entityId">> = {
+  client: { relation: "client", label: "Client", route: "/clients/$clientId" },
   employee: { relation: "employee", label: "Employé", route: "/employees/$employeeId" },
   driver: { relation: "driver", label: "Chauffeur", route: "/drivers/$driverId" },
   vehicle: { relation: "vehicle", label: "Véhicule", route: "/vehicles/$vehicleId" },
   motorcycle: { relation: "motorcycle", label: "Moto", route: "/motorcycles/$motorcycleId" },
   farm: { relation: "farm", label: "Exploitation", route: "/farms/$farmId" },
   contract: { relation: "contract", label: "Contrat", route: "/contracts/$contractId" },
+  mission: { relation: "mission", label: "Course", route: "/courses/$courseId" },
   vehicle_maintenance: { relation: "vehicle_maintenance", label: "Entretien véhicule", route: "/maintenance" },
   motorcycle_maintenance: { relation: "motorcycle_maintenance", label: "Entretien moto", route: "/motorcycles" },
 };
@@ -253,9 +258,11 @@ export const getDocumentRelations = createServerFn({ method: "GET" })
   .validator(z.object({ id: idSchema }).strict())
   .handler(async ({ context, data }) => {
     const sourceQueries = [
+      ["client", "document_transport_client_links", "client_id"],
       ["employee", "document_employee_links", "employee_id"], ["driver", "document_driver_links", "driver_id"],
       ["vehicle", "document_vehicle_links", "vehicle_id"], ["motorcycle", "document_motorcycle_links", "motorcycle_id"],
       ["farm", "document_farm_links", "farm_id"], ["contract", "document_contract_links", "contract_id"],
+      ["mission", "document_transport_mission_links", "mission_id"],
     ] as const;
     const results = await Promise.all(sourceQueries.map(async ([relation, table, key]) => {
       const { data: links, error } = await context.supabase.from(table).select(key).eq("document_id", data.id);
@@ -283,12 +290,14 @@ export const getDocumentsForRelation = createServerFn({ method: "GET" })
   .handler(async ({ context, data }) => {
     const { supabase } = context;
     const relationQueries = {
+      client: supabase.from("document_transport_client_links").select("document_id").eq("client_id", data.entity_id),
       employee: supabase.from("document_employee_links").select("document_id").eq("employee_id", data.entity_id),
       driver: supabase.from("document_driver_links").select("document_id").eq("driver_id", data.entity_id),
       vehicle: supabase.from("document_vehicle_links").select("document_id").eq("vehicle_id", data.entity_id),
       motorcycle: supabase.from("document_motorcycle_links").select("document_id").eq("motorcycle_id", data.entity_id),
       farm: supabase.from("document_farm_links").select("document_id").eq("farm_id", data.entity_id),
       contract: supabase.from("document_contract_links").select("document_id").eq("contract_id", data.entity_id),
+      mission: supabase.from("document_transport_mission_links").select("document_id").eq("mission_id", data.entity_id),
       vehicle_maintenance: supabase
         .from("document_vehicle_maintenance_links")
         .select("document_id")
@@ -308,12 +317,14 @@ export const getDocumentsForRelation = createServerFn({ method: "GET" })
       documentIds.length > 0
         ? supabase.from("documents").select("*").in("id", documentIds).is("archived_at", null)
         : Promise.resolve({ data: [] as Document[], error: null }),
-      supabase
-        .from("documents")
-        .select("*")
-        .eq("entity_type", legacyKind)
-        .eq("entity_id", data.entity_id)
-        .is("archived_at", null),
+      legacyKind
+        ? supabase
+          .from("documents")
+          .select("*")
+          .eq("entity_type", legacyKind)
+          .eq("entity_id", data.entity_id)
+          .is("archived_at", null)
+        : Promise.resolve({ data: [] as Document[], error: null }),
     ]);
 
     if (explicitDocumentsResult.error) throw explicitDocumentsResult.error;

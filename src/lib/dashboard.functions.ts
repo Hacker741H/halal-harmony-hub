@@ -23,6 +23,16 @@ export interface DashboardStats {
     stocksFaibles: number;
     entretiensEnRetard: number;
   };
+  courses: {
+    active: number;
+    completed: number;
+    late: number;
+    receivable: number | null;
+    totalResult: number | null;
+    topClients: Array<{ id: string; label: string; value: number }>;
+    topVehicles: Array<{ id: string; label: string; value: number }>;
+    topDrivers: Array<{ id: string; label: string; value: number }>;
+  };
 }
 
 const emptyStats: DashboardStats = {
@@ -46,6 +56,7 @@ const emptyStats: DashboardStats = {
     stocksFaibles: 0,
     entretiensEnRetard: 0,
   },
+  courses: { active: 0, completed: 0, late: 0, receivable: null, totalResult: null, topClients: [], topVehicles: [], topDrivers: [] },
 };
 
 export const getDashboardStats = createServerFn({ method: "GET" })
@@ -54,6 +65,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     const { supabase } = context;
     const permissionCodes = new Set(await getPermissionCodesForClient(supabase));
     const mayGenerateNotifications = permissionCodes.has("notifications.manage");
+    const canReadCourseFinance = permissionCodes.has("missions.finance.read");
     if (mayGenerateNotifications) {
       const { data: latestRun, error: latestRunError } = await supabase
         .from("notification_generation_runs")
@@ -95,6 +107,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       recentFinanceOperations,
       wallets,
       notifications,
+      courseRows,
     ] = await Promise.all([
       supabase
         .from("finance_operations")
@@ -140,6 +153,9 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         .from("notifications")
         .select("status, severity, type, due_date")
         .in("status", ["UNREAD", "READ", "SNOOZED"]),
+      supabase
+        .from("transport_missions")
+        .select("id, status, client_id, vehicle_id, driver_id, planned_arrival_at, quoted_amount"),
     ]);
 
     const sum = (rows: { amount: number | string | null }[] | null | undefined) =>
@@ -168,6 +184,33 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     const in7 = new Date(today);
     in7.setDate(in7.getDate() + 7);
     const notificationsActives = notifications.data ?? [];
+    const courses = courseRows.data ?? [];
+    const activeCourses = courses.filter((course) => course.status === "PLANNED" || course.status === "IN_PROGRESS");
+    const completedCourses = courses.filter((course) => course.status === "COMPLETED" || course.status === "CLOSED");
+    const lateCourses = activeCourses.filter((course) => course.planned_arrival_at !== null && course.planned_arrival_at < new Date().toISOString()).length;
+    const courseIds = courses.map((course) => course.id);
+    const [courseExpenses, courseInvoices, coursePayments, courseClients, courseVehicles, courseDrivers] = canReadCourseFinance && courseIds.length
+      ? await Promise.all([
+        supabase.from("transport_mission_expenses").select("mission_id, amount, status").in("mission_id", courseIds),
+        supabase.from("transport_invoices").select("mission_id, client_id, total_amount, status").in("mission_id", courseIds),
+        supabase.from("transport_invoice_payments").select("mission_id, amount, status").in("mission_id", courseIds),
+        supabase.from("transport_clients").select("id, display_name").in("id", courses.map((course) => course.client_id)),
+        supabase.from("vehicles").select("id, registration").in("id", courses.flatMap((course) => course.vehicle_id ? [course.vehicle_id] : [])),
+        supabase.from("drivers").select("id, employees(nom, prenom)").in("id", courses.flatMap((course) => course.driver_id ? [course.driver_id] : [])),
+      ])
+      : [null, null, null, null, null, null];
+    const courseExpenseRows = courseExpenses?.data ?? [];
+    const courseInvoiceRows = courseInvoices?.data ?? [];
+    const coursePaymentRows = coursePayments?.data ?? [];
+    const totalCourseExpenses = courseExpenseRows.filter((row) => row.status === "PAID").reduce((total, row) => total + Number(row.amount), 0);
+    const totalCourseReceived = coursePaymentRows.filter((row) => row.status === "CONFIRMED").reduce((total, row) => total + Number(row.amount), 0);
+    const totalCourseBilled = courseInvoiceRows.filter((row) => row.status !== "CANCELLED").reduce((total, row) => total + Number(row.total_amount), 0);
+    const aggregate = (key: "client_id" | "vehicle_id" | "driver_id", labels: Map<string, string>) => Array.from(courses.reduce((acc, course) => {
+      const id = course[key]; if (!id) return acc; acc.set(id, (acc.get(id) ?? 0) + Number(course.quoted_amount)); return acc;
+    }, new Map<string, number>())).sort((left, right) => right[1] - left[1]).slice(0, 3).map(([id, value]) => ({ id, label: labels.get(id) ?? "Entité non accessible", value }));
+    const clientLabels = new Map((courseClients?.data ?? []).map((client) => [client.id, client.display_name]));
+    const vehicleLabels = new Map((courseVehicles?.data ?? []).map((vehicle) => [vehicle.id, vehicle.registration]));
+    const driverLabels = new Map((courseDrivers?.data ?? []).map((driver) => [driver.id, [driver.employees?.nom, driver.employees?.prenom].filter(Boolean).join(" ") || "Chauffeur"]));
     const alertesERP = {
       critiques: notificationsActives.filter((notification) => notification.severity === "CRITICAL").length,
       echeances7Jours: notificationsActives.filter(
@@ -212,5 +255,15 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       documentsExpirant: docs,
       activiteRecente: activite,
       alertesERP,
+      courses: {
+        active: activeCourses.length,
+        completed: completedCourses.length,
+        late: lateCourses,
+        receivable: canReadCourseFinance ? totalCourseBilled - totalCourseReceived : null,
+        totalResult: canReadCourseFinance ? totalCourseReceived - totalCourseExpenses : null,
+        topClients: canReadCourseFinance ? aggregate("client_id", clientLabels) : [],
+        topVehicles: canReadCourseFinance ? aggregate("vehicle_id", vehicleLabels) : [],
+        topDrivers: canReadCourseFinance ? aggregate("driver_id", driverLabels) : [],
+      },
     };
   });

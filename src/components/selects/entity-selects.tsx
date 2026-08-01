@@ -11,6 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getContracts } from "@/lib/contracts.functions";
+import { getCourses } from "@/lib/courses.functions";
+import { getClients } from "@/lib/clients.functions";
 import { getDrivers } from "@/lib/drivers.functions";
 import { getEmployees } from "@/lib/employees.functions";
 import { getFarms } from "@/lib/farms.functions";
@@ -33,7 +35,8 @@ function SearchableEntitySelect({
   placeholder = "Sélectionner…",
   disabled,
   options,
-}: EntitySelectProps & { options: SelectOption[] }) {
+  onSearchChange,
+}: EntitySelectProps & { options: SelectOption[]; onSearchChange?: (value: string) => void }) {
   const [search, setSearch] = useState("");
   const filteredOptions = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -50,7 +53,10 @@ function SearchableEntitySelect({
             aria-label="Rechercher"
             placeholder="Rechercher…"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              onSearchChange?.(event.target.value);
+            }}
             onKeyDown={(event) => event.stopPropagation()}
           />
         </div>
@@ -67,6 +73,25 @@ function SearchableEntitySelect({
 export function EmployeeSelect(props: EntitySelectProps) {
   const { data = [] } = useQuery({ queryKey: ["employees"], queryFn: () => getEmployees() });
   return <SearchableEntitySelect {...props} options={data.map((employee) => ({ id: employee.id, label: [employee.nom, employee.prenom].filter(Boolean).join(" "), detail: [employee.telephone, employee.poste].filter(Boolean).join(" · ") }))} />;
+}
+
+export function ClientSelect(props: EntitySelectProps) {
+  const [search, setSearch] = useState("");
+  const { data } = useQuery({
+    queryKey: ["clients", "select", search],
+    queryFn: () => getClients({ data: { page: 1, pageSize: 100, search, status: "ACTIVE" } }),
+  });
+  return <SearchableEntitySelect {...props} options={(data?.clients ?? []).map((client) => ({
+    id: client.id,
+    label: client.display_name,
+    detail: [client.telephone, client.status].filter(Boolean).join(" · "),
+  }))} onSearchChange={setSearch} />;
+}
+
+export function CourseSelect(props: EntitySelectProps) {
+  const [search, setSearch] = useState("");
+  const { data } = useQuery({ queryKey: ["courses", "select", search], queryFn: () => getCourses({ data: { page: 1, pageSize: 100, search, status: null, clientId: null, driverId: null, vehicleId: null, from: null, to: null } }) });
+  return <SearchableEntitySelect {...props} options={(data?.courses ?? []).map((course) => ({ id: course.id, label: course.mission_number, detail: [course.clientName, course.status].filter(Boolean).join(" · ") }))} onSearchChange={setSearch} />;
 }
 
 export function DriverSelect(props: EntitySelectProps) {

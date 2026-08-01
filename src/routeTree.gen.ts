@@ -12,7 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
 import { Route as AuthenticatedContractsRouteImport } from './routes/_authenticated/contracts'
+import { Route as AuthenticatedCoursesRouteImport } from './routes/_authenticated/courses'
 import { Route as AuthenticatedDocumentsRouteImport } from './routes/_authenticated/documents'
 import { Route as AuthenticatedDriversRouteImport } from './routes/_authenticated/drivers'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
@@ -31,8 +33,12 @@ import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedStocksRouteImport } from './routes/_authenticated/stocks'
 import { Route as AuthenticatedVehiclesRouteImport } from './routes/_authenticated/vehicles'
 import { Route as AuthenticatedWalletsRouteImport } from './routes/_authenticated/wallets'
+import { Route as AuthenticatedClientsIndexRouteImport } from './routes/_authenticated/clients/index'
+import { Route as AuthenticatedClientsClientIdRouteImport } from './routes/_authenticated/clients/$clientId'
 import { Route as AuthenticatedContractsIndexRouteImport } from './routes/_authenticated/contracts/index'
 import { Route as AuthenticatedContractsContractIdRouteImport } from './routes/_authenticated/contracts/$contractId'
+import { Route as AuthenticatedCoursesIndexRouteImport } from './routes/_authenticated/courses/index'
+import { Route as AuthenticatedCoursesCourseIdRouteImport } from './routes/_authenticated/courses/$courseId'
 import { Route as AuthenticatedDocumentsDocumentIdRouteImport } from './routes/_authenticated/documents/$documentId'
 import { Route as AuthenticatedDriversIndexRouteImport } from './routes/_authenticated/drivers/index'
 import { Route as AuthenticatedDriversDriverIdRouteImport } from './routes/_authenticated/drivers/$driverId'
@@ -59,14 +65,19 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedClientsRoute = AuthenticatedClientsRouteImport.update({
+  id: '/clients',
+  path: '/clients',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedContractsRoute = AuthenticatedContractsRouteImport.update({
   id: '/contracts',
   path: '/contracts',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedDocumentsRoute = AuthenticatedDocumentsRouteImport.update({
-  id: '/documents',
-  path: '/documents',
+const AuthenticatedCoursesRoute = AuthenticatedCoursesRouteImport.update({
+  id: '/courses',
+  path: '/courses',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDriversRoute = AuthenticatedDriversRouteImport.update({
@@ -157,6 +168,18 @@ const AuthenticatedWalletsRoute = AuthenticatedWalletsRouteImport.update({
   path: '/wallets',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedClientsIndexRoute =
+  AuthenticatedClientsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedClientsRoute,
+  } as any)
+const AuthenticatedClientsClientIdRoute =
+  AuthenticatedClientsClientIdRouteImport.update({
+    id: '/$clientId',
+    path: '/$clientId',
+    getParentRoute: () => AuthenticatedClientsRoute,
+  } as any)
 const AuthenticatedContractsIndexRoute =
   AuthenticatedContractsIndexRouteImport.update({
     id: '/',
@@ -168,6 +191,18 @@ const AuthenticatedContractsContractIdRoute =
     id: '/$contractId',
     path: '/$contractId',
     getParentRoute: () => AuthenticatedContractsRoute,
+  } as any)
+const AuthenticatedCoursesIndexRoute =
+  AuthenticatedCoursesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedCoursesRoute,
+  } as any)
+const AuthenticatedCoursesCourseIdRoute =
+  AuthenticatedCoursesCourseIdRouteImport.update({
+    id: '/$courseId',
+    path: '/$courseId',
+    getParentRoute: () => AuthenticatedCoursesRoute,
   } as any)
 const AuthenticatedDocumentsDocumentIdRoute =
   AuthenticatedDocumentsDocumentIdRouteImport.update({
@@ -239,7 +274,9 @@ const AuthenticatedWalletsWalletIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
+  '/clients': typeof AuthenticatedClientsRouteWithChildren
   '/contracts': typeof AuthenticatedContractsRouteWithChildren
+  '/courses': typeof AuthenticatedCoursesRouteWithChildren
   '/documents': typeof AuthenticatedDocumentsRouteWithChildren
   '/drivers': typeof AuthenticatedDriversRouteWithChildren
   '/employees': typeof AuthenticatedEmployeesRouteWithChildren
@@ -258,7 +295,9 @@ export interface FileRoutesByFullPath {
   '/stocks': typeof AuthenticatedStocksRoute
   '/vehicles': typeof AuthenticatedVehiclesRouteWithChildren
   '/wallets': typeof AuthenticatedWalletsRouteWithChildren
+  '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/contracts/$contractId': typeof AuthenticatedContractsContractIdRoute
+  '/courses/$courseId': typeof AuthenticatedCoursesCourseIdRoute
   '/documents/$documentId': typeof AuthenticatedDocumentsDocumentIdRoute
   '/drivers/$driverId': typeof AuthenticatedDriversDriverIdRoute
   '/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
@@ -266,7 +305,9 @@ export interface FileRoutesByFullPath {
   '/motorcycles/$motorcycleId': typeof AuthenticatedMotorcyclesMotorcycleIdRoute
   '/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
   '/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
+  '/clients/': typeof AuthenticatedClientsIndexRoute
   '/contracts/': typeof AuthenticatedContractsIndexRoute
+  '/courses/': typeof AuthenticatedCoursesIndexRoute
   '/drivers/': typeof AuthenticatedDriversIndexRoute
   '/employees/': typeof AuthenticatedEmployeesIndexRoute
   '/vehicles/': typeof AuthenticatedVehiclesIndexRoute
@@ -289,7 +330,9 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/stocks': typeof AuthenticatedStocksRoute
   '/': typeof AuthenticatedIndexRoute
+  '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/contracts/$contractId': typeof AuthenticatedContractsContractIdRoute
+  '/courses/$courseId': typeof AuthenticatedCoursesCourseIdRoute
   '/documents/$documentId': typeof AuthenticatedDocumentsDocumentIdRoute
   '/drivers/$driverId': typeof AuthenticatedDriversDriverIdRoute
   '/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
@@ -297,7 +340,9 @@ export interface FileRoutesByTo {
   '/motorcycles/$motorcycleId': typeof AuthenticatedMotorcyclesMotorcycleIdRoute
   '/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
   '/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
+  '/clients': typeof AuthenticatedClientsIndexRoute
   '/contracts': typeof AuthenticatedContractsIndexRoute
+  '/courses': typeof AuthenticatedCoursesIndexRoute
   '/drivers': typeof AuthenticatedDriversIndexRoute
   '/employees': typeof AuthenticatedEmployeesIndexRoute
   '/vehicles': typeof AuthenticatedVehiclesIndexRoute
@@ -307,7 +352,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/clients': typeof AuthenticatedClientsRouteWithChildren
   '/_authenticated/contracts': typeof AuthenticatedContractsRouteWithChildren
+  '/_authenticated/courses': typeof AuthenticatedCoursesRouteWithChildren
   '/_authenticated/documents': typeof AuthenticatedDocumentsRouteWithChildren
   '/_authenticated/drivers': typeof AuthenticatedDriversRouteWithChildren
   '/_authenticated/employees': typeof AuthenticatedEmployeesRouteWithChildren
@@ -327,7 +374,9 @@ export interface FileRoutesById {
   '/_authenticated/vehicles': typeof AuthenticatedVehiclesRouteWithChildren
   '/_authenticated/wallets': typeof AuthenticatedWalletsRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/_authenticated/contracts/$contractId': typeof AuthenticatedContractsContractIdRoute
+  '/_authenticated/courses/$courseId': typeof AuthenticatedCoursesCourseIdRoute
   '/_authenticated/documents/$documentId': typeof AuthenticatedDocumentsDocumentIdRoute
   '/_authenticated/drivers/$driverId': typeof AuthenticatedDriversDriverIdRoute
   '/_authenticated/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
@@ -335,7 +384,9 @@ export interface FileRoutesById {
   '/_authenticated/motorcycles/$motorcycleId': typeof AuthenticatedMotorcyclesMotorcycleIdRoute
   '/_authenticated/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
   '/_authenticated/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
+  '/_authenticated/clients/': typeof AuthenticatedClientsIndexRoute
   '/_authenticated/contracts/': typeof AuthenticatedContractsIndexRoute
+  '/_authenticated/courses/': typeof AuthenticatedCoursesIndexRoute
   '/_authenticated/drivers/': typeof AuthenticatedDriversIndexRoute
   '/_authenticated/employees/': typeof AuthenticatedEmployeesIndexRoute
   '/_authenticated/vehicles/': typeof AuthenticatedVehiclesIndexRoute
@@ -346,7 +397,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/clients'
     | '/contracts'
+    | '/courses'
     | '/documents'
     | '/drivers'
     | '/employees'
@@ -365,7 +418,9 @@ export interface FileRouteTypes {
     | '/stocks'
     | '/vehicles'
     | '/wallets'
+    | '/clients/$clientId'
     | '/contracts/$contractId'
+    | '/courses/$courseId'
     | '/documents/$documentId'
     | '/drivers/$driverId'
     | '/employees/$employeeId'
@@ -373,7 +428,9 @@ export interface FileRouteTypes {
     | '/motorcycles/$motorcycleId'
     | '/vehicles/$vehicleId'
     | '/wallets/$walletId'
+    | '/clients/'
     | '/contracts/'
+    | '/courses/'
     | '/drivers/'
     | '/employees/'
     | '/vehicles/'
@@ -396,7 +453,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/stocks'
     | '/'
+    | '/clients/$clientId'
     | '/contracts/$contractId'
+    | '/courses/$courseId'
     | '/documents/$documentId'
     | '/drivers/$driverId'
     | '/employees/$employeeId'
@@ -404,7 +463,9 @@ export interface FileRouteTypes {
     | '/motorcycles/$motorcycleId'
     | '/vehicles/$vehicleId'
     | '/wallets/$walletId'
+    | '/clients'
     | '/contracts'
+    | '/courses'
     | '/drivers'
     | '/employees'
     | '/vehicles'
@@ -413,7 +474,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/clients'
     | '/_authenticated/contracts'
+    | '/_authenticated/courses'
     | '/_authenticated/documents'
     | '/_authenticated/drivers'
     | '/_authenticated/employees'
@@ -433,7 +496,9 @@ export interface FileRouteTypes {
     | '/_authenticated/vehicles'
     | '/_authenticated/wallets'
     | '/_authenticated/'
+    | '/_authenticated/clients/$clientId'
     | '/_authenticated/contracts/$contractId'
+    | '/_authenticated/courses/$courseId'
     | '/_authenticated/documents/$documentId'
     | '/_authenticated/drivers/$driverId'
     | '/_authenticated/employees/$employeeId'
@@ -441,7 +506,9 @@ export interface FileRouteTypes {
     | '/_authenticated/motorcycles/$motorcycleId'
     | '/_authenticated/vehicles/$vehicleId'
     | '/_authenticated/wallets/$walletId'
+    | '/_authenticated/clients/'
     | '/_authenticated/contracts/'
+    | '/_authenticated/courses/'
     | '/_authenticated/drivers/'
     | '/_authenticated/employees/'
     | '/_authenticated/vehicles/'
@@ -476,11 +543,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/clients': {
+      id: '/_authenticated/clients'
+      path: '/clients'
+      fullPath: '/clients'
+      preLoaderRoute: typeof AuthenticatedClientsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/contracts': {
       id: '/_authenticated/contracts'
       path: '/contracts'
       fullPath: '/contracts'
       preLoaderRoute: typeof AuthenticatedContractsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/courses': {
+      id: '/_authenticated/courses'
+      path: '/courses'
+      fullPath: '/courses'
+      preLoaderRoute: typeof AuthenticatedCoursesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/documents': {
@@ -609,6 +692,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWalletsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/clients/': {
+      id: '/_authenticated/clients/'
+      path: '/'
+      fullPath: '/clients/'
+      preLoaderRoute: typeof AuthenticatedClientsIndexRouteImport
+      parentRoute: typeof AuthenticatedClientsRoute
+    }
+    '/_authenticated/clients/$clientId': {
+      id: '/_authenticated/clients/$clientId'
+      path: '/$clientId'
+      fullPath: '/clients/$clientId'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdRouteImport
+      parentRoute: typeof AuthenticatedClientsRoute
+    }
     '/_authenticated/contracts/': {
       id: '/_authenticated/contracts/'
       path: '/'
@@ -622,6 +719,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/contracts/$contractId'
       preLoaderRoute: typeof AuthenticatedContractsContractIdRouteImport
       parentRoute: typeof AuthenticatedContractsRoute
+    }
+    '/_authenticated/courses/': {
+      id: '/_authenticated/courses/'
+      path: '/'
+      fullPath: '/courses/'
+      preLoaderRoute: typeof AuthenticatedCoursesIndexRouteImport
+      parentRoute: typeof AuthenticatedCoursesRoute
+    }
+    '/_authenticated/courses/$courseId': {
+      id: '/_authenticated/courses/$courseId'
+      path: '/$courseId'
+      fullPath: '/courses/$courseId'
+      preLoaderRoute: typeof AuthenticatedCoursesCourseIdRouteImport
+      parentRoute: typeof AuthenticatedCoursesRoute
     }
     '/_authenticated/documents/$documentId': {
       id: '/_authenticated/documents/$documentId'
@@ -703,6 +814,19 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedClientsRouteChildren {
+  AuthenticatedClientsClientIdRoute: typeof AuthenticatedClientsClientIdRoute
+  AuthenticatedClientsIndexRoute: typeof AuthenticatedClientsIndexRoute
+}
+
+const AuthenticatedClientsRouteChildren: AuthenticatedClientsRouteChildren = {
+  AuthenticatedClientsClientIdRoute: AuthenticatedClientsClientIdRoute,
+  AuthenticatedClientsIndexRoute: AuthenticatedClientsIndexRoute,
+}
+
+const AuthenticatedClientsRouteWithChildren =
+  AuthenticatedClientsRoute._addFileChildren(AuthenticatedClientsRouteChildren)
+
 interface AuthenticatedContractsRouteChildren {
   AuthenticatedContractsContractIdRoute: typeof AuthenticatedContractsContractIdRoute
   AuthenticatedContractsIndexRoute: typeof AuthenticatedContractsIndexRoute
@@ -719,6 +843,19 @@ const AuthenticatedContractsRouteWithChildren =
   AuthenticatedContractsRoute._addFileChildren(
     AuthenticatedContractsRouteChildren,
   )
+
+interface AuthenticatedCoursesRouteChildren {
+  AuthenticatedCoursesCourseIdRoute: typeof AuthenticatedCoursesCourseIdRoute
+  AuthenticatedCoursesIndexRoute: typeof AuthenticatedCoursesIndexRoute
+}
+
+const AuthenticatedCoursesRouteChildren: AuthenticatedCoursesRouteChildren = {
+  AuthenticatedCoursesCourseIdRoute: AuthenticatedCoursesCourseIdRoute,
+  AuthenticatedCoursesIndexRoute: AuthenticatedCoursesIndexRoute,
+}
+
+const AuthenticatedCoursesRouteWithChildren =
+  AuthenticatedCoursesRoute._addFileChildren(AuthenticatedCoursesRouteChildren)
 
 interface AuthenticatedDocumentsRouteChildren {
   AuthenticatedDocumentsDocumentIdRoute: typeof AuthenticatedDocumentsDocumentIdRoute
@@ -820,7 +957,9 @@ const AuthenticatedWalletsRouteWithChildren =
   AuthenticatedWalletsRoute._addFileChildren(AuthenticatedWalletsRouteChildren)
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedClientsRoute: typeof AuthenticatedClientsRouteWithChildren
   AuthenticatedContractsRoute: typeof AuthenticatedContractsRouteWithChildren
+  AuthenticatedCoursesRoute: typeof AuthenticatedCoursesRouteWithChildren
   AuthenticatedDocumentsRoute: typeof AuthenticatedDocumentsRouteWithChildren
   AuthenticatedDriversRoute: typeof AuthenticatedDriversRouteWithChildren
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRouteWithChildren
@@ -843,7 +982,9 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedClientsRoute: AuthenticatedClientsRouteWithChildren,
   AuthenticatedContractsRoute: AuthenticatedContractsRouteWithChildren,
+  AuthenticatedCoursesRoute: AuthenticatedCoursesRouteWithChildren,
   AuthenticatedDocumentsRoute: AuthenticatedDocumentsRouteWithChildren,
   AuthenticatedDriversRoute: AuthenticatedDriversRouteWithChildren,
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRouteWithChildren,

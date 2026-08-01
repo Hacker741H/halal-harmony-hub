@@ -54,7 +54,7 @@ export function DocumentsPage() {
       page, page_size: 20, search: search || null,
       type: type === "ALL" ? null : type as (typeof DOCUMENT_TYPES)[number],
       status: status === "ALL" ? null : status,
-      relation: relation === "ALL" ? null : relation as "employee" | "driver" | "vehicle" | "motorcycle" | "farm" | "contract",
+      relation: relation === "ALL" ? null : relation as "client" | "employee" | "driver" | "vehicle" | "motorcycle" | "farm" | "contract",
       expiration_from: null, expiration_to: null,
     } }),
   });
@@ -112,7 +112,7 @@ export function DocumentsPage() {
       <div className="md:col-span-2"><Label htmlFor="documents-search">Recherche</Label><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input id="documents-search" className="pl-9" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Nom du document" /></div></div>
       <div><Label>Type</Label><Select value={type} onValueChange={(value) => { setType(value); setPage(1); }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ALL">Tous les types</SelectItem>{DOCUMENT_TYPES.map((item) => <SelectItem key={item} value={item}>{TYPE_LABELS[item]}</SelectItem>)}</SelectContent></Select></div>
       <div><Label>Statut</Label><Select value={status} onValueChange={(value) => { setStatus(value as "ALL" | DocumentStatus); setPage(1); }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ALL">Tous statuts</SelectItem><SelectItem value="VALID">Valide</SelectItem><SelectItem value="EXPIRING">Expire bientôt</SelectItem><SelectItem value="EXPIRED">Expiré</SelectItem></SelectContent></Select></div>
-      <div><Label>Entité</Label><Select value={relation} onValueChange={(value) => { setRelation(value); setPage(1); }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ALL">Toutes les entités</SelectItem><SelectItem value="vehicle">Véhicules</SelectItem><SelectItem value="motorcycle">Motos</SelectItem><SelectItem value="driver">Chauffeurs</SelectItem><SelectItem value="employee">Employés</SelectItem><SelectItem value="farm">Exploitations</SelectItem><SelectItem value="contract">Contrats</SelectItem></SelectContent></Select></div>
+      <div><Label>Entité</Label><Select value={relation} onValueChange={(value) => { setRelation(value); setPage(1); }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ALL">Toutes les entités</SelectItem><SelectItem value="client">Clients</SelectItem><SelectItem value="vehicle">Véhicules</SelectItem><SelectItem value="motorcycle">Motos</SelectItem><SelectItem value="driver">Chauffeurs</SelectItem><SelectItem value="employee">Employés</SelectItem><SelectItem value="farm">Exploitations</SelectItem><SelectItem value="contract">Contrats</SelectItem></SelectContent></Select></div>
     </div>
 
     <input ref={replacementInputRef} className="hidden" type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" onChange={(event) => { const file = event.target.files?.[0]; if (file && replacementTarget) replaceMutation.mutate({ document: replacementTarget, file }); event.currentTarget.value = ""; }} />

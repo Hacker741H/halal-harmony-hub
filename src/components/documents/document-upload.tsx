@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ContractSelect, DriverSelect, EmployeeSelect, FarmSelect, MotorcycleSelect, VehicleSelect } from "@/components/selects/entity-selects";
+import { ClientSelect, ContractSelect, CourseSelect, DriverSelect, EmployeeSelect, FarmSelect, MotorcycleSelect, VehicleSelect } from "@/components/selects/entity-selects";
 import {
   Select,
   SelectContent,
@@ -123,23 +123,27 @@ export function DocumentUpload({ entityId, relation, onSuccess }: Props) {
             <Select value={selectedRelation} onValueChange={(value) => { setSelectedRelation(value as DocumentRelation); setSelectedEntityId(""); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
+                <SelectItem value="client">Client</SelectItem>
                 <SelectItem value="vehicle">Véhicule</SelectItem>
                 <SelectItem value="motorcycle">Moto</SelectItem>
                 <SelectItem value="driver">Chauffeur</SelectItem>
                 <SelectItem value="employee">Employé</SelectItem>
                 <SelectItem value="farm">Exploitation</SelectItem>
                 <SelectItem value="contract">Contrat</SelectItem>
+                <SelectItem value="mission">Course</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div>
             <Label>Élément lié</Label>
+            {selectedRelation === "client" && <ClientSelect value={selectedEntityId} onValueChange={setSelectedEntityId} />}
             {selectedRelation === "vehicle" && <VehicleSelect value={selectedEntityId} onValueChange={setSelectedEntityId} />}
             {selectedRelation === "motorcycle" && <MotorcycleSelect value={selectedEntityId} onValueChange={setSelectedEntityId} />}
             {selectedRelation === "driver" && <DriverSelect value={selectedEntityId} onValueChange={setSelectedEntityId} />}
             {selectedRelation === "employee" && <EmployeeSelect value={selectedEntityId} onValueChange={setSelectedEntityId} />}
             {selectedRelation === "farm" && <FarmSelect value={selectedEntityId} onValueChange={setSelectedEntityId} />}
             {selectedRelation === "contract" && <ContractSelect value={selectedEntityId} onValueChange={setSelectedEntityId} />}
+            {selectedRelation === "mission" && <CourseSelect value={selectedEntityId} onValueChange={setSelectedEntityId} />}
           </div>
         </>
       )}

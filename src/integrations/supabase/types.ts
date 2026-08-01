@@ -6,6 +6,19 @@
   | { [key: string]: Json | undefined }
   | Json[]
 
+type TransportMissionRow = {
+  id: string; mission_number: string; status: string; client_id: string; vehicle_id: string | null; driver_id: string | null
+  departure_location: string | null; destination_location: string | null; cargo_description: string | null; cargo_quantity: number | null; cargo_unit: string | null
+  cargo_weight_kg: number | null; cargo_volume_m3: number | null; distance_km: number | null; planned_departure_at: string | null; planned_arrival_at: string | null
+  actual_departure_at: string | null; actual_arrival_at: string | null; start_odometer: number | null; end_odometer: number | null; quoted_amount: number
+  currency_code: string; reference: string | null; notes: string | null; overlap_exception_reason: string | null; close_exception_reason: string | null; cancellation_reason: string | null
+  created_by: string | null; updated_by: string | null; created_at: string; updated_at: string; closed_at: string | null; cancelled_at: string | null
+}
+type TransportBudgetLineRow = { id: string; mission_id: string; category: string; planned_amount: number; notes: string | null; created_by: string | null; updated_by: string | null; created_at: string; updated_at: string }
+type TransportExpenseRow = { id: string; mission_id: string; wallet_id: string; category: string; amount: number; expense_date: string; status: string; description: string | null; receipt_document_id: string | null; created_by: string | null; updated_by: string | null; created_at: string; updated_at: string; confirmed_at: string | null; cancelled_at: string | null }
+type TransportInvoiceRow = { id: string; invoice_number: string; mission_id: string; client_id: string; status: string; issue_date: string | null; due_date: string | null; subtotal_amount: number; tax_rate: number; tax_amount: number; total_amount: number; notes: string | null; cancelled_reason: string | null; created_by: string | null; updated_by: string | null; created_at: string; updated_at: string; issued_at: string | null; cancelled_at: string | null }
+type TransportPaymentRow = { id: string; invoice_id: string; mission_id: string; wallet_id: string; amount: number; payment_date: string; status: string; payment_kind: string; reference: string | null; notes: string | null; created_by: string | null; updated_by: string | null; created_at: string; updated_at: string; confirmed_at: string | null; cancelled_at: string | null }
+
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -96,6 +109,8 @@ export type Database = {
           notion_workspace_id: string | null
           timezone: string
           updated_at: string
+          vat_enabled: boolean
+          vat_rate: number | null
         }
         Insert: {
           adresse?: string | null
@@ -109,6 +124,8 @@ export type Database = {
           notion_workspace_id?: string | null
           timezone?: string
           updated_at?: string
+          vat_enabled?: boolean
+          vat_rate?: number | null
         }
         Update: {
           adresse?: string | null
@@ -122,8 +139,132 @@ export type Database = {
           notion_workspace_id?: string | null
           timezone?: string
           updated_at?: string
+          vat_enabled?: boolean
+          vat_rate?: number | null
         }
         Relationships: []
+      }
+      client_identifier_validation_rules: {
+        Row: {
+          country_code: string
+          created_at: string
+          id: string
+          identifier_type: string
+          is_active: boolean
+          label: string
+          updated_at: string
+          validation_pattern: string | null
+        }
+        Insert: {
+          country_code?: string
+          created_at?: string
+          id?: string
+          identifier_type: string
+          is_active?: boolean
+          label: string
+          updated_at?: string
+          validation_pattern?: string | null
+        }
+        Update: {
+          country_code?: string
+          created_at?: string
+          id?: string
+          identifier_type?: string
+          is_active?: boolean
+          label?: string
+          updated_at?: string
+          validation_pattern?: string | null
+        }
+        Relationships: []
+      }
+      transport_clients: {
+        Row: {
+          address: string | null
+          archived_at: string | null
+          archived_by: string | null
+          city: string | null
+          client_number: string
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          country_code: string
+          created_at: string
+          created_by: string | null
+          display_name: string
+          email: string | null
+          id: string
+          kind: string
+          legal_name: string | null
+          merged_into_client_id: string | null
+          notes: string | null
+          registration_identifier_type: string | null
+          registration_identifier_value: string | null
+          status: string
+          telephone: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          address?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
+          city?: string | null
+          client_number: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          country_code?: string
+          created_at?: string
+          created_by?: string | null
+          display_name: string
+          email?: string | null
+          id?: string
+          kind?: string
+          legal_name?: string | null
+          merged_into_client_id?: string | null
+          notes?: string | null
+          registration_identifier_type?: string | null
+          registration_identifier_value?: string | null
+          status?: string
+          telephone?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          address?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
+          city?: string | null
+          client_number?: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          country_code?: string
+          created_at?: string
+          created_by?: string | null
+          display_name?: string
+          email?: string | null
+          id?: string
+          kind?: string
+          legal_name?: string | null
+          merged_into_client_id?: string | null
+          notes?: string | null
+          registration_identifier_type?: string | null
+          registration_identifier_value?: string | null
+          status?: string
+          telephone?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transport_clients_merged_into_client_id_fkey"
+            columns: ["merged_into_client_id"]
+            isOneToOne: false
+            referencedRelation: "transport_clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contract_driver_links: {
         Row: {
@@ -373,6 +514,42 @@ export type Database = {
           },
           {
             foreignKeyName: "document_contract_links_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_transport_client_links: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          document_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          document_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          document_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_transport_client_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "transport_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_transport_client_links_document_id_fkey"
             columns: ["document_id"]
             isOneToOne: false
             referencedRelation: "documents"
@@ -3396,6 +3573,54 @@ export type Database = {
           },
         ]
       }
+      transport_missions: {
+        Row: TransportMissionRow
+        Insert: Partial<TransportMissionRow> & { mission_number: string; client_id: string }
+        Update: Partial<TransportMissionRow>
+        Relationships: []
+      }
+      transport_mission_budget_lines: {
+        Row: TransportBudgetLineRow
+        Insert: Partial<TransportBudgetLineRow> & { mission_id: string; category: string; planned_amount: number }
+        Update: Partial<TransportBudgetLineRow>
+        Relationships: []
+      }
+      transport_mission_expenses: {
+        Row: TransportExpenseRow
+        Insert: Partial<TransportExpenseRow> & { mission_id: string; wallet_id: string; category: string; amount: number }
+        Update: Partial<TransportExpenseRow>
+        Relationships: []
+      }
+      transport_invoices: {
+        Row: TransportInvoiceRow
+        Insert: Partial<TransportInvoiceRow> & { invoice_number: string; mission_id: string; client_id: string; subtotal_amount: number; total_amount: number }
+        Update: Partial<TransportInvoiceRow>
+        Relationships: []
+      }
+      transport_invoice_payments: {
+        Row: TransportPaymentRow
+        Insert: Partial<TransportPaymentRow> & { invoice_id: string; mission_id: string; wallet_id: string; amount: number }
+        Update: Partial<TransportPaymentRow>
+        Relationships: []
+      }
+      finance_transport_mission_expense_links: {
+        Row: { expense_id: string; operation_id: string; link_type: string; created_at: string }
+        Insert: { expense_id: string; operation_id: string; link_type?: string; created_at?: string }
+        Update: { expense_id?: string; operation_id?: string; link_type?: string; created_at?: string }
+        Relationships: []
+      }
+      finance_transport_payment_links: {
+        Row: { payment_id: string; operation_id: string; link_type: string; created_at: string }
+        Insert: { payment_id: string; operation_id: string; link_type?: string; created_at?: string }
+        Update: { payment_id?: string; operation_id?: string; link_type?: string; created_at?: string }
+        Relationships: []
+      }
+      document_transport_mission_links: {
+        Row: { document_id: string; mission_id: string; created_at: string; created_by: string | null }
+        Insert: { document_id: string; mission_id: string; created_at?: string; created_by?: string | null }
+        Update: { document_id?: string; mission_id?: string; created_at?: string; created_by?: string | null }
+        Relationships: []
+      }
       wallets: {
         Row: {
           alert_threshold: number | null
@@ -4073,6 +4298,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      archive_client: {
+        Args: { p_client_id: string }
+        Returns: Database["public"]["Tables"]["transport_clients"]["Row"]
+        SetofOptions: {
+          from: "*"
+          to: "transport_clients"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       assign_driver_to_motorcycle: {
         Args: {
           p_driver_id: string
@@ -4399,6 +4634,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_client: {
+        Args: { p_client: Json }
+        Returns: Database["public"]["Tables"]["transport_clients"]["Row"]
+        SetofOptions: {
+          from: "*"
+          to: "transport_clients"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_document_with_relation: {
         Args: { p_document: Json; p_entity_id: string; p_relation: string }
         Returns: {
@@ -4712,6 +4957,21 @@ export type Database = {
         Args: { p_vehicle_id: string }
         Returns: boolean
       }
+      detect_client_duplicates: {
+        Args: { p_client: Json; p_exclude_client_id?: string }
+        Returns: {
+          client_number: string
+          display_name: string
+          email: string | null
+          id: string
+          legal_name: string | null
+          matched_fields: string[]
+          name_similarity: number
+          registration_identifier_type: string | null
+          registration_identifier_value: string | null
+          telephone: string | null
+        }[]
+      }
       document_is_sensitive: {
         Args: { p_document_id: string }
         Returns: boolean
@@ -4859,6 +5119,32 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_client_audit_history: {
+        Args: { p_client_id: string }
+        Returns: {
+          action: string
+          after_value: Json | null
+          before_value: Json | null
+          created_at: string
+          id: string
+          performed_by: string | null
+        }[]
+      }
+      get_client_financial_metrics: {
+        Args: { p_client_id: string }
+        Returns: {
+          amount_due: number | null
+          cash_result: number | null
+          gross_result: number | null
+          last_mission_at: string | null
+          last_payment_at: string | null
+          metrics_available: boolean
+          mission_count: number | null
+          total_billed: number | null
+          total_expenses: number | null
+          total_received: number | null
+        }[]
+      }
       get_management_report: {
         Args: { p_filters?: Json; p_report_type: string }
         Returns: Json
@@ -4909,6 +5195,16 @@ export type Database = {
         Returns: boolean
       }
       mark_all_notifications_read: { Args: never; Returns: number }
+      merge_clients: {
+        Args: { p_reason: string; p_source_client_id: string; p_target_client_id: string }
+        Returns: Database["public"]["Tables"]["transport_clients"]["Row"]
+        SetofOptions: {
+          from: "*"
+          to: "transport_clients"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       notification_business_date: { Args: never; Returns: string }
       notification_rule_severity: {
         Args: { p_alert_type: string; p_due_date?: string }
@@ -4990,6 +5286,16 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "documents"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      restore_client: {
+        Args: { p_client_id: string }
+        Returns: Database["public"]["Tables"]["transport_clients"]["Row"]
+        SetofOptions: {
+          from: "*"
+          to: "transport_clients"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -5154,6 +5460,16 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "harvests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_client: {
+        Args: { p_client_id: string; p_values: Json }
+        Returns: Database["public"]["Tables"]["transport_clients"]["Row"]
+        SetofOptions: {
+          from: "*"
+          to: "transport_clients"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -5356,6 +5672,21 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_transport_mission: { Args: { p_mission: Json }; Returns: TransportMissionRow; SetofOptions: { from: "transport_missions"; to: "transport_missions"; isOneToOne: true; isSetofReturn: false } }
+      update_transport_mission: { Args: { p_mission_id: string; p_values: Json }; Returns: TransportMissionRow; SetofOptions: { from: "transport_missions"; to: "transport_missions"; isOneToOne: true; isSetofReturn: false } }
+      set_transport_mission_status: { Args: { p_mission_id: string; p_status: string; p_reason?: string | null }; Returns: TransportMissionRow; SetofOptions: { from: "transport_missions"; to: "transport_missions"; isOneToOne: true; isSetofReturn: false } }
+      create_transport_mission_budget_line: { Args: { p_mission_id: string; p_line: Json }; Returns: TransportBudgetLineRow; SetofOptions: { from: "transport_mission_budget_lines"; to: "transport_mission_budget_lines"; isOneToOne: true; isSetofReturn: false } }
+      create_transport_mission_expense: { Args: { p_mission_id: string; p_expense: Json }; Returns: TransportExpenseRow; SetofOptions: { from: "transport_mission_expenses"; to: "transport_mission_expenses"; isOneToOne: true; isSetofReturn: false } }
+      update_transport_mission_expense: { Args: { p_expense_id: string; p_values: Json }; Returns: TransportExpenseRow; SetofOptions: { from: "transport_mission_expenses"; to: "transport_mission_expenses"; isOneToOne: true; isSetofReturn: false } }
+      confirm_transport_mission_expense: { Args: { p_expense_id: string }; Returns: TransportExpenseRow; SetofOptions: { from: "transport_mission_expenses"; to: "transport_mission_expenses"; isOneToOne: true; isSetofReturn: false } }
+      cancel_transport_mission_expense: { Args: { p_expense_id: string; p_reason: string }; Returns: TransportExpenseRow; SetofOptions: { from: "transport_mission_expenses"; to: "transport_mission_expenses"; isOneToOne: true; isSetofReturn: false } }
+      create_transport_invoice: { Args: { p_mission_id: string; p_invoice: Json }; Returns: TransportInvoiceRow; SetofOptions: { from: "transport_invoices"; to: "transport_invoices"; isOneToOne: true; isSetofReturn: false } }
+      issue_transport_invoice: { Args: { p_invoice_id: string }; Returns: TransportInvoiceRow; SetofOptions: { from: "transport_invoices"; to: "transport_invoices"; isOneToOne: true; isSetofReturn: false } }
+      create_transport_invoice_payment: { Args: { p_invoice_id: string; p_payment: Json }; Returns: TransportPaymentRow; SetofOptions: { from: "transport_invoice_payments"; to: "transport_invoice_payments"; isOneToOne: true; isSetofReturn: false } }
+      confirm_transport_invoice_payment: { Args: { p_payment_id: string }; Returns: TransportPaymentRow; SetofOptions: { from: "transport_invoice_payments"; to: "transport_invoice_payments"; isOneToOne: true; isSetofReturn: false } }
+      cancel_transport_invoice_payment: { Args: { p_payment_id: string; p_reason: string }; Returns: TransportPaymentRow; SetofOptions: { from: "transport_invoice_payments"; to: "transport_invoice_payments"; isOneToOne: true; isSetofReturn: false } }
+      get_transport_mission_financial_summary: { Args: { p_mission_id: string }; Returns: { quoted_amount: number; budget_amount: number; actual_expenses: number; invoiced_amount: number; received_amount: number; amount_due: number; gross_result: number; cash_result: number; cost_per_km: number | null }[] }
+      get_transport_mission_history: { Args: { p_mission_id: string }; Returns: { id: string; source_type: string; source_id: string; action: string; created_at: string; performed_by: string | null; before_value: Json | null; after_value: Json | null }[] }
       update_wallet_balance: {
         Args: { p_wallet_id: string }
         Returns: undefined
