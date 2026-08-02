@@ -232,7 +232,7 @@ function VehicleDetailsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm">Prix d'achat</CardTitle>
-            <CircleDollarSign className="h-5 w-5 text-emerald-600" />
+            <CircleDollarSign className="h-5 w-5 text-success" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatAmount(vehicle.purchase_price)}</div>
@@ -468,6 +468,13 @@ function VehicleDetailsPage() {
                       .filter(Boolean)
                       .join(" · ")}
                   />
+                  <div className="md:col-span-3">
+                    <Button asChild size="sm" variant="outline">
+                      <Link to="/drivers/$driverId/activity" params={{ driverId: driver.id }}>
+                        Suivre l’activité & la rémunération
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <EmptyState label="L'affectation pointe vers un chauffeur introuvable." />

@@ -56,6 +56,7 @@ import {
   getCourseHistory,
   issueCourseInvoice,
   setCourseStatus,
+  updateCourse,
   type Course,
   type CourseBudgetLine,
   type CourseExpense,
@@ -115,6 +116,9 @@ function CourseDetailsPage() {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archiveReason, setArchiveReason] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [planningOpen, setPlanningOpen] = useState(false);
+  const [plannedDeparture, setPlannedDeparture] = useState("");
+  const [plannedArrival, setPlannedArrival] = useState("");
   const [cancellationTarget, setCancellationTarget] = useState<{ kind: "expense" | "payment"; id: string } | null>(null);
   const [cancellationReason, setCancellationReason] = useState("");
 
@@ -138,6 +142,34 @@ function CourseDetailsPage() {
       toast.success("Course supprimée.");
       void queryClient.invalidateQueries({ queryKey: ["courses"] });
       void navigate({ to: "/courses" });
+    },
+    onError: notificationError,
+  });
+  const planningMutation = useMutation({
+    mutationFn: async ({ departure, arrival }: { departure: string; arrival: string }) => {
+      const plannedDepartureAt = toIsoDateTime(departure);
+      const plannedArrivalAt = toIsoDateTime(arrival);
+
+      if (plannedArrivalAt <= plannedDepartureAt) {
+        throw new Error("L’arrivée prévue doit être postérieure au départ prévu.");
+      }
+
+      await updateCourse({
+        data: {
+          id: courseId,
+          values: {
+            planned_departure_at: plannedDepartureAt,
+            planned_arrival_at: plannedArrivalAt,
+          },
+        },
+      });
+
+      return setCourseStatus({ data: { id: courseId, status: "PLANNED", reason: null } });
+    },
+    onSuccess: () => {
+      toast.success("Course planifiée.");
+      setPlanningOpen(false);
+      refresh();
     },
     onError: notificationError,
   });
@@ -185,6 +217,12 @@ function CourseDetailsPage() {
     statusMutation.mutate({ status, reason: reason?.trim() || null });
   };
 
+  const openPlanning = () => {
+    setPlannedDeparture(toDateTimeLocal(course.planned_departure_at));
+    setPlannedArrival(toDateTimeLocal(course.planned_arrival_at));
+    setPlanningOpen(true);
+  };
+
   const invoiceSummary = !detail.invoices.length
     ? "Aucune facture"
     : `${detail.invoices.length} facture${detail.invoices.length > 1 ? "s" : ""} · ${detail.invoices.filter((invoice) => invoice.status === "PAID").length} réglée${detail.invoices.filter((invoice) => invoice.status === "PAID").length > 1 ? "s" : ""}`;
@@ -201,7 +239,7 @@ function CourseDetailsPage() {
         <p className="mt-2 text-body-sm text-muted-foreground">{detail.clientName ?? "Client non accessible"} · {[course.departure_location, course.destination_location].filter(Boolean).join(" → ") || "Itinéraire à préciser"}</p>
       </div>
       <div className="flex flex-wrap gap-2">
-        {course.status === "DRAFT" && can("missions.dispatch") ? <Button onClick={() => setStatus("PLANNED")}>Planifier</Button> : null}
+        {course.status === "DRAFT" && can("missions.dispatch") ? <Button onClick={openPlanning}>Planifier</Button> : null}
         {course.status === "PLANNED" && can("missions.dispatch") ? <Button onClick={() => setStatus("IN_PROGRESS")}>Démarrer</Button> : null}
         {course.status === "IN_PROGRESS" && can("missions.update") ? <Button onClick={() => setStatus("COMPLETED")}>Terminer</Button> : null}
         {course.status === "COMPLETED" && can("missions.close") ? <Button onClick={() => setStatus("CLOSED")}>Clôturer</Button> : null}
@@ -284,6 +322,7 @@ function CourseDetailsPage() {
       <TabsContent value="history"><Card variant="section"><CardHeader><CardTitle>Historique audité</CardTitle><p className="text-sm text-muted-foreground">Chaque action importante reste consultable avec sa date et son contexte.</p></CardHeader><CardContent>{historyQuery.isPending ? <HistoryTimelineSkeleton /> : historyQuery.isError ? <p className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">Impossible de charger l’historique.</p> : historyQuery.data?.length ? <ol className="relative space-y-5 border-l border-primary/20 pl-5">{historyQuery.data.map((entry) => <li key={entry.id} className="relative"><span className="absolute -left-[1.65rem] top-1.5 grid size-3 place-items-center rounded-full border-2 border-surface-elevated bg-primary" aria-hidden="true" /><div className="rounded-xl border border-border/80 bg-surface/60 p-4"><p className="font-medium text-foreground">{historyLabel(entry.source_type, entry.action)}</p><p className="mt-1 text-caption">{formatDate(entry.created_at)} · {entry.performed_by ? `Utilisateur ${entry.performed_by.slice(0, 8)}` : "Utilisateur système"}</p><HistorySnapshot label="Avant" value={entry.before_value} /><HistorySnapshot label="Après" value={entry.after_value} /></div></li>)}</ol> : <Empty message="Aucun événement visible pour cette Course." />}</CardContent></Card></TabsContent>
     </Tabs>
 
+    <Dialog open={planningOpen} onOpenChange={setPlanningOpen}><DialogContent><DialogHeader><DialogTitle>Planifier la Course</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-muted-foreground">Indiquez le créneau réel prévu. Le véhicule et le chauffeur resteront disponibles seulement si ce créneau ne chevauche aucune autre Course active.</p><div className="grid gap-4 sm:grid-cols-2"><Field label="Départ prévu"><Input type="datetime-local" value={plannedDeparture} onChange={(event) => setPlannedDeparture(event.target.value)} /></Field><Field label="Arrivée prévue"><Input type="datetime-local" value={plannedArrival} onChange={(event) => setPlannedArrival(event.target.value)} /></Field></div><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setPlanningOpen(false)}>Annuler</Button><Button disabled={!plannedDeparture || !plannedArrival || planningMutation.isPending} onClick={() => planningMutation.mutate({ departure: plannedDeparture, arrival: plannedArrival })}>{planningMutation.isPending ? "Planification…" : "Enregistrer et planifier"}</Button></div></div></DialogContent></Dialog>
     <Dialog open={expenseOpen} onOpenChange={setExpenseOpen}><DialogContent><DialogHeader><DialogTitle>Ajouter une dépense</DialogTitle></DialogHeader><ExpenseForm missionId={courseId} onSuccess={() => { setExpenseOpen(false); refresh(); }} /></DialogContent></Dialog>
     <Dialog open={invoiceOpen} onOpenChange={setInvoiceOpen}><DialogContent><DialogHeader><DialogTitle>Créer une facture</DialogTitle></DialogHeader><InvoiceForm missionId={courseId} defaultAmount={course.quoted_amount} onSuccess={() => { setInvoiceOpen(false); refresh(); }} /></DialogContent></Dialog>
     <Dialog open={paymentInvoiceId !== null} onOpenChange={(open) => { if (!open) setPaymentInvoiceId(null); }}><DialogContent><DialogHeader><DialogTitle>Enregistrer un paiement</DialogTitle></DialogHeader>{paymentInvoice ? <PaymentForm invoiceId={paymentInvoice.id} due={invoiceDue(paymentInvoice, detail.payments)} onSuccess={() => { setPaymentInvoiceId(null); refresh(); }} /> : null}</DialogContent></Dialog>
@@ -293,7 +332,36 @@ function CourseDetailsPage() {
   </div>;
 }
 
-function notificationError(error: unknown) { toast.error(error instanceof Error ? error.message : "L’action n’a pas pu être effectuée."); }
+function toDateTimeLocal(value: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function toIsoDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) throw new Error("La date et l’heure indiquées ne sont pas valides.");
+  return date.toISOString();
+}
+
+function notificationError(error: unknown) {
+  if (error instanceof Error) {
+    toast.error(error.message);
+    return;
+  }
+
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = Reflect.get(error, "message");
+    if (typeof message === "string" && message.trim()) {
+      toast.error(message);
+      return;
+    }
+  }
+
+  toast.error("L’action n’a pas pu être effectuée.");
+}
 function CourseDetailsSkeleton() { return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8" aria-label="Chargement de la Course"><div className="h-7 w-32 animate-pulse rounded bg-muted" /><div className="h-10 w-72 animate-pulse rounded bg-muted" /><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">{Array.from({ length: 9 }, (_, index) => <div key={index} className="h-32 animate-pulse rounded-xl border bg-card" />)}</div><div className="h-96 animate-pulse rounded-xl border bg-card" /></div>; }
 
 function CockpitStat({ icon: Icon, label, value, detail, tone }: { icon: LucideIcon; label: string; value: string; detail: string; tone: "info" | "success" | "warning" | "danger" }) {

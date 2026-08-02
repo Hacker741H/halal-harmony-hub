@@ -66,7 +66,7 @@ export function WalletTable({ wallets, loading, onEdit, onDelete }: Props) {
     <section className="space-y-5">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
+          <p className="text-overline text-primary">
             Portefeuilles
           </p>
           <h2 className="mt-1 text-xl font-semibold tracking-tight">Vos comptes en temps réel</h2>
@@ -74,7 +74,7 @@ export function WalletTable({ wallets, loading, onEdit, onDelete }: Props) {
         <div className="relative w-full sm:max-w-sm">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
-            className="h-11 rounded-xl border-0 bg-white pl-9 shadow-sm ring-1 ring-black/5"
+            className="h-11 rounded-xl border border-input bg-surface pl-9 shadow-xs"
             placeholder="Rechercher un wallet…"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -100,7 +100,7 @@ export function WalletTable({ wallets, loading, onEdit, onDelete }: Props) {
             return (
               <article
                 key={wallet.id}
-                className="group relative cursor-pointer overflow-hidden rounded-3xl border bg-white p-5 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg"
+                className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border/75 bg-surface p-5 shadow-xs transition-[border-color,box-shadow,transform] transition-ui hover:-translate-y-0.5 hover:border-primary/25 hover:bg-surface-hover hover:shadow-md"
                 onClick={() =>
                   navigate({ to: "/wallets/$walletId", params: { walletId: wallet.id } })
                 }
@@ -158,11 +158,11 @@ export function WalletTable({ wallets, loading, onEdit, onDelete }: Props) {
                     Solde disponible
                   </p>
                   <p
-                    className={`mt-2 text-3xl font-bold tracking-tight ${balance < 0 ? "text-rose-600" : "text-emerald-950"}`}
+                    className={`mt-2 text-3xl font-bold tracking-tight ${balance < 0 ? "text-destructive" : "text-foreground"}`}
                   >
                     {formatMoney(wallet.balance)}
                   </p>
-                  <p className="mt-3 text-sm font-medium text-emerald-700 opacity-0 transition-opacity group-hover:opacity-100">
+                  <p className="mt-3 text-sm font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
                     Voir les opérations →
                   </p>
                 </Link>
@@ -175,12 +175,12 @@ export function WalletTable({ wallets, loading, onEdit, onDelete }: Props) {
                 <div className="mt-6 flex items-center justify-between border-t pt-4">
                   <Badge
                     variant="secondary"
-                    className="rounded-full bg-slate-100 px-3 py-1 text-slate-700"
+                    className="rounded-full border-border/75 bg-muted px-3 py-1 text-muted-foreground"
                   >
                     {isWave ? "WAVE BUSINESS" : wallet.type}
                   </Badge>
                   {wallet.is_default ? (
-                    <Badge className="rounded-full bg-emerald-700 px-3 py-1">Principal</Badge>
+                    <Badge variant="success" appearance="soft" className="px-3 py-1">Principal</Badge>
                   ) : (
                     <span className="text-xs text-muted-foreground">
                       {wallet.color || "Couleur standard"}

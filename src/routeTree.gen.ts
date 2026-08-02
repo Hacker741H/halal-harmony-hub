@@ -58,6 +58,7 @@ import { Route as AuthenticatedVehiclesIndexRouteImport } from './routes/_authen
 import { Route as AuthenticatedVehiclesVehicleIdRouteImport } from './routes/_authenticated/vehicles/$vehicleId'
 import { Route as AuthenticatedWalletsIndexRouteImport } from './routes/_authenticated/wallets/index'
 import { Route as AuthenticatedWalletsWalletIdRouteImport } from './routes/_authenticated/wallets/$walletId'
+import { Route as AuthenticatedDriversDriverIdActivityRouteImport } from './routes/_authenticated/drivers/$driverId/activity'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -326,6 +327,12 @@ const AuthenticatedWalletsWalletIdRoute =
     path: '/$walletId',
     getParentRoute: () => AuthenticatedWalletsRoute,
   } as any)
+const AuthenticatedDriversDriverIdActivityRoute =
+  AuthenticatedDriversDriverIdActivityRouteImport.update({
+    id: '/activity',
+    path: '/activity',
+    getParentRoute: () => AuthenticatedDriversDriverIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -361,7 +368,7 @@ export interface FileRoutesByFullPath {
   '/contracts/$contractId': typeof AuthenticatedContractsContractIdRoute
   '/courses/$courseId': typeof AuthenticatedCoursesCourseIdRoute
   '/documents/$documentId': typeof AuthenticatedDocumentsDocumentIdRoute
-  '/drivers/$driverId': typeof AuthenticatedDriversDriverIdRoute
+  '/drivers/$driverId': typeof AuthenticatedDriversDriverIdRouteWithChildren
   '/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
   '/farms/$farmId': typeof AuthenticatedFarmsFarmIdRoute
   '/field/$reportId': typeof AuthenticatedFieldReportIdRoute
@@ -376,6 +383,7 @@ export interface FileRoutesByFullPath {
   '/field/': typeof AuthenticatedFieldIndexRoute
   '/vehicles/': typeof AuthenticatedVehiclesIndexRoute
   '/wallets/': typeof AuthenticatedWalletsIndexRoute
+  '/drivers/$driverId/activity': typeof AuthenticatedDriversDriverIdActivityRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -403,7 +411,7 @@ export interface FileRoutesByTo {
   '/contracts/$contractId': typeof AuthenticatedContractsContractIdRoute
   '/courses/$courseId': typeof AuthenticatedCoursesCourseIdRoute
   '/documents/$documentId': typeof AuthenticatedDocumentsDocumentIdRoute
-  '/drivers/$driverId': typeof AuthenticatedDriversDriverIdRoute
+  '/drivers/$driverId': typeof AuthenticatedDriversDriverIdRouteWithChildren
   '/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
   '/farms/$farmId': typeof AuthenticatedFarmsFarmIdRoute
   '/field/$reportId': typeof AuthenticatedFieldReportIdRoute
@@ -418,6 +426,7 @@ export interface FileRoutesByTo {
   '/field': typeof AuthenticatedFieldIndexRoute
   '/vehicles': typeof AuthenticatedVehiclesIndexRoute
   '/wallets': typeof AuthenticatedWalletsIndexRoute
+  '/drivers/$driverId/activity': typeof AuthenticatedDriversDriverIdActivityRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -455,7 +464,7 @@ export interface FileRoutesById {
   '/_authenticated/contracts/$contractId': typeof AuthenticatedContractsContractIdRoute
   '/_authenticated/courses/$courseId': typeof AuthenticatedCoursesCourseIdRoute
   '/_authenticated/documents/$documentId': typeof AuthenticatedDocumentsDocumentIdRoute
-  '/_authenticated/drivers/$driverId': typeof AuthenticatedDriversDriverIdRoute
+  '/_authenticated/drivers/$driverId': typeof AuthenticatedDriversDriverIdRouteWithChildren
   '/_authenticated/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
   '/_authenticated/farms/$farmId': typeof AuthenticatedFarmsFarmIdRoute
   '/_authenticated/field/$reportId': typeof AuthenticatedFieldReportIdRoute
@@ -470,6 +479,7 @@ export interface FileRoutesById {
   '/_authenticated/field/': typeof AuthenticatedFieldIndexRoute
   '/_authenticated/vehicles/': typeof AuthenticatedVehiclesIndexRoute
   '/_authenticated/wallets/': typeof AuthenticatedWalletsIndexRoute
+  '/_authenticated/drivers/$driverId/activity': typeof AuthenticatedDriversDriverIdActivityRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -522,6 +532,7 @@ export interface FileRouteTypes {
     | '/field/'
     | '/vehicles/'
     | '/wallets/'
+    | '/drivers/$driverId/activity'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -564,6 +575,7 @@ export interface FileRouteTypes {
     | '/field'
     | '/vehicles'
     | '/wallets'
+    | '/drivers/$driverId/activity'
   id:
     | '__root__'
     | '/_authenticated'
@@ -615,6 +627,7 @@ export interface FileRouteTypes {
     | '/_authenticated/field/'
     | '/_authenticated/vehicles/'
     | '/_authenticated/wallets/'
+    | '/_authenticated/drivers/$driverId/activity'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -967,6 +980,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWalletsWalletIdRouteImport
       parentRoute: typeof AuthenticatedWalletsRoute
     }
+    '/_authenticated/drivers/$driverId/activity': {
+      id: '/_authenticated/drivers/$driverId/activity'
+      path: '/activity'
+      fullPath: '/drivers/$driverId/activity'
+      preLoaderRoute: typeof AuthenticatedDriversDriverIdActivityRouteImport
+      parentRoute: typeof AuthenticatedDriversDriverIdRoute
+    }
   }
 }
 
@@ -1028,13 +1048,29 @@ const AuthenticatedDocumentsRouteWithChildren =
     AuthenticatedDocumentsRouteChildren,
   )
 
+interface AuthenticatedDriversDriverIdRouteChildren {
+  AuthenticatedDriversDriverIdActivityRoute: typeof AuthenticatedDriversDriverIdActivityRoute
+}
+
+const AuthenticatedDriversDriverIdRouteChildren: AuthenticatedDriversDriverIdRouteChildren =
+  {
+    AuthenticatedDriversDriverIdActivityRoute:
+      AuthenticatedDriversDriverIdActivityRoute,
+  }
+
+const AuthenticatedDriversDriverIdRouteWithChildren =
+  AuthenticatedDriversDriverIdRoute._addFileChildren(
+    AuthenticatedDriversDriverIdRouteChildren,
+  )
+
 interface AuthenticatedDriversRouteChildren {
-  AuthenticatedDriversDriverIdRoute: typeof AuthenticatedDriversDriverIdRoute
+  AuthenticatedDriversDriverIdRoute: typeof AuthenticatedDriversDriverIdRouteWithChildren
   AuthenticatedDriversIndexRoute: typeof AuthenticatedDriversIndexRoute
 }
 
 const AuthenticatedDriversRouteChildren: AuthenticatedDriversRouteChildren = {
-  AuthenticatedDriversDriverIdRoute: AuthenticatedDriversDriverIdRoute,
+  AuthenticatedDriversDriverIdRoute:
+    AuthenticatedDriversDriverIdRouteWithChildren,
   AuthenticatedDriversIndexRoute: AuthenticatedDriversIndexRoute,
 }
 

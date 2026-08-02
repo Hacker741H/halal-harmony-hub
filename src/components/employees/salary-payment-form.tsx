@@ -13,21 +13,29 @@ import { getWallets } from "@/lib/wallet.functions";
 
 type Props = {
   onSuccess: () => void;
+  initialDriverId?: string;
+  initialPeriodStart?: string;
+  defaultDescription?: string;
 };
 
 const currentPeriod = `${new Date().toISOString().slice(0, 7)}-01`;
 
-export function SalaryPaymentForm({ onSuccess }: Props) {
+export function SalaryPaymentForm({
+  onSuccess,
+  initialDriverId,
+  initialPeriodStart,
+  defaultDescription,
+}: Props) {
   const [loading, setLoading] = useState(false);
   const [employeeId, setEmployeeId] = useState("");
-  const [driverId, setDriverId] = useState("");
+  const [driverId, setDriverId] = useState(initialDriverId ?? "");
   const [walletId, setWalletId] = useState("");
-  const [periodStart, setPeriodStart] = useState(currentPeriod);
+  const [periodStart, setPeriodStart] = useState(initialPeriodStart ?? currentPeriod);
   const [paidAt, setPaidAt] = useState(new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = useState("");
   const [isPartial, setIsPartial] = useState(false);
   const [reference, setReference] = useState("");
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState(defaultDescription ?? "");
 
   const { data: people = [] } = useQuery({
     queryKey: ["salary-payment-people"],
@@ -92,7 +100,7 @@ export function SalaryPaymentForm({ onSuccess }: Props) {
         </div>
         <div>
           <Label>Chauffeur (facultatif)</Label>
-          <select className="w-full rounded-md border px-3 py-2" value={driverId} onChange={(event) => setDriverId(event.target.value)}>
+          <select className="w-full rounded-md border px-3 py-2" value={driverId} disabled={Boolean(initialDriverId)} onChange={(event) => setDriverId(event.target.value)}>
             <option value="">Paiement employé</option>
             {people.filter((person) => person.driver_id).map((person) => <option key={person.driver_id} value={person.driver_id ?? ""}>{person.nom} {person.prenom ?? ""}</option>)}
           </select>

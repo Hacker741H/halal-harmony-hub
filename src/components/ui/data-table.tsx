@@ -152,7 +152,7 @@ function DataTable<TData>({
   };
 
   return (
-    <section className={cn("overflow-hidden rounded-xl border bg-surface shadow-xs", className)}>
+    <section className={cn("overflow-hidden rounded-xl border border-border/80 bg-surface/95 shadow-xs", className)}>
       {(searchable || toolbar) && (
         <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
           {searchable ? (
@@ -179,7 +179,7 @@ function DataTable<TData>({
 
       <div className="relative max-h-[min(60vh,42rem)] overflow-auto">
         <table className="w-full min-w-[42rem] text-left text-sm">
-          <thead className="sticky top-0 z-10 bg-muted/95 text-muted-foreground backdrop-blur-sm">
+          <thead className="sticky top-0 z-10 border-b border-border/80 bg-surface-elevated/95 text-muted-foreground backdrop-blur-sm">
             <tr className="border-b">
               {selectable ? (
                 <th className={cn("w-11 px-3", densityClasses[density].head)} scope="col">
@@ -252,7 +252,7 @@ function DataTable<TData>({
                     key={rowId}
                     data-state={isSelected ? "selected" : undefined}
                     className={cn(
-                      "border-b transition-[background-color] transition-ui-fast hover:bg-surface-hover/60 data-[state=selected]:bg-primary/5",
+                      "border-b border-border/65 transition-[background-color] transition-ui-fast hover:bg-surface-hover/60 data-[state=selected]:bg-primary/5",
                       onRowClick && "cursor-pointer",
                     )}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}

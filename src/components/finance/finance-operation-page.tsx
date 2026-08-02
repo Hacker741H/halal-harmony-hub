@@ -1,16 +1,14 @@
-import { useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
+import type { LucideIcon } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
 
 import { FinanceTable } from "@/components/finance-table";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ModuleHero } from "@/components/ui/module-hero";
 import {
   deleteFinanceOperation,
   getFinanceOperationsByType,
@@ -27,9 +25,11 @@ type Props = {
   title: string;
   description: string;
   type: FinanceOperationType;
-  icon: ReactNode;
+  icon: LucideIcon;
   createLabel: string;
   Form: ComponentType<FinanceFormProps>;
+  quickCreate?: boolean;
+  onQuickCreateHandled?: () => void;
 };
 
 export function FinanceOperationPage({
@@ -39,11 +39,25 @@ export function FinanceOperationPage({
   icon,
   createLabel,
   Form,
+  quickCreate = false,
+  onQuickCreateHandled,
 }: Props) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [selectedOperation, setSelectedOperation] =
-    useState<FinanceOperation | null>(null);
+  const [selectedOperation, setSelectedOperation] = useState<FinanceOperation | null>(null);
+  const handledQuickCreate = useRef(false);
+
+  useEffect(() => {
+    if (!quickCreate) {
+      handledQuickCreate.current = false;
+      return;
+    }
+    if (!handledQuickCreate.current) {
+      setSelectedOperation(null);
+      setOpen(true);
+      handledQuickCreate.current = true;
+    }
+  }, [quickCreate]);
 
   const { data: operations = [], isLoading } = useQuery({
     queryKey: ["finance-operations", type],
@@ -53,7 +67,7 @@ export function FinanceOperationPage({
   const refresh = async () => {
     setOpen(false);
     setSelectedOperation(null);
-
+    onQuickCreateHandled?.();
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["finance-operations"] }),
       queryClient.invalidateQueries({ queryKey: ["finance-stats"] }),
@@ -75,7 +89,6 @@ export function FinanceOperationPage({
 
   const remove = async (operation: FinanceOperation) => {
     if (!confirm("Supprimer cette opération ?")) return;
-
     try {
       await deleteFinanceOperation({ data: { id: operation.id } });
       await refresh();
@@ -87,42 +100,47 @@ export function FinanceOperationPage({
 
   return (
     <>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="rounded-xl bg-primary/10 p-4">{icon}</div>
-            <div>
-              <h1 className="text-3xl font-bold">{title}</h1>
-              <p className="text-muted-foreground">{description}</p>
-            </div>
-          </div>
-
-          <Button onClick={create}>
-            <Plus className="mr-2 h-4 w-4" />
-            {createLabel}
-          </Button>
-        </div>
-
-        <FinanceTable
-          operations={operations}
-          loading={isLoading}
-          onEdit={edit}
-          onDelete={remove}
+      <div className="space-y-7">
+        <ModuleHero
+          icon={icon}
+          eyebrow="Finance centrale"
+          title={title}
+          description={description}
+          actions={
+            <Button onClick={create}>
+              <Plus className="h-4 w-4" />
+              {createLabel}
+            </Button>
+          }
         />
+        <Card variant="section" className="overflow-hidden">
+          <CardHeader className="border-b border-border/70">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Journal filtré</p>
+                <CardTitle className="mt-1 text-xl">{title} enregistrées</CardTitle>
+              </div>
+              <p className="text-sm text-muted-foreground">Recherchez ou filtrez les opérations de ce type.</p>
+            </div>
+          </CardHeader>
+          <CardContent className="p-5 sm:p-6">
+            <FinanceTable operations={operations} loading={isLoading} onEdit={edit} onDelete={remove} />
+          </CardContent>
+        </Card>
       </div>
-
       <Dialog
         open={open}
         onOpenChange={(value) => {
           setOpen(value);
-          if (!value) setSelectedOperation(null);
+          if (!value) {
+            setSelectedOperation(null);
+            onQuickCreateHandled?.();
+          }
         }}
       >
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>
-              {selectedOperation ? `Modifier : ${title.toLowerCase()}` : createLabel}
-            </DialogTitle>
+            <DialogTitle>{selectedOperation ? `Modifier : ${title.toLowerCase()}` : createLabel}</DialogTitle>
           </DialogHeader>
           <Form operation={selectedOperation} onSuccess={refresh} />
         </DialogContent>

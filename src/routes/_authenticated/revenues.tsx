@@ -15,7 +15,7 @@ function RevenuesPage() {
       title="Recettes"
       description="Chaque entrée raconte le prix des efforts d’hier."
       type="REVENUE"
-      icon={<TrendingUp className="h-8 w-8 text-primary" />}
+      icon={TrendingUp}
       createLabel="Nouvelle recette"
       Form={RevenueForm}
     />

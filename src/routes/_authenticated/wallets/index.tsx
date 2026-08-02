@@ -1,37 +1,39 @@
 import { useState } from "react";
+
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDownRight, ArrowUpRight, Landmark, Plus, WalletCards } from "lucide-react";
+import { Landmark, Plus, Wallet, WalletCards } from "lucide-react";
+
 import { WalletForm } from "@/components/wallet-form";
 import { WalletTable } from "@/components/wallet-table";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import {
-  deleteWallet,
-  getWallets,
-  getWalletStats,
-  type Wallet as WalletType,
-} from "@/lib/wallet.functions";
+import { MetricCard } from "@/components/ui/metric-card";
+import { ModuleHero } from "@/components/ui/module-hero";
+import { deleteWallet, getWallets, getWalletStats, type Wallet as WalletType } from "@/lib/wallet.functions";
 
-export const Route = createFileRoute("/_authenticated/wallets/")({ component: WalletsPage });
+export const Route = createFileRoute("/_authenticated/wallets/")({
+  component: WalletsPage,
+});
+
 const formatAmount = (value: number) => `${value.toLocaleString("fr-FR")} FCFA`;
 
 function WalletsPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState<WalletType | null>(null);
-  const { data: wallets = [], isLoading } = useQuery({
-    queryKey: ["wallets"],
-    queryFn: () => getWallets(),
-  });
+  const { data: wallets = [], isLoading } = useQuery({ queryKey: ["wallets"], queryFn: () => getWallets() });
   const { data: stats } = useQuery({ queryKey: ["wallet-stats"], queryFn: () => getWalletStats() });
   const totalBalance = Number(stats?.totalBalance ?? 0);
+
   const refresh = () => {
     setOpen(false);
     setSelectedWallet(null);
     void queryClient.invalidateQueries({ queryKey: ["wallets"] });
     void queryClient.invalidateQueries({ queryKey: ["wallet-stats"] });
   };
+
   const remove = async (wallet: WalletType) => {
     if (!confirm(`Supprimer le wallet « ${wallet.name} » ?`)) return;
     try {
@@ -44,75 +46,73 @@ function WalletsPage() {
       alert(error instanceof Error ? error.message : "Impossible de supprimer ce wallet.");
     }
   };
+
   return (
-    <>
-      <main className="min-h-full space-y-8 bg-[radial-gradient(circle_at_top_right,_rgba(16,185,129,0.13),_transparent_32rem)] p-6 lg:p-8">
-        <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-700 p-6 text-white shadow-xl lg:p-8">
-          <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-emerald-400/20 blur-3xl" />
-          <div className="relative flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-            <div>
-              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-200">
-                <WalletCards className="h-4 w-4" />
-                Finance centrale
-              </p>
-              <h1 className="mt-3 text-4xl font-bold tracking-tight">Wallets</h1>
-              <p className="mt-2 max-w-xl text-emerald-100">
-                Chaque franc a une direction. À vous de la décider.
-              </p>
-            </div>
-            <Button
-              onClick={() => {
-                setSelectedWallet(null);
-                setOpen(true);
-              }}
-              className="bg-white text-emerald-950 shadow-lg hover:bg-emerald-50"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Nouveau wallet
-            </Button>
-          </div>
-        </section>
-        <section className="grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr]">
-          <div className="rounded-3xl bg-emerald-950 p-6 text-white shadow-lg">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-emerald-200">Trésorerie consolidée</p>
-                <p className="mt-3 text-3xl font-bold tracking-tight">
-                  {formatAmount(totalBalance)}
-                </p>
-              </div>
-              <Landmark className="h-6 w-6 text-emerald-300" />
-            </div>
-            <p className="mt-6 flex items-center gap-1 text-sm text-emerald-200">
-              {totalBalance < 0 ? (
-                <ArrowDownRight className="h-4 w-4 text-rose-300" />
-              ) : (
-                <ArrowUpRight className="h-4 w-4 text-emerald-300" />
-              )}
-              {totalBalance < 0 ? "Solde à régulariser" : "Trésorerie positive"}
-            </p>
-          </div>
-          <Metric
-            label="Comptes actifs"
-            value={stats?.totalWallets ?? 0}
-            detail="Wallets configurés"
-          />
-          <Metric
-            label="Wallet principal"
-            value={wallets.find((wallet) => wallet.is_default)?.name ?? "—"}
-            detail="Compte de référence"
-          />
-        </section>
-        <WalletTable
-          wallets={wallets}
-          loading={isLoading}
-          onEdit={(wallet) => {
-            setSelectedWallet(wallet);
-            setOpen(true);
-          }}
-          onDelete={remove}
+    <div className="space-y-7">
+      <ModuleHero
+        icon={WalletCards}
+        eyebrow="Finance centrale"
+        title="Wallets et trésorerie"
+        description="Chaque mouvement passe par un wallet. Gardez une lecture fiable des soldes disponibles et des comptes à piloter."
+        actions={
+          <Button
+            onClick={() => {
+              setSelectedWallet(null);
+              setOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            Nouveau wallet
+          </Button>
+        }
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <MetricCard
+          label="Trésorerie consolidée"
+          value={formatAmount(totalBalance)}
+          description={totalBalance < 0 ? "Solde à régulariser" : "Solde disponible consolidé"}
+          icon={Landmark}
+          tone={totalBalance < 0 ? "danger" : "success"}
         />
-      </main>
+        <MetricCard
+          label="Comptes actifs"
+          value={stats?.totalWallets ?? 0}
+          description="Wallets configurés"
+          icon={WalletCards}
+          tone="info"
+        />
+        <MetricCard
+          label="Wallet principal"
+          value={wallets.find((wallet) => wallet.is_default)?.name ?? "—"}
+          description="Compte de référence"
+          icon={Wallet}
+        />
+      </div>
+
+      <Card variant="section" className="overflow-hidden">
+        <CardHeader className="border-b border-border/70">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Comptes de trésorerie</p>
+              <CardTitle className="mt-1 text-xl">Wallets suivis</CardTitle>
+            </div>
+            <p className="text-sm text-muted-foreground">{isLoading ? "Chargement des wallets…" : "Ouvrez un wallet pour consulter son historique détaillé."}</p>
+          </div>
+        </CardHeader>
+        <CardContent className="p-5 sm:p-6">
+          <WalletTable
+            wallets={wallets}
+            loading={isLoading}
+            onEdit={(wallet) => {
+              setSelectedWallet(wallet);
+              setOpen(true);
+            }}
+            onDelete={remove}
+          />
+        </CardContent>
+      </Card>
+
       <Dialog
         open={open}
         onOpenChange={(value) => {
@@ -127,23 +127,6 @@ function WalletsPage() {
           <WalletForm wallet={selectedWallet} onSuccess={refresh} />
         </DialogContent>
       </Dialog>
-    </>
-  );
-}
-function Metric({
-  label,
-  value,
-  detail,
-}: {
-  label: string;
-  value: string | number;
-  detail: string;
-}) {
-  return (
-    <div className="rounded-3xl border bg-white p-6 shadow-sm">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-3 truncate text-2xl font-bold tracking-tight">{value}</p>
-      <p className="mt-5 text-sm text-muted-foreground">{detail}</p>
     </div>
   );
 }

@@ -1,19 +1,26 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { FileSignature, Plus } from "lucide-react";
+import { CalendarDays, CircleCheck, FileSignature, Files, Plus } from "lucide-react";
+import { z } from "zod";
 
 import { ContractForm } from "@/components/contracts/contract-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { MetricCard } from "@/components/ui/metric-card";
+import { ModuleHero } from "@/components/ui/module-hero";
 import { getContracts } from "@/lib/contracts.functions";
 
 export const Route = createFileRoute("/_authenticated/contracts/")({
+  validateSearch: z.object({ create: z.literal("true").optional() }),
   component: ContractsPage,
 });
 
 function ContractsPage() {
+  const { create } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const { data: contracts = [], isPending } = useQuery({
@@ -21,52 +28,94 @@ function ContractsPage() {
     queryFn: () => getContracts(),
   });
 
+  useEffect(() => {
+    if (create === "true") setOpen(true);
+  }, [create]);
+
+  const clearQuickCreate = () => {
+    if (create === "true") void navigate({ search: {}, replace: true });
+  };
+
+  const activeContracts = contracts.filter((contract) => {
+    const status = contract.statut?.toLowerCase();
+    return status === "actif" || status === "active";
+  }).length;
+  const datedContracts = contracts.filter((contract) => Boolean(contract.date_fin)).length;
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <FileSignature className="h-7 w-7" />
-            Contrats
-          </h1>
-          <p className="text-muted-foreground">La parole vaut cher quand l’ambition prend de la valeur.</p>
-        </div>
-        <Button onClick={() => setOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nouveau contrat
-        </Button>
+    <div className="space-y-7">
+      <ModuleHero
+        icon={FileSignature}
+        eyebrow="Administration"
+        title="Contrats et engagements"
+        description="Centralisez les contrats, leurs références et les échéances déjà saisies dans l’ERP."
+        actions={
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Nouveau contrat
+          </Button>
+        }
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <MetricCard label="Contrats" value={contracts.length} description="Documents contractuels enregistrés" icon={Files} />
+        <MetricCard label="Actifs" value={activeContracts} description="Statut actif renseigné" icon={CircleCheck} tone="success" />
+        <MetricCard label="Avec échéance" value={datedContracts} description="Une date de fin est renseignée" icon={CalendarDays} tone="info" />
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Liste des contrats</CardTitle>
+
+      <Card variant="section" className="overflow-hidden">
+        <CardHeader className="border-b border-border/70">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Registre contractuel</p>
+              <CardTitle className="mt-1 text-xl">Liste des contrats</CardTitle>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {isPending ? "Chargement des contrats…" : "Chaque ligne mène vers la fiche complète du contrat."}
+            </p>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-3 p-5 sm:p-6">
           {isPending ? (
-            <p>Chargement…</p>
+            <div className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground">
+              Chargement des contrats…
+            </div>
           ) : contracts.length === 0 ? (
-            <p className="text-muted-foreground">Aucun contrat.</p>
+            <div className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground">
+              Aucun contrat enregistré pour le moment.
+            </div>
           ) : (
             contracts.map((contract) => (
               <Link
                 key={contract.id}
                 to="/contracts/$contractId"
                 params={{ contractId: contract.id }}
-                className="block rounded-lg border p-4 transition-colors hover:bg-muted/50"
+                className="group block rounded-xl border border-border/75 bg-surface px-4 py-4 transition-ui hover:border-primary/25 hover:bg-surface-hover hover:shadow-xs"
               >
-                <p className="font-medium">
-                  {contract.reference || contract.type || "Contrat sans référence"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {[contract.partie, contract.statut, contract.date_fin]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-foreground">
+                      {contract.reference || contract.type || "Contrat sans référence"}
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {[contract.partie, contract.statut, contract.date_fin].filter(Boolean).join(" · ") || "Informations à compléter"}
+                    </p>
+                  </div>
+                  <span className="text-sm font-medium text-primary transition-transform transition-ui group-hover:translate-x-0.5">Ouvrir</span>
+                </div>
               </Link>
             ))
           )}
         </CardContent>
       </Card>
-      <Dialog open={open} onOpenChange={setOpen}>
+
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+          if (!nextOpen) clearQuickCreate();
+        }}
+      >
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Nouveau contrat</DialogTitle>
@@ -75,6 +124,7 @@ function ContractsPage() {
             onSuccess={() => {
               void queryClient.invalidateQueries({ queryKey: ["contracts"] });
               setOpen(false);
+              clearQuickCreate();
             }}
           />
         </DialogContent>

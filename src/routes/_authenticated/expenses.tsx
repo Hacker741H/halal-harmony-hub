@@ -15,7 +15,7 @@ function ExpensesPage() {
       title="Dépenses"
       description="On dépense avec la tête, car le futur ne se gaspille pas."
       type="EXPENSE"
-      icon={<TrendingDown className="h-8 w-8 text-primary" />}
+      icon={TrendingDown}
       createLabel="Nouvelle dépense"
       Form={ExpenseForm}
     />

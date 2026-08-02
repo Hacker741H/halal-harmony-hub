@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Settings } from "lucide-react";
 
 import { AlertSettingsPanel } from "@/components/settings/alert-settings-panel";
+import { ModuleHero } from "@/components/ui/module-hero";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Paramètres — HALAL ERP" }] }),
@@ -10,11 +11,13 @@ export const Route = createFileRoute("/_authenticated/settings")({
 
 function SettingsPage() {
   return (
-    <div className="space-y-6 p-6">
-      <header>
-        <h1 className="flex items-center gap-2 text-3xl font-bold"><Settings className="h-7 w-7" /> Paramètres</h1>
-        <p className="mt-1 text-muted-foreground">On règle les détails ici pour viser plus grand dehors.</p>
-      </header>
+    <div className="space-y-7">
+      <ModuleHero
+        icon={Settings}
+        eyebrow="Administration"
+        title="Paramètres"
+        description="Configurez les règles opérationnelles déjà disponibles dans l’ERP, sans disperser les réglages dans les modules."
+      />
       <AlertSettingsPanel />
     </div>
   );

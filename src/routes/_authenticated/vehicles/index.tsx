@@ -1,30 +1,27 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Car, Gauge, Plus, Truck, Wrench } from "lucide-react";
+import { Car, CircleCheck, Gauge, Plus, Truck, Wrench } from "lucide-react";
+import { z } from "zod";
 
 import VehicleForm from "@/components/vehicles/vehicle-form";
 import { VehicleTable } from "@/components/vehicles/vehicle-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  deleteVehicle,
-  getVehicles,
-  type Vehicle,
-} from "@/lib/vehicles.functions";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { MetricCard } from "@/components/ui/metric-card";
+import { ModuleHero } from "@/components/ui/module-hero";
+import { deleteVehicle, getVehicles, type Vehicle } from "@/lib/vehicles.functions";
 
 export const Route = createFileRoute("/_authenticated/vehicles/")({
+  validateSearch: z.object({ create: z.literal("true").optional() }),
   component: VehiclesPage,
 });
 
 function VehiclesPage() {
+  const { create } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
@@ -34,16 +31,26 @@ function VehiclesPage() {
     queryFn: () => getVehicles(),
   });
 
+  useEffect(() => {
+    if (create === "true") {
+      setEditingVehicle(null);
+      setOpen(true);
+    }
+  }, [create]);
+
+  const clearQuickCreate = () => {
+    if (create === "true") void navigate({ search: {}, replace: true });
+  };
+
   async function refresh() {
     await queryClient.invalidateQueries({ queryKey: ["vehicles"] });
     setEditingVehicle(null);
     setOpen(false);
+    clearQuickCreate();
   }
 
   async function handleDelete(vehicle: Vehicle) {
-    if (!window.confirm(`Supprimer le véhicule "${vehicle.registration}" ?`)) {
-      return;
-    }
+    if (!window.confirm(`Supprimer le véhicule "${vehicle.registration}" ?`)) return;
 
     try {
       await deleteVehicle({ data: { id: vehicle.id } });
@@ -56,98 +63,91 @@ function VehiclesPage() {
 
   const serviceVehicles = vehicles.filter((vehicle) => vehicle.status === "EN_SERVICE").length;
   const repairVehicles = vehicles.filter((vehicle) => vehicle.status === "EN_REPARATION").length;
-  const totalKilometers = vehicles.reduce(
-    (sum, vehicle) => sum + (vehicle.kilometrage ?? 0),
-    0,
-  );
+  const totalKilometers = vehicles.reduce((sum, vehicle) => sum + (vehicle.kilometrage ?? 0), 0);
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <Car className="h-7 w-7" />
-            Véhicules
-          </h1>
-          <p className="text-muted-foreground">La route nous teste, l’organisation nous fait gagner.</p>
-        </div>
-
-        <Dialog
-          open={open}
-          onOpenChange={(nextOpen) => {
-            setOpen(nextOpen);
-            if (!nextOpen) setEditingVehicle(null);
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button onClick={() => setEditingVehicle(null)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nouveau véhicule
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingVehicle ? "Modifier un véhicule" : "Ajouter un véhicule"}
-              </DialogTitle>
-            </DialogHeader>
-            <VehicleForm vehicle={editingVehicle} onSuccess={refresh} />
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm">Véhicules</CardTitle>
-            <Truck className="h-5 w-5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{vehicles.length}</div>
-            <p className="text-xs text-muted-foreground">Total de la flotte</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm">En service</CardTitle>
-            <Car className="h-5 w-5 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{serviceVehicles}</div>
-            <p className="text-xs text-muted-foreground">Véhicules disponibles</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm">En réparation</CardTitle>
-            <Wrench className="h-5 w-5 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{repairVehicles}</div>
-            <p className="text-xs text-muted-foreground">Véhicules immobilisés</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm">Kilométrage</CardTitle>
-            <Gauge className="h-5 w-5 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{totalKilometers.toLocaleString("fr-FR")}</div>
-            <p className="text-xs text-muted-foreground">Kilomètres enregistrés</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <VehicleTable
-        vehicles={vehicles}
-        loading={isPending}
-        onEdit={(vehicle) => {
-          setEditingVehicle(vehicle);
-          setOpen(true);
+    <div className="space-y-7">
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+          if (!nextOpen) {
+            setEditingVehicle(null);
+            clearQuickCreate();
+          }
         }}
-        onDelete={handleDelete}
-      />
+      >
+        <ModuleHero
+          icon={Truck}
+          eyebrow="Mobilité"
+          title="Parc véhicules"
+          description="Repérez immédiatement les véhicules prêts à rouler, les immobilisations et les données de kilométrage déjà enregistrées."
+          actions={
+            <DialogTrigger asChild>
+              <Button onClick={() => setEditingVehicle(null)}>
+                <Plus className="h-4 w-4" />
+                Nouveau véhicule
+              </Button>
+            </DialogTrigger>
+          }
+        />
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingVehicle ? "Modifier un véhicule" : "Ajouter un véhicule"}</DialogTitle>
+          </DialogHeader>
+          <VehicleForm vehicle={editingVehicle} onSuccess={refresh} />
+        </DialogContent>
+      </Dialog>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Flotte totale" value={vehicles.length} description="Véhicules enregistrés" icon={Truck} />
+        <MetricCard
+          label="En service"
+          value={serviceVehicles}
+          description="Disponibles pour les opérations"
+          icon={CircleCheck}
+          tone="success"
+        />
+        <MetricCard
+          label="En réparation"
+          value={repairVehicles}
+          description="Immobilisés actuellement"
+          icon={Wrench}
+          tone={repairVehicles > 0 ? "warning" : "primary"}
+        />
+        <MetricCard
+          label="Kilométrage suivi"
+          value={totalKilometers.toLocaleString("fr-FR")}
+          description="Kilomètres enregistrés dans la flotte"
+          icon={Gauge}
+          tone="info"
+        />
+      </div>
+
+      <Card variant="section" className="overflow-hidden">
+        <CardHeader className="border-b border-border/70">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Vue de flotte</p>
+              <CardTitle className="mt-1 text-xl">Véhicules suivis</CardTitle>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {isPending ? "Chargement de la flotte…" : "Ouvrez une fiche ou agissez directement depuis le registre."}
+            </p>
+          </div>
+        </CardHeader>
+        <CardContent className="p-5 sm:p-6">
+          <VehicleTable
+            vehicles={vehicles}
+            loading={isPending}
+            onEdit={(vehicle) => {
+              setEditingVehicle(vehicle);
+              setOpen(true);
+            }}
+            onDelete={handleDelete}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

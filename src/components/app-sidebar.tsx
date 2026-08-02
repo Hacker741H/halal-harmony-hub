@@ -177,10 +177,10 @@ export function AppSidebar() {
   const groupSpacing = density === "compact" ? "gap-0.5" : density === "comfortable" ? "gap-2" : "gap-1";
 
   return (
-    <Sidebar collapsible="icon" className="border-sidebar-border bg-sidebar">
-      <SidebarHeader className="border-b border-sidebar-border px-2 py-3">
-        <div className="flex items-center gap-2.5 px-1">
-          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-gradient-primary shadow-sm">
+    <Sidebar variant="inset" collapsible="icon" className="border-0 bg-transparent">
+      <SidebarHeader className="border-b border-sidebar-border/75 px-3 py-4">
+        <div className="flex items-center gap-3 px-1">
+          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-primary shadow-md">
             <Leaf className="size-5 text-primary-foreground" aria-hidden="true" />
           </div>
           {!collapsed ? (
@@ -192,13 +192,13 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className={cn("px-2 py-3", groupSpacing)}>
+      <SidebarContent className={cn("px-3 py-4", groupSpacing)}>
         {navigationGroups.map((group) => {
           const visibleItems = group.items.filter((item) => !item.permission || can(item.permission));
           if (visibleItems.length === 0) return null;
           return <SidebarGroup key={group.label} className="p-0">
             {!collapsed ? (
-              <SidebarGroupLabel className="h-auto px-2 pb-1.5 pt-2 text-overline text-sidebar-foreground/45">
+              <SidebarGroupLabel className="h-auto px-2 pb-2 pt-3 text-overline text-sidebar-foreground/45">
                 {group.label}
               </SidebarGroupLabel>
             ) : null}
@@ -206,14 +206,14 @@ export function AppSidebar() {
               <SidebarMenu className={groupSpacing}>
                 {visibleItems.map((item) => (
                   <SidebarMenuItem key={`${group.label}-${item.title}`}>
-                    {item.disabled ? <div className="flex h-9 items-center gap-3 rounded-md px-2.5 text-sidebar-foreground/45" aria-disabled="true">
+                    {item.disabled ? <div className="flex h-10 items-center gap-3 rounded-xl px-3 text-sidebar-foreground/45" aria-disabled="true">
                       <item.icon className="size-4 shrink-0" aria-hidden="true" />
                       {!collapsed ? <><span className="truncate">{item.title}</span><span className="ml-auto rounded-full border border-sidebar-border px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide">Bientôt disponible</span></> : null}
                     </div> : <SidebarMenuButton
                       asChild
                       isActive={isActive(item.url!)}
                       tooltip={item.title}
-                      className="h-9 rounded-md px-2.5 text-sidebar-foreground/75 transition-[background-color,color,transform] transition-ui-fast hover:translate-x-px hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-primary data-[active=true]:font-semibold data-[active=true]:text-sidebar-primary-foreground data-[active=true]:shadow-xs group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:!p-2.5"
+                      className="h-10 rounded-xl px-3 text-sidebar-foreground/74 transition-[background-color,color,transform,box-shadow] transition-ui-fast hover:translate-x-0.5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-primary data-[active=true]:font-semibold data-[active=true]:text-sidebar-primary-foreground data-[active=true]:shadow-md group-data-[collapsible=icon]:!size-10 group-data-[collapsible=icon]:!p-3"
                     >
                       <Link to={item.url!} className="flex items-center gap-3">
                         <item.icon className="size-4 shrink-0" aria-hidden="true" />
@@ -236,12 +236,12 @@ export function AppSidebar() {
         })}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-3">
+      <SidebarFooter className="border-t border-sidebar-border/75 p-3">
         {!collapsed ? (
           <div className="rounded-md bg-sidebar-accent/50 px-2.5 py-2 text-caption text-sidebar-foreground/60">
             <span className="font-medium text-sidebar-foreground/80">HALAL ERP</span>
             <span className="mx-1.5">·</span>
-            Product shell v2
+            HALAL Field OS
           </div>
         ) : null}
       </SidebarFooter>

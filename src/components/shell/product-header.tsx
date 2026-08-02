@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Bell,
   ChevronDown,
@@ -91,7 +91,7 @@ function UniversalSearch({
     <button
       type="button"
       onClick={onOpen}
-      className="hidden h-10 min-w-72 items-center gap-3 rounded-md border border-input bg-surface px-3.5 text-left text-sm text-muted-foreground shadow-xs transition-[border-color,box-shadow,background-color] transition-ui hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 lg:flex"
+      className="hidden h-11 min-w-80 items-center gap-3 rounded-xl border border-input bg-surface/90 px-4 text-left text-sm text-muted-foreground shadow-sm transition-[border-color,box-shadow,background-color,transform] transition-ui hover:-translate-y-px hover:border-primary/25 hover:bg-surface-hover hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/15 lg:flex"
       aria-label="Ouvrir la recherche universelle"
     >
       <Search className="size-4" aria-hidden="true" />
@@ -102,7 +102,34 @@ function UniversalSearch({
 }
 
 function QuickActionsMenu() {
-  const actions = ["Employé", "Véhicule", "Contrat", "Maintenance", "Paiement"];
+  const navigate = useNavigate();
+
+  const actions = [
+    {
+      label: "Nouvel employé",
+      onSelect: () => void navigate({ to: "/employees", search: { create: "true" } }),
+    },
+    {
+      label: "Nouveau véhicule",
+      onSelect: () => void navigate({ to: "/vehicles", search: { create: "true" } }),
+    },
+    {
+      label: "Nouveau contrat",
+      onSelect: () => void navigate({ to: "/contracts", search: { create: "true" } }),
+    },
+    {
+      label: "Nouvel entretien véhicule",
+      onSelect: () => void navigate({ to: "/maintenance", search: { create: "vehicle" } }),
+    },
+    {
+      label: "Nouvel entretien moto",
+      onSelect: () => void navigate({ to: "/maintenance", search: { create: "motorcycle" } }),
+    },
+    {
+      label: "Nouveau versement",
+      onSelect: () => void navigate({ to: "/payments", search: { create: "true" } }),
+    },
+  ] as const;
 
   return (
     <DropdownMenu>
@@ -117,10 +144,9 @@ function QuickActionsMenu() {
         <DropdownMenuLabel>Actions rapides</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {actions.map((action) => (
-          <DropdownMenuItem key={action} disabled>
+          <DropdownMenuItem key={action.label} onSelect={action.onSelect}>
             <Plus aria-hidden="true" />
-            <span className="flex-1">Créer {action}</span>
-            <span className="text-caption">Bientôt</span>
+            <span className="flex-1">{action.label}</span>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
@@ -255,7 +281,7 @@ function ProductHeader({ user, onSignOut }: ProductHeaderProps) {
 
   return (
     <>
-      <header className={cn("sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-background/88 backdrop-blur-sm transition-[height,padding] transition-ui", densityClass)}>
+      <header className={cn("sticky top-3 z-30 mx-3 flex items-center gap-3 rounded-2xl border border-border/75 bg-surface/88 shadow-md backdrop-blur-md transition-[height,padding,box-shadow] transition-ui sm:mx-4 lg:mx-5", densityClass)}>
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
           <SidebarTrigger className="shrink-0" />
           <div className="min-w-0 flex-1"><ShellBreadcrumbs /></div>

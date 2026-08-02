@@ -32,6 +32,7 @@ type CommandRoute =
   | "/vehicles"
   | "/maintenance"
   | "/contracts"
+  | "/payments"
   | "/wallets"
   | "/notifications"
   | "/settings";
@@ -55,10 +56,12 @@ const paletteItems: readonly PaletteItem[] = [
   { id: "wallets", group: "Navigation", label: "Wallets", description: "Consulter la trésorerie", icon: WalletCards, to: "/wallets" },
   { id: "notifications", group: "Navigation", label: "Alertes", description: "Ouvrir le centre de notifications", icon: Bell, to: "/notifications" },
   { id: "settings", group: "Navigation", label: "Paramètres", description: "Ouvrir les préférences ERP", icon: Settings, to: "/settings" },
-  { id: "new-employee", group: "Actions rapides", label: "Créer un employé", description: "Action à connecter à un formulaire existant", icon: UsersRound, disabled: true },
-  { id: "new-vehicle", group: "Actions rapides", label: "Créer un véhicule", description: "Action à connecter à un formulaire existant", icon: Car, disabled: true },
-  { id: "new-contract", group: "Actions rapides", label: "Créer un contrat", description: "Action à connecter à un formulaire existant", icon: FileSignature, disabled: true },
-  { id: "new-maintenance", group: "Actions rapides", label: "Créer une maintenance", description: "Action à connecter à un formulaire existant", icon: Wrench, disabled: true },
+  { id: "new-employee", group: "Actions rapides", label: "Nouvel employé", description: "Ouvrir le formulaire existant", icon: UsersRound },
+  { id: "new-vehicle", group: "Actions rapides", label: "Nouveau véhicule", description: "Ouvrir le formulaire existant", icon: Car },
+  { id: "new-contract", group: "Actions rapides", label: "Nouveau contrat", description: "Ouvrir le formulaire existant", icon: FileSignature },
+  { id: "new-maintenance", group: "Actions rapides", label: "Nouvel entretien véhicule", description: "Ouvrir le formulaire existant", icon: Wrench },
+  { id: "new-motorcycle-maintenance", group: "Actions rapides", label: "Nouvel entretien moto", description: "Ouvrir le formulaire existant", icon: Wrench },
+  { id: "new-payment", group: "Actions rapides", label: "Nouveau versement", description: "Ouvrir le formulaire existant", icon: WalletCards },
 ];
 
 interface CommandPaletteProps {
@@ -72,6 +75,32 @@ interface CommandPaletteProps {
  */
 function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const navigate = useNavigate();
+
+  const selectItem = (item: PaletteItem) => {
+    switch (item.id) {
+      case "new-employee":
+        void navigate({ to: "/employees", search: { create: "true" } });
+        break;
+      case "new-vehicle":
+        void navigate({ to: "/vehicles", search: { create: "true" } });
+        break;
+      case "new-contract":
+        void navigate({ to: "/contracts", search: { create: "true" } });
+        break;
+      case "new-maintenance":
+        void navigate({ to: "/maintenance", search: { create: "vehicle" } });
+        break;
+      case "new-motorcycle-maintenance":
+        void navigate({ to: "/maintenance", search: { create: "motorcycle" } });
+        break;
+      case "new-payment":
+        void navigate({ to: "/payments", search: { create: "true" } });
+        break;
+      default:
+        if (item.to) void navigate({ to: item.to });
+    }
+    onOpenChange(false);
+  };
 
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -96,11 +125,7 @@ function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
               key={item.id}
               value={`${item.label} ${item.description}`}
               disabled={item.disabled}
-              onSelect={() => {
-                if (!item.to) return;
-                void navigate({ to: item.to });
-                onOpenChange(false);
-              }}
+              onSelect={() => selectItem(item)}
             >
               <Icon aria-hidden="true" />
               <span className="min-w-0 flex-1">

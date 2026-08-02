@@ -28,8 +28,8 @@ function documentStatus(date: string | null) {
   const today = new Date().toISOString().slice(0, 10);
   const nextMonth = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
   if (date < today) return { label: "Expiré", className: "bg-destructive/15 text-destructive" };
-  if (date <= nextMonth) return { label: "Expire bientôt", className: "bg-amber-100 text-amber-800" };
-  return { label: "Valide", className: "bg-emerald-100 text-emerald-800" };
+  if (date <= nextMonth) return { label: "Expire bientôt", className: "bg-warning/15 text-warning-foreground" };
+  return { label: "Valide", className: "bg-success/15 text-success" };
 }
 
 export function DocumentsPage() {

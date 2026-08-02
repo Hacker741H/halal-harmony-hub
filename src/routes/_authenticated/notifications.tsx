@@ -1,7 +1,8 @@
 import { useState } from "react";
+
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, CheckCheck, RefreshCw } from "lucide-react";
+import { AlertTriangle, Bell, Boxes, CalendarDays, CheckCheck, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -10,6 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { MetricCard } from "@/components/ui/metric-card";
+import { ModuleHero } from "@/components/ui/module-hero";
+import { runNotificationsManually } from "@/lib/alert-settings.functions";
 import {
   getNotificationSummary,
   getNotifications,
@@ -20,7 +24,6 @@ import {
   type NotificationStatus,
   updateNotificationStatus,
 } from "@/lib/notifications.functions";
-import { runNotificationsManually } from "@/lib/alert-settings.functions";
 
 export const Route = createFileRoute("/_authenticated/notifications")({
   head: () => ({ meta: [{ title: "Notifications — HALAL ERP" }] }),
@@ -41,31 +44,25 @@ function NotificationsPage() {
   const [status, setStatus] = useState<NotificationStatus | "ALL">(routeSearch.status ?? "ALL");
   const [severity, setSeverity] = useState<NotificationSeverity | "ALL">(routeSearch.severity ?? "ALL");
   const [type, setType] = useState(routeSearch.type ?? "");
-  const [dueDays, setDueDays] = useState<7 | 30 | undefined>(
-    routeSearch.due === "7" ? 7 : routeSearch.due === "30" ? 30 : undefined,
-  );
+  const [dueDays, setDueDays] = useState<7 | 30 | undefined>(routeSearch.due === "7" ? 7 : routeSearch.due === "30" ? 30 : undefined);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
 
   const notificationsQuery = useQuery({
     queryKey: ["notifications", { status, severity, type, dueDays, search, page }],
-    queryFn: () =>
-      getNotifications({
-        data: {
-          status: status === "ALL" ? undefined : status,
-          severity: severity === "ALL" ? undefined : severity,
-          type: type || undefined,
-          dueDays,
-          search: search.trim() || undefined,
-          page,
-          pageSize,
-        },
-      }),
+    queryFn: () => getNotifications({
+      data: {
+        status: status === "ALL" ? undefined : status,
+        severity: severity === "ALL" ? undefined : severity,
+        type: type || undefined,
+        dueDays,
+        search: search.trim() || undefined,
+        page,
+        pageSize,
+      },
+    }),
   });
-  const summaryQuery = useQuery({
-    queryKey: ["notification-summary"],
-    queryFn: () => getNotificationSummary(),
-  });
+  const summaryQuery = useQuery({ queryKey: ["notification-summary"], queryFn: () => getNotificationSummary() });
 
   const invalidate = async () => {
     await Promise.all([
@@ -74,18 +71,14 @@ function NotificationsPage() {
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }),
     ]);
   };
-
   const generateMutation = useMutation({
     mutationFn: runNotificationsManually,
     onSuccess: async (run) => {
       await invalidate();
-      toast.success(
-        `${run.created_count} créée(s), ${run.updated_count} mise(s) à jour et ${run.resolved_count} résolue(s).`,
-      );
+      toast.success(`${run.created_count} créée(s), ${run.updated_count} mise(s) à jour et ${run.resolved_count} résolue(s).`);
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Actualisation impossible."),
   });
-
   const statusMutation = useMutation({
     mutationFn: updateNotificationStatus,
     onSuccess: async () => {
@@ -94,7 +87,6 @@ function NotificationsPage() {
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Mise à jour impossible."),
   });
-
   const readAllMutation = useMutation({
     mutationFn: markAllNotificationsRead,
     onSuccess: async (count) => {
@@ -115,94 +107,62 @@ function NotificationsPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <h1 className="flex items-center gap-2 text-3xl font-bold">
-            <Bell className="h-7 w-7" /> Centre de notifications
-          </h1>
-          <p className="mt-1 text-muted-foreground">
-            Une alerte à temps vaut mieux qu’un problème trop tard.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            disabled={readAllMutation.isPending}
-            onClick={() => readAllMutation.mutate({ data: undefined })}
-          >
-            <CheckCheck className="mr-2 h-4 w-4" /> Tout marquer comme lu
-          </Button>
-          {summary?.canGenerate && (
-            <Button disabled={generateMutation.isPending} onClick={() => generateMutation.mutate({ data: undefined })}>
-              <RefreshCw className={"mr-2 h-4 w-4 " + (generateMutation.isPending ? "animate-spin" : "")} />
-              Actualiser les alertes
+    <div className="space-y-7">
+      <ModuleHero
+        icon={Bell}
+        eyebrow="Pilotage"
+        title="Centre de notifications"
+        description="Priorisez les échéances et anomalies détectées par l’ERP, puis ouvrez directement la donnée qui demande une action."
+        actions={
+          <>
+            <Button variant="outline" disabled={readAllMutation.isPending} onClick={() => readAllMutation.mutate({ data: undefined })}>
+              <CheckCheck className="h-4 w-4" />
+              Tout marquer comme lu
             </Button>
-          )}
-        </div>
-      </div>
+            {summary?.canGenerate ? (
+              <Button disabled={generateMutation.isPending} onClick={() => generateMutation.mutate({ data: undefined })}>
+                <RefreshCw className={`h-4 w-4 ${generateMutation.isPending ? "animate-spin" : ""}`} />
+                Actualiser les alertes
+              </Button>
+            ) : null}
+          </>
+        }
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <SummaryCard label="Non lues" value={summary?.unread ?? 0} />
-        <SummaryCard label="Critiques" value={summary?.critical ?? 0} critical />
-        <SummaryCard label="Échéances à 7 jours" value={summary?.dueInSevenDays ?? 0} />
-        <SummaryCard label="Échéances à 30 jours" value={summary?.dueInThirtyDays ?? 0} />
-        <SummaryCard label="Stocks faibles" value={summary?.lowStock ?? 0} />
+        <MetricCard label="Non lues" value={summary?.unread ?? 0} description="Demandent une lecture" icon={Bell} tone="info" />
+        <MetricCard label="Critiques" value={summary?.critical ?? 0} description="À traiter en priorité" icon={AlertTriangle} tone={(summary?.critical ?? 0) > 0 ? "danger" : "primary"} />
+        <MetricCard label="À 7 jours" value={summary?.dueInSevenDays ?? 0} description="Échéances proches" icon={CalendarDays} tone="warning" />
+        <MetricCard label="À 30 jours" value={summary?.dueInThirtyDays ?? 0} description="Échéances à anticiper" icon={CalendarDays} tone="primary" />
+        <MetricCard label="Stocks faibles" value={summary?.lowStock ?? 0} description="Articles sous le seuil" icon={Boxes} tone={(summary?.lowStock ?? 0) > 0 ? "warning" : "success"} />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Filtres</CardTitle>
+      <Card variant="section" className="overflow-hidden">
+        <CardHeader className="border-b border-border/70">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Recherche et filtres</p>
+              <CardTitle className="mt-1 text-xl">Alertes visibles</CardTitle>
+            </div>
+            <Badge variant="neutral" appearance="soft">{result?.total ?? 0} alerte(s)</Badge>
+          </div>
         </CardHeader>
-        <CardContent className="flex flex-col gap-3 md:flex-row md:items-center">
-          <Input
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(0);
-            }}
-            placeholder="Rechercher une alerte…"
-            className="md:max-w-sm"
-          />
-          <Input
-            value={type}
-            onChange={(event) => {
-              setType(event.target.value);
-              setPage(0);
-            }}
-            placeholder="Type (ex. LOW_STOCK)"
-            className="md:max-w-56"
-          />
-          <select
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-            value={status}
-            onChange={(event) => updateFilters(event.target.value as NotificationStatus | "ALL", severity)}
-          >
+        <CardContent className="flex flex-col gap-3 p-5 md:flex-row md:flex-wrap md:items-center sm:p-6">
+          <Input value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); }} placeholder="Rechercher une alerte…" className="md:max-w-sm" />
+          <Input value={type} onChange={(event) => { setType(event.target.value); setPage(0); }} placeholder="Type (ex. LOW_STOCK)" className="md:max-w-56" />
+          <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={status} onChange={(event) => updateFilters(event.target.value as NotificationStatus | "ALL", severity)}>
             <option value="ALL">Tous les statuts</option>
             {NOTIFICATION_STATUSES.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
-          <select
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-            value={severity}
-            onChange={(event) => updateFilters(status, event.target.value as NotificationSeverity | "ALL")}
-          >
+          <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={severity} onChange={(event) => updateFilters(status, event.target.value as NotificationSeverity | "ALL")}>
             <option value="ALL">Toutes les gravités</option>
             {NOTIFICATION_SEVERITIES.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
-          <select
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-            value={dueDays ?? "ALL"}
-            onChange={(event) => {
-              const value = event.target.value;
-              setDueDays(value === "7" ? 7 : value === "30" ? 30 : undefined);
-              setPage(0);
-            }}
-          >
+          <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={dueDays ?? "ALL"} onChange={(event) => { const value = event.target.value; setDueDays(value === "7" ? 7 : value === "30" ? 30 : undefined); setPage(0); }}>
             <option value="ALL">Toutes les échéances</option>
             <option value="7">À 7 jours</option>
             <option value="30">À 30 jours</option>
           </select>
-          <Badge variant="secondary">{result?.total ?? 0} alerte(s)</Badge>
         </CardContent>
       </Card>
 
@@ -210,39 +170,16 @@ function NotificationsPage() {
         notifications={result?.notifications ?? []}
         loading={notificationsQuery.isLoading}
         updatingId={statusMutation.variables?.data.id}
-        onUpdateStatus={(id, nextStatus, snoozedUntil) =>
-          statusMutation.mutate({
-            data: { id, status: nextStatus, snoozed_until: snoozedUntil ?? null },
-          })
-        }
+        onUpdateStatus={(id, nextStatus, snoozedUntil) => statusMutation.mutate({ data: { id, status: nextStatus, snoozed_until: snoozedUntil ?? null } })}
       />
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">Page {page + 1} sur {totalPages}</p>
         <div className="flex gap-2">
-          <Button variant="outline" disabled={page === 0} onClick={() => setPage((value) => value - 1)}>
-            Précédent
-          </Button>
-          <Button
-            variant="outline"
-            disabled={page + 1 >= totalPages}
-            onClick={() => setPage((value) => value + 1)}
-          >
-            Suivant
-          </Button>
+          <Button variant="outline" disabled={page === 0} onClick={() => setPage((value) => value - 1)}>Précédent</Button>
+          <Button variant="outline" disabled={page + 1 >= totalPages} onClick={() => setPage((value) => value + 1)}>Suivant</Button>
         </div>
       </div>
     </div>
-  );
-}
-
-function SummaryCard({ label, value, critical = false }: { label: string; value: number; critical?: boolean }) {
-  return (
-    <Card className={critical && value > 0 ? "border-destructive/40" : undefined}>
-      <CardContent className="p-4">
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <p className={"mt-1 text-3xl font-bold " + (critical && value > 0 ? "text-destructive" : "")}>{value}</p>
-      </CardContent>
-    </Card>
   );
 }

@@ -1,40 +1,17 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useState } from "react";
+
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-
-import {
-  Sprout,
-  Plus,
-  MapPin,
-  Leaf,
-  Landmark,
-} from "lucide-react";
-
-import {
-  getFarms,
-  deleteFarm,
-  type Farm,
-} from "@/lib/farms.functions";
+import { Landmark, Leaf, MapPin, Plus, Sprout } from "lucide-react";
 
 import { FarmForm } from "@/components/farms/farm-form";
 import { FarmTable } from "@/components/farms/farm-table";
-
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { MetricCard } from "@/components/ui/metric-card";
+import { ModuleHero } from "@/components/ui/module-hero";
+import { deleteFarm, getFarms, type Farm } from "@/lib/farms.functions";
 
 export const Route = createFileRoute("/_authenticated/farms")({
   component: FarmsPage,
@@ -42,42 +19,24 @@ export const Route = createFileRoute("/_authenticated/farms")({
 
 function FarmsPage() {
   const queryClient = useQueryClient();
-
   const [open, setOpen] = useState(false);
-  const [editingFarm, setEditingFarm] =
-    useState<Farm | null>(null);
+  const [editingFarm, setEditingFarm] = useState<Farm | null>(null);
 
-  const {
-    data: farms = [],
-    isPending,
-  } = useQuery({
+  const { data: farms = [], isPending } = useQuery({
     queryKey: ["farms"],
     queryFn: () => getFarms(),
   });
 
   async function refresh() {
-    await queryClient.invalidateQueries({
-      queryKey: ["farms"],
-    });
-
+    await queryClient.invalidateQueries({ queryKey: ["farms"] });
     setEditingFarm(null);
     setOpen(false);
   }
 
   async function handleDelete(farm: Farm) {
-    if (
-      !window.confirm(
-        `Supprimer ${farm.nom} ?`
-      )
-    )
-      return;
+    if (!window.confirm(`Supprimer ${farm.nom} ?`)) return;
 
-    await deleteFarm({
-      data: {
-        id: farm.id,
-      },
-    });
-
+    await deleteFarm({ data: { id: farm.id } });
     refresh();
   }
 
@@ -86,192 +45,86 @@ function FarmsPage() {
     setOpen(true);
   }
 
-  const superficie = farms.reduce(
-    (sum, f) => sum + Number(f.superficie ?? 0),
-    0
-  );
+  const superficie = farms.reduce((sum, farm) => sum + Number(farm.superficie ?? 0), 0);
+  const cultures = new Set(farms.map((farm) => farm.type_culture)).size;
+  const activeFarms = farms.filter((farm) => farm.statut === "actif").length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
+      <Dialog open={open} onOpenChange={setOpen}>
+        <ModuleHero
+          icon={Sprout}
+          eyebrow="Agriculture"
+          title="Exploitations agricoles"
+          description="Visualisez les sites de production, les cultures suivies et la superficie qui soutient votre activité."
+          className="from-success/10 via-surface-elevated to-surface"
+          actions={
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4" />
+                Nouvelle exploitation
+              </Button>
+            </DialogTrigger>
+          }
+        />
 
-      <div className="flex items-center justify-between">
+        <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto p-6">
+          <DialogHeader>
+            <DialogTitle>{editingFarm ? "Modifier une exploitation" : "Nouvelle exploitation"}</DialogTitle>
+          </DialogHeader>
+          <FarmForm farm={editingFarm} onSuccess={refresh} />
+        </DialogContent>
+      </Dialog>
 
-        <div>
-
-          <h1 className="flex items-center gap-3 text-3xl font-bold">
-
-            <Sprout className="h-7 w-7 text-green-600" />
-
-            Exploitations agricoles
-
-          </h1>
-
-          <p className="text-muted-foreground">
-            On sème avec patience, on récolte avec vision.
-          </p>
-
-        </div>
-
-        <Dialog
-          open={open}
-          onOpenChange={setOpen}
-        >
-
-          <DialogTrigger asChild>
-
-            <Button>
-
-              <Plus className="mr-2 h-4 w-4" />
-
-              Nouvelle exploitation
-
-            </Button>
-
-          </DialogTrigger>
-
-          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-6">
-
-            <DialogHeader>
-
-              <DialogTitle>
-
-                {editingFarm
-                  ? "Modifier une exploitation"
-                  : "Nouvelle exploitation"}
-
-              </DialogTitle>
-
-            </DialogHeader>
-
-            <FarmForm
-              farm={editingFarm}
-              onSuccess={refresh}
-            />
-
-          </DialogContent>
-
-        </Dialog>
-
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Exploitations"
+          value={farms.length}
+          description="Sites enregistrés"
+          icon={Leaf}
+          tone="success"
+        />
+        <MetricCard
+          label="Superficie suivie"
+          value={`${superficie} ha`}
+          description="Somme des superficies déclarées"
+          icon={MapPin}
+          tone="info"
+        />
+        <MetricCard
+          label="Cultures"
+          value={cultures}
+          description="Types de culture renseignés"
+          icon={Sprout}
+          tone="primary"
+        />
+        <MetricCard
+          label="Exploitations actives"
+          value={activeFarms}
+          description="Statut actif dans le référentiel"
+          icon={Landmark}
+          tone="success"
+        />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-
-        <Card>
-
-          <CardHeader className="flex flex-row items-center justify-between">
-
-            <CardTitle>
-              Exploitations
-            </CardTitle>
-
-            <Leaf className="h-5 w-5" />
-
-          </CardHeader>
-
-          <CardContent>
-
-            <div className="text-3xl font-bold">
-
-              {farms.length}
-
+      <Card variant="section" className="overflow-hidden">
+        <CardHeader className="border-b border-border/70">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-success">Registre agricole</p>
+              <CardTitle className="mt-1 text-xl">Exploitations suivies</CardTitle>
             </div>
+            <p className="text-sm text-muted-foreground">
+              {isPending ? "Chargement des exploitations…" : "Recherchez, ouvrez ou mettez à jour un site."}
+            </p>
+          </div>
+        </CardHeader>
+        <CardContent className="p-5 sm:p-6">
+          <FarmTable farms={farms} loading={isPending} onEdit={handleEdit} onDelete={handleDelete} />
+        </CardContent>
+      </Card>
 
-          </CardContent>
-
-        </Card>
-
-        <Card>
-
-          <CardHeader className="flex flex-row items-center justify-between">
-
-            <CardTitle>
-              Superficie
-            </CardTitle>
-
-            <MapPin className="h-5 w-5" />
-
-          </CardHeader>
-
-          <CardContent>
-
-            <div className="text-3xl font-bold">
-
-              {superficie} ha
-
-            </div>
-
-          </CardContent>
-
-        </Card>
-
-        <Card>
-
-          <CardHeader className="flex flex-row items-center justify-between">
-
-            <CardTitle>
-              Cultures
-            </CardTitle>
-
-            <Sprout className="h-5 w-5" />
-
-          </CardHeader>
-
-          <CardContent>
-
-            <div className="text-3xl font-bold">
-
-              {
-                new Set(
-                  farms.map(
-                    (f) => f.type_culture
-                  )
-                ).size
-              }
-
-            </div>
-
-          </CardContent>
-
-        </Card>
-
-        <Card>
-
-          <CardHeader className="flex flex-row items-center justify-between">
-
-            <CardTitle>
-              Actives
-            </CardTitle>
-
-            <Landmark className="h-5 w-5" />
-
-          </CardHeader>
-
-          <CardContent>
-
-            <div className="text-3xl font-bold">
-
-              {
-                farms.filter(
-                  (f) =>
-                    f.statut === "actif"
-                ).length
-              }
-
-            </div>
-
-          </CardContent>
-
-        </Card>
-
-      </div>
-
-      <FarmTable
-        farms={farms}
-        loading={isPending}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
-<Outlet />
+      <Outlet />
     </div>
   );
 }

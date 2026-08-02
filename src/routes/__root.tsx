@@ -142,11 +142,11 @@ function AuthenticatedShell() {
         } as CSSProperties
       }
     >
-      <div className="flex min-h-screen w-full bg-background" data-density={density}>
+      <div className="flex min-h-screen w-full bg-canvas" data-density={density}>
         <AppSidebar />
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col pb-3 md:pb-4">
           <ProductHeader user={session} onSignOut={signOut} />
-          <main className="flex-1 overflow-x-hidden">
+          <main className="flex-1 overflow-x-hidden pt-3 md:pt-4">
             <div key={pathname} className="animate-fade-in">
               <Outlet />
             </div>
