@@ -55,7 +55,10 @@ type NavigationRoute =
   | "/drivers"
   | "/clients"
   | "/courses"
-  | "/field"
+  | "/planning"
+  | "/assignments"
+  | "/departures"
+  | "/deliveries"
   | "/vehicles"
   | "/motorcycles"
   | "/maintenance"
@@ -71,7 +74,8 @@ type NavigationRoute =
   | "/documents"
   | "/notifications"
   | "/settings"
-  | "/roles";
+  | "/roles"
+  | "/field";
 
 interface NavigationItem {
   title: string;
@@ -115,10 +119,10 @@ const navigationGroups: readonly NavigationGroup[] = [
     label: "EXPLOITATION",
     items: [
       { title: "Courses", url: "/courses", icon: Truck },
-      { title: "Planning", icon: CalendarClock, disabled: true },
-      { title: "Affectations", icon: ClipboardCheck, disabled: true },
-      { title: "Départs", icon: MapPinned, disabled: true },
-      { title: "Livraisons", icon: PackageCheck, disabled: true },
+      { title: "Planning", url: "/planning", icon: CalendarClock, permission: "planning.read" },
+      { title: "Affectations", url: "/assignments", icon: ClipboardCheck, permission: "assignments.read" },
+      { title: "Départs", url: "/departures", icon: MapPinned, permission: "departures.read" },
+      { title: "Livraisons", url: "/deliveries", icon: PackageCheck, permission: "deliveries.read" },
     ],
   },
   {

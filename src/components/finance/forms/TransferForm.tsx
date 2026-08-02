@@ -302,7 +302,7 @@ console.log("Résultat :", result);
         <div>
 
           <Label>
-            Référence
+            Référence de facture / dossier
           </Label>
 
           <Input
@@ -315,6 +315,7 @@ console.log("Résultat :", result);
               })
             }
           />
+          <p className="mt-1 text-xs text-muted-foreground">Utilisez la même référence pour regrouper les mouvements liés.</p>
 
         </div>
 

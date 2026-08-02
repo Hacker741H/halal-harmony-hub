@@ -12,9 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedAssignmentsRouteImport } from './routes/_authenticated/assignments'
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
 import { Route as AuthenticatedContractsRouteImport } from './routes/_authenticated/contracts'
 import { Route as AuthenticatedCoursesRouteImport } from './routes/_authenticated/courses'
+import { Route as AuthenticatedDeliveriesRouteImport } from './routes/_authenticated/deliveries'
+import { Route as AuthenticatedDeparturesRouteImport } from './routes/_authenticated/departures'
+import { Route as AuthenticatedDesignShowcaseRouteImport } from './routes/_authenticated/design-showcase'
 import { Route as AuthenticatedDocumentsRouteImport } from './routes/_authenticated/documents'
 import { Route as AuthenticatedDriversRouteImport } from './routes/_authenticated/drivers'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
@@ -27,6 +31,7 @@ import { Route as AuthenticatedMaintenanceRouteImport } from './routes/_authenti
 import { Route as AuthenticatedMotorcyclesRouteImport } from './routes/_authenticated/motorcycles'
 import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
 import { Route as AuthenticatedPaymentsRouteImport } from './routes/_authenticated/payments'
+import { Route as AuthenticatedPlanningRouteImport } from './routes/_authenticated/planning'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 import { Route as AuthenticatedRevenuesRouteImport } from './routes/_authenticated/revenues'
 import { Route as AuthenticatedRolesRouteImport } from './routes/_authenticated/roles'
@@ -68,6 +73,12 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAssignmentsRoute =
+  AuthenticatedAssignmentsRouteImport.update({
+    id: '/assignments',
+    path: '/assignments',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedClientsRoute = AuthenticatedClientsRouteImport.update({
   id: '/clients',
   path: '/clients',
@@ -83,6 +94,22 @@ const AuthenticatedCoursesRoute = AuthenticatedCoursesRouteImport.update({
   path: '/courses',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDeliveriesRoute = AuthenticatedDeliveriesRouteImport.update({
+  id: '/deliveries',
+  path: '/deliveries',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDeparturesRoute = AuthenticatedDeparturesRouteImport.update({
+  id: '/departures',
+  path: '/departures',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDesignShowcaseRoute =
+  AuthenticatedDesignShowcaseRouteImport.update({
+    id: '/design-showcase',
+    path: '/design-showcase',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDocumentsRoute = AuthenticatedDocumentsRouteImport.update({
   id: '/documents',
   path: '/documents',
@@ -144,6 +171,11 @@ const AuthenticatedNotificationsRoute =
 const AuthenticatedPaymentsRoute = AuthenticatedPaymentsRouteImport.update({
   id: '/payments',
   path: '/payments',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPlanningRoute = AuthenticatedPlanningRouteImport.update({
+  id: '/planning',
+  path: '/planning',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
@@ -298,9 +330,13 @@ const AuthenticatedWalletsWalletIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
+  '/assignments': typeof AuthenticatedAssignmentsRoute
   '/clients': typeof AuthenticatedClientsRouteWithChildren
   '/contracts': typeof AuthenticatedContractsRouteWithChildren
   '/courses': typeof AuthenticatedCoursesRouteWithChildren
+  '/deliveries': typeof AuthenticatedDeliveriesRoute
+  '/departures': typeof AuthenticatedDeparturesRoute
+  '/design-showcase': typeof AuthenticatedDesignShowcaseRoute
   '/documents': typeof AuthenticatedDocumentsRouteWithChildren
   '/drivers': typeof AuthenticatedDriversRouteWithChildren
   '/employees': typeof AuthenticatedEmployeesRouteWithChildren
@@ -313,6 +349,7 @@ export interface FileRoutesByFullPath {
   '/motorcycles': typeof AuthenticatedMotorcyclesRouteWithChildren
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/payments': typeof AuthenticatedPaymentsRoute
+  '/planning': typeof AuthenticatedPlanningRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/revenues': typeof AuthenticatedRevenuesRoute
   '/roles': typeof AuthenticatedRolesRoute
@@ -342,6 +379,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
+  '/assignments': typeof AuthenticatedAssignmentsRoute
+  '/deliveries': typeof AuthenticatedDeliveriesRoute
+  '/departures': typeof AuthenticatedDeparturesRoute
+  '/design-showcase': typeof AuthenticatedDesignShowcaseRoute
   '/documents': typeof AuthenticatedDocumentsRouteWithChildren
   '/expenses': typeof AuthenticatedExpensesRoute
   '/farms': typeof AuthenticatedFarmsRouteWithChildren
@@ -351,6 +392,7 @@ export interface FileRoutesByTo {
   '/motorcycles': typeof AuthenticatedMotorcyclesRouteWithChildren
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/payments': typeof AuthenticatedPaymentsRoute
+  '/planning': typeof AuthenticatedPlanningRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/revenues': typeof AuthenticatedRevenuesRoute
   '/roles': typeof AuthenticatedRolesRoute
@@ -381,9 +423,13 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/assignments': typeof AuthenticatedAssignmentsRoute
   '/_authenticated/clients': typeof AuthenticatedClientsRouteWithChildren
   '/_authenticated/contracts': typeof AuthenticatedContractsRouteWithChildren
   '/_authenticated/courses': typeof AuthenticatedCoursesRouteWithChildren
+  '/_authenticated/deliveries': typeof AuthenticatedDeliveriesRoute
+  '/_authenticated/departures': typeof AuthenticatedDeparturesRoute
+  '/_authenticated/design-showcase': typeof AuthenticatedDesignShowcaseRoute
   '/_authenticated/documents': typeof AuthenticatedDocumentsRouteWithChildren
   '/_authenticated/drivers': typeof AuthenticatedDriversRouteWithChildren
   '/_authenticated/employees': typeof AuthenticatedEmployeesRouteWithChildren
@@ -396,6 +442,7 @@ export interface FileRoutesById {
   '/_authenticated/motorcycles': typeof AuthenticatedMotorcyclesRouteWithChildren
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
   '/_authenticated/payments': typeof AuthenticatedPaymentsRoute
+  '/_authenticated/planning': typeof AuthenticatedPlanningRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/revenues': typeof AuthenticatedRevenuesRoute
   '/_authenticated/roles': typeof AuthenticatedRolesRoute
@@ -429,9 +476,13 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/assignments'
     | '/clients'
     | '/contracts'
     | '/courses'
+    | '/deliveries'
+    | '/departures'
+    | '/design-showcase'
     | '/documents'
     | '/drivers'
     | '/employees'
@@ -444,6 +495,7 @@ export interface FileRouteTypes {
     | '/motorcycles'
     | '/notifications'
     | '/payments'
+    | '/planning'
     | '/reports'
     | '/revenues'
     | '/roles'
@@ -473,6 +525,10 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
+    | '/assignments'
+    | '/deliveries'
+    | '/departures'
+    | '/design-showcase'
     | '/documents'
     | '/expenses'
     | '/farms'
@@ -482,6 +538,7 @@ export interface FileRouteTypes {
     | '/motorcycles'
     | '/notifications'
     | '/payments'
+    | '/planning'
     | '/reports'
     | '/revenues'
     | '/roles'
@@ -511,9 +568,13 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/assignments'
     | '/_authenticated/clients'
     | '/_authenticated/contracts'
     | '/_authenticated/courses'
+    | '/_authenticated/deliveries'
+    | '/_authenticated/departures'
+    | '/_authenticated/design-showcase'
     | '/_authenticated/documents'
     | '/_authenticated/drivers'
     | '/_authenticated/employees'
@@ -526,6 +587,7 @@ export interface FileRouteTypes {
     | '/_authenticated/motorcycles'
     | '/_authenticated/notifications'
     | '/_authenticated/payments'
+    | '/_authenticated/planning'
     | '/_authenticated/reports'
     | '/_authenticated/revenues'
     | '/_authenticated/roles'
@@ -583,6 +645,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/assignments': {
+      id: '/_authenticated/assignments'
+      path: '/assignments'
+      fullPath: '/assignments'
+      preLoaderRoute: typeof AuthenticatedAssignmentsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/clients': {
       id: '/_authenticated/clients'
       path: '/clients'
@@ -602,6 +671,27 @@ declare module '@tanstack/react-router' {
       path: '/courses'
       fullPath: '/courses'
       preLoaderRoute: typeof AuthenticatedCoursesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/deliveries': {
+      id: '/_authenticated/deliveries'
+      path: '/deliveries'
+      fullPath: '/deliveries'
+      preLoaderRoute: typeof AuthenticatedDeliveriesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/departures': {
+      id: '/_authenticated/departures'
+      path: '/departures'
+      fullPath: '/departures'
+      preLoaderRoute: typeof AuthenticatedDeparturesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/design-showcase': {
+      id: '/_authenticated/design-showcase'
+      path: '/design-showcase'
+      fullPath: '/design-showcase'
+      preLoaderRoute: typeof AuthenticatedDesignShowcaseRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/documents': {
@@ -686,6 +776,13 @@ declare module '@tanstack/react-router' {
       path: '/payments'
       fullPath: '/payments'
       preLoaderRoute: typeof AuthenticatedPaymentsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/planning': {
+      id: '/_authenticated/planning'
+      path: '/planning'
+      fullPath: '/planning'
+      preLoaderRoute: typeof AuthenticatedPlanningRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/reports': {
@@ -1029,9 +1126,13 @@ const AuthenticatedWalletsRouteWithChildren =
   AuthenticatedWalletsRoute._addFileChildren(AuthenticatedWalletsRouteChildren)
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAssignmentsRoute: typeof AuthenticatedAssignmentsRoute
   AuthenticatedClientsRoute: typeof AuthenticatedClientsRouteWithChildren
   AuthenticatedContractsRoute: typeof AuthenticatedContractsRouteWithChildren
   AuthenticatedCoursesRoute: typeof AuthenticatedCoursesRouteWithChildren
+  AuthenticatedDeliveriesRoute: typeof AuthenticatedDeliveriesRoute
+  AuthenticatedDeparturesRoute: typeof AuthenticatedDeparturesRoute
+  AuthenticatedDesignShowcaseRoute: typeof AuthenticatedDesignShowcaseRoute
   AuthenticatedDocumentsRoute: typeof AuthenticatedDocumentsRouteWithChildren
   AuthenticatedDriversRoute: typeof AuthenticatedDriversRouteWithChildren
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRouteWithChildren
@@ -1044,6 +1145,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMotorcyclesRoute: typeof AuthenticatedMotorcyclesRouteWithChildren
   AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
   AuthenticatedPaymentsRoute: typeof AuthenticatedPaymentsRoute
+  AuthenticatedPlanningRoute: typeof AuthenticatedPlanningRoute
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedRevenuesRoute: typeof AuthenticatedRevenuesRoute
   AuthenticatedRolesRoute: typeof AuthenticatedRolesRoute
@@ -1055,9 +1157,13 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAssignmentsRoute: AuthenticatedAssignmentsRoute,
   AuthenticatedClientsRoute: AuthenticatedClientsRouteWithChildren,
   AuthenticatedContractsRoute: AuthenticatedContractsRouteWithChildren,
   AuthenticatedCoursesRoute: AuthenticatedCoursesRouteWithChildren,
+  AuthenticatedDeliveriesRoute: AuthenticatedDeliveriesRoute,
+  AuthenticatedDeparturesRoute: AuthenticatedDeparturesRoute,
+  AuthenticatedDesignShowcaseRoute: AuthenticatedDesignShowcaseRoute,
   AuthenticatedDocumentsRoute: AuthenticatedDocumentsRouteWithChildren,
   AuthenticatedDriversRoute: AuthenticatedDriversRouteWithChildren,
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRouteWithChildren,
@@ -1070,6 +1176,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMotorcyclesRoute: AuthenticatedMotorcyclesRouteWithChildren,
   AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
   AuthenticatedPaymentsRoute: AuthenticatedPaymentsRoute,
+  AuthenticatedPlanningRoute: AuthenticatedPlanningRoute,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedRevenuesRoute: AuthenticatedRevenuesRoute,
   AuthenticatedRolesRoute: AuthenticatedRolesRoute,

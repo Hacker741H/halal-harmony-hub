@@ -21,6 +21,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
   --color-surface-elevated: var(--surface-elevated);
   --color-surface-hover: var(--surface-hover);
   --color-text-primary: var(--text-primary);
@@ -53,6 +54,9 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-overlay: var(--overlay);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-sidebar: var(--sidebar);
@@ -71,6 +75,12 @@
   --shadow-sm: var(--ds-shadow-sm);
   --shadow-md: var(--ds-shadow-md);
   --shadow-lg: var(--ds-shadow-lg);
+  --shadow-2xs: var(--ds-shadow-xs);
+  --shadow: var(--ds-shadow-sm);
+
+  --blur-xs: var(--ds-blur-xs);
+  --blur-sm: var(--ds-blur-sm);
+  --blur-md: var(--ds-blur-md);
 }
 
 :root {
@@ -90,6 +100,12 @@
   --ds-space-12: 3rem;
   --ds-space-16: 4rem;
 
+  /* Layout and controls */
+  --ds-content-max-width: 90rem;
+  --ds-control-height-sm: 2rem;
+  --ds-control-height-md: 2.5rem;
+  --ds-control-height-lg: 3rem;
+
   /* Radius */
   --ds-radius-xs: 0.25rem;
   --ds-radius-sm: 0.375rem;
@@ -103,6 +119,7 @@
   --ds-duration-fast: 120ms;
   --ds-duration-standard: 150ms;
   --ds-duration-slow: 180ms;
+  --ds-duration-caret: 1000ms;
   --ds-ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ds-ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
 
@@ -118,6 +135,7 @@
   --background: oklch(0.985 0.005 150);
   --foreground: oklch(0.18 0.03 160);
   --surface: oklch(1 0 0);
+  --surface-sunken: oklch(0.97 0.008 155);
   --surface-elevated: oklch(1 0 0);
   --surface-hover: oklch(0.94 0.03 155);
   --text-primary: oklch(0.18 0.03 160);
@@ -152,6 +170,9 @@
   --destructive-foreground: oklch(0.99 0.01 0);
 
   --border: oklch(0.9 0.01 155);
+  --border-subtle: oklch(0.93 0.008 155);
+  --border-strong: oklch(0.82 0.015 155);
+  --overlay: oklch(0.18 0.03 160 / 0.2);
   --input: oklch(0.89 0.01 155);
   --ring: oklch(0.55 0.13 155);
 
@@ -180,6 +201,7 @@
   --background: oklch(0.16 0.02 160);
   --foreground: oklch(0.96 0.01 150);
   --surface: oklch(0.2 0.03 160);
+  --surface-sunken: oklch(0.18 0.025 160);
   --surface-elevated: oklch(0.24 0.03 160);
   --surface-hover: oklch(0.3 0.05 160);
   --text-primary: oklch(0.96 0.01 150);
@@ -210,6 +232,9 @@
   --destructive: oklch(0.65 0.2 27);
   --destructive-foreground: oklch(0.98 0.01 0);
   --border: oklch(1 0 0 / 10%);
+  --border-subtle: oklch(1 0 0 / 7%);
+  --border-strong: oklch(1 0 0 / 16%);
+  --overlay: oklch(0.04 0.01 160 / 0.52);
   --input: oklch(1 0 0 / 12%);
   --ring: oklch(0.7 0.16 155);
   --sidebar: oklch(0.14 0.03 160);
@@ -291,6 +316,9 @@
 @utility bg-gradient-gold { background-image: var(--gradient-gold); }
 @utility shadow-elegant { box-shadow: var(--shadow-elegant); }
 @utility shadow-soft { box-shadow: var(--shadow-soft); }
+@utility duration-ui { transition-duration: var(--ds-duration-standard); }
+@utility duration-ui-fast { transition-duration: var(--ds-duration-fast); }
+@utility duration-ui-slow { transition-duration: var(--ds-duration-slow); }
 @utility transition-ui { transition-duration: var(--ds-duration-standard); transition-timing-function: var(--ds-ease-standard); }
 @utility transition-ui-fast { transition-duration: var(--ds-duration-fast); transition-timing-function: var(--ds-ease-standard); }
 @utility transition-ui-slow { transition-duration: var(--ds-duration-slow); transition-timing-function: var(--ds-ease-standard); }

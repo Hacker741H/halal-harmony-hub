@@ -12,6 +12,8 @@ type TransportMissionRow = {
   cargo_weight_kg: number | null; cargo_volume_m3: number | null; distance_km: number | null; planned_departure_at: string | null; planned_arrival_at: string | null
   actual_departure_at: string | null; actual_arrival_at: string | null; start_odometer: number | null; end_odometer: number | null; quoted_amount: number
   currency_code: string; reference: string | null; notes: string | null; overlap_exception_reason: string | null; close_exception_reason: string | null; cancellation_reason: string | null
+  delivery_status: string | null; delivery_recipient_name: string | null; delivery_notes: string | null; delivery_reservations: string | null; delivery_document_id: string | null
+  delivery_confirmed_at: string | null; delivery_confirmed_by: string | null; delivery_corrected_at: string | null; delivery_corrected_by: string | null
   created_by: string | null; updated_by: string | null; created_at: string; updated_at: string; closed_at: string | null; cancelled_at: string | null
 }
 type TransportBudgetLineRow = { id: string; mission_id: string; category: string; planned_amount: number; notes: string | null; created_by: string | null; updated_by: string | null; created_at: string; updated_at: string }
@@ -5052,10 +5054,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      finance_delete_operation: {
-        Args: { p_operation_id: string }
-        Returns: boolean
-      }
       assign_field_wallet: {
         Args: { p_assignment: Json }
         Returns: FieldWalletAssignmentRow
@@ -5085,6 +5083,10 @@ export type Database = {
         Args: { p_declaration_id: string; p_reason: string }
         Returns: FieldDeclarationRow
         SetofOptions: { from: "*"; to: "field_declarations"; isOneToOne: true; isSetofReturn: false }
+      }
+      finance_delete_operation: {
+        Args: { p_operation_id: string }
+        Returns: boolean
       }
       finance_require_write_role: { Args: never; Returns: undefined }
       finance_update_operation: {
@@ -5730,6 +5732,12 @@ export type Database = {
         }
       }
       create_transport_mission: { Args: { p_mission: Json }; Returns: TransportMissionRow; SetofOptions: { from: "transport_missions"; to: "transport_missions"; isOneToOne: true; isSetofReturn: false } }
+      assign_transport_mission: { Args: { p_mission_id: string; p_assignment: Json }; Returns: TransportMissionRow; SetofOptions: { from: "transport_missions"; to: "transport_missions"; isOneToOne: true; isSetofReturn: false } }
+      confirm_transport_departure: { Args: { p_mission_id: string; p_departure: Json }; Returns: TransportMissionRow; SetofOptions: { from: "transport_missions"; to: "transport_missions"; isOneToOne: true; isSetofReturn: false } }
+      confirm_transport_delivery: { Args: { p_mission_id: string; p_delivery: Json }; Returns: TransportMissionRow; SetofOptions: { from: "transport_missions"; to: "transport_missions"; isOneToOne: true; isSetofReturn: false } }
+      correct_transport_delivery: { Args: { p_mission_id: string; p_correction: Json }; Returns: TransportMissionRow; SetofOptions: { from: "transport_missions"; to: "transport_missions"; isOneToOne: true; isSetofReturn: false } }
+      get_transport_departure_readiness: { Args: { p_mission_id: string }; Returns: { check_code: string; label: string; is_ready: boolean; is_blocking: boolean; detail: string }[] }
+      get_transport_operations_read_access: { Args: { p_scope: string }; Returns: boolean }
       delete_transport_mission: { Args: { p_mission_id: string }; Returns: boolean }
       update_transport_mission: { Args: { p_mission_id: string; p_values: Json }; Returns: TransportMissionRow; SetofOptions: { from: "transport_missions"; to: "transport_missions"; isOneToOne: true; isSetofReturn: false } }
       set_transport_mission_status: { Args: { p_mission_id: string; p_status: string; p_reason?: string | null }; Returns: TransportMissionRow; SetofOptions: { from: "transport_missions"; to: "transport_missions"; isOneToOne: true; isSetofReturn: false } }

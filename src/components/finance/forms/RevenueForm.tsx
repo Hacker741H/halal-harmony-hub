@@ -356,7 +356,7 @@ export function RevenueForm({
         <div className="md:col-span-2">
 
           <Label>
-            Référence interne
+            Référence de facture / dossier
           </Label>
 
           <Input
@@ -370,6 +370,7 @@ export function RevenueForm({
               })
             }
           />
+          <p className="mt-1 text-xs text-muted-foreground">Utilisez la même référence pour regrouper les opérations liées.</p>
 
         </div>
 

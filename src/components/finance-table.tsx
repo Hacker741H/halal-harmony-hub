@@ -3,9 +3,11 @@ import { useMemo, useState } from "react";
 import {
   ArrowDownCircle,
   ArrowUpCircle,
+  ChevronRight,
   Landmark,
   MoreHorizontal,
   Repeat,
+  ReceiptText,
 } from "lucide-react";
 
 import type {
@@ -37,6 +39,10 @@ type Props = {
   onEdit?: (operation: FinanceOperation) => void;
   onDelete?: (operation: FinanceOperation) => void;
 };
+
+type DisplayRow =
+  | { kind: "operation"; operation: FinanceOperationWithWallets }
+  | { kind: "group"; reference: string; operations: FinanceOperationWithWallets[] };
 
 const typeLabels: Record<string, string> = {
   REVENUE: "Recette",
@@ -86,6 +92,7 @@ export function FinanceTable({
   const [dateTo, setDateTo] = useState("");
   const [amountMin, setAmountMin] = useState("");
   const [amountMax, setAmountMax] = useState("");
+  const [expandedReferences, setExpandedReferences] = useState<Set<string>>(() => new Set());
 
   const filterOptions = useMemo(() => {
     const types = new Set<string>();
@@ -153,6 +160,35 @@ export function FinanceTable({
     typeFilter,
     walletFilter,
   ]);
+
+  const displayRows = useMemo<DisplayRow[]>(() => {
+    const byReference = new Map<string, FinanceOperationWithWallets[]>();
+    for (const operation of filteredOperations) {
+      const reference = operation.reference?.trim();
+      if (reference) byReference.set(reference, [...(byReference.get(reference) ?? []), operation]);
+    }
+
+    const emittedReferences = new Set<string>();
+    return filteredOperations.flatMap<DisplayRow>((operation): DisplayRow[] => {
+      const reference = operation.reference?.trim();
+      const linkedOperations = reference ? byReference.get(reference) : undefined;
+      if (!reference || !linkedOperations || linkedOperations.length < 2) {
+        return [{ kind: "operation", operation }];
+      }
+      if (emittedReferences.has(reference)) return [];
+      emittedReferences.add(reference);
+      return [{ kind: "group", reference, operations: linkedOperations }];
+    });
+  }, [filteredOperations]);
+
+  const toggleReference = (reference: string) => {
+    setExpandedReferences((current) => {
+      const next = new Set(current);
+      if (next.has(reference)) next.delete(reference);
+      else next.add(reference);
+      return next;
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -252,47 +288,27 @@ export function FinanceTable({
               </TableRow>
             )}
 
-            {!loading &&
-              filteredOperations.map((operation) => (
-                <TableRow key={operation.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {typeIcon(operation.type)}
-                      <Badge variant={badgeVariant(operation.type)}>
-                        {typeLabels[operation.type] ?? operation.type}
-                      </Badge>
-                    </div>
+            {!loading && displayRows.flatMap((row) => {
+              if (row.kind === "operation") return [<OperationRow key={row.operation.id} operation={row.operation} onEdit={onEdit} onDelete={onDelete} />];
+              const expanded = expandedReferences.has(row.reference);
+              const total = row.operations.reduce((sum, operation) => sum + Number(operation.amount), 0);
+              const types = [...new Set(row.operations.map((operation) => typeLabels[operation.type] ?? operation.type))];
+              return [
+                <TableRow key={`group-${row.reference}`} className="bg-muted/40 hover:bg-muted/50">
+                  <TableCell colSpan={6} className="p-0">
+                    <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left" onClick={() => toggleReference(row.reference)}>
+                      <ChevronRight className={`h-4 w-4 shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`} />
+                      <ReceiptText className="h-4 w-4 shrink-0 text-primary" />
+                      <span className="min-w-0 flex-1"><span className="block font-semibold">Facture / dossier : {row.reference}</span><span className="block text-xs text-muted-foreground">{row.operations.length} opérations · {types.join(", ")}</span></span>
+                      <span className="shrink-0 font-semibold">{total.toLocaleString("fr-FR")} FCFA</span>
+                    </button>
                   </TableCell>
-                  <TableCell>{operation.wallet?.name ?? "-"}</TableCell>
-                  <TableCell>{operation.category ?? "-"}</TableCell>
-                  <TableCell className="font-semibold">
-                    {Number(operation.amount).toLocaleString("fr-FR")} FCFA
-                  </TableCell>
-                  <TableCell>{operation.operation_date}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onEdit?.(operation)}>
-                          Modifier
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-red-600"
-                          onClick={() => onDelete?.(operation)}
-                        >
-                          Supprimer
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+                </TableRow>,
+                ...(expanded ? row.operations.map((operation) => <OperationRow key={operation.id} operation={operation} onEdit={onEdit} onDelete={onDelete} nested />) : []),
+              ];
+            })}
 
-            {!loading && filteredOperations.length === 0 && (
+            {!loading && displayRows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                   Aucune opération trouvée.
@@ -304,4 +320,15 @@ export function FinanceTable({
       </div>
     </div>
   );
+}
+
+function OperationRow({ operation, onEdit, onDelete, nested = false }: { operation: FinanceOperationWithWallets; onEdit?: (operation: FinanceOperation) => void; onDelete?: (operation: FinanceOperation) => void; nested?: boolean }) {
+  return <TableRow key={operation.id} className={nested ? "bg-muted/10" : undefined}>
+    <TableCell className={nested ? "pl-12" : undefined}><div className="flex items-center gap-2">{typeIcon(operation.type)}<Badge variant={badgeVariant(operation.type)}>{typeLabels[operation.type] ?? operation.type}</Badge></div></TableCell>
+    <TableCell>{operation.wallet?.name ?? "-"}</TableCell>
+    <TableCell>{operation.category ?? operation.description ?? "-"}</TableCell>
+    <TableCell className="font-semibold">{Number(operation.amount).toLocaleString("fr-FR")} FCFA</TableCell>
+    <TableCell>{operation.operation_date}</TableCell>
+    <TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => onEdit?.(operation)}>Modifier</DropdownMenuItem><DropdownMenuItem className="text-red-600" onClick={() => onDelete?.(operation)}>Supprimer</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell>
+  </TableRow>;
 }

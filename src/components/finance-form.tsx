@@ -346,7 +346,7 @@ export function FinanceForm({
         <div className="md:col-span-2">
 
           <Label>
-            Référence
+            Référence de facture / dossier
           </Label>
 
           <Input
@@ -368,6 +368,7 @@ export function FinanceForm({
               })
             }
           />
+          <p className="mt-1 text-xs text-muted-foreground">Utilisez la même référence sur plusieurs opérations pour les regrouper dans la fiche Finance.</p>
 
         </div>
 

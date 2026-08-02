@@ -15,6 +15,7 @@ export const COURSE_STATUSES = ["DRAFT", "PLANNED", "IN_PROGRESS", "COMPLETED", 
 export const COURSE_EXPENSE_CATEGORIES = ["FUEL", "ROAD", "MEALS", "MISC", "EXCEPTIONAL_MAINTENANCE"] as const;
 export const COURSE_EXPENSE_STATUSES = ["PLANNED", "ENGAGED", "PAID", "CANCELLED"] as const;
 export const COURSE_PAYMENT_KINDS = ["ADVANCE", "PAYMENT", "SETTLEMENT"] as const;
+export const COURSE_DELIVERY_STATUSES = ["DELIVERED", "PARTIAL", "INCIDENT"] as const;
 
 export const COURSE_STATUS_LABELS: Record<(typeof COURSE_STATUSES)[number], string> = {
   DRAFT: "Brouillon",
@@ -26,6 +27,11 @@ export const COURSE_STATUS_LABELS: Record<(typeof COURSE_STATUSES)[number], stri
 };
 export const COURSE_EXPENSE_CATEGORY_LABELS: Record<(typeof COURSE_EXPENSE_CATEGORIES)[number], string> = {
   FUEL: "Carburant", ROAD: "Route", MEALS: "Repas", MISC: "Divers", EXCEPTIONAL_MAINTENANCE: "Maintenance exceptionnelle",
+};
+export const COURSE_DELIVERY_STATUS_LABELS: Record<(typeof COURSE_DELIVERY_STATUSES)[number], string> = {
+  DELIVERED: "Livrée",
+  PARTIAL: "Livraison partielle",
+  INCIDENT: "Incident signalé",
 };
 
 const idSchema = z.string().uuid();
@@ -68,16 +74,35 @@ export const courseValuesSchema = courseValuesBaseSchema.superRefine((value, con
 export type CourseValues = z.infer<typeof courseValuesSchema>;
 
 const courseUpdateSchema = z.object({ id: idSchema, values: courseValuesBaseSchema.partial() }).strict();
-const courseListSchema = z.object({ page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(20), search: z.string().trim().max(200).default(""), status: z.enum(COURSE_STATUSES).nullable().default(null), clientId: idSchema.nullable().default(null), driverId: idSchema.nullable().default(null), vehicleId: idSchema.nullable().default(null), from: nullableDate.default(null), to: nullableDate.default(null) }).strict();
+const courseListSchema = z.object({ page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(20), search: z.string().trim().max(200).default(""), status: z.enum(COURSE_STATUSES).nullable().default(null), clientId: idSchema.nullable().default(null), driverId: idSchema.nullable().default(null), vehicleId: idSchema.nullable().default(null), from: nullableDate.default(null), to: nullableDate.default(null), operationScope: z.enum(["planning", "assignments", "departures", "deliveries"]).nullable().default(null) }).strict();
 const expenseValuesSchema = z.object({ wallet_id: idSchema, category: z.enum(COURSE_EXPENSE_CATEGORIES), amount: z.number().finite().positive(), expense_date: z.string().date(), status: z.enum(["PLANNED", "ENGAGED"]).default("ENGAGED"), description: nullableText, receipt_document_id: idSchema.nullable() }).strict();
 const invoiceValuesSchema = z.object({ subtotal_amount: z.number().finite().min(0).nullable(), tax_rate: z.number().finite().min(0).max(100).nullable(), due_date: nullableDate, notes: nullableText }).strict();
 const paymentValuesSchema = z.object({ wallet_id: idSchema, amount: z.number().finite().positive(), payment_date: z.string().date(), payment_kind: z.enum(COURSE_PAYMENT_KINDS), reference: z.string().trim().max(255).nullable(), notes: nullableText }).strict();
+const assignmentValuesSchema = z.object({ vehicle_id: idSchema, driver_id: idSchema, override_reason: nullableText }).strict();
+const departureValuesSchema = z.object({ actual_departure_at: nullableDateTime.nullable(), start_odometer: z.number().finite().min(0) }).strict();
+const deliveryValuesSchema = z.object({
+  delivery_status: z.enum(COURSE_DELIVERY_STATUSES),
+  actual_arrival_at: nullableDateTime.nullable(),
+  end_odometer: nullableNumber,
+  recipient_name: z.string().trim().max(255).nullable(),
+  notes: nullableText,
+  reservations: nullableText,
+  delivery_document_id: idSchema.nullable(),
+}).strict().superRefine((value, context) => {
+  if (["DELIVERED", "PARTIAL"].includes(value.delivery_status) && !value.actual_arrival_at) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["actual_arrival_at"], message: "L’arrivée réelle est obligatoire." });
+  }
+  if (["DELIVERED", "PARTIAL"].includes(value.delivery_status) && value.end_odometer === null) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["end_odometer"], message: "Le kilométrage d’arrivée est obligatoire." });
+  }
+});
+const deliveryCorrectionSchema = z.object({ missionId: idSchema, reason: z.string().trim().min(3).max(2_000) }).strict();
 
 export type CourseFinancialSummary = {
   quoted_amount: number; budget_amount: number; actual_expenses: number; invoiced_amount: number; received_amount: number; amount_due: number; gross_result: number; cash_result: number; cost_per_km: number | null;
 };
 export type CourseHistoryEntry = { id: string; source_type: string; source_id: string; action: string; created_at: string; performed_by: string | null; before_value: Json | null; after_value: Json | null };
-export type CourseListItem = Course & { clientName: string | null; vehicleLabel: string | null; driverName: string | null; actualExpenses: number | null; amountDue: number | null; grossResult: number | null; invoiceStatus: string | null };
+export type CourseListItem = Course & { clientName: string | null; vehicleLabel: string | null; vehicleStatus: string | null; driverName: string | null; driverStatus: string | null; actualExpenses: number | null; amountDue: number | null; grossResult: number | null; invoiceStatus: string | null };
 export type CourseDetail = { course: Course; clientName: string | null; vehicle: { id: string; registration: string; brand: string | null; model: string | null; kilometrage: number | null; status: string | null } | null; driver: { id: string; name: string; telephone: string | null; licenseExpiry: string | null } | null; budgets: CourseBudgetLine[]; expenses: CourseExpense[]; invoices: CourseInvoice[]; payments: CoursePayment[]; financial: CourseFinancialSummary | null };
 
 function valuesPayload(values: Partial<CourseValues>): Json {
@@ -89,6 +114,10 @@ function valuesPayload(values: Partial<CourseValues>): Json {
 function mapRows<T extends { mission_id: string }>(rows: T[], missionIds: string[]) { return new Map(missionIds.map((id) => [id, rows.filter((row) => row.mission_id === id)])); }
 
 export const getCourses = createServerFn({ method: "GET" }).middleware([requireSupabaseAuth]).validator(courseListSchema).handler(async ({ context, data }): Promise<{ courses: CourseListItem[]; total: number }> => {
+  if (data.operationScope) {
+    const { error } = await context.supabase.rpc("get_transport_operations_read_access", { p_scope: data.operationScope });
+    if (error) throw error;
+  }
   const from = (data.page - 1) * data.pageSize;
   let query = context.supabase.from("transport_missions").select("*", { count: "exact" }).order("created_at", { ascending: false }).range(from, from + data.pageSize - 1);
   if (data.status) query = query.eq("status", data.status);
@@ -109,23 +138,25 @@ export const getCourses = createServerFn({ method: "GET" }).middleware([requireS
   const canReadFinance = permissionCodes.has("missions.finance.read");
   const [clientsResult, vehiclesResult, driversResult, expensesResult, invoicesResult, paymentsResult] = await Promise.all([
     rows.length ? context.supabase.from("transport_clients").select("id, display_name").in("id", rows.map((course) => course.client_id)) : Promise.resolve({ data: [], error: null }),
-    rows.some((course) => course.vehicle_id) ? context.supabase.from("vehicles").select("id, registration").in("id", rows.flatMap((course) => course.vehicle_id ? [course.vehicle_id] : [])) : Promise.resolve({ data: [], error: null }),
-    rows.some((course) => course.driver_id) ? context.supabase.from("drivers").select("id, employees(nom, prenom)").in("id", rows.flatMap((course) => course.driver_id ? [course.driver_id] : [])) : Promise.resolve({ data: [], error: null }),
+    rows.some((course) => course.vehicle_id) ? context.supabase.from("vehicles").select("id, registration, status").in("id", rows.flatMap((course) => course.vehicle_id ? [course.vehicle_id] : [])) : Promise.resolve({ data: [], error: null }),
+    rows.some((course) => course.driver_id) ? context.supabase.from("drivers").select("id, statut, employees(nom, prenom)").in("id", rows.flatMap((course) => course.driver_id ? [course.driver_id] : [])) : Promise.resolve({ data: [], error: null }),
     canReadFinance && ids.length ? context.supabase.from("transport_mission_expenses").select("mission_id, amount, status").in("mission_id", ids) : Promise.resolve({ data: [], error: null }),
     canReadFinance && ids.length ? context.supabase.from("transport_invoices").select("mission_id, total_amount, status").in("mission_id", ids) : Promise.resolve({ data: [], error: null }),
     canReadFinance && ids.length ? context.supabase.from("transport_invoice_payments").select("mission_id, amount, status").in("mission_id", ids) : Promise.resolve({ data: [], error: null }),
   ]);
   for (const result of [clientsResult, vehiclesResult, driversResult, expensesResult, invoicesResult, paymentsResult]) if (result.error) throw result.error;
   const clients = new Map((clientsResult.data ?? []).map((client) => [client.id, client.display_name]));
-  const vehicles = new Map((vehiclesResult.data ?? []).map((vehicle) => [vehicle.id, vehicle.registration]));
-  const drivers = new Map((driversResult.data ?? []).map((driver) => [driver.id, [driver.employees?.nom, driver.employees?.prenom].filter(Boolean).join(" ") || null]));
+  const vehicles = new Map((vehiclesResult.data ?? []).map((vehicle) => [vehicle.id, { registration: vehicle.registration, status: vehicle.status }]));
+  const drivers = new Map((driversResult.data ?? []).map((driver) => [driver.id, { name: [driver.employees?.nom, driver.employees?.prenom].filter(Boolean).join(" ") || null, status: driver.statut }]));
   const expenses = mapRows(expensesResult.data ?? [], ids); const invoices = mapRows(invoicesResult.data ?? [], ids); const payments = mapRows(paymentsResult.data ?? [], ids);
   return { courses: rows.map((course) => {
     const expenseTotal = (expenses.get(course.id) ?? []).filter((row) => row.status === "PAID").reduce((sum, row) => sum + Number(row.amount), 0);
     const invoiceRows = (invoices.get(course.id) ?? []).filter((row) => row.status !== "CANCELLED");
     const paid = (payments.get(course.id) ?? []).filter((row) => row.status === "CONFIRMED").reduce((sum, row) => sum + Number(row.amount), 0);
     const billed = invoiceRows.reduce((sum, row) => sum + Number(row.total_amount), 0);
-    return { ...course, clientName: clients.get(course.client_id) ?? null, vehicleLabel: course.vehicle_id ? vehicles.get(course.vehicle_id) ?? null : null, driverName: course.driver_id ? drivers.get(course.driver_id) ?? null : null, actualExpenses: canReadFinance ? expenseTotal : null, amountDue: canReadFinance ? billed - paid : null, grossResult: canReadFinance ? Number(course.quoted_amount) - expenseTotal : null, invoiceStatus: invoiceRows[0]?.status ?? null };
+    const vehicle = course.vehicle_id ? vehicles.get(course.vehicle_id) ?? null : null;
+    const driver = course.driver_id ? drivers.get(course.driver_id) ?? null : null;
+    return { ...course, clientName: clients.get(course.client_id) ?? null, vehicleLabel: vehicle?.registration ?? null, vehicleStatus: vehicle?.status ?? null, driverName: driver?.name ?? null, driverStatus: driver?.status ?? null, actualExpenses: canReadFinance ? expenseTotal : null, amountDue: canReadFinance ? billed - paid : null, grossResult: canReadFinance ? Number(course.quoted_amount) - expenseTotal : null, invoiceStatus: invoiceRows[0]?.status ?? null };
   }), total: count ?? 0 };
 });
 
@@ -162,4 +193,33 @@ export const issueCourseInvoice = createServerFn({ method: "POST" }).middleware(
 export const createCoursePayment = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).validator(z.object({ invoiceId: idSchema, payment: paymentValuesSchema }).strict()).handler(async ({ context, data }) => { const { data: payment, error } = await context.supabase.rpc("create_transport_invoice_payment", { p_invoice_id: data.invoiceId, p_payment: data.payment }); if (error) throw error; return payment; });
 export const confirmCoursePayment = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).validator(z.object({ id: idSchema }).strict()).handler(async ({ context, data }) => { const { data: payment, error } = await context.supabase.rpc("confirm_transport_invoice_payment", { p_payment_id: data.id }); if (error) throw error; return payment; });
 export const cancelCoursePayment = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).validator(z.object({ id: idSchema, reason: z.string().trim().min(3).max(2_000) }).strict()).handler(async ({ context, data }) => { const { data: payment, error } = await context.supabase.rpc("cancel_transport_invoice_payment", { p_payment_id: data.id, p_reason: data.reason }); if (error) throw error; return payment; });
+export const assignCourse = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).validator(z.object({ missionId: idSchema, assignment: assignmentValuesSchema }).strict()).handler(async ({ context, data }) => {
+  const { data: course, error } = await context.supabase.rpc("assign_transport_mission", { p_mission_id: data.missionId, p_assignment: data.assignment });
+  if (error) throw error;
+  if (!course) throw new Error("L’affectation de la Course a échoué.");
+  return course;
+});
+export const confirmCourseDeparture = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).validator(z.object({ missionId: idSchema, departure: departureValuesSchema }).strict()).handler(async ({ context, data }) => {
+  const { data: course, error } = await context.supabase.rpc("confirm_transport_departure", { p_mission_id: data.missionId, p_departure: data.departure });
+  if (error) throw error;
+  if (!course) throw new Error("La confirmation du départ a échoué.");
+  return course;
+});
+export const confirmCourseDelivery = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).validator(z.object({ missionId: idSchema, delivery: deliveryValuesSchema }).strict()).handler(async ({ context, data }) => {
+  const { data: course, error } = await context.supabase.rpc("confirm_transport_delivery", { p_mission_id: data.missionId, p_delivery: data.delivery });
+  if (error) throw error;
+  if (!course) throw new Error("La confirmation de livraison a échoué.");
+  return course;
+});
+export const correctCourseDelivery = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).validator(deliveryCorrectionSchema).handler(async ({ context, data }) => {
+  const { data: course, error } = await context.supabase.rpc("correct_transport_delivery", { p_mission_id: data.missionId, p_correction: { reason: data.reason } });
+  if (error) throw error;
+  if (!course) throw new Error("La correction de livraison a échoué.");
+  return course;
+});
+export const getCourseDepartureReadiness = createServerFn({ method: "GET" }).middleware([requireSupabaseAuth]).validator(idSchema).handler(async ({ context, data }) => {
+  const { data: readiness, error } = await context.supabase.rpc("get_transport_departure_readiness", { p_mission_id: data });
+  if (error) throw error;
+  return readiness ?? [];
+});
 export const getCourseHistory = createServerFn({ method: "GET" }).middleware([requireSupabaseAuth]).validator(idSchema).handler(async ({ context, data }): Promise<CourseHistoryEntry[]> => { const { data: history, error } = await context.supabase.rpc("get_transport_mission_history", { p_mission_id: data }); if (error) throw error; return history ?? []; });
