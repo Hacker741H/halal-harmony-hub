@@ -287,6 +287,18 @@ export const createFieldReport = createServerFn({ method: "POST" })
     return report;
   });
 
+export const cancelFieldReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(z.object({ id: idSchema }).strict())
+  .handler(async ({ context, data }) => {
+    const { data: report, error } = await context.supabase.rpc("cancel_field_report", {
+      p_report_id: data.id,
+    });
+    if (error) throw error;
+    if (!report) throw new Error("Le rapport terrain n’a pas pu être abandonné.");
+    return report;
+  });
+
 export const assignFieldWallet = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator(fieldWalletAssignmentSchema)

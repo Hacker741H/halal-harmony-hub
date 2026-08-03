@@ -5387,6 +5387,11 @@ export type Database = {
         Returns: FieldReportRow;
         SetofOptions: { from: "*"; to: "field_reports"; isOneToOne: true; isSetofReturn: false };
       };
+      cancel_field_report: {
+        Args: { p_report_id: string };
+        Returns: FieldReportRow;
+        SetofOptions: { from: "*"; to: "field_reports"; isOneToOne: true; isSetofReturn: false };
+      };
       create_field_declaration: {
         Args: { p_report_id: string; p_declaration: Json };
         Returns: FieldDeclarationRow;

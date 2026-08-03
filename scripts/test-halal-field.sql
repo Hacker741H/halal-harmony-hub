@@ -20,9 +20,11 @@ DECLARE
   v_source_after numeric;
   v_destination_after numeric;
   v_report public.field_reports;
+  v_cancelled_report public.field_reports;
   v_immediate_report public.field_reports;
   v_rejected_report public.field_reports;
   v_receipt public.field_declarations;
+  v_cancelled_declaration public.field_declarations;
   v_immediate_receipt public.field_declarations;
   v_expense public.field_declarations;
   v_remittance public.field_declarations;
@@ -33,6 +35,7 @@ DECLARE
   v_balance_after_second_confirmation numeric;
   v_source_before_immediate numeric;
   v_source_after_immediate numeric;
+  v_cancel_blocked boolean := false;
 BEGIN
   IF to_regclass('public.field_wallet_assignments') IS NULL
     OR to_regclass('public.field_reports') IS NULL
@@ -83,6 +86,7 @@ BEGIN
   END IF;
 
   IF has_function_privilege('anon', 'public.create_field_report(jsonb)', 'EXECUTE')
+    OR has_function_privilege('anon', 'public.cancel_field_report(uuid)', 'EXECUTE')
     OR has_function_privilege('anon', 'public.create_field_declaration(uuid, jsonb)', 'EXECUTE')
     OR has_function_privilege('anon', 'public.confirm_field_declaration(uuid)', 'EXECUTE')
     OR has_function_privilege('anon', 'public.create_immediate_field_receipt(uuid, jsonb)', 'EXECUTE') THEN
@@ -147,6 +151,28 @@ BEGIN
 
   -- The field agent can prepare and submit, but has no direct balance mutation.
   PERFORM set_config('request.jwt.claim.sub', v_field_agent_id::text, true);
+  v_cancelled_report := public.create_field_report(jsonb_build_object(
+    'report_type', 'DAILY',
+    'period_start', current_date,
+    'period_end', current_date,
+    'notes', 'Brouillon à abandonner MF-01'
+  ));
+  v_cancelled_declaration := public.create_field_declaration(v_cancelled_report.id, jsonb_build_object(
+    'declaration_type', 'RECEIPT',
+    'amount', 1200,
+    'field_wallet_id', v_source_wallet_id,
+    'category', 'Brouillon à abandonner'
+  ));
+  v_cancelled_report := public.cancel_field_report(v_cancelled_report.id);
+  IF v_cancelled_report.status <> 'CANCELLED'
+    OR (SELECT status FROM public.field_declarations WHERE id = v_cancelled_declaration.id) <> 'CANCELLED' THEN
+    RAISE EXCEPTION 'Cancelling a draft report must cancel only its draft declarations';
+  END IF;
+  SELECT balance INTO v_source_after FROM public.wallets WHERE id = v_source_wallet_id;
+  IF v_source_after IS DISTINCT FROM v_source_before THEN
+    RAISE EXCEPTION 'Cancelling a draft report must not affect a wallet';
+  END IF;
+
   v_report := public.create_field_report(jsonb_build_object(
     'report_type', 'DAILY',
     'period_start', current_date,
@@ -253,6 +279,14 @@ BEGIN
   IF v_source_after_immediate <> v_source_before_immediate + 7500 THEN
     RAISE EXCEPTION 'An immediate field receipt must credit the assigned wallet exactly once';
   END IF;
+  BEGIN
+    PERFORM public.cancel_field_report(v_immediate_report.id);
+  EXCEPTION WHEN OTHERS THEN
+    v_cancel_blocked := true;
+  END;
+  IF NOT v_cancel_blocked THEN
+    RAISE EXCEPTION 'A report with a confirmed declaration must not be cancellable';
+  END IF;
   v_immediate_report := public.submit_field_report(v_immediate_report.id);
   IF v_immediate_report.status <> 'SUBMITTED' THEN
     RAISE EXCEPTION 'A report containing only immediate receipts must remain submittable for the audit trail';
@@ -281,7 +315,7 @@ BEGIN
   END IF;
 
   INSERT INTO field_test_result(result)
-  VALUES ('PASSED: report lifecycle, standard and immediate receipt idempotence, wallet reconciliation, rejection and security assertions succeeded.');
+  VALUES ('PASSED: draft cancellation, report lifecycle, standard and immediate receipt idempotence, wallet reconciliation, rejection and security assertions succeeded.');
 END;
 $test$;
 

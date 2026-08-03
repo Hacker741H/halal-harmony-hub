@@ -23,6 +23,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -45,6 +56,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { usePermissions } from "@/hooks/use-permissions";
 import {
   assignFieldWallet,
+  cancelFieldReport,
   confirmFieldDeclaration,
   createFieldDeclaration,
   createImmediateFieldReceipt,
@@ -349,8 +361,10 @@ export function FieldWorkspace() {
 export function FieldReportWorkspace({ reportId }: { reportId: string }) {
   const { can, isPending: permissionsPending } = usePermissions();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const online = useOnlineStatus();
   const [declarationOpen, setDeclarationOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
   const [rejecting, setRejecting] = useState<FieldDeclaration | null>(null);
   const [offlineDrafts, setOfflineDrafts] = useState<OfflineFieldDeclarationDraft[]>([]);
   const [offlineDraftsLoading, setOfflineDraftsLoading] = useState(true);
@@ -424,6 +438,23 @@ export function FieldReportWorkspace({ reportId }: { reportId: string }) {
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+  const cancelMutation = useMutation({
+    mutationFn: () => cancelFieldReport({ data: { id: reportId } }),
+    onSuccess: async () => {
+      const draftCleanup = await Promise.allSettled(
+        offlineDrafts.map((draft) => removeOfflineFieldDeclarationDraft(draft.clientSubmissionId)),
+      );
+      setOfflineDrafts([]);
+      setCancelOpen(false);
+      toast.success("Rapport abandonné. Aucun wallet ni aucune écriture financière n’a été modifié.");
+      if (draftCleanup.some((result) => result.status === "rejected")) {
+        toast.warning("Le rapport est abandonné, mais certains brouillons locaux doivent être retirés de cet appareil.");
+      }
+      invalidate();
+      void navigate({ to: "/field" });
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
   const confirmMutation = useMutation({
     mutationFn: (id: string) => confirmFieldDeclaration({ data: { id } }),
     onSuccess: () => {
@@ -461,6 +492,10 @@ export function FieldReportWorkspace({ reportId }: { reportId: string }) {
   );
   const canEdit = report.status === "DRAFT" && can("field.reports.create");
   const canSubmit = report.status === "DRAFT" && can("field.reports.submit");
+  const canCancel =
+    report.status === "DRAFT" &&
+    can("field.reports.create") &&
+    report.declarations.every((declaration) => declaration.status === "DRAFT");
   const canConfirm = can("field.reports.confirm");
   const canReview = can("field.reports.review");
 
@@ -512,6 +547,40 @@ export function FieldReportWorkspace({ reportId }: { reportId: string }) {
               <Send className="size-4" aria-hidden="true" />
               {submitMutation.isPending ? "Envoi…" : "Envoyer au contrôle"}
             </Button>
+          ) : null}
+          {canCancel ? (
+            <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline">
+                  <XCircle className="size-4" aria-hidden="true" />
+                  Abandonner le rapport
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Abandonner ce rapport ?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Le rapport et ses déclarations brouillon seront marqués comme annulés et resteront
+                    dans l’historique. Aucun wallet ni aucune écriture financière ne sera modifié.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={cancelMutation.isPending}>
+                    Conserver le rapport
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    disabled={cancelMutation.isPending}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      cancelMutation.mutate();
+                    }}
+                  >
+                    {cancelMutation.isPending ? "Abandon…" : "Abandonner le rapport"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           ) : null}
         </div>
       </section>
