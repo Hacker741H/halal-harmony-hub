@@ -5,9 +5,21 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json, Tables } from "@/integrations/supabase/types";
 
 export const FIELD_REPORT_TYPES = ["DAILY", "WEEKLY"] as const;
-export const FIELD_REPORT_STATUSES = ["DRAFT", "SUBMITTED", "REVIEWED", "REJECTED", "CANCELLED"] as const;
+export const FIELD_REPORT_STATUSES = [
+  "DRAFT",
+  "SUBMITTED",
+  "REVIEWED",
+  "REJECTED",
+  "CANCELLED",
+] as const;
 export const FIELD_DECLARATION_TYPES = ["RECEIPT", "EXPENSE", "REMITTANCE"] as const;
-export const FIELD_DECLARATION_STATUSES = ["DRAFT", "SUBMITTED", "CONFIRMED", "REJECTED", "CANCELLED"] as const;
+export const FIELD_DECLARATION_STATUSES = [
+  "DRAFT",
+  "SUBMITTED",
+  "CONFIRMED",
+  "REJECTED",
+  "CANCELLED",
+] as const;
 
 export type FieldReport = Tables<"field_reports">;
 export type FieldDeclaration = Tables<"field_declarations">;
@@ -15,11 +27,24 @@ export type FieldWalletAssignment = Tables<"field_wallet_assignments">;
 export type FieldWallet = FieldWalletAssignment & {
   wallet: Pick<Tables<"wallets">, "id" | "name" | "type" | "color" | "balance">;
 };
-export type FieldAssignableUser = { userId: string; fullName: string | null; username: string | null };
-export type FieldAssignableWallet = Pick<Tables<"wallets">, "id" | "name" | "type" | "color" | "balance">;
+export type FieldAssignableUser = {
+  userId: string;
+  fullName: string | null;
+  username: string | null;
+};
+export type FieldAssignableWallet = Pick<
+  Tables<"wallets">,
+  "id" | "name" | "type" | "color" | "balance"
+>;
 export type FieldReportDetail = FieldReport & {
   declarations: FieldDeclaration[];
-  totals: { receipts: number; expenses: number; remittances: number; pending: number; confirmed: number };
+  totals: {
+    receipts: number;
+    expenses: number;
+    remittances: number;
+    pending: number;
+    confirmed: number;
+  };
 };
 
 const idSchema = z.string().uuid();
@@ -55,13 +80,25 @@ const declarationValuesSchema = z
   .superRefine((value, context) => {
     const isRemittance = value.declarationType === "REMITTANCE";
     if (isRemittance && !value.destinationWalletId) {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: ["destinationWalletId"], message: "Le wallet d’entreprise est obligatoire pour un versement." });
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["destinationWalletId"],
+        message: "Le wallet d’entreprise est obligatoire pour un versement.",
+      });
     }
     if (!isRemittance && value.destinationWalletId) {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: ["destinationWalletId"], message: "Seul un versement possède un wallet de destination." });
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["destinationWalletId"],
+        message: "Seul un versement possède un wallet de destination.",
+      });
     }
     if (isRemittance && value.destinationWalletId === value.fieldWalletId) {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: ["destinationWalletId"], message: "Les wallets source et destination doivent être différents." });
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["destinationWalletId"],
+        message: "Les wallets source et destination doivent être différents.",
+      });
     }
   });
 
@@ -81,11 +118,19 @@ const fieldWalletAssignmentSchema = z
     walletId: idSchema,
     assignmentType: z.enum(["SOURCE", "DESTINATION"]),
     label: nullableText,
+    allowImmediateReceipts: z.boolean().default(false),
   })
   .strict();
 
+const revokeFieldWalletAssignmentSchema = z.object({ assignmentId: idSchema }).strict();
+
 function reportPayload(values: z.infer<typeof reportValuesSchema>): Json {
-  return { report_type: values.reportType, period_start: values.periodStart, period_end: values.periodEnd, notes: values.notes };
+  return {
+    report_type: values.reportType,
+    period_start: values.periodStart,
+    period_end: values.periodEnd,
+    notes: values.notes,
+  };
 }
 
 function declarationPayload(values: FieldDeclarationValues): Json {
@@ -143,7 +188,11 @@ export const getFieldReport = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .validator(idSchema)
   .handler(async ({ context, data }): Promise<FieldReportDetail> => {
-    const { data: report, error: reportError } = await context.supabase.from("field_reports").select("*").eq("id", data).maybeSingle();
+    const { data: report, error: reportError } = await context.supabase
+      .from("field_reports")
+      .select("*")
+      .eq("id", data)
+      .maybeSingle();
     if (reportError) throw reportError;
     if (!report) throw new Error("Rapport terrain introuvable ou non autorisé.");
     const { data: declarations, error: declarationsError } = await context.supabase
@@ -183,9 +232,12 @@ export const getFieldWallets = createServerFn({ method: "GET" })
 export const getFieldAssignmentCandidates = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<FieldAssignableUser[]> => {
-    const { data: permitted, error: permissionError } = await context.supabase.rpc("user_has_permission", {
-      p_permission_code: "field.wallets.assign",
-    });
+    const { data: permitted, error: permissionError } = await context.supabase.rpc(
+      "user_has_permission",
+      {
+        p_permission_code: "field.wallets.assign",
+      },
+    );
     if (permissionError) throw permissionError;
     if (!permitted) throw new Error("Vous n’avez pas la permission d’affecter un wallet terrain.");
 
@@ -205,9 +257,12 @@ export const getFieldAssignmentCandidates = createServerFn({ method: "GET" })
 export const getFieldAssignableWallets = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<FieldAssignableWallet[]> => {
-    const { data: permitted, error: permissionError } = await context.supabase.rpc("user_has_permission", {
-      p_permission_code: "field.wallets.assign",
-    });
+    const { data: permitted, error: permissionError } = await context.supabase.rpc(
+      "user_has_permission",
+      {
+        p_permission_code: "field.wallets.assign",
+      },
+    );
     if (permissionError) throw permissionError;
     if (!permitted) throw new Error("Vous n’avez pas la permission d’affecter un wallet terrain.");
 
@@ -224,7 +279,9 @@ export const createFieldReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator(reportValuesSchema)
   .handler(async ({ context, data }) => {
-    const { data: report, error } = await context.supabase.rpc("create_field_report", { p_report: reportPayload(data) });
+    const { data: report, error } = await context.supabase.rpc("create_field_report", {
+      p_report: reportPayload(data),
+    });
     if (error) throw error;
     if (!report) throw new Error("Le rapport terrain n’a pas été créé.");
     return report;
@@ -240,10 +297,62 @@ export const assignFieldWallet = createServerFn({ method: "POST" })
         wallet_id: data.walletId,
         assignment_type: data.assignmentType,
         label: data.label,
+        allow_immediate_receipts: data.allowImmediateReceipts,
       },
     });
     if (error) throw error;
     if (!assignment) throw new Error("L’affectation du wallet terrain a échoué.");
+    return assignment;
+  });
+
+export const createImmediateFieldReceipt = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(
+    z
+      .object({ reportId: idSchema, values: declarationValuesSchema })
+      .strict()
+      .superRefine((value, context) => {
+        if (value.values.declarationType !== "RECEIPT") {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["values", "declarationType"],
+            message: "Seule une recette peut être créditée immédiatement.",
+          });
+        }
+        if (!value.values.clientSubmissionId) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["values", "clientSubmissionId"],
+            message: "La clé de synchronisation est obligatoire pour une recette immédiate.",
+          });
+        }
+      }),
+  )
+  .handler(async ({ context, data }) => {
+    const { data: declaration, error } = await context.supabase.rpc(
+      "create_immediate_field_receipt",
+      {
+        p_report_id: data.reportId,
+        p_receipt: declarationPayload(data.values),
+      },
+    );
+    if (error) throw error;
+    if (!declaration) throw new Error("La recette immédiate n’a pas pu être comptabilisée.");
+    return declaration;
+  });
+
+export const revokeFieldWalletAssignment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(revokeFieldWalletAssignmentSchema)
+  .handler(async ({ context, data }) => {
+    const { data: assignment, error } = await context.supabase.rpc(
+      "revoke_field_wallet_assignment",
+      {
+        p_assignment_id: data.assignmentId,
+      },
+    );
+    if (error) throw error;
+    if (!assignment) throw new Error("Le retrait de l’affectation du wallet terrain a échoué.");
     return assignment;
   });
 
@@ -264,7 +373,9 @@ export const submitFieldReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator(z.object({ id: idSchema }).strict())
   .handler(async ({ context, data }) => {
-    const { data: report, error } = await context.supabase.rpc("submit_field_report", { p_report_id: data.id });
+    const { data: report, error } = await context.supabase.rpc("submit_field_report", {
+      p_report_id: data.id,
+    });
     if (error) throw error;
     if (!report) throw new Error("Le rapport terrain n’a pas été envoyé.");
     return report;
@@ -274,7 +385,9 @@ export const confirmFieldDeclaration = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator(z.object({ id: idSchema }).strict())
   .handler(async ({ context, data }) => {
-    const { data: declaration, error } = await context.supabase.rpc("confirm_field_declaration", { p_declaration_id: data.id });
+    const { data: declaration, error } = await context.supabase.rpc("confirm_field_declaration", {
+      p_declaration_id: data.id,
+    });
     if (error) throw error;
     if (!declaration) throw new Error("La déclaration terrain n’a pas été confirmée.");
     return declaration;
@@ -284,7 +397,10 @@ export const rejectFieldDeclaration = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator(z.object({ id: idSchema, reason: z.string().trim().min(5).max(2_000) }).strict())
   .handler(async ({ context, data }) => {
-    const { data: declaration, error } = await context.supabase.rpc("reject_field_declaration", { p_declaration_id: data.id, p_reason: data.reason });
+    const { data: declaration, error } = await context.supabase.rpc("reject_field_declaration", {
+      p_declaration_id: data.id,
+      p_reason: data.reason,
+    });
     if (error) throw error;
     if (!declaration) throw new Error("La déclaration terrain n’a pas été refusée.");
     return declaration;

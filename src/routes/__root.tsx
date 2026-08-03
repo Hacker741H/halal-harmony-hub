@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
@@ -103,14 +103,19 @@ function RootShell({ children }: { children: ReactNode }) {
 function useSession() {
   const [session, setSession] = useState<{ email?: string; fullName?: string } | null>(null);
   const router = useRouter();
+  const queryClient = useQueryClient();
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       const user = data.user;
+      // A different user must never inherit cached permissions or data from the
+      // previously connected account.
+      queryClient.clear();
       if (user) setSession({ email: user.email ?? undefined, fullName: (user.user_metadata as { full_name?: string } | null)?.full_name });
       else setSession(null);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      queryClient.clear();
       if (nextSession?.user) {
         setSession({ email: nextSession.user.email ?? undefined, fullName: (nextSession.user.user_metadata as { full_name?: string } | null)?.full_name });
       } else {
@@ -119,7 +124,7 @@ function useSession() {
       router.invalidate();
     });
     return () => sub.subscription.unsubscribe();
-  }, [router]);
+  }, [queryClient, router]);
   return session;
 }
 
