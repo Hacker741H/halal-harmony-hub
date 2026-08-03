@@ -70,6 +70,18 @@ BEGIN
     RAISE EXCEPTION 'HALAL Field mutations must be limited to secured RPCs';
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'wallets'
+      AND policyname = 'wallets_read'
+      AND position('field.wallets.read' IN coalesce(qual, '')) > 0
+      AND position('field_wallet_assignments' IN coalesce(qual, '')) > 0
+  ) THEN
+    RAISE EXCEPTION 'An assigned field wallet must be visible without granting global wallet access';
+  END IF;
+
   IF has_function_privilege('anon', 'public.create_field_report(jsonb)', 'EXECUTE')
     OR has_function_privilege('anon', 'public.create_field_declaration(uuid, jsonb)', 'EXECUTE')
     OR has_function_privilege('anon', 'public.confirm_field_declaration(uuid)', 'EXECUTE')
