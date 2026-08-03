@@ -88,8 +88,14 @@ function isMariamKeita(fullName: string | null | undefined, username: string | u
   return identity.includes("mariam") && identity.includes("keita");
 }
 
+function isFabiola(fullName: string | null | undefined, username: string | undefined) {
+  const identity = `${fullName ?? ""} ${username ?? ""}`.trim().toLocaleLowerCase("fr-FR");
+  return identity.includes("fabiola");
+}
+
 function getDashboardGreeting(fullName: string | null | undefined, username: string | undefined) {
   if (isMariamKeita(fullName, username)) return "Bonjour Mme Keita.";
+  if (isFabiola(fullName, username)) return "おかえりなさい、ファビオラさん。";
 
   const name = (fullName ?? username ?? "").trim().split(/\s+/)[0] || "";
   return name ? `Bonjour ${name}.` : "Bonjour.";
@@ -119,6 +125,7 @@ function Dashboard() {
   const positiveResult = stats.benefice >= 0;
   const greeting = getDashboardGreeting(identity?.fullName, identity?.username);
   const showMariamWelcome = isMariamKeita(identity?.fullName, identity?.username);
+  const showFabiolaWelcome = isFabiola(identity?.fullName, identity?.username);
   const today = new Intl.DateTimeFormat("fr-FR", {
     weekday: "long",
     day: "numeric",
@@ -164,6 +171,18 @@ function Dashboard() {
                     </span>
                     .
                   </>
+                ) : showFabiolaWelcome ? (
+                  <>
+                    <span className="animate-fabiola-title motion-reduce:animate-none">おかえりなさい、</span>{" "}
+                    <span className="relative inline-block text-primary animate-welcome-name motion-reduce:animate-none">
+                      ファビオラさん
+                      <span
+                        className="absolute inset-x-1 -bottom-1 h-px bg-primary/45"
+                        aria-hidden="true"
+                      />
+                    </span>
+                    。
+                  </>
                 ) : (
                   greeting
                 )}
@@ -187,6 +206,28 @@ function Dashboard() {
                       <p className="mt-1 text-h4 text-foreground">Votre espace de pilotage est prêt.</p>
                       <p className="mt-1 text-body-sm text-muted-foreground">
                         Retrouvez l’essentiel de votre activité en un regard, Mme Keita.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : showFabiolaWelcome ? (
+                <div
+                  className="relative mt-5 max-w-xl overflow-hidden rounded-2xl border border-primary/25 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--primary)_12%,var(--surface)),var(--surface-elevated)_52%,color-mix(in_oklab,var(--accent)_9%,var(--surface)))] p-4 shadow-md animate-welcome-reveal motion-reduce:animate-none"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <span className="pointer-events-none absolute right-7 top-3 size-2 rounded-full bg-primary/50 animate-fabiola-petal-one motion-reduce:animate-none" aria-hidden="true" />
+                  <span className="pointer-events-none absolute right-20 top-7 size-1.5 rounded-full bg-accent/65 animate-fabiola-petal-two motion-reduce:animate-none" aria-hidden="true" />
+                  <span className="pointer-events-none absolute bottom-4 right-12 size-2 rounded-full bg-primary/35 animate-fabiola-petal-three motion-reduce:animate-none" aria-hidden="true" />
+                  <div className="relative flex items-start gap-3">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm animate-scale-in motion-reduce:animate-none">
+                      <Sparkles className="size-4" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-overline text-primary">ようこそ · HALAL ERP</p>
+                      <p className="mt-1 text-h4 text-foreground">Votre espace est prêt, Fabiola.</p>
+                      <p className="mt-1 text-body-sm text-muted-foreground">
+                        Une vue calme et claire pour commencer votre journée avec précision.
                       </p>
                     </div>
                   </div>

@@ -354,6 +354,29 @@
   to { opacity: 0; transform: translateX(240%) skewX(-18deg); }
 }
 
+@keyframes ds-fabiola-title {
+  from { opacity: 0; transform: translateY(0.5rem); filter: blur(2px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+@keyframes ds-fabiola-petal-one {
+  from { opacity: 0; transform: translate(-0.5rem, -0.35rem) rotate(0deg) scale(0.7); }
+  45% { opacity: 0.8; }
+  to { opacity: 0; transform: translate(1.1rem, 1.45rem) rotate(150deg) scale(1); }
+}
+
+@keyframes ds-fabiola-petal-two {
+  from { opacity: 0; transform: translate(0.4rem, -0.25rem) rotate(0deg) scale(0.75); }
+  45% { opacity: 0.72; }
+  to { opacity: 0; transform: translate(-0.7rem, 1.6rem) rotate(-135deg) scale(1); }
+}
+
+@keyframes ds-fabiola-petal-three {
+  from { opacity: 0; transform: translate(0.15rem, -0.45rem) rotate(0deg) scale(0.7); }
+  45% { opacity: 0.65; }
+  to { opacity: 0; transform: translate(-1.05rem, 1.15rem) rotate(120deg) scale(1); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -383,6 +406,10 @@
 @utility animate-welcome-reveal { animation: ds-welcome-reveal var(--ds-duration-slow) var(--ds-ease-standard) both; }
 @utility animate-welcome-name { animation: ds-welcome-name var(--ds-duration-slow) var(--ds-ease-standard) both; }
 @utility animate-welcome-sweep { animation: ds-welcome-sweep var(--ds-duration-slow) var(--ds-ease-standard) both; }
+@utility animate-fabiola-title { animation: ds-fabiola-title var(--ds-duration-slow) var(--ds-ease-standard) both; }
+@utility animate-fabiola-petal-one { animation: ds-fabiola-petal-one 760ms var(--ds-ease-standard) 130ms both; }
+@utility animate-fabiola-petal-two { animation: ds-fabiola-petal-two 820ms var(--ds-ease-standard) 210ms both; }
+@utility animate-fabiola-petal-three { animation: ds-fabiola-petal-three 730ms var(--ds-ease-standard) 290ms both; }
 @utility text-display { font-family: var(--font-display); font-size: clamp(2rem, 4vw, 3rem); font-weight: 700; line-height: 1.08; letter-spacing: -0.04em; }
 @utility text-h1 { font-family: var(--font-display); font-size: 2rem; font-weight: 700; line-height: 1.15; letter-spacing: -0.03em; }
 @utility text-h2 { font-family: var(--font-display); font-size: 1.5rem; font-weight: 650; line-height: 1.25; letter-spacing: -0.025em; }
