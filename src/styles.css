@@ -338,6 +338,22 @@
   to { opacity: 1; grid-template-rows: 1fr; }
 }
 
+@keyframes ds-welcome-reveal {
+  from { opacity: 0; transform: translateY(0.65rem) scale(0.985); filter: blur(3px); }
+  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
+@keyframes ds-welcome-name {
+  from { opacity: 0; transform: translateY(0.45rem); letter-spacing: 0.02em; }
+  to { opacity: 1; transform: translateY(0); letter-spacing: inherit; }
+}
+
+@keyframes ds-welcome-sweep {
+  from { opacity: 0; transform: translateX(-130%) skewX(-18deg); }
+  25% { opacity: 0.5; }
+  to { opacity: 0; transform: translateX(240%) skewX(-18deg); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -364,6 +380,9 @@
 @utility animate-slide-in { animation: ds-slide-in var(--ds-duration-standard) var(--ds-ease-standard) both; }
 @utility animate-scale-in { animation: ds-scale-in var(--ds-duration-fast) var(--ds-ease-standard) both; }
 @utility animate-collapse-in { animation: ds-collapse-in var(--ds-duration-standard) var(--ds-ease-standard) both; }
+@utility animate-welcome-reveal { animation: ds-welcome-reveal var(--ds-duration-slow) var(--ds-ease-standard) both; }
+@utility animate-welcome-name { animation: ds-welcome-name var(--ds-duration-slow) var(--ds-ease-standard) both; }
+@utility animate-welcome-sweep { animation: ds-welcome-sweep var(--ds-duration-slow) var(--ds-ease-standard) both; }
 @utility text-display { font-family: var(--font-display); font-size: clamp(2rem, 4vw, 3rem); font-weight: 700; line-height: 1.08; letter-spacing: -0.04em; }
 @utility text-h1 { font-family: var(--font-display); font-size: 2rem; font-weight: 700; line-height: 1.15; letter-spacing: -0.03em; }
 @utility text-h2 { font-family: var(--font-display); font-size: 1.5rem; font-weight: 650; line-height: 1.25; letter-spacing: -0.025em; }

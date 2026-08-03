@@ -83,6 +83,18 @@ type DashboardRoute =
   | "/notifications"
   | "/courses";
 
+function isMariamKeita(fullName: string | null | undefined, username: string | undefined) {
+  const identity = `${fullName ?? ""} ${username ?? ""}`.trim().toLocaleLowerCase("fr-FR");
+  return identity.includes("mariam") && identity.includes("keita");
+}
+
+function getDashboardGreeting(fullName: string | null | undefined, username: string | undefined) {
+  if (isMariamKeita(fullName, username)) return "Bonjour Mme Keita.";
+
+  const name = (fullName ?? username ?? "").trim().split(/\s+/)[0] || "";
+  return name ? `Bonjour ${name}.` : "Bonjour.";
+}
+
 function Dashboard() {
   const fetchStats = useServerFn(getDashboardStats);
   const fetchIdentity = useServerFn(getCurrentUserIdentity);
@@ -105,9 +117,8 @@ function Dashboard() {
   const stats = data ?? emptyStats;
   const totalBalance = stats.wallets.reduce((total, wallet) => total + wallet.balance, 0);
   const positiveResult = stats.benefice >= 0;
-  const displayName = identity?.fullName ?? identity?.username ?? "";
-  const firstName = displayName.trim().split(/\s+/)[0] || "";
-  const greeting = firstName ? `Bonjour ${firstName}.` : "Bonjour.";
+  const greeting = getDashboardGreeting(identity?.fullName, identity?.username);
+  const showMariamWelcome = isMariamKeita(identity?.fullName, identity?.username);
   const today = new Intl.DateTimeFormat("fr-FR", {
     weekday: "long",
     day: "numeric",
@@ -137,7 +148,50 @@ function Dashboard() {
                 <span aria-hidden="true">•</span>
                 <time dateTime={new Date().toISOString().slice(0, 10)}>{today}</time>
               </div>
-              <h1 className="mt-4 max-w-2xl text-display text-foreground">{greeting}</h1>
+              <h1 className="mt-4 max-w-2xl text-display text-foreground">
+                {showMariamWelcome ? (
+                  <>
+                    Bonjour{" "}
+                    <span
+                      className="relative inline-block text-primary animate-welcome-name motion-reduce:animate-none"
+                      style={{ animationDelay: "70ms" }}
+                    >
+                      Mme Keita
+                      <span
+                        className="absolute inset-x-1 -bottom-1 h-px bg-primary/45"
+                        aria-hidden="true"
+                      />
+                    </span>
+                    .
+                  </>
+                ) : (
+                  greeting
+                )}
+              </h1>
+              {showMariamWelcome ? (
+                <div
+                  className="relative mt-5 max-w-xl overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.12] via-surface-elevated to-surface p-4 shadow-md animate-welcome-reveal motion-reduce:animate-none"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <span
+                    className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 bg-gradient-to-r from-transparent via-primary/20 to-transparent animate-welcome-sweep motion-reduce:animate-none"
+                    aria-hidden="true"
+                  />
+                  <div className="relative flex items-start gap-3">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm animate-scale-in motion-reduce:animate-none">
+                      <Sparkles className="size-4" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-overline text-primary">Bienvenue dans HALAL ERP</p>
+                      <p className="mt-1 text-h4 text-foreground">Votre espace de pilotage est prêt.</p>
+                      <p className="mt-1 text-body-sm text-muted-foreground">
+                        Retrouvez l’essentiel de votre activité en un regard, Mme Keita.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               {isLoading ? (
                 <div className="mt-5 max-w-2xl space-y-2" aria-label="Chargement du résumé du jour">
                   <Skeleton className="h-4 w-full max-w-xl" />

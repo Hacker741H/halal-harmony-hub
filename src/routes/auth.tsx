@@ -53,6 +53,16 @@ function AuthPage() {
 
       <section className="relative grid w-full max-w-6xl overflow-hidden rounded-[2rem] border border-border/75 bg-surface/85 shadow-lg backdrop-blur-sm lg:grid-cols-[minmax(0,1.1fr)_minmax(25rem,.9fr)]">
         <div className="relative isolate overflow-hidden bg-[linear-gradient(145deg,oklch(0.16_.055_160),oklch(0.28_.08_160)_58%,oklch(0.45_.14_155))] px-6 py-8 text-primary-foreground sm:px-10 sm:py-12 lg:min-h-[39rem] lg:px-12 lg:py-14">
+          <img
+            src="/halal-welcome-team.jpg"
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 size-full object-cover object-[50%_40%] opacity-45 saturate-75"
+          />
+          <div
+            className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,oklch(0.12_.045_160/.96),oklch(0.2_.065_160/.82)_58%,oklch(0.32_.1_155/.72))]"
+            aria-hidden="true"
+          />
           <div className="pointer-events-none absolute -right-32 -top-24 size-96 rounded-full bg-emerald/25 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-28 -left-20 size-80 rounded-full bg-gold/15 blur-3xl" />
           <div className="relative flex h-full flex-col">
