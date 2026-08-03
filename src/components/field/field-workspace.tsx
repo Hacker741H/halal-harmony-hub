@@ -180,7 +180,11 @@ export function FieldWorkspace() {
   const walletsQuery = useQuery({
     queryKey: ["field-wallets"],
     queryFn: () => getFieldWallets(),
-    enabled: can("field.wallets.read"),
+    // The server and RLS remain authoritative: this query can only return wallets
+    // explicitly assigned to the connected person. Keeping it independent of the
+    // client permission cache avoids hiding a valid assignment while that cache
+    // is being refreshed after a role or wallet assignment change.
+    enabled: !permissionsPending,
   });
   const assignmentUsersQuery = useQuery({
     queryKey: ["field-wallet-assignment-candidates"],
@@ -270,8 +274,8 @@ export function FieldWorkspace() {
         />
         <StatCard
           label="Wallets affectés"
-          value={walletsQuery.isPending ? "—" : String(walletsQuery.data?.length ?? 0)}
-          description="Source ou destination"
+          value={walletsQuery.isPending ? "—" : walletsQuery.isError ? "!" : String(walletsQuery.data?.length ?? 0)}
+          description={walletsQuery.isError ? "Actualisation requise" : "Source ou destination"}
           tone="success"
         />
       </div>
@@ -317,6 +321,7 @@ export function FieldWorkspace() {
           loading={walletsQuery.isPending}
           error={walletsQuery.isError}
           canManage={can("field.wallets.assign")}
+          onRetry={() => void walletsQuery.refetch()}
           revokingId={
             revokeAssignmentMutation.isPending ? (revokeAssignmentMutation.variables ?? null) : null
           }
@@ -377,7 +382,7 @@ export function FieldReportWorkspace({ reportId }: { reportId: string }) {
   const walletsQuery = useQuery({
     queryKey: ["field-wallets"],
     queryFn: () => getFieldWallets(),
-    enabled: can("field.wallets.read"),
+    enabled: !permissionsPending,
   });
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ["field-report", reportId] });
@@ -489,6 +494,9 @@ export function FieldReportWorkspace({ reportId }: { reportId: string }) {
   );
   const destinationWallets = (walletsQuery.data ?? []).filter(
     (item) => item.assignment_type === "DESTINATION",
+  );
+  const walletNames = new Map(
+    (walletsQuery.data ?? []).map((item) => [item.wallet_id, item.label || item.wallet.name]),
   );
   const canEdit = report.status === "DRAFT" && can("field.reports.create");
   const canSubmit = report.status === "DRAFT" && can("field.reports.submit");
@@ -626,6 +634,12 @@ export function FieldReportWorkspace({ reportId }: { reportId: string }) {
                   canConfirm={canConfirm}
                   canReview={canReview}
                   confirming={confirmMutation.isPending}
+                  fieldWalletName={walletNames.get(declaration.field_wallet_id) ?? null}
+                  destinationWalletName={
+                    declaration.destination_wallet_id
+                      ? (walletNames.get(declaration.destination_wallet_id) ?? null)
+                      : null
+                  }
                   onConfirm={() => confirmMutation.mutate(declaration.id)}
                   onReject={() => setRejecting(declaration)}
                 />
@@ -638,6 +652,8 @@ export function FieldReportWorkspace({ reportId }: { reportId: string }) {
         reportId={report.id}
         sourceWallets={sourceWallets}
         destinationWallets={destinationWallets}
+        walletsError={walletsQuery.isError}
+        onRetryWallets={() => void walletsQuery.refetch()}
         online={online}
         open={declarationOpen}
         onOpenChange={setDeclarationOpen}
@@ -735,6 +751,8 @@ function DeclarationCard({
   canConfirm,
   canReview,
   confirming,
+  fieldWalletName,
+  destinationWalletName,
   onConfirm,
   onReject,
 }: {
@@ -742,6 +760,8 @@ function DeclarationCard({
   canConfirm: boolean;
   canReview: boolean;
   confirming: boolean;
+  fieldWalletName: string | null;
+  destinationWalletName: string | null;
   onConfirm: () => void;
   onReject: () => void;
 }) {
@@ -786,6 +806,14 @@ function DeclarationCard({
             {declaration.rejection_reason ? (
               <p className="mt-2 text-caption text-destructive">
                 Motif : {declaration.rejection_reason}
+              </p>
+            ) : null}
+            {declaration.status === "CONFIRMED" && fieldWalletName ? (
+              <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-success/10 px-2.5 py-1 text-caption font-medium text-success-foreground">
+                <CheckCircle2 className="size-3.5" aria-hidden="true" />
+                {declaration.declaration_type === "REMITTANCE" && destinationWalletName
+                  ? `Transfert confirmé : ${fieldWalletName} → ${destinationWalletName}`
+                  : `Confirmée dans le wallet ${fieldWalletName}`}
               </p>
             ) : null}
           </div>
@@ -920,6 +948,8 @@ function DeclarationDialog({
   reportId,
   sourceWallets,
   destinationWallets,
+  walletsError,
+  onRetryWallets,
   online,
   open,
   onOpenChange,
@@ -929,6 +959,8 @@ function DeclarationDialog({
   reportId: string;
   sourceWallets: FieldWallet[];
   destinationWallets: FieldWallet[];
+  walletsError: boolean;
+  onRetryWallets: () => void;
   online: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -1100,9 +1132,18 @@ function DeclarationDialog({
               </SelectContent>
             </Select>
             {sourceWallets.length === 0 ? (
-              <p className="text-caption text-warning-foreground">
-                Aucun wallet source ne vous est affecté. Demandez une affectation à Finance.
-              </p>
+              <div className="flex flex-wrap items-center gap-2 text-caption text-warning-foreground">
+                <p>
+                  {walletsError
+                    ? "La liste des wallets n’a pas pu être chargée."
+                    : "Aucun wallet source ne vous est affecté. Demandez une affectation à Finance."}
+                </p>
+                {walletsError ? (
+                  <Button type="button" size="sm" variant="outline" onClick={onRetryWallets}>
+                    Réessayer
+                  </Button>
+                ) : null}
+              </div>
             ) : null}
             {sourceWallets.length === 1 && sourceWallet ? (
               <p className="text-caption text-muted-foreground">
@@ -1431,6 +1472,7 @@ function AssignedWallets({
   error,
   canManage,
   revokingId,
+  onRetry,
   onEdit,
   onRevoke,
 }: {
@@ -1440,6 +1482,7 @@ function AssignedWallets({
   error: boolean;
   canManage: boolean;
   revokingId: string | null;
+  onRetry: () => void;
   onEdit: (assignment: FieldWallet) => void;
   onRevoke: (assignment: FieldWallet) => void;
 }) {
@@ -1461,7 +1504,15 @@ function AssignedWallets({
             <Skeleton className="h-14 w-full" />
           </div>
         ) : error ? (
-          <p className="text-sm text-destructive">Impossible de récupérer vos wallets.</p>
+          <div className="rounded-xl border border-destructive/25 bg-destructive/5 p-4">
+            <p className="text-sm font-medium text-destructive">Impossible de récupérer vos wallets.</p>
+            <p className="mt-1 text-caption text-muted-foreground">
+              Votre affectation reste inchangée. Actualisez la liste avant de déclarer un mouvement.
+            </p>
+            <Button className="mt-3" type="button" size="sm" variant="outline" onClick={onRetry}>
+              Réessayer
+            </Button>
+          </div>
         ) : wallets.length === 0 ? (
           <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
             Finance doit vous affecter un wallet avant toute déclaration.
