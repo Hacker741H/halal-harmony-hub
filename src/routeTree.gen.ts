@@ -35,6 +35,7 @@ import { Route as AuthenticatedPlanningRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 import { Route as AuthenticatedRevenuesRouteImport } from './routes/_authenticated/revenues'
 import { Route as AuthenticatedRolesRouteImport } from './routes/_authenticated/roles'
+import { Route as AuthenticatedSalesRouteImport } from './routes/_authenticated/sales'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedStocksRouteImport } from './routes/_authenticated/stocks'
 import { Route as AuthenticatedVehiclesRouteImport } from './routes/_authenticated/vehicles'
@@ -54,6 +55,8 @@ import { Route as AuthenticatedFarmsFarmIdRouteImport } from './routes/_authenti
 import { Route as AuthenticatedFieldIndexRouteImport } from './routes/_authenticated/field/index'
 import { Route as AuthenticatedFieldReportIdRouteImport } from './routes/_authenticated/field/$reportId'
 import { Route as AuthenticatedMotorcyclesMotorcycleIdRouteImport } from './routes/_authenticated/motorcycles/$motorcycleId'
+import { Route as AuthenticatedSalesIndexRouteImport } from './routes/_authenticated/sales/index'
+import { Route as AuthenticatedSalesSaleIdRouteImport } from './routes/_authenticated/sales/$saleId'
 import { Route as AuthenticatedVehiclesIndexRouteImport } from './routes/_authenticated/vehicles/index'
 import { Route as AuthenticatedVehiclesVehicleIdRouteImport } from './routes/_authenticated/vehicles/$vehicleId'
 import { Route as AuthenticatedWalletsIndexRouteImport } from './routes/_authenticated/wallets/index'
@@ -194,6 +197,11 @@ const AuthenticatedRolesRoute = AuthenticatedRolesRouteImport.update({
   path: '/roles',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSalesRoute = AuthenticatedSalesRouteImport.update({
+  id: '/sales',
+  path: '/sales',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -303,6 +311,17 @@ const AuthenticatedMotorcyclesMotorcycleIdRoute =
     path: '/$motorcycleId',
     getParentRoute: () => AuthenticatedMotorcyclesRoute,
   } as any)
+const AuthenticatedSalesIndexRoute = AuthenticatedSalesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedSalesRoute,
+} as any)
+const AuthenticatedSalesSaleIdRoute =
+  AuthenticatedSalesSaleIdRouteImport.update({
+    id: '/$saleId',
+    path: '/$saleId',
+    getParentRoute: () => AuthenticatedSalesRoute,
+  } as any)
 const AuthenticatedVehiclesIndexRoute =
   AuthenticatedVehiclesIndexRouteImport.update({
     id: '/',
@@ -360,6 +379,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof AuthenticatedReportsRoute
   '/revenues': typeof AuthenticatedRevenuesRoute
   '/roles': typeof AuthenticatedRolesRoute
+  '/sales': typeof AuthenticatedSalesRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/stocks': typeof AuthenticatedStocksRoute
   '/vehicles': typeof AuthenticatedVehiclesRouteWithChildren
@@ -373,6 +393,7 @@ export interface FileRoutesByFullPath {
   '/farms/$farmId': typeof AuthenticatedFarmsFarmIdRoute
   '/field/$reportId': typeof AuthenticatedFieldReportIdRoute
   '/motorcycles/$motorcycleId': typeof AuthenticatedMotorcyclesMotorcycleIdRoute
+  '/sales/$saleId': typeof AuthenticatedSalesSaleIdRoute
   '/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
   '/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
   '/clients/': typeof AuthenticatedClientsIndexRoute
@@ -381,6 +402,7 @@ export interface FileRoutesByFullPath {
   '/drivers/': typeof AuthenticatedDriversIndexRoute
   '/employees/': typeof AuthenticatedEmployeesIndexRoute
   '/field/': typeof AuthenticatedFieldIndexRoute
+  '/sales/': typeof AuthenticatedSalesIndexRoute
   '/vehicles/': typeof AuthenticatedVehiclesIndexRoute
   '/wallets/': typeof AuthenticatedWalletsIndexRoute
   '/drivers/$driverId/activity': typeof AuthenticatedDriversDriverIdActivityRoute
@@ -416,6 +438,7 @@ export interface FileRoutesByTo {
   '/farms/$farmId': typeof AuthenticatedFarmsFarmIdRoute
   '/field/$reportId': typeof AuthenticatedFieldReportIdRoute
   '/motorcycles/$motorcycleId': typeof AuthenticatedMotorcyclesMotorcycleIdRoute
+  '/sales/$saleId': typeof AuthenticatedSalesSaleIdRoute
   '/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
   '/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
   '/clients': typeof AuthenticatedClientsIndexRoute
@@ -424,6 +447,7 @@ export interface FileRoutesByTo {
   '/drivers': typeof AuthenticatedDriversIndexRoute
   '/employees': typeof AuthenticatedEmployeesIndexRoute
   '/field': typeof AuthenticatedFieldIndexRoute
+  '/sales': typeof AuthenticatedSalesIndexRoute
   '/vehicles': typeof AuthenticatedVehiclesIndexRoute
   '/wallets': typeof AuthenticatedWalletsIndexRoute
   '/drivers/$driverId/activity': typeof AuthenticatedDriversDriverIdActivityRoute
@@ -455,6 +479,7 @@ export interface FileRoutesById {
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/revenues': typeof AuthenticatedRevenuesRoute
   '/_authenticated/roles': typeof AuthenticatedRolesRoute
+  '/_authenticated/sales': typeof AuthenticatedSalesRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/stocks': typeof AuthenticatedStocksRoute
   '/_authenticated/vehicles': typeof AuthenticatedVehiclesRouteWithChildren
@@ -469,6 +494,7 @@ export interface FileRoutesById {
   '/_authenticated/farms/$farmId': typeof AuthenticatedFarmsFarmIdRoute
   '/_authenticated/field/$reportId': typeof AuthenticatedFieldReportIdRoute
   '/_authenticated/motorcycles/$motorcycleId': typeof AuthenticatedMotorcyclesMotorcycleIdRoute
+  '/_authenticated/sales/$saleId': typeof AuthenticatedSalesSaleIdRoute
   '/_authenticated/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
   '/_authenticated/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
   '/_authenticated/clients/': typeof AuthenticatedClientsIndexRoute
@@ -477,6 +503,7 @@ export interface FileRoutesById {
   '/_authenticated/drivers/': typeof AuthenticatedDriversIndexRoute
   '/_authenticated/employees/': typeof AuthenticatedEmployeesIndexRoute
   '/_authenticated/field/': typeof AuthenticatedFieldIndexRoute
+  '/_authenticated/sales/': typeof AuthenticatedSalesIndexRoute
   '/_authenticated/vehicles/': typeof AuthenticatedVehiclesIndexRoute
   '/_authenticated/wallets/': typeof AuthenticatedWalletsIndexRoute
   '/_authenticated/drivers/$driverId/activity': typeof AuthenticatedDriversDriverIdActivityRoute
@@ -509,6 +536,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/revenues'
     | '/roles'
+    | '/sales'
     | '/settings'
     | '/stocks'
     | '/vehicles'
@@ -522,6 +550,7 @@ export interface FileRouteTypes {
     | '/farms/$farmId'
     | '/field/$reportId'
     | '/motorcycles/$motorcycleId'
+    | '/sales/$saleId'
     | '/vehicles/$vehicleId'
     | '/wallets/$walletId'
     | '/clients/'
@@ -530,6 +559,7 @@ export interface FileRouteTypes {
     | '/drivers/'
     | '/employees/'
     | '/field/'
+    | '/sales/'
     | '/vehicles/'
     | '/wallets/'
     | '/drivers/$driverId/activity'
@@ -565,6 +595,7 @@ export interface FileRouteTypes {
     | '/farms/$farmId'
     | '/field/$reportId'
     | '/motorcycles/$motorcycleId'
+    | '/sales/$saleId'
     | '/vehicles/$vehicleId'
     | '/wallets/$walletId'
     | '/clients'
@@ -573,6 +604,7 @@ export interface FileRouteTypes {
     | '/drivers'
     | '/employees'
     | '/field'
+    | '/sales'
     | '/vehicles'
     | '/wallets'
     | '/drivers/$driverId/activity'
@@ -603,6 +635,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports'
     | '/_authenticated/revenues'
     | '/_authenticated/roles'
+    | '/_authenticated/sales'
     | '/_authenticated/settings'
     | '/_authenticated/stocks'
     | '/_authenticated/vehicles'
@@ -617,6 +650,7 @@ export interface FileRouteTypes {
     | '/_authenticated/farms/$farmId'
     | '/_authenticated/field/$reportId'
     | '/_authenticated/motorcycles/$motorcycleId'
+    | '/_authenticated/sales/$saleId'
     | '/_authenticated/vehicles/$vehicleId'
     | '/_authenticated/wallets/$walletId'
     | '/_authenticated/clients/'
@@ -625,6 +659,7 @@ export interface FileRouteTypes {
     | '/_authenticated/drivers/'
     | '/_authenticated/employees/'
     | '/_authenticated/field/'
+    | '/_authenticated/sales/'
     | '/_authenticated/vehicles/'
     | '/_authenticated/wallets/'
     | '/_authenticated/drivers/$driverId/activity'
@@ -819,6 +854,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRolesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/sales': {
+      id: '/_authenticated/sales'
+      path: '/sales'
+      fullPath: '/sales'
+      preLoaderRoute: typeof AuthenticatedSalesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings': {
       id: '/_authenticated/settings'
       path: '/settings'
@@ -951,6 +993,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/motorcycles/$motorcycleId'
       preLoaderRoute: typeof AuthenticatedMotorcyclesMotorcycleIdRouteImport
       parentRoute: typeof AuthenticatedMotorcyclesRoute
+    }
+    '/_authenticated/sales/': {
+      id: '/_authenticated/sales/'
+      path: '/'
+      fullPath: '/sales/'
+      preLoaderRoute: typeof AuthenticatedSalesIndexRouteImport
+      parentRoute: typeof AuthenticatedSalesRoute
+    }
+    '/_authenticated/sales/$saleId': {
+      id: '/_authenticated/sales/$saleId'
+      path: '/$saleId'
+      fullPath: '/sales/$saleId'
+      preLoaderRoute: typeof AuthenticatedSalesSaleIdRouteImport
+      parentRoute: typeof AuthenticatedSalesRoute
     }
     '/_authenticated/vehicles/': {
       id: '/_authenticated/vehicles/'
@@ -1133,6 +1189,19 @@ const AuthenticatedMotorcyclesRouteWithChildren =
     AuthenticatedMotorcyclesRouteChildren,
   )
 
+interface AuthenticatedSalesRouteChildren {
+  AuthenticatedSalesSaleIdRoute: typeof AuthenticatedSalesSaleIdRoute
+  AuthenticatedSalesIndexRoute: typeof AuthenticatedSalesIndexRoute
+}
+
+const AuthenticatedSalesRouteChildren: AuthenticatedSalesRouteChildren = {
+  AuthenticatedSalesSaleIdRoute: AuthenticatedSalesSaleIdRoute,
+  AuthenticatedSalesIndexRoute: AuthenticatedSalesIndexRoute,
+}
+
+const AuthenticatedSalesRouteWithChildren =
+  AuthenticatedSalesRoute._addFileChildren(AuthenticatedSalesRouteChildren)
+
 interface AuthenticatedVehiclesRouteChildren {
   AuthenticatedVehiclesVehicleIdRoute: typeof AuthenticatedVehiclesVehicleIdRoute
   AuthenticatedVehiclesIndexRoute: typeof AuthenticatedVehiclesIndexRoute
@@ -1185,6 +1254,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedRevenuesRoute: typeof AuthenticatedRevenuesRoute
   AuthenticatedRolesRoute: typeof AuthenticatedRolesRoute
+  AuthenticatedSalesRoute: typeof AuthenticatedSalesRouteWithChildren
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedStocksRoute: typeof AuthenticatedStocksRoute
   AuthenticatedVehiclesRoute: typeof AuthenticatedVehiclesRouteWithChildren
@@ -1216,6 +1286,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedRevenuesRoute: AuthenticatedRevenuesRoute,
   AuthenticatedRolesRoute: AuthenticatedRolesRoute,
+  AuthenticatedSalesRoute: AuthenticatedSalesRouteWithChildren,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedStocksRoute: AuthenticatedStocksRoute,
   AuthenticatedVehiclesRoute: AuthenticatedVehiclesRouteWithChildren,

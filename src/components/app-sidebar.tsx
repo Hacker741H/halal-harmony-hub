@@ -65,6 +65,7 @@ type NavigationRoute =
   | "/farms"
   | "/contracts"
   | "/stocks"
+  | "/sales"
   | "/wallets"
   | "/finance"
   | "/revenues"
@@ -137,6 +138,7 @@ const navigationGroups: readonly NavigationGroup[] = [
       { title: "Fermes", url: "/farms", icon: Sprout },
       { title: "Contrats", url: "/contracts", icon: FileSignature },
       { title: "Stocks", url: "/stocks", icon: Package },
+      { title: "Ventes", url: "/sales", icon: PackageCheck, permission: "sales.read" },
     ],
   },
   {

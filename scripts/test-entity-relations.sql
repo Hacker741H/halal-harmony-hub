@@ -53,8 +53,18 @@ BEGIN
   END IF;
   PERFORM public.close_driver_motorcycle_assignment(motorcycle_assignment.id, current_date, 'close');
 
+  INSERT INTO storage.objects(bucket_id, name)
+  VALUES ('documents', 'tests/entity-relations/test.pdf')
+  ON CONFLICT (bucket_id, name) DO NOTHING;
+
   SELECT id INTO document_id FROM public.create_document_with_relation(
-    jsonb_build_object('nom', 'test.pdf', 'type', 'TEST', 'url', 'https://example.invalid/test.pdf'), 'employee', employee_id
+    jsonb_build_object(
+      'nom', 'test.pdf',
+      'type', 'TEST',
+      'storage_path', 'tests/entity-relations/test.pdf'
+    ),
+    'employee',
+    employee_id
   );
   IF NOT EXISTS (SELECT 1 FROM public.document_employee_links l WHERE l.document_id = test.document_id AND l.employee_id = test.employee_id) THEN
     RAISE EXCEPTION 'Explicit employee document link was not created';
@@ -72,8 +82,19 @@ BEGIN
     RAISE EXCEPTION 'Explicit contract links were not created';
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'driver_vehicle_assignments' AND policyname = 'driver_vehicle_assignments_read')
-    OR NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'document_employee_links' AND policyname = 'document_employee_links_read') THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'driver_vehicle_assignments'
+      AND policyname = 'driver_vehicle_assignments_read_authorized'
+      AND cmd = 'SELECT'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'document_employee_links'
+      AND policyname = 'document_employee_links_read_authorized'
+      AND cmd = 'SELECT'
+  ) THEN
     RAISE EXCEPTION 'Required relation RLS policies are missing';
   END IF;
 END

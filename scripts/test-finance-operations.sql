@@ -127,14 +127,21 @@ BEGIN
     RAISE EXCEPTION 'Une politique RLS permissive historique subsiste.';
   END IF;
 
+  -- Les mutations financi\u00e8res passent exclusivement par les RPC s\u00e9curis\u00e9es :
+  -- il ne doit donc exister aucune politique d'\u00e9criture directe pour authenticated.
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'public' AND tablename = 'finance_operations'
-      AND policyname = 'finance_operations_write' AND cmd = 'ALL'
+      AND policyname = 'finance_operations_read' AND cmd = 'SELECT'
   ) OR NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'public' AND tablename = 'wallets'
-      AND policyname = 'wallets_write' AND cmd = 'ALL'
+      AND policyname = 'wallets_read' AND cmd = 'SELECT'
+  ) OR EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename IN ('finance_operations', 'wallets')
+      AND cmd IN ('INSERT', 'UPDATE', 'DELETE', 'ALL')
   ) OR EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'public'

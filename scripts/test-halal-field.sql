@@ -229,6 +229,9 @@ BEGIN
   IF (SELECT count(*) FROM public.finance_field_declaration_links WHERE declaration_id IN (v_receipt.id, v_expense.id, v_remittance.id)) <> 3 THEN
     RAISE EXCEPTION 'Each confirmed field declaration must have exactly one finance link';
   END IF;
+  IF (SELECT status FROM public.field_reports WHERE id = v_report.id) <> 'REVIEWED' THEN
+    RAISE EXCEPTION 'A report must become reviewed when all of its declarations have been confirmed';
+  END IF;
 
   SELECT balance INTO v_source_after FROM public.wallets WHERE id = v_source_wallet_id;
   SELECT balance INTO v_destination_after FROM public.wallets WHERE id = v_destination_wallet_id;
@@ -305,6 +308,9 @@ BEGIN
   v_rejected := public.reject_field_declaration(v_rejected.id, 'Justificatif manquant pour le test.');
   IF v_rejected.status <> 'REJECTED' OR v_rejected.rejection_reason IS NULL THEN
     RAISE EXCEPTION 'Rejecting a declaration must retain its status and reason';
+  END IF;
+  IF (SELECT status FROM public.field_reports WHERE id = v_rejected_report.id) <> 'REVIEWED' THEN
+    RAISE EXCEPTION 'A report must become reviewed when all of its declarations have reached a final decision';
   END IF;
   IF NOT EXISTS (
     SELECT 1 FROM public.business_finance_audit

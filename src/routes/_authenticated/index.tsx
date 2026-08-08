@@ -93,12 +93,17 @@ function isFabiola(fullName: string | null | undefined, username: string | undef
   return identity.includes("fabiola");
 }
 
+function getGreetingName(fullName: string | null | undefined, username: string | undefined) {
+  if (isMariamKeita(fullName, username)) return "Mme Keita";
+
+  return (fullName ?? username ?? "").trim().split(/\s+/)[0] || "";
+}
+
 function getDashboardGreeting(fullName: string | null | undefined, username: string | undefined) {
-  if (isMariamKeita(fullName, username)) return "Bonjour Mme Keita.";
   if (isFabiola(fullName, username)) return "おかえりなさい、ファビオラさん。";
 
-  const name = (fullName ?? username ?? "").trim().split(/\s+/)[0] || "";
-  return name ? `Bonjour ${name}.` : "Bonjour.";
+  const greetingName = getGreetingName(fullName, username);
+  return greetingName ? `Bonjour ${greetingName}.` : "Bonjour.";
 }
 
 function Dashboard() {
@@ -124,8 +129,9 @@ function Dashboard() {
   const totalBalance = stats.wallets.reduce((total, wallet) => total + wallet.balance, 0);
   const positiveResult = stats.benefice >= 0;
   const greeting = getDashboardGreeting(identity?.fullName, identity?.username);
-  const showMariamWelcome = isMariamKeita(identity?.fullName, identity?.username);
+  const greetingName = getGreetingName(identity?.fullName, identity?.username);
   const showFabiolaWelcome = isFabiola(identity?.fullName, identity?.username);
+  const showPersonalizedWelcome = Boolean(greetingName) && !showFabiolaWelcome;
   const today = new Intl.DateTimeFormat("fr-FR", {
     weekday: "long",
     day: "numeric",
@@ -156,14 +162,14 @@ function Dashboard() {
                 <time dateTime={new Date().toISOString().slice(0, 10)}>{today}</time>
               </div>
               <h1 className="mt-4 max-w-2xl text-display text-foreground">
-                {showMariamWelcome ? (
+                {showPersonalizedWelcome ? (
                   <>
                     Bonjour{" "}
                     <span
                       className="relative inline-block text-primary animate-welcome-name motion-reduce:animate-none"
                       style={{ animationDelay: "70ms" }}
                     >
-                      Mme Keita
+                      {greetingName}
                       <span
                         className="absolute inset-x-1 -bottom-1 h-px bg-primary/45"
                         aria-hidden="true"
@@ -187,7 +193,7 @@ function Dashboard() {
                   greeting
                 )}
               </h1>
-              {showMariamWelcome ? (
+              {showPersonalizedWelcome ? (
                 <div
                   className="relative mt-5 max-w-xl overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.12] via-surface-elevated to-surface p-4 shadow-md animate-welcome-reveal motion-reduce:animate-none"
                   role="status"
@@ -203,9 +209,11 @@ function Dashboard() {
                     </span>
                     <div className="min-w-0">
                       <p className="text-overline text-primary">Bienvenue dans HALAL ERP</p>
-                      <p className="mt-1 text-h4 text-foreground">Votre espace de pilotage est prêt.</p>
+                      <p className="mt-1 text-h4 text-foreground">
+                        Votre espace de pilotage est prêt. Aidez chakoul à avancer.
+                      </p>
                       <p className="mt-1 text-body-sm text-muted-foreground">
-                        Retrouvez l’essentiel de votre activité en un regard, Mme Keita.
+                        Retrouvez l’essentiel de votre activité en un regard, Mme KEITA.
                       </p>
                     </div>
                   </div>

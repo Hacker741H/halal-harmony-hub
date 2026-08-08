@@ -11,12 +11,12 @@ BEGIN
   SELECT user_id
     INTO v_actor_id
   FROM public.user_roles
-  WHERE role IN ('super_admin', 'admin', 'comptable')
+  WHERE role = 'super_admin'
   ORDER BY created_at
   LIMIT 1;
 
   IF v_actor_id IS NULL THEN
-    RAISE EXCEPTION 'Un utilisateur super_admin, admin ou comptable est requis pour les tests de reporting.';
+    RAISE EXCEPTION 'Un utilisateur super_admin est requis pour les tests complets de reporting.';
   END IF;
 
   PERFORM set_config('request.jwt.claim.sub', v_actor_id::text, true);
@@ -71,10 +71,17 @@ BEGIN
 
   SELECT (public.get_management_report('FINANCE', '{}'::jsonb) #>> '{summary,revenue}')::numeric INTO v_before;
 
-  INSERT INTO public.finance_operations (
-    wallet_id, type, amount, operation_date, status, category, description, module
-  ) VALUES (
-    v_wallet_id, 'REVENUE', 987654, current_date, 'CANCELLED', 'TEST_REPORTING', 'Écriture annulée de test', 'TEST'
+  PERFORM public.finance_create_operation(
+    jsonb_build_object(
+      'wallet_id', v_wallet_id,
+      'type', 'REVENUE',
+      'amount', 987654,
+      'operation_date', current_date,
+      'status', 'CANCELLED',
+      'category', 'TEST_REPORTING',
+      'description', 'Écriture annulée de test',
+      'module', 'TEST'
+    )
   );
 
   SELECT (public.get_management_report('FINANCE', '{}'::jsonb) #>> '{summary,revenue}')::numeric INTO v_after;

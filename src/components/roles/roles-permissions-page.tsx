@@ -56,6 +56,14 @@ function getRole(value: string): AppRole {
   return APP_ROLE_VALUES.find((role) => role === value) ?? "lecture_seule";
 }
 
+function getRolePermissionSummary(role: PermissionRole, totalPermissions: number): string {
+  if (role.code === "super_admin") {
+    return `${totalPermissions} permissions · accès complet`;
+  }
+
+  return `${role.permission_codes.length} permissions`;
+}
+
 function formatModule(module: string): string {
   const labels: Record<string, string> = {
     dashboard: "Tableau de bord",
@@ -164,7 +172,7 @@ export function RolesPermissionsPage() {
               <div className="relative pt-2"><Search className="absolute left-3 top-5 h-4 w-4 text-muted-foreground" /><Input value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} className="pl-9" placeholder="Rechercher un rôle" /></div>
             </CardHeader>
             <CardContent className="space-y-2">
-              {filteredRoles.map((role) => <button key={role.code} type="button" onClick={() => setSelectedRole(role.code)} className={`w-full rounded-lg border p-3 text-left transition-colors ${currentRole?.code === role.code ? "border-primary bg-primary/5" : "hover:bg-muted"}`}><div className="flex items-center justify-between gap-2"><span className="font-medium">{role.label}</span><Badge variant="secondary">{role.user_count}</Badge></div><p className="mt-1 text-xs text-muted-foreground">{role.permission_codes.length} permissions</p></button>)}
+              {filteredRoles.map((role) => <button key={role.code} type="button" onClick={() => setSelectedRole(role.code)} className={`w-full rounded-lg border p-3 text-left transition-colors ${currentRole?.code === role.code ? "border-primary bg-primary/5" : "hover:bg-muted"}`}><div className="flex items-center justify-between gap-2"><span className="font-medium">{role.label}</span><Badge variant="secondary">{role.user_count}</Badge></div><p className="mt-1 text-xs text-muted-foreground">{getRolePermissionSummary(role, data.permissions.length)}</p></button>)}
             </CardContent>
           </Card>
 

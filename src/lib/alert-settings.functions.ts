@@ -145,7 +145,7 @@ export const saveNotificationAlertRule = createServerFn({ method: "POST" })
       p_default_severity: data.defaultSeverity,
       p_due_days: [...new Set(data.dueDays)].sort((left, right) => right - left),
       p_severity_schedule: toJson(data.severitySchedule),
-      p_threshold: data.threshold,
+      p_threshold: data.threshold ?? undefined,
       p_recipient_roles: data.recipientRoles,
     });
     if (error) throw error;
@@ -159,7 +159,7 @@ export const saveWalletAlertThreshold = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { data: wallet, error } = await context.supabase.rpc("set_wallet_alert_threshold", {
       p_wallet_id: data.id,
-      p_alert_threshold: data.threshold,
+      p_alert_threshold: data.threshold ?? undefined,
     });
     if (error) throw error;
     if (!wallet) throw new Error("Le seuil du wallet n’a pas été enregistré.");
