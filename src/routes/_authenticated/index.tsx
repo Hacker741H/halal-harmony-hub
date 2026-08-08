@@ -93,6 +93,49 @@ function isFabiola(fullName: string | null | undefined, username: string | undef
   return identity.includes("fabiola");
 }
 
+function isSamira(fullName: string | null | undefined, username: string | undefined) {
+  const identity = `${fullName ?? ""} ${username ?? ""}`.trim().toLocaleLowerCase("fr-FR");
+  return identity.includes("samira");
+}
+
+function isAbraham(fullName: string | null | undefined, username: string | undefined) {
+  const identity = `${fullName ?? ""} ${username ?? ""}`.trim().toLocaleLowerCase("fr-FR");
+  return identity.includes("abraham");
+}
+
+function PersonalizedWelcomeCard({
+  title,
+  headline,
+  description,
+}: {
+  title: string;
+  headline: string;
+  description: string;
+}) {
+  return (
+    <div
+      className="relative mt-5 max-w-xl overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.12] via-surface-elevated to-surface p-4 shadow-md animate-welcome-reveal motion-reduce:animate-none"
+      role="status"
+      aria-live="polite"
+    >
+      <span
+        className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 bg-gradient-to-r from-transparent via-primary/20 to-transparent animate-welcome-sweep motion-reduce:animate-none"
+        aria-hidden="true"
+      />
+      <div className="relative flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm animate-scale-in motion-reduce:animate-none">
+          <Sparkles className="size-4" aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-overline text-primary">{title}</p>
+          <p className="mt-1 text-h4 text-foreground">{headline}</p>
+          <p className="mt-1 text-body-sm text-muted-foreground">{description}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function getGreetingName(fullName: string | null | undefined, username: string | undefined) {
   if (isMariamKeita(fullName, username)) return "Mme Keita";
 
@@ -131,7 +174,10 @@ function Dashboard() {
   const greeting = getDashboardGreeting(identity?.fullName, identity?.username);
   const greetingName = getGreetingName(identity?.fullName, identity?.username);
   const showFabiolaWelcome = isFabiola(identity?.fullName, identity?.username);
-  const showPersonalizedWelcome = Boolean(greetingName) && !showFabiolaWelcome;
+  const showNamedGreeting = Boolean(greetingName) && !showFabiolaWelcome;
+  const showSamiraWelcome = isSamira(identity?.fullName, identity?.username);
+  const showMariamWelcome = isMariamKeita(identity?.fullName, identity?.username);
+  const showAbrahamWelcome = isAbraham(identity?.fullName, identity?.username);
   const today = new Intl.DateTimeFormat("fr-FR", {
     weekday: "long",
     day: "numeric",
@@ -162,7 +208,7 @@ function Dashboard() {
                 <time dateTime={new Date().toISOString().slice(0, 10)}>{today}</time>
               </div>
               <h1 className="mt-4 max-w-2xl text-display text-foreground">
-                {showPersonalizedWelcome ? (
+                {showNamedGreeting ? (
                   <>
                     Bonjour{" "}
                     <span
@@ -193,7 +239,19 @@ function Dashboard() {
                   greeting
                 )}
               </h1>
-              {showPersonalizedWelcome ? (
+              {showMariamWelcome ? (
+                <PersonalizedWelcomeCard
+                  title="Bienvenue dans HALAL ERP"
+                  headline="Votre espace de pilotage est prêt."
+                  description="Retrouvez l’essentiel de votre activité en un regard, Mme Keita."
+                />
+              ) : showAbrahamWelcome ? (
+                <PersonalizedWelcomeCard
+                  title="Bienvenue dans HALAL ERP"
+                  headline="Votre espace de pilotage est prêt, Abraham."
+                  description="Retrouvez l’essentiel de votre activité en un regard."
+                />
+              ) : showSamiraWelcome ? (
                 <div
                   className="relative mt-5 max-w-xl overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.12] via-surface-elevated to-surface p-4 shadow-md animate-welcome-reveal motion-reduce:animate-none"
                   role="status"
