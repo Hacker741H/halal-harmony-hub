@@ -16,15 +16,21 @@ import {
   getJekoCoursePaymentSetup,
   type JekoCheckout,
 } from "@/lib/payments/jeko-course-payments.functions";
+import {
+  configureJekoCommercialWallet,
+  createJekoCommercialInvoiceCheckout,
+  getJekoCommercialPaymentSetup,
+} from "@/lib/payments/jeko-commercial-payments.functions";
 
 type PaymentMethod = "wave" | "orange" | "mtn" | "moov" | "djamo";
 
-type JekoCourseCheckoutDialogProps = {
+type JekoCheckoutDialogProps = {
   invoice: { id: string; invoice_number: string } | null;
   dueAmount: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   canManageSettings: boolean;
+  flow?: "COURSE" | "COMMERCIAL";
 };
 
 function formatAmount(value: number) {
@@ -35,10 +41,10 @@ function notificationError(error: unknown) {
   toast.error(error instanceof Error ? error.message : "L’action Jèko n’a pas pu être effectuée.");
 }
 
-export function JekoCourseCheckoutDialog({ invoice, dueAmount, open, onOpenChange, canManageSettings }: JekoCourseCheckoutDialogProps) {
+export function JekoInvoiceCheckoutDialog({ invoice, dueAmount, open, onOpenChange, canManageSettings, flow = "COURSE" }: JekoCheckoutDialogProps) {
   const setupQuery = useQuery({
-    queryKey: ["jeko-course-payment-setup"],
-    queryFn: () => getJekoCoursePaymentSetup(),
+    queryKey: ["jeko-payment-setup", flow],
+    queryFn: () => flow === "COURSE" ? getJekoCoursePaymentSetup() : getJekoCommercialPaymentSetup(),
     enabled: open,
   });
   const [storeId, setStoreId] = useState("");
@@ -66,7 +72,9 @@ export function JekoCourseCheckoutDialog({ invoice, dueAmount, open, onOpenChang
   }, [mappedWalletId]);
 
   const mappingMutation = useMutation({
-    mutationFn: () => configureJekoCourseWallet({ data: { storeId, walletId } }),
+    mutationFn: () => flow === "COURSE"
+      ? configureJekoCourseWallet({ data: { storeId, walletId } })
+      : configureJekoCommercialWallet({ data: { storeId, walletId } }),
     onSuccess: async () => {
       toast.success("Le magasin Jèko est maintenant associé à ce wallet.");
       await setupQuery.refetch();
@@ -74,15 +82,18 @@ export function JekoCourseCheckoutDialog({ invoice, dueAmount, open, onOpenChang
     onError: notificationError,
   });
   const checkoutMutation = useMutation({
-    mutationFn: () => createJekoCourseInvoiceCheckout({
-      data: {
+    mutationFn: () => {
+      const data = {
         invoiceId: invoice?.id ?? "",
         storeId,
         walletId,
         amount: Number(amount),
         paymentMethod,
-      },
-    }),
+      };
+      return flow === "COURSE"
+        ? createJekoCourseInvoiceCheckout({ data })
+        : createJekoCommercialInvoiceCheckout({ data });
+    },
     onSuccess: (result) => {
       setCheckout(result);
       toast.success(result.reused ? "La demande Jèko existante a été retrouvée." : "Le lien de paiement Jèko est prêt.");
@@ -145,4 +156,9 @@ export function JekoCourseCheckoutDialog({ invoice, dueAmount, open, onOpenChang
       </DialogFooter>
     </DialogContent>
   </Dialog>;
+}
+
+/** Compatibility wrapper for the existing Course invoice checkout. */
+export function JekoCourseCheckoutDialog(props: Omit<JekoCheckoutDialogProps, "flow">) {
+  return <JekoInvoiceCheckoutDialog {...props} flow="COURSE" />;
 }

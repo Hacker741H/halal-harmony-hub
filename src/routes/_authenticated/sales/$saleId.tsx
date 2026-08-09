@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { CommercialSaleForm } from "@/components/commercial/commercial-sale-form";
+import { JekoInvoiceCheckoutDialog } from "@/components/payments/jeko-course-checkout-dialog";
 import { WalletSelect } from "@/components/selects/entity-selects";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -84,6 +85,7 @@ function CommercialSaleDetailsPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [paymentInvoice, setPaymentInvoice] = useState<CommercialInvoice | null>(null);
+  const [jekoInvoice, setJekoInvoice] = useState<CommercialInvoice | null>(null);
   const [cancelTarget, setCancelTarget] = useState<{ kind: "sale" | "invoice" | "payment"; id: string; label: string } | null>(null);
 
   const saleQuery = useQuery({ queryKey: ["commercial-sale", saleId], queryFn: () => getCommercialSale({ data: saleId }) });
@@ -104,7 +106,11 @@ function CommercialSaleDetailsPage() {
   const canEdit = can("sales.update") && sale.status === "DRAFT";
   const canInvoice = can("sales.invoice") && sale.status === "CONFIRMED";
   const canPayment = can("sales.payments") && canReadFinance;
+  const canManageSettings = can("settings.manage");
   const canCancel = can("sales.cancel");
+  const jekoInvoiceDue = jekoInvoice
+    ? Math.max(0, Number(jekoInvoice.total_amount) - payments.filter((payment) => payment.invoice_id === jekoInvoice.id && payment.status === "CONFIRMED").reduce((sum, payment) => sum + Number(payment.amount), 0))
+    : 0;
 
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
     <section className="relative isolate overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/10 via-surface-elevated to-surface p-5 shadow-md sm:p-7">
@@ -113,6 +119,8 @@ function CommercialSaleDetailsPage() {
         <div className="flex flex-wrap gap-2 xl:justify-end">{canEdit ? <Button variant="outline" onClick={() => setEditOpen(true)}><Pencil className="size-4" />Modifier</Button> : null}{canEdit ? <Button onClick={() => confirmSaleMutation.mutate({ data: { id: sale.id } })} loading={confirmSaleMutation.isPending}>Confirmer la vente</Button> : null}{canInvoice && !activeInvoice ? <Button onClick={() => setInvoiceOpen(true)}><FileText className="size-4" />Créer la facture</Button> : null}{canCancel && ["DRAFT", "CONFIRMED"].includes(sale.status) ? <Button variant="danger" onClick={() => setCancelTarget({ kind: "sale", id: sale.id, label: sale.sale_number })}><XCircle className="size-4" />Annuler</Button> : null}</div>
       </div>
     </section>
+
+    {canPayment && activeInvoice && ["ISSUED", "PARTIALLY_PAID"].includes(activeInvoice.status) ? <Card variant="information" className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-foreground">Encaissement en ligne Jèko</p><p className="mt-1 text-sm text-muted-foreground">Créez un lien de paiement sécurisé. Le wallet associé ne sera crédité qu’après confirmation du webhook Jèko.</p></div><Button variant="outline" onClick={() => setJekoInvoice(activeInvoice)}><Landmark className="size-4" />Encaisser avec Jèko</Button></Card> : null}
 
     <Tabs defaultValue="overview" className="space-y-5"><TabsList className="h-auto max-w-full flex-wrap justify-start"><TabsTrigger value="overview">Vue d’ensemble</TabsTrigger><TabsTrigger value="lines">Lignes</TabsTrigger>{canReadFinance ? <><TabsTrigger value="invoices">Factures</TabsTrigger><TabsTrigger value="payments">Encaissements</TabsTrigger></> : null}<TabsTrigger value="notes">Notes</TabsTrigger></TabsList>
       <TabsContent value="overview" className="space-y-5">
@@ -128,6 +136,7 @@ function CommercialSaleDetailsPage() {
     <Dialog open={editOpen} onOpenChange={setEditOpen}><DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto"><DialogHeader><DialogTitle>Modifier la vente</DialogTitle></DialogHeader><CommercialSaleForm sale={sale} lines={lines} onSuccess={() => { setEditOpen(false); invalidate(); }} /></DialogContent></Dialog>
     <CreateInvoiceDialog saleId={saleId} open={invoiceOpen} onOpenChange={setInvoiceOpen} onSaved={invalidate} />
     <CreatePaymentDialog invoice={paymentInvoice} open={Boolean(paymentInvoice)} onOpenChange={(open) => { if (!open) setPaymentInvoice(null); }} onSaved={invalidate} />
+    <JekoInvoiceCheckoutDialog flow="COMMERCIAL" invoice={jekoInvoice} dueAmount={jekoInvoiceDue} open={Boolean(jekoInvoice)} onOpenChange={(open) => { if (!open) setJekoInvoice(null); }} canManageSettings={canManageSettings} />
     <CancelDialog target={cancelTarget} onOpenChange={(open) => { if (!open) setCancelTarget(null); }} onSaved={invalidate} />
   </div>;
 }

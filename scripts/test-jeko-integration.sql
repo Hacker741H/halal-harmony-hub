@@ -19,6 +19,10 @@ DECLARE
   v_amount_mismatch_event public.payment_events;
   v_currency_mismatch_event public.payment_events;
   v_retry_event public.payment_events;
+  v_sale public.commercial_sales;
+  v_commercial_invoice public.commercial_invoices;
+  v_commercial_request public.payment_provider_payment_requests;
+  v_commercial_event public.payment_events;
   v_before_balance numeric;
   v_after_balance numeric;
   v_finance_links_before integer;
@@ -241,6 +245,58 @@ BEGIN
   v_retry_event := public.process_jeko_payment_event(v_retry_event.id);
   IF v_retry_event.status <> 'PROCESSED' THEN
     RAISE EXCEPTION 'A later retry must process a previously received event once the business condition is restored';
+  END IF;
+
+  -- Commercial sales, including agriculture lines, reuse the same Jèko event
+  -- table and the existing commercial payment confirmation engine.
+  PERFORM set_config('request.jwt.claim.sub', v_actor_id::text, true);
+  PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
+  v_sale := public.create_commercial_sale(jsonb_build_object(
+    'client_id', v_client.id,
+    'sale_date', current_date,
+    'lines', jsonb_build_array(jsonb_build_object(
+      'description', 'Vente Jèko test ' || v_suffix,
+      'quantity', 1,
+      'unit', 'unité',
+      'unit_price', 12000,
+      'inventory_item_id', NULL,
+      'harvest_id', NULL,
+      'farm_id', NULL
+    ))
+  ));
+  v_sale := public.confirm_commercial_sale(v_sale.id);
+  v_commercial_invoice := public.create_commercial_invoice(v_sale.id, jsonb_build_object('tax_rate', 0));
+  v_commercial_invoice := public.issue_commercial_invoice(v_commercial_invoice.id);
+
+  PERFORM set_config('request.jwt.claim.role', 'service_role', true);
+  v_commercial_request := public.register_jeko_payment_request(jsonb_build_object(
+    'invoice_kind', 'COMMERCIAL',
+    'commercial_invoice_id', v_commercial_invoice.id,
+    'provider_request_id', 'pr-commercial-' || v_suffix,
+    'provider_reference', 'COMMERCIAL:' || v_commercial_invoice.invoice_number,
+    'provider_store_id', 'store-test-' || v_suffix,
+    'wallet_id', v_wallet_id,
+    'expected_provider_amount', 1200000,
+    'erp_amount', 12000,
+    'currency', 'XOF'
+  ));
+  SELECT balance INTO v_before_balance FROM public.wallets WHERE id = v_wallet_id;
+  INSERT INTO public.payment_events(provider, transaction_id, payload)
+  VALUES ('JEKO', 'txn-commercial-' || v_suffix, jsonb_build_object(
+    'id', 'txn-commercial-' || v_suffix,
+    'status', 'success',
+    'transactionType', 'payment',
+    'amount', jsonb_build_object('amount', 1200000, 'currency', 'XOF'),
+    'transactionDetails', jsonb_build_object('id', v_commercial_request.provider_request_id, 'reference', 'COMMERCIAL:' || v_commercial_invoice.invoice_number)
+  )) RETURNING * INTO v_commercial_event;
+  v_commercial_event := public.process_jeko_payment_event(v_commercial_event.id);
+  IF v_commercial_event.status <> 'PROCESSED'
+    OR v_commercial_event.commercial_payment_id IS NULL
+    OR v_commercial_event.finance_operation_id IS NULL
+    OR (SELECT status FROM public.commercial_invoices WHERE id = v_commercial_invoice.id) <> 'PAID'
+    OR (SELECT balance FROM public.wallets WHERE id = v_wallet_id) <> v_before_balance + 12000
+    OR (SELECT count(*) FROM public.finance_commercial_invoice_payment_links WHERE payment_id = v_commercial_event.commercial_payment_id AND link_type = 'PAYMENT') <> 1 THEN
+    RAISE EXCEPTION 'Commercial Jèko payment must create exactly one commercial payment, finance operation and wallet credit';
   END IF;
 END;
 $test$;
