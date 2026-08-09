@@ -96,6 +96,7 @@ export function WalletForm({ onSuccess, wallet }: Props) {
             onChange={(event) => setForm({ ...form, type: event.target.value })}
           >
             <option value="CASH">Espèces</option>
+            <option value="JEKO">Jèko</option>
             <option value="WAVE">Wave</option>
             <option value="ORANGE_MONEY">Orange Money</option>
             <option value="MTN_MOMO">MTN MoMo</option>

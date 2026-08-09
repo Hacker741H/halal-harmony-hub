@@ -2,6 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   Banknote,
+  CircleDollarSign,
   Landmark,
   MoreHorizontal,
   PiggyBank,
@@ -41,6 +42,7 @@ function getWalletMeta(type: string) {
   const items: Record<string, { label: string; icon: typeof Landmark }> = {
     BANK: { label: "Banque", icon: Landmark },
     MOBILE_MONEY: { label: "Mobile money", icon: Smartphone },
+    JEKO: { label: "Jèko", icon: CircleDollarSign },
     WAVE: { label: "Wave", icon: Smartphone },
     ORANGE_MONEY: { label: "Orange Money", icon: Smartphone },
     MTN_MOMO: { label: "MTN MoMo", icon: Smartphone },
@@ -96,7 +98,8 @@ export function WalletTable({ wallets, loading, onEdit, onDelete }: Props) {
             const meta = getWalletMeta(wallet.type);
             const Icon = meta.icon;
             const balance = Number(wallet.balance ?? 0);
-            const isWave = wallet.type === "WAVE" || /wave/i.test(wallet.name);
+            const walletType = wallet.type?.toUpperCase();
+            const isWave = walletType === "WAVE" || /wave/i.test(wallet.name);
             return (
               <article
                 key={wallet.id}
@@ -177,7 +180,7 @@ export function WalletTable({ wallets, loading, onEdit, onDelete }: Props) {
                     variant="secondary"
                     className="rounded-full border-border/75 bg-muted px-3 py-1 text-muted-foreground"
                   >
-                    {isWave ? "WAVE BUSINESS" : wallet.type}
+                    {isWave ? "WAVE BUSINESS" : meta.label}
                   </Badge>
                   {wallet.is_default ? (
                     <Badge variant="success" appearance="soft" className="px-3 py-1">Principal</Badge>

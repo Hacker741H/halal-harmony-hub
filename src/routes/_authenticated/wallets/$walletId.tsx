@@ -64,7 +64,9 @@ function WalletDetailsPage() {
           (!toDate || operation.operation_date <= toDate),
       );
   const isPeriodFiltered = Boolean(fromDate || toDate);
-  const isWave = wallet.type === "WAVE" || /wave/i.test(wallet.name);
+  const walletType = wallet.type?.toUpperCase();
+  const isWave = walletType === "WAVE" || /wave/i.test(wallet.name);
+  const walletTypeLabel = walletType === "JEKO" ? "Jèko" : wallet.type;
   const incoming = displayedOperations
     .filter(
       (operation) =>
@@ -93,7 +95,7 @@ function WalletDetailsPage() {
         className={isWave ? "border-info/25" : undefined}
         actions={
           <Badge variant="success" appearance="soft" className="w-fit">
-            Wallet actif · {wallet.type}
+            Wallet actif · {walletTypeLabel}
           </Badge>
         }
       >
@@ -133,6 +135,20 @@ function WalletDetailsPage() {
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <ShieldCheck className="h-4 w-4 text-info" aria-hidden="true" />
             Clé API requise et stockée côté serveur
+          </div>
+        </Card>
+      ) : null}
+
+      {walletType === "JEKO" ? (
+        <Card variant="information" className="flex items-start gap-3 p-5">
+          <div className="rounded-xl bg-primary p-2 text-primary-foreground shadow-xs">
+            <CircleDollarSign className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div>
+            <p className="font-semibold text-foreground">Compte marchand Jèko</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Les encaissements Jèko sont crédités ici. Enregistrez un transfert vers Wave uniquement après le reversement réellement reçu.
+            </p>
           </div>
         </Card>
       ) : null}
