@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -11,6 +11,31 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -3681,6 +3706,231 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_events: {
+        Row: {
+          attempt_count: number
+          created_at: string
+          currency: string | null
+          event_type: string
+          finance_operation_id: string | null
+          id: string
+          invoice_id: string | null
+          last_error_code: string | null
+          last_error_message: string | null
+          payload: Json
+          payment_id: string | null
+          processed_at: string | null
+          processing_note: string | null
+          processing_started_at: string | null
+          provider: string
+          provider_amount: number | null
+          provider_request_id: string | null
+          received_at: string
+          reference: string | null
+          status: string
+          transaction_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          created_at?: string
+          currency?: string | null
+          event_type?: string
+          finance_operation_id?: string | null
+          id?: string
+          invoice_id?: string | null
+          last_error_code?: string | null
+          last_error_message?: string | null
+          payload: Json
+          payment_id?: string | null
+          processed_at?: string | null
+          processing_note?: string | null
+          processing_started_at?: string | null
+          provider: string
+          provider_amount?: number | null
+          provider_request_id?: string | null
+          received_at?: string
+          reference?: string | null
+          status?: string
+          transaction_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          created_at?: string
+          currency?: string | null
+          event_type?: string
+          finance_operation_id?: string | null
+          id?: string
+          invoice_id?: string | null
+          last_error_code?: string | null
+          last_error_message?: string | null
+          payload?: Json
+          payment_id?: string | null
+          processed_at?: string | null
+          processing_note?: string | null
+          processing_started_at?: string | null
+          provider?: string
+          provider_amount?: number | null
+          provider_request_id?: string | null
+          received_at?: string
+          reference?: string | null
+          status?: string
+          transaction_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_events_finance_operation_id_fkey"
+            columns: ["finance_operation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_events_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "transport_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_events_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "transport_invoice_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_provider_payment_requests: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          currency: string
+          erp_amount: number
+          expected_provider_amount: number
+          id: string
+          invoice_id: string
+          payment_id: string | null
+          provider: string
+          provider_reference: string
+          provider_request_id: string
+          provider_store_id: string
+          status: string
+          updated_at: string
+          wallet_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          erp_amount: number
+          expected_provider_amount: number
+          id?: string
+          invoice_id: string
+          payment_id?: string | null
+          provider?: string
+          provider_reference: string
+          provider_request_id: string
+          provider_store_id: string
+          status?: string
+          updated_at?: string
+          wallet_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          erp_amount?: number
+          expected_provider_amount?: number
+          id?: string
+          invoice_id?: string
+          payment_id?: string | null
+          provider?: string
+          provider_reference?: string
+          provider_request_id?: string
+          provider_store_id?: string
+          status?: string
+          updated_at?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_provider_payment_requests_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "transport_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_provider_payment_requests_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: true
+            referencedRelation: "transport_invoice_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_provider_payment_requests_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "finance_wallet_reconciliation"
+            referencedColumns: ["wallet_id"]
+          },
+          {
+            foreignKeyName: "payment_provider_payment_requests_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_provider_wallet_mappings: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          provider: string
+          provider_store_id: string
+          updated_at: string
+          wallet_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          provider?: string
+          provider_store_id: string
+          updated_at?: string
+          wallet_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          provider?: string
+          provider_store_id?: string
+          updated_at?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_provider_wallet_mappings_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "finance_wallet_reconciliation"
+            referencedColumns: ["wallet_id"]
+          },
+          {
+            foreignKeyName: "payment_provider_wallet_mappings_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           contract_id: string | null
@@ -5070,6 +5320,33 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      _internal_confirm_transport_invoice_payment: {
+        Args: { p_actor_id?: string; p_payment_id: string }
+        Returns: {
+          amount: number
+          cancelled_at: string | null
+          confirmed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_id: string
+          mission_id: string
+          notes: string | null
+          payment_date: string
+          payment_kind: string
+          reference: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+          wallet_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "transport_invoice_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       _internal_course_upsert_finance: {
         Args: {
           p_amount: number
@@ -5321,6 +5598,33 @@ export type Database = {
           p_wallet_id?: string
         }
         Returns: number
+      }
+      _internal_create_transport_invoice_payment: {
+        Args: { p_actor_id?: string; p_invoice_id: string; p_payment: Json }
+        Returns: {
+          amount: number
+          cancelled_at: string | null
+          confirmed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_id: string
+          mission_id: string
+          notes: string | null
+          payment_date: string
+          payment_kind: string
+          reference: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+          wallet_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "transport_invoice_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       _internal_create_vehicle_maintenance_with_finance: {
         Args: { p_maintenance: Json }
@@ -7512,6 +7816,31 @@ export type Database = {
         }
         Returns: boolean
       }
+      internal_review_field_report_if_complete: {
+        Args: { p_report_id: string; p_reviewer_id: string }
+        Returns: {
+          created_at: string
+          created_by: string
+          id: string
+          notes: string | null
+          period_end: string
+          period_start: string
+          report_number: string
+          report_type: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_at: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "field_reports"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       issue_commercial_invoice: {
         Args: { p_invoice_id: string }
         Returns: {
@@ -7629,6 +7958,39 @@ export type Database = {
         Args: { p_permission_code: string }
         Returns: undefined
       }
+      process_jeko_payment_event: {
+        Args: { p_event_id: string }
+        Returns: {
+          attempt_count: number
+          created_at: string
+          currency: string | null
+          event_type: string
+          finance_operation_id: string | null
+          id: string
+          invoice_id: string | null
+          last_error_code: string | null
+          last_error_message: string | null
+          payload: Json
+          payment_id: string | null
+          processed_at: string | null
+          processing_note: string | null
+          processing_started_at: string | null
+          provider: string
+          provider_amount: number | null
+          provider_request_id: string | null
+          received_at: string
+          reference: string | null
+          status: string
+          transaction_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "payment_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       record_document_storage_cleanup: {
         Args: { p_result: string; p_storage_path: string }
         Returns: undefined
@@ -7636,6 +7998,32 @@ export type Database = {
       record_reporting_export: {
         Args: { p_report_type: string; p_row_count: number }
         Returns: undefined
+      }
+      register_jeko_payment_request: {
+        Args: { p_request: Json }
+        Returns: {
+          completed_at: string | null
+          created_at: string
+          currency: string
+          erp_amount: number
+          expected_provider_amount: number
+          id: string
+          invoice_id: string
+          payment_id: string | null
+          provider: string
+          provider_reference: string
+          provider_request_id: string
+          provider_store_id: string
+          status: string
+          updated_at: string
+          wallet_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "payment_provider_payment_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       reject_field_declaration: {
         Args: { p_declaration_id: string; p_reason: string }
@@ -8590,6 +8978,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: [

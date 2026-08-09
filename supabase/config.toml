@@ -2,3 +2,6 @@ project_id = "iljetumzbqtrjvtdlynj"
 
 [functions.generate-notifications]
 verify_jwt = false
+
+[functions.jeko-webhook]
+verify_jwt = false

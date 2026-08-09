@@ -26,6 +26,7 @@ import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
+import { JekoCourseCheckoutDialog } from "@/components/payments/jeko-course-checkout-dialog";
 import { WalletSelect } from "@/components/selects/entity-selects";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -417,8 +418,59 @@ function ExpensesPanel({ expenses, canConfirm, confirmPending, cancelPending, on
 }
 
 function InvoicePanel({ invoices, payments, course, clientName, canIssue, canReceivePayments, issuing, onIssue, onRecordPayment }: { invoices: CourseInvoice[]; payments: CoursePayment[]; course: Pick<Course, "mission_number" | "departure_location" | "destination_location">; clientName: string | null; canIssue: boolean; canReceivePayments: boolean; issuing: boolean; onIssue: (id: string) => void; onRecordPayment: (id: string) => void }) {
+  const { can } = usePermissions();
+  const [jekoInvoiceId, setJekoInvoiceId] = useState<string | null>(null);
+  const jekoInvoice = invoices.find((invoice) => invoice.id === jekoInvoiceId) ?? null;
+
   if (!invoices.length) return <Empty message="Aucune facture n’est créée. Une Course possède une facture active ; une facture annulée reste consultable dans son historique." />;
-  return <div className="space-y-4">{invoices.map((invoice) => <Card key={invoice.id}><CardHeader className="flex-row items-start justify-between gap-3"><div><CardTitle>{invoice.invoice_number}</CardTitle><p className="mt-1 text-sm text-muted-foreground">{invoiceLabel(invoice.status)}</p></div><div className="flex flex-wrap gap-2">{canIssue && invoice.status === "DRAFT" ? <Button onClick={() => onIssue(invoice.id)} disabled={issuing}>Émettre</Button> : null}{canReceivePayments && ["ISSUED", "PARTIALLY_PAID"].includes(invoice.status) && invoiceDue(invoice, payments) > 0 ? <Button variant="outline" onClick={() => onRecordPayment(invoice.id)}>Paiement</Button> : null}</div></CardHeader><CardContent className="grid gap-5 sm:grid-cols-2"><div className="rounded-xl border bg-muted/30 p-4"><p className="text-overline text-primary">Prévisualisation</p><p className="mt-3 font-semibold">Facture {invoice.invoice_number}</p><p className="mt-1 text-sm text-muted-foreground">Client : {clientName ?? "Non accessible"}</p><p className="text-sm text-muted-foreground">Course : {course.mission_number}</p><p className="text-sm text-muted-foreground">{[course.departure_location, course.destination_location].filter(Boolean).join(" → ")}</p></div><dl className="space-y-3 text-sm"><Summary label="Montant HT" value={formatAmount(invoice.subtotal_amount)} /><Summary label="TVA" value={`${invoice.tax_rate.toLocaleString("fr-FR")} % · ${formatAmount(invoice.tax_amount)}`} /><Summary label="Total" value={formatAmount(invoice.total_amount)} /><Summary label="Reste à encaisser" value={formatAmount(invoiceDue(invoice, payments))} /><Summary label="Émission" value={formatDate(invoice.issue_date)} /></dl></CardContent></Card>)}</div>;
+
+  return <>
+    <div className="space-y-4">
+      {invoices.map((invoice) => {
+        const amountDue = invoiceDue(invoice, payments);
+        const canRequestJekoPayment = canReceivePayments
+          && ["ISSUED", "PARTIALLY_PAID"].includes(invoice.status)
+          && amountDue > 0;
+
+        return <Card key={invoice.id}>
+          <CardHeader className="flex-row items-start justify-between gap-3">
+            <div>
+              <CardTitle>{invoice.invoice_number}</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">{invoiceLabel(invoice.status)}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {canIssue && invoice.status === "DRAFT" ? <Button onClick={() => onIssue(invoice.id)} disabled={issuing}>Émettre</Button> : null}
+              {canRequestJekoPayment ? <Button variant="outline" onClick={() => setJekoInvoiceId(invoice.id)}>Payer avec Jèko</Button> : null}
+              {canRequestJekoPayment ? <Button variant="outline" onClick={() => onRecordPayment(invoice.id)}>Paiement manuel</Button> : null}
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-5 sm:grid-cols-2">
+            <div className="rounded-xl border bg-muted/30 p-4">
+              <p className="text-overline text-primary">Prévisualisation</p>
+              <p className="mt-3 font-semibold">Facture {invoice.invoice_number}</p>
+              <p className="mt-1 text-sm text-muted-foreground">Client : {clientName ?? "Non accessible"}</p>
+              <p className="text-sm text-muted-foreground">Course : {course.mission_number}</p>
+              <p className="text-sm text-muted-foreground">{[course.departure_location, course.destination_location].filter(Boolean).join(" → ")}</p>
+            </div>
+            <dl className="space-y-3 text-sm">
+              <Summary label="Montant HT" value={formatAmount(invoice.subtotal_amount)} />
+              <Summary label="TVA" value={`${invoice.tax_rate.toLocaleString("fr-FR")} % · ${formatAmount(invoice.tax_amount)}`} />
+              <Summary label="Total" value={formatAmount(invoice.total_amount)} />
+              <Summary label="Reste à encaisser" value={formatAmount(amountDue)} />
+              <Summary label="Émission" value={formatDate(invoice.issue_date)} />
+            </dl>
+          </CardContent>
+        </Card>;
+      })}
+    </div>
+    <JekoCourseCheckoutDialog
+      invoice={jekoInvoice ? { id: jekoInvoice.id, invoice_number: jekoInvoice.invoice_number } : null}
+      dueAmount={jekoInvoice ? invoiceDue(jekoInvoice, payments) : 0}
+      open={jekoInvoiceId !== null}
+      onOpenChange={(open) => { if (!open) setJekoInvoiceId(null); }}
+      canManageSettings={can("settings.manage")}
+    />
+  </>;
 }
 
 function PaymentsPanel({ invoices, payments, canConfirm, confirmPending, cancelPending, onConfirm, onCancel }: { invoices: CourseInvoice[]; payments: CoursePayment[]; canConfirm: boolean; confirmPending: boolean; cancelPending: boolean; onConfirm: (id: string) => void; onCancel: (id: string) => void }) {
