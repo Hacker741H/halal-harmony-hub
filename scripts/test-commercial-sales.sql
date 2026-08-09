@@ -76,8 +76,8 @@ BEGIN
     jsonb_build_object(
       'kind', 'ORGANIZATION',
       'display_name', 'Client commercial test ' || v_suffix,
-      'country_code', 'SN',
-      'telephone', '+221 77 ' || substr(v_suffix, 1, 6),
+      'country_code', 'CI',
+      'telephone', '+225 07 ' || substr(v_suffix, 1, 6),
       'email', 'commercial-' || lower(v_suffix) || '@example.test',
       'registration_identifier_type', null,
       'registration_identifier_value', null

@@ -76,7 +76,7 @@ export function AlertSettingsPanel() {
   const queryClient = useQueryClient();
   const settingsQuery = useQuery({ queryKey: ["alert-settings"], queryFn: () => getAlertSettings() });
   const settings = settingsQuery.data;
-  const [timezone, setTimezone] = useState("Africa/Dakar");
+  const [timezone, setTimezone] = useState("Africa/Abidjan");
   const [dailyRunTime, setDailyRunTime] = useState("06:00");
 
   useEffect(() => {
@@ -140,7 +140,7 @@ export function AlertSettingsPanel() {
                 value={timezone}
                 disabled={!canManageGeneral}
                 onChange={(event) => setTimezone(event.target.value)}
-                placeholder="Africa/Dakar"
+                placeholder="Africa/Abidjan"
               />
             </div>
             <div className="space-y-2">

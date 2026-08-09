@@ -16,7 +16,7 @@ Exécuter cette commande uniquement sur un environnement où la migration CRM-01
 
 | Cas | Vérification |
 |---|---|
-| Création | Numéro Client unique, pays initial `SN`, audit `CREATE`. |
+| Création | Numéro Client unique, pays initial `CI`, audit `CREATE`. |
 | Modification | Mise à jour via `update_client`, jamais par écriture navigateur directe. |
 | Archivage / restauration | Statuts `ACTIVE` et `ARCHIVED`, audit des deux opérations. |
 | Doublons | Détection exacte par téléphone, avec exclusion du Client édité. |
@@ -35,7 +35,7 @@ Exécuter cette commande uniquement sur un environnement où la migration CRM-01
 
 ## Recette applicative recommandée
 
-1. Se connecter avec un rôle disposant de `clients.create` puis créer un Client Sénégalais avec ou sans NINEA/RCCM.
+1. Se connecter avec un rôle disposant de `clients.create` puis créer un Client ivoirien avec ou sans RCCM.
 2. Créer un second Client avec le même téléphone, e-mail, NINEA ou une raison sociale proche et confirmer l'avertissement de doublon.
 3. Modifier, archiver puis restaurer un Client non fusionné.
 4. Avec un administrateur, fusionner un doublon vers la fiche conservée et vérifier l'historique des deux fiches.

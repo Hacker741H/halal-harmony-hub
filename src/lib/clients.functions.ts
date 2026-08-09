@@ -105,7 +105,7 @@ function clientPayload(values: ClientValues): Json {
     kind: values.kind,
     display_name: values.display_name,
     legal_name: values.legal_name,
-    country_code: "SN",
+    country_code: "CI",
     city: values.city,
     address: values.address,
     telephone: values.telephone,

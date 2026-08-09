@@ -69,8 +69,8 @@ BEGIN
   v_client := public.create_client(jsonb_build_object(
     'kind', 'ORGANIZATION',
     'display_name', 'Client Jèko test ' || v_suffix,
-    'country_code', 'SN',
-    'telephone', '+221 78 ' || substr(v_suffix, 1, 6),
+    'country_code', 'CI',
+    'telephone', '+225 07 ' || substr(v_suffix, 1, 6),
     'email', 'jeko-' || lower(v_suffix) || '@example.test'
   ));
   v_mission := public.create_transport_mission(jsonb_build_object(

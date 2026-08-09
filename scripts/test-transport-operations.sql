@@ -65,8 +65,8 @@ BEGIN
   v_client := public.create_client(jsonb_build_object(
     'kind', 'ORGANIZATION',
     'display_name', 'Client EXP-01 ' || v_suffix,
-    'country_code', 'SN',
-    'telephone', '+221 78 ' || substr(v_suffix, 1, 6),
+    'country_code', 'CI',
+    'telephone', '+225 07 ' || substr(v_suffix, 1, 6),
     'email', 'exp-' || lower(v_suffix) || '@example.test',
     'registration_identifier_type', null,
     'registration_identifier_value', null
@@ -74,8 +74,8 @@ BEGIN
 
   v_course := public.create_transport_mission(jsonb_build_object(
     'client_id', v_client.id,
-    'departure_location', 'Dakar',
-    'destination_location', 'Thiès',
+    'departure_location', 'Abidjan',
+    'destination_location', 'Bouaké',
     'cargo_description', 'Marchandise de test EXP-01',
     'planned_departure_at', v_departure_at,
     'planned_arrival_at', v_arrival_at,
@@ -102,8 +102,8 @@ BEGIN
     'client_id', v_client.id,
     'vehicle_id', v_other_vehicle_id,
     'driver_id', v_other_driver_id,
-    'departure_location', 'Dakar',
-    'destination_location', 'Thiès',
+    'departure_location', 'Abidjan',
+    'destination_location', 'Bouaké',
     'cargo_description', 'Course de conflit EXP-01',
     'planned_departure_at', v_departure_at,
     'planned_arrival_at', v_arrival_at,

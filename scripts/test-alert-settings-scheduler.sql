@@ -37,7 +37,7 @@ BEGIN
   IF NOT v_scheduler_configured THEN
     RAISE EXCEPTION 'Le job quotidien doit être configuré avant ce test.';
   END IF;
-  PERFORM public.save_notification_general_settings('Africa/Dakar', '06:00'::time);
+  PERFORM public.save_notification_general_settings('Africa/Abidjan', '06:00'::time);
   SELECT scheduler_configured INTO v_scheduler_configured
   FROM public.notification_scheduler_status();
   IF NOT v_scheduler_configured THEN

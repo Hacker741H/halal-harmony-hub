@@ -225,19 +225,19 @@ export const exportManagementReportOperations = createServerFn({ method: "POST" 
       row.source_label,
     ]);
     const generatedAt = new Intl.DateTimeFormat("fr-FR", {
-      timeZone: "Africa/Dakar",
+      timeZone: "Africa/Abidjan",
       dateStyle: "medium",
       timeStyle: "short",
     }).format(new Date());
     const content = [
       ["Rapport de gestion", "Opérations financières"],
-      ["Fuseau horaire", "Africa/Dakar"],
+      ["Fuseau horaire", "Africa/Abidjan"],
       ["Généré le", generatedAt],
       header,
       ...body,
     ].map((line) => line.map(escapeCsv).join(";")).join("\n");
     const date = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Africa/Dakar",
+      timeZone: "Africa/Abidjan",
       year: "numeric",
       month: "2-digit",
       day: "2-digit",

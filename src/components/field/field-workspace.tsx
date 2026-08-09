@@ -1394,7 +1394,7 @@ function WalletAssignmentDialog({
               <Input
                 value={label}
                 onChange={(event) => setLabel(event.target.value)}
-                placeholder="Ex. Caisse commerciale Dakar"
+                placeholder="Ex. Caisse commerciale Abidjan"
               />
             </div>
           </div>

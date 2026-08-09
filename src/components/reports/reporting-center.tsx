@@ -96,9 +96,9 @@ function toDateString(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-function getDakarToday(): Date {
+function getAbidjanToday(): Date {
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Africa/Dakar",
+    timeZone: "Africa/Abidjan",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -120,7 +120,7 @@ function addUtcDays(date: Date, offset: number): Date {
 }
 
 function getPresetFilters(key: string): Pick<ReportFilters, "startDate" | "endDate"> {
-  const today = getDakarToday();
+  const today = getAbidjanToday();
   const endDate = toDateString(today);
 
   if (key === "today") return { startDate: endDate, endDate };
@@ -234,7 +234,7 @@ function FinanceSummary({ report }: { report: Json }) {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthly} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" tickFormatter={(value: string) => new Intl.DateTimeFormat("fr-FR", { month: "short", year: "numeric", timeZone: "Africa/Dakar" }).format(new Date(`${value}T00:00:00Z`))} />
+                <XAxis dataKey="month" tickFormatter={(value: string) => new Intl.DateTimeFormat("fr-FR", { month: "short", year: "numeric", timeZone: "Africa/Abidjan" }).format(new Date(`${value}T00:00:00Z`))} />
                 <YAxis tickFormatter={(value: number) => new Intl.NumberFormat("fr-FR", { notation: "compact" }).format(value)} />
                 <Tooltip formatter={(value: number) => formatXOF(value)} />
                 <Legend />

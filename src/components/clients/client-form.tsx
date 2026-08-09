@@ -33,7 +33,7 @@ type ClientFormState = {
   contactName: string;
   contactPhone: string;
   contactEmail: string;
-  identifierType: "NINEA" | "RCCM" | "NONE";
+  identifierType: "RCCM" | "NONE";
   identifierValue: string;
   notes: string;
 };
@@ -50,7 +50,7 @@ function fromClient(client?: Client | null): ClientFormState {
     contactName: client?.contact_name ?? "",
     contactPhone: client?.contact_phone ?? "",
     contactEmail: client?.contact_email ?? "",
-    identifierType: client?.registration_identifier_type === "NINEA" || client?.registration_identifier_type === "RCCM"
+    identifierType: client?.registration_identifier_type === "RCCM"
       ? client.registration_identifier_type
       : "NONE",
     identifierValue: client?.registration_identifier_value ?? "",
@@ -178,7 +178,7 @@ export function ClientForm({ client, onSuccess }: Props) {
 
       <div className="rounded-lg border p-4"><p className="mb-3 text-sm font-medium">Contact principal</p><div className="grid gap-4 sm:grid-cols-3"><div className="space-y-2"><Label htmlFor="client-contact-name">Nom</Label><Input id="client-contact-name" value={form.contactName} onChange={(event) => setForm((current) => ({ ...current, contactName: event.target.value }))} /></div><div className="space-y-2"><Label htmlFor="client-contact-phone">Téléphone</Label><Input id="client-contact-phone" inputMode="tel" value={form.contactPhone} onChange={(event) => setForm((current) => ({ ...current, contactPhone: event.target.value }))} /></div><div className="space-y-2"><Label htmlFor="client-contact-email">E-mail</Label><Input id="client-contact-email" type="email" value={form.contactEmail} onChange={(event) => setForm((current) => ({ ...current, contactEmail: event.target.value }))} /></div></div></div>
 
-      <div className="rounded-lg border p-4"><p className="mb-3 text-sm font-medium">Informations légales — Sénégal</p><div className="grid gap-4 sm:grid-cols-[minmax(0,0.45fr)_minmax(0,0.55fr)]"><div className="space-y-2"><Label>Type</Label><Select value={form.identifierType} onValueChange={(value) => setForm((current) => ({ ...current, identifierType: value === "NINEA" || value === "RCCM" ? value : "NONE", identifierValue: value === "NONE" ? "" : current.identifierValue }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="NONE">Non renseigné</SelectItem><SelectItem value="NINEA">NINEA</SelectItem><SelectItem value="RCCM">RCCM</SelectItem></SelectContent></Select></div><div className="space-y-2"><Label htmlFor="client-identifier">Valeur</Label><Input id="client-identifier" disabled={form.identifierType === "NONE"} value={form.identifierValue} onChange={(event) => setForm((current) => ({ ...current, identifierValue: event.target.value }))} /></div></div><p className="mt-3 text-xs text-muted-foreground">Ces identifiants sont facultatifs. Leur format est contrôlé par la règle configurée côté serveur.</p></div>
+      <div className="rounded-lg border p-4"><p className="mb-3 text-sm font-medium">Informations légales — Côte d’Ivoire</p><div className="grid gap-4 sm:grid-cols-[minmax(0,0.45fr)_minmax(0,0.55fr)]"><div className="space-y-2"><Label>Type</Label><Select value={form.identifierType} onValueChange={(value) => setForm((current) => ({ ...current, identifierType: value === "RCCM" ? value : "NONE", identifierValue: value === "NONE" ? "" : current.identifierValue }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="NONE">Non renseigné</SelectItem><SelectItem value="RCCM">RCCM</SelectItem></SelectContent></Select></div><div className="space-y-2"><Label htmlFor="client-identifier">Valeur</Label><Input id="client-identifier" disabled={form.identifierType === "NONE"} value={form.identifierValue} onChange={(event) => setForm((current) => ({ ...current, identifierValue: event.target.value }))} /></div></div><p className="mt-3 text-xs text-muted-foreground">Le RCCM est facultatif. Son format reste contrôlé par la règle configurée côté serveur.</p></div>
 
       <div className="space-y-2"><Label htmlFor="client-notes">Notes internes</Label><Textarea id="client-notes" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} /></div>
 

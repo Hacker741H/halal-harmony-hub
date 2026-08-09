@@ -98,8 +98,8 @@ BEGIN
     'kind', 'ORGANIZATION',
     'display_name', 'Client cible ' || v_suffix,
     'legal_name', 'Cible SARL ' || v_suffix,
-    'country_code', 'SN',
-    'telephone', '+221 77 000 ' || substr(v_suffix, 1, 4),
+    'country_code', 'CI',
+    'telephone', '+225 07 000 ' || substr(v_suffix, 1, 4),
     'email', 'cible-' || lower(v_suffix) || '@example.test',
     'registration_identifier_type', null,
     'registration_identifier_value', null
@@ -109,8 +109,8 @@ BEGIN
     'kind', 'ORGANIZATION',
     'display_name', 'Client source ' || v_suffix,
     'legal_name', v_target.legal_name,
-    'country_code', 'SN',
-    'telephone', '+221 78 000 ' || substr(v_suffix, 1, 4),
+    'country_code', 'CI',
+    'telephone', '+225 07 100 ' || substr(v_suffix, 1, 4),
     'email', 'source-' || lower(v_suffix) || '@example.test',
     'registration_identifier_type', null,
     'registration_identifier_value', null
@@ -181,8 +181,8 @@ BEGIN
     'kind', 'ORGANIZATION',
     'display_name', v_source.display_name,
     'legal_name', null,
-    'country_code', 'SN',
-    'city', 'Dakar',
+    'country_code', 'CI',
+    'city', 'Abidjan',
     'address', null,
     'telephone', v_source.telephone,
     'email', v_source.email,
@@ -193,7 +193,7 @@ BEGIN
     'registration_identifier_value', null,
     'notes', 'Mise à jour transactionnelle test'
   ));
-  IF v_source.city <> 'Dakar' THEN
+  IF v_source.city <> 'Abidjan' THEN
     RAISE EXCEPTION 'Client update failed';
   END IF;
 

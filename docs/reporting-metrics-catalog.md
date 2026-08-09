@@ -1,7 +1,7 @@
 # Catalogue des métriques de gestion
 
 Ce catalogue est la définition unique des indicateurs du centre de rapports.
-Il s'applique au fuseau `Africa/Dakar` et aux bornes de date inclusives. Sauf
+Il s'applique au fuseau `Africa/Abidjan` et aux bornes de date inclusives. Sauf
 indication contraire, les opérations dont `status = 'CANCELLED'` sont exclues.
 Les montants sont affichés en FCFA (`fr-FR`) ; les rapports sont des rapports
 de gestion, et non des états comptables légaux.
@@ -14,7 +14,7 @@ de gestion, et non des états comptables légaux.
 | Transferts internes | Somme où `type = 'TRANSFER'`, présenté séparément | mêmes règles ; n'affecte pas le flux net entreprise | finance : admin, super_admin, comptable | `/finance?type=TRANSFER` |
 | Flux net de gestion | recettes + dépôts − dépenses. Les transferts internes sont neutres au niveau global. | mêmes règles | finance : admin, super_admin, comptable | opérations filtrées de la période |
 | Nombre d'opérations | Nombre des lignes financières non annulées | mêmes règles | finance : admin, super_admin, comptable | opérations filtrées |
-| Évolution mensuelle | Agrégation mensuelle Dakar des recettes, dépenses, dépôts et flux net | période | finance : admin, super_admin, comptable | mois et opérations correspondants |
+| Évolution mensuelle | Agrégation mensuelle Abidjan des recettes, dépenses, dépôts et flux net | période | finance : admin, super_admin, comptable | mois et opérations correspondants |
 | Solde wallet recalculé | `initial_balance + REVENUE + DEPOSIT + transferts entrants − EXPENSE − transferts sortants` | hors `CANCELLED`, par wallet | trésorerie : admin, super_admin, comptable | `/wallets/$walletId` puis opérations |
 | Écart wallet | `wallets.balance − solde wallet recalculé` | par wallet | trésorerie : admin, super_admin, comptable | wallet et opérations associées |
 | Coût total véhicule | Somme des dépenses non annulées avec `vehicle_id` explicite ; achat et entretiens sont inclus lorsqu'ils ont ce lien | période optionnelle | opérations : admin, super_admin, gestionnaire ; montants réservés finance | `/vehicles/$vehicleId` |

@@ -27,7 +27,7 @@ npx supabase db query --linked --file scripts/test-reporting.sql
 3. Comparer un total Finance avec la page Finance sur les mêmes filtres.
 4. Filtrer par wallet puis ouvrir une opération source et sa fiche liée.
 5. Vérifier qu'un écart wallet est seulement signalé, jamais corrigé.
-6. Exporter le CSV filtré et vérifier les montants FCFA, le fuseau Dakar et
+6. Exporter le CSV filtré et vérifier les montants FCFA, le fuseau Abidjan et
    les métadonnées de génération. L'export est préparé côté Server Function et
    s'arrête à 10 000 lignes : au-delà, les filtres doivent être affinés.
 7. Enregistrer un rapport personnel, le recharger, puis le supprimer.
