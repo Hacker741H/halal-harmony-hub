@@ -26,6 +26,7 @@ import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
+import { CourseDeliveryDialog, CourseDepartureDialog } from "@/components/courses/operational-course-workspace";
 import { JekoCourseCheckoutDialog } from "@/components/payments/jeko-course-checkout-dialog";
 import { WalletSelect } from "@/components/selects/entity-selects";
 import { Badge } from "@/components/ui/badge";
@@ -120,6 +121,8 @@ function CourseDetailsPage() {
   const [planningOpen, setPlanningOpen] = useState(false);
   const [plannedDeparture, setPlannedDeparture] = useState("");
   const [plannedArrival, setPlannedArrival] = useState("");
+  const [departureOpen, setDepartureOpen] = useState(false);
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [cancellationTarget, setCancellationTarget] = useState<{ kind: "expense" | "payment"; id: string } | null>(null);
   const [cancellationReason, setCancellationReason] = useState("");
 
@@ -134,7 +137,16 @@ function CourseDetailsPage() {
   const statusMutation = useMutation({
     mutationFn: ({ status, reason }: { status: CourseStatus; reason?: string | null }) =>
       setCourseStatus({ data: { id: courseId, status, reason: reason ?? null } }),
-    onSuccess: () => { toast.success("Statut de la Course mis à jour."); refresh(); },
+    onSuccess: (updatedCourse) => {
+      if (updatedCourse.status === "CANCELLED") {
+        toast.success("Course annulée et archivée. Son montant prévu reste visible uniquement dans l’historique.");
+      } else if (updatedCourse.status === "CLOSED") {
+        toast.success("Course clôturée.");
+      } else {
+        toast.success("Statut de la Course mis à jour.");
+      }
+      refresh();
+    },
     onError: notificationError,
   });
   const deleteMutation = useMutation({
@@ -155,7 +167,7 @@ function CourseDetailsPage() {
         throw new Error("L’arrivée prévue doit être postérieure au départ prévu.");
       }
 
-      await updateCourse({
+      const updatedCourse = await updateCourse({
         data: {
           id: courseId,
           values: {
@@ -165,10 +177,14 @@ function CourseDetailsPage() {
         },
       });
 
-      return setCourseStatus({ data: { id: courseId, status: "PLANNED", reason: null } });
+      if (courseQuery.data?.course.status === "DRAFT") {
+        return setCourseStatus({ data: { id: courseId, status: "PLANNED", reason: null } });
+      }
+
+      return updatedCourse;
     },
     onSuccess: () => {
-      toast.success("Course planifiée.");
+      toast.success(courseQuery.data?.course.status === "DRAFT" ? "Course planifiée." : "Planification mise à jour.");
       setPlanningOpen(false);
       refresh();
     },
@@ -211,11 +227,9 @@ function CourseDetailsPage() {
   const paymentInvoice = detail.invoices.find((invoice) => invoice.id === paymentInvoiceId) ?? null;
   const hasActiveInvoice = detail.invoices.some((invoice) => invoice.status !== "CANCELLED");
 
-  const setStatus = (status: Exclude<CourseStatus, "DRAFT" | "CANCELLED">) => {
-    const reason = status === "CLOSED"
-      ? window.prompt("Justification de dérogation (laissez vide si les règles sont satisfaites) :")
-      : null;
-    statusMutation.mutate({ status, reason: reason?.trim() || null });
+  const closeCourse = () => {
+    const reason = window.prompt("Justification de dérogation (laissez vide si les règles sont satisfaites) :");
+    statusMutation.mutate({ status: "CLOSED", reason: reason?.trim() || null });
   };
 
   const openPlanning = () => {
@@ -241,11 +255,12 @@ function CourseDetailsPage() {
       </div>
       <div className="flex flex-wrap gap-2">
         {course.status === "DRAFT" && can("missions.dispatch") ? <Button onClick={openPlanning}>Planifier</Button> : null}
-        {course.status === "PLANNED" && can("missions.dispatch") ? <Button onClick={() => setStatus("IN_PROGRESS")}>Démarrer</Button> : null}
-        {course.status === "IN_PROGRESS" && can("missions.update") ? <Button onClick={() => setStatus("COMPLETED")}>Terminer</Button> : null}
-        {course.status === "COMPLETED" && can("missions.close") ? <Button onClick={() => setStatus("CLOSED")}>Clôturer</Button> : null}
+        {course.status === "PLANNED" && can("missions.dispatch") ? <Button variant="outline" onClick={openPlanning}>Replanifier</Button> : null}
+        {course.status === "PLANNED" && can("departures.confirm") ? <Button onClick={() => setDepartureOpen(true)}>Confirmer le départ</Button> : null}
+        {course.status === "IN_PROGRESS" && can("deliveries.confirm") ? <Button onClick={() => setDeliveryOpen(true)}>Confirmer la livraison</Button> : null}
+        {course.status === "COMPLETED" && can("missions.close") ? <Button onClick={closeCourse}>Clôturer</Button> : null}
         {["DRAFT", "PLANNED"].includes(course.status) && can("missions.delete") ? <Button variant="outline" onClick={() => setDeleteOpen(true)}><Trash2 className="mr-2 size-4" />Supprimer</Button> : null}
-        {course.status !== "CLOSED" && course.status !== "CANCELLED" && can("missions.cancel") ? <Button variant="outline" onClick={() => setArchiveOpen(true)}>Archiver</Button> : null}
+        {course.status !== "CLOSED" && course.status !== "CANCELLED" && can("missions.cancel") ? <Button variant="outline" onClick={() => setArchiveOpen(true)}>Annuler / archiver</Button> : null}
       </div>
     </header>
 
@@ -323,11 +338,13 @@ function CourseDetailsPage() {
       <TabsContent value="history"><Card variant="section"><CardHeader><CardTitle>Historique audité</CardTitle><p className="text-sm text-muted-foreground">Chaque action importante reste consultable avec sa date et son contexte.</p></CardHeader><CardContent>{historyQuery.isPending ? <HistoryTimelineSkeleton /> : historyQuery.isError ? <p className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">Impossible de charger l’historique.</p> : historyQuery.data?.length ? <ol className="relative space-y-5 border-l border-primary/20 pl-5">{historyQuery.data.map((entry) => <li key={entry.id} className="relative"><span className="absolute -left-[1.65rem] top-1.5 grid size-3 place-items-center rounded-full border-2 border-surface-elevated bg-primary" aria-hidden="true" /><div className="rounded-xl border border-border/80 bg-surface/60 p-4"><p className="font-medium text-foreground">{historyLabel(entry.source_type, entry.action)}</p><p className="mt-1 text-caption">{formatDate(entry.created_at)} · {entry.performed_by ? `Utilisateur ${entry.performed_by.slice(0, 8)}` : "Utilisateur système"}</p><HistorySnapshot label="Avant" value={entry.before_value} /><HistorySnapshot label="Après" value={entry.after_value} /></div></li>)}</ol> : <Empty message="Aucun événement visible pour cette Course." />}</CardContent></Card></TabsContent>
     </Tabs>
 
-    <Dialog open={planningOpen} onOpenChange={setPlanningOpen}><DialogContent><DialogHeader><DialogTitle>Planifier la Course</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-muted-foreground">Indiquez le créneau réel prévu. Le véhicule et le chauffeur resteront disponibles seulement si ce créneau ne chevauche aucune autre Course active.</p><div className="grid gap-4 sm:grid-cols-2"><Field label="Départ prévu"><Input type="datetime-local" value={plannedDeparture} onChange={(event) => setPlannedDeparture(event.target.value)} /></Field><Field label="Arrivée prévue"><Input type="datetime-local" value={plannedArrival} onChange={(event) => setPlannedArrival(event.target.value)} /></Field></div><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setPlanningOpen(false)}>Annuler</Button><Button disabled={!plannedDeparture || !plannedArrival || planningMutation.isPending} onClick={() => planningMutation.mutate({ departure: plannedDeparture, arrival: plannedArrival })}>{planningMutation.isPending ? "Planification…" : "Enregistrer et planifier"}</Button></div></div></DialogContent></Dialog>
+    <Dialog open={planningOpen} onOpenChange={setPlanningOpen}><DialogContent><DialogHeader><DialogTitle>{course.status === "DRAFT" ? "Planifier la Course" : "Replanifier la Course"}</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-muted-foreground">Ces informations sont des prévisions. Elles restent modifiables tant que le départ réel n’a pas été confirmé. Le véhicule et le chauffeur restent disponibles seulement si ce créneau ne chevauche aucune autre Course active.</p><div className="grid gap-4 sm:grid-cols-2"><Field label="Départ prévu"><Input type="datetime-local" value={plannedDeparture} onChange={(event) => setPlannedDeparture(event.target.value)} /></Field><Field label="Arrivée prévue"><Input type="datetime-local" value={plannedArrival} onChange={(event) => setPlannedArrival(event.target.value)} /></Field></div><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setPlanningOpen(false)}>Annuler</Button><Button disabled={!plannedDeparture || !plannedArrival || planningMutation.isPending} onClick={() => planningMutation.mutate({ departure: plannedDeparture, arrival: plannedArrival })}>{planningMutation.isPending ? "Enregistrement…" : course.status === "DRAFT" ? "Enregistrer et planifier" : "Enregistrer la nouvelle prévision"}</Button></div></div></DialogContent></Dialog>
+    <CourseDepartureDialog course={course} open={departureOpen} onOpenChange={setDepartureOpen} />
+    <CourseDeliveryDialog course={course} open={deliveryOpen} onOpenChange={setDeliveryOpen} />
     <Dialog open={expenseOpen} onOpenChange={setExpenseOpen}><DialogContent><DialogHeader><DialogTitle>Ajouter une dépense</DialogTitle></DialogHeader><ExpenseForm missionId={courseId} onSuccess={() => { setExpenseOpen(false); refresh(); }} /></DialogContent></Dialog>
     <Dialog open={invoiceOpen} onOpenChange={setInvoiceOpen}><DialogContent><DialogHeader><DialogTitle>Créer une facture</DialogTitle></DialogHeader><InvoiceForm missionId={courseId} defaultAmount={course.quoted_amount} onSuccess={() => { setInvoiceOpen(false); refresh(); }} /></DialogContent></Dialog>
     <Dialog open={paymentInvoiceId !== null} onOpenChange={(open) => { if (!open) setPaymentInvoiceId(null); }}><DialogContent><DialogHeader><DialogTitle>Enregistrer un paiement</DialogTitle></DialogHeader>{paymentInvoice ? <PaymentForm invoiceId={paymentInvoice.id} due={invoiceDue(paymentInvoice, detail.payments)} onSuccess={() => { setPaymentInvoiceId(null); refresh(); }} /> : null}</DialogContent></Dialog>
-    <Dialog open={archiveOpen} onOpenChange={(open) => { setArchiveOpen(open); if (!open) setArchiveReason(""); }}><DialogContent><DialogHeader><DialogTitle>Archiver la Course</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-muted-foreground">L’archivage conserve la Course, ses factures, ses paiements et ses écritures financières. Il ne supprime aucune donnée.</p><Field label="Justification"><Textarea value={archiveReason} onChange={(event) => setArchiveReason(event.target.value)} placeholder="Expliquez la raison de l’archivage" /></Field><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setArchiveOpen(false)}>Annuler</Button><Button variant="destructive" disabled={archiveReason.trim().length < 3 || statusMutation.isPending} onClick={() => statusMutation.mutate({ status: "CANCELLED", reason: archiveReason.trim() }, { onSuccess: () => { setArchiveOpen(false); setArchiveReason(""); } })}>{statusMutation.isPending ? "Archivage…" : "Archiver"}</Button></div></div></DialogContent></Dialog>
+    <Dialog open={archiveOpen} onOpenChange={(open) => { setArchiveOpen(open); if (!open) setArchiveReason(""); }}><DialogContent><DialogHeader><DialogTitle>Annuler et archiver la Course</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-muted-foreground">La Course ne sera plus active. Son montant prévu, par exemple 90 000 FCFA, reste conservé dans l’historique mais ne crée ni recette ni mouvement de wallet à lui seul.</p><p className="text-sm text-muted-foreground">Les dépenses ou paiements déjà confirmés ne sont jamais effacés : annulez-les depuis leurs onglets afin de créer la contre-écriture nécessaire.</p><Field label="Justification"><Textarea value={archiveReason} onChange={(event) => setArchiveReason(event.target.value)} placeholder="Expliquez la raison de l’annulation" /></Field><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setArchiveOpen(false)}>Retour</Button><Button variant="destructive" disabled={archiveReason.trim().length < 3 || statusMutation.isPending} onClick={() => statusMutation.mutate({ status: "CANCELLED", reason: archiveReason.trim() }, { onSuccess: () => { setArchiveOpen(false); setArchiveReason(""); } })}>{statusMutation.isPending ? "Annulation…" : "Confirmer l’annulation"}</Button></div></div></DialogContent></Dialog>
     <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}><DialogContent><DialogHeader><DialogTitle>Supprimer la Course</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-muted-foreground">Cette action est réservée aux brouillons et aux Courses planifiées sans dépense, facture, paiement ou document lié. Les autres Courses doivent être archivées.</p><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setDeleteOpen(false)}>Annuler</Button><Button variant="destructive" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate()}>{deleteMutation.isPending ? "Suppression…" : "Supprimer définitivement"}</Button></div></div></DialogContent></Dialog>
     <Dialog open={cancellationTarget !== null} onOpenChange={(open) => { if (!open) { setCancellationTarget(null); setCancellationReason(""); } }}><DialogContent><DialogHeader><DialogTitle>{cancellationTarget?.kind === "expense" ? "Annuler la dépense" : "Annuler le paiement"}</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-muted-foreground">{cancellationTarget?.kind === "expense" ? "Une dépense validée est conservée et compensée par une contre-écriture dans le journal financier." : "Un paiement confirmé est conservé et compensé par une contre-écriture dans le journal financier."}</p><Field label="Justification"><Textarea value={cancellationReason} onChange={(event) => setCancellationReason(event.target.value)} placeholder="Expliquez la correction" /></Field><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => { setCancellationTarget(null); setCancellationReason(""); }}>Retour</Button><Button variant="destructive" disabled={cancellationReason.trim().length < 3 || cancelExpense.isPending || cancelPayment.isPending} onClick={() => { if (!cancellationTarget) return; const onSuccess = () => { setCancellationTarget(null); setCancellationReason(""); }; if (cancellationTarget.kind === "expense") cancelExpense.mutate({ id: cancellationTarget.id, reason: cancellationReason.trim() }, { onSuccess }); else cancelPayment.mutate({ id: cancellationTarget.id, reason: cancellationReason.trim() }, { onSuccess }); }}>{cancelExpense.isPending || cancelPayment.isPending ? "Annulation…" : "Confirmer l’annulation"}</Button></div></div></DialogContent></Dialog>
   </div>;
@@ -348,20 +365,30 @@ function toIsoDateTime(value: string) {
 }
 
 function notificationError(error: unknown) {
-  if (error instanceof Error) {
-    toast.error(error.message);
-    return;
+  console.error("Course action failed", error);
+  toast.error(findCourseActionError(error) ?? "L’action n’a pas pu être effectuée. Réessayez ou vérifiez vos autorisations.");
+}
+
+function findCourseActionError(error: unknown, depth = 0): string | null {
+  if (depth > 2 || !error) return null;
+
+  if (error instanceof Error && error.message.trim() && error.message !== "Failed to fetch") {
+    return error.message;
   }
 
-  if (typeof error === "object" && error !== null && "message" in error) {
-    const message = Reflect.get(error, "message");
-    if (typeof message === "string" && message.trim()) {
-      toast.error(message);
-      return;
-    }
+  if (typeof error !== "object") return null;
+
+  for (const key of ["message", "details", "hint"] as const) {
+    const value = Reflect.get(error, key);
+    if (typeof value === "string" && value.trim() && value !== "Failed to fetch") return value;
   }
 
-  toast.error("L’action n’a pas pu être effectuée.");
+  for (const key of ["cause", "data", "error"] as const) {
+    const nested = findCourseActionError(Reflect.get(error, key), depth + 1);
+    if (nested) return nested;
+  }
+
+  return null;
 }
 function CourseDetailsSkeleton() { return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8" aria-label="Chargement de la Course"><div className="h-7 w-32 animate-pulse rounded bg-muted" /><div className="h-10 w-72 animate-pulse rounded bg-muted" /><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">{Array.from({ length: 9 }, (_, index) => <div key={index} className="h-32 animate-pulse rounded-xl border bg-card" />)}</div><div className="h-96 animate-pulse rounded-xl border bg-card" /></div>; }
 
@@ -408,7 +435,7 @@ function BudgetPerformance({ budgets, expenses, canReadFinance }: { budgets: Cou
 function HistoryTimelineSkeleton() { return <div className="space-y-4" aria-label="Chargement de l’historique">{Array.from({ length: 4 }, (_, index) => <div key={index} className="flex gap-3"><div className="mt-1 size-3 rounded-full bg-primary/15" /><div className="flex-1 space-y-2 rounded-xl border p-4"><div className="h-4 w-2/5 animate-pulse rounded bg-muted" /><div className="h-3 w-3/5 animate-pulse rounded bg-muted" /></div></div>)}</div>; }
 function Info({ label, value }: { label: string; value: string }) { return <div><p className="text-sm font-medium">{label}</p><p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{value}</p></div>; }
 function Empty({ message }: { message: string }) { return <p className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">{message}</p>; }
-function historyLabel(source: string, action: string) { const names: Record<string, string> = { COURSE: "Course", COURSE_EXPENSE: "Dépense", COURSE_INVOICE: "Facture", COURSE_PAYMENT: "Paiement" }; const actions: Record<string, string> = { CREATE: "créé", UPDATE: "mis à jour", CLOSE: "clôturé", CANCEL: source === "COURSE" ? "archivé" : "annulé", DELETE: "supprimé", ARCHIVE: "archivé", RESTORE: "restauré", REPLACE: "remplacé" }; return `${names[source] ?? source} ${actions[action] ?? action}`; }
+function historyLabel(source: string, action: string) { const names: Record<string, string> = { COURSE: "Course", COURSE_EXPENSE: "Dépense", COURSE_INVOICE: "Facture", COURSE_PAYMENT: "Paiement" }; const actions: Record<string, string> = { CREATE: "créé", UPDATE: "mis à jour", CLOSE: "clôturé", CANCEL: source === "COURSE" ? "archivé" : "annulé", DELIVERY: "livraison confirmée", DELIVERY_CORRECTION: "livraison remise en cours", DELETE: "supprimé", ARCHIVE: "archivé", RESTORE: "restauré", REPLACE: "remplacé" }; return `${names[source] ?? source} ${actions[action] ?? action}`; }
 function HistorySnapshot({ label, value }: { label: string; value: CourseHistoryEntry["before_value"] }) { const summary = historyValueSummary(value); return summary ? <p className="mt-2 text-sm text-muted-foreground"><span className="font-medium text-foreground">{label} :</span> {summary}</p> : null; }
 function historyValueSummary(value: CourseHistoryEntry["before_value"]): string | null { if (!value || typeof value !== "object" || Array.isArray(value)) return null; const labels: Record<string, string> = { status: "Statut", amount: "Montant", total_amount: "Total", planned_amount: "Budget", mission_number: "Course", invoice_number: "Facture", category: "Catégorie" }; const details = Object.entries(value).flatMap(([key, raw]) => { if (!(key in labels) || (typeof raw !== "string" && typeof raw !== "number")) return []; return [`${labels[key]} : ${typeof raw === "number" ? formatAmount(raw) : raw}`]; }); return details.length ? details.join(" · ") : "Modification enregistrée dans l’audit"; }
 

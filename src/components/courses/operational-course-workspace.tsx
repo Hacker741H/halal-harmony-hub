@@ -24,6 +24,7 @@ import {
   COURSE_STATUS_LABELS,
   getCourseDepartureReadiness,
   getCourses,
+  type Course,
   type CourseListItem,
 } from "@/lib/courses.functions";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -230,8 +231,8 @@ function Info({ label, value }: { label: string; value: string }) {
 
 function OperationDialog({ course, kind, open, onOpenChange }: { course: CourseListItem; kind: Exclude<OperationalWorkspaceKind, "planning">; open: boolean; onOpenChange: (open: boolean) => void }) {
   if (kind === "assignments") return <AssignmentDialog course={course} open={open} onOpenChange={onOpenChange} />;
-  if (kind === "departures") return <DepartureDialog course={course} open={open} onOpenChange={onOpenChange} />;
-  return <DeliveryDialog course={course} open={open} onOpenChange={onOpenChange} />;
+  if (kind === "departures") return <CourseDepartureDialog course={course} open={open} onOpenChange={onOpenChange} />;
+  return <CourseDeliveryDialog course={course} open={open} onOpenChange={onOpenChange} />;
 }
 
 function AssignmentDialog({ course, open, onOpenChange }: { course: CourseListItem; open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -249,7 +250,9 @@ function AssignmentDialog({ course, open, onOpenChange }: { course: CourseListIt
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><DialogHeader><DialogTitle>Affecter la Course {course.mission_number}</DialogTitle><DialogDescription>Les conflits de véhicule et de chauffeur sont contrôlés par la base lors de l’enregistrement.</DialogDescription></DialogHeader><div className="grid gap-4 py-2"><div className="space-y-2"><Label>Véhicule</Label><VehicleSelect value={vehicleId} onValueChange={setVehicleId} placeholder="Sélectionner un véhicule" /></div><div className="space-y-2"><Label>Chauffeur</Label><DriverSelect value={driverId} onValueChange={setDriverId} placeholder="Sélectionner un chauffeur" /></div>{can("missions.override") ? <div className="space-y-2"><Label>Justification de dérogation <span className="font-normal text-muted-foreground">(uniquement en cas de conflit)</span></Label><Textarea value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} placeholder="Justifiez une dérogation administrateur…" /></div> : null}</div><DialogFooter><Button variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button><Button disabled={!vehicleId || !driverId || mutation.isPending} onClick={() => mutation.mutate()}>{mutation.isPending ? "Enregistrement…" : "Enregistrer l’affectation"}</Button></DialogFooter></DialogContent></Dialog>;
 }
 
-function DepartureDialog({ course, open, onOpenChange }: { course: CourseListItem; open: boolean; onOpenChange: (open: boolean) => void }) {
+type CourseOperationTarget = Pick<Course, "id" | "mission_number" | "start_odometer">;
+
+export function CourseDepartureDialog({ course, open, onOpenChange }: { course: CourseOperationTarget; open: boolean; onOpenChange: (open: boolean) => void }) {
   const queryClient = useQueryClient();
   const [startedAt, setStartedAt] = useState(toDateTimeLocal(new Date().toISOString()));
   const [startOdometer, setStartOdometer] = useState("");
@@ -269,7 +272,7 @@ function DepartureChecklist({ loading, checks }: { loading: boolean; checks: Arr
   return <div className="rounded-xl border border-border/70 p-3"><p className="mb-2 text-label">Checklist de départ</p><div className="space-y-2">{checks.map((check) => <div key={check.check_code} className="flex items-start gap-2 text-sm"><span className={check.is_ready ? "text-success" : check.is_blocking ? "text-destructive" : "text-warning-foreground"}>{check.is_ready ? <CheckCircle2 className="mt-0.5 size-4" aria-label="Prérequis validé" /> : <AlertTriangle className="mt-0.5 size-4" aria-label={check.is_blocking ? "Prérequis bloquant" : "Information"} />}</span><div><p className="font-medium">{check.label}</p><p className="text-caption text-muted-foreground">{check.detail}</p></div></div>)}</div></div>;
 }
 
-function DeliveryDialog({ course, open, onOpenChange }: { course: CourseListItem; open: boolean; onOpenChange: (open: boolean) => void }) {
+export function CourseDeliveryDialog({ course, open, onOpenChange }: { course: CourseOperationTarget; open: boolean; onOpenChange: (open: boolean) => void }) {
   const queryClient = useQueryClient();
   const [deliveryStatus, setDeliveryStatus] = useState<(typeof COURSE_DELIVERY_STATUSES)[number]>("DELIVERED");
   const [arrivedAt, setArrivedAt] = useState(toDateTimeLocal(new Date().toISOString()));
