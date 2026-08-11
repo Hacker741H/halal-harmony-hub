@@ -34,6 +34,7 @@ import { getWallets } from "@/lib/wallet.functions";
 import { useCommercePosSession } from "@/hooks/use-commerce-pos-session";
 import { usePermissions } from "@/hooks/use-permissions";
 import { supabase } from "@/integrations/supabase/client";
+import { cachePosOfflineLocations, findPosOfflineDraftLocation, getCachedPosOfflineLocations } from "@/lib/commerce-pos-offline";
 import { createCommercePosId, findCommercePosDraftLocation, getCommercePosStockConflicts, type CommercePosDraftLine, type CommercePosPaymentMethod, type CommercePosSuspendedTicket } from "@/lib/commerce-pos-session";
 
 type CartLine = CommercePosDraftLine;
@@ -296,12 +297,20 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
   const locationsQuery = useQuery({ queryKey: ["commerce-pos-locations"], queryFn: () => getCommercePosLocations() });
   const currentUserId = useCommerceCashierUserId();
   const [locationId, setLocationId] = useState("");
-  const selectedLocationId = locationId || locationsQuery.data?.[0]?.id || "";
-  const posSession = useCommercePosSession({ locationId: selectedLocationId, userId: currentUserId });
+  const [cachedLocations, setCachedLocations] = useState<CommercePosLocation[]>([]);
+  const availableLocations = locationsQuery.data?.length ? locationsQuery.data : cachedLocations;
+  const selectedLocationId = locationId || availableLocations[0]?.id || "";
   const workspaceQuery = useQuery({
     queryKey: ["commerce-pos-workspace", selectedLocationId],
     queryFn: () => getCommercePosWorkspace({ data: { locationId: selectedLocationId } }),
     enabled: Boolean(selectedLocationId),
+  });
+  const workspace = workspaceQuery.data;
+  const posSession = useCommercePosSession({
+    locationId: selectedLocationId,
+    userId: currentUserId,
+    catalogue: workspace?.items,
+    catalogueRevision: workspaceQuery.dataUpdatedAt,
   });
   const [search, setSearch] = useState("");
   const [quickQuantity, setQuickQuantity] = useState("1");
@@ -318,7 +327,6 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [pendingDraftAction, setPendingDraftAction] = useState<CashierDraftAction | null>(null);
   const quickEntryRef = useRef<HTMLInputElement>(null);
-  const workspace = workspaceQuery.data;
   const draft = posSession.draft;
   const cart = posSession.isReady ? draft?.lines ?? [] : [];
   const clientId = posSession.isReady ? draft?.clientId ?? "" : "";
@@ -329,10 +337,40 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
   const primaryCashDrawerWalletId = primaryCashDrawerWallet?.id ?? "";
 
   useEffect(() => {
-    if (locationId || !currentUserId || !locationsQuery.data?.length || typeof window === "undefined") return;
-    const restoredLocationId = findCommercePosDraftLocation(window.localStorage, locationsQuery.data.map((location) => location.id), currentUserId);
-    setLocationId(restoredLocationId ?? locationsQuery.data[0].id);
-  }, [currentUserId, locationId, locationsQuery.data]);
+    if (!currentUserId) return;
+    let active = true;
+    if (locationsQuery.data?.length) {
+      setCachedLocations(locationsQuery.data);
+      void cachePosOfflineLocations(currentUserId, locationsQuery.data).catch((error: unknown) => {
+        console.warn("Les points de vente hors connexion n’ont pas pu être mémorisés.", error);
+      });
+      return () => { active = false; };
+    }
+    void getCachedPosOfflineLocations(currentUserId)
+      .then((locations) => {
+        if (active && locations.length) setCachedLocations(locations);
+      })
+      .catch((error: unknown) => console.warn("Les points de vente mémorisés sont indisponibles.", error));
+    return () => { active = false; };
+  }, [currentUserId, locationsQuery.data]);
+
+  useEffect(() => {
+    if (locationId || !currentUserId || !availableLocations.length || typeof window === "undefined") return;
+    let active = true;
+    void (async () => {
+      let restoredLocationId: string | null = null;
+      try {
+        restoredLocationId = await findPosOfflineDraftLocation(availableLocations.map((location) => location.id), currentUserId);
+      } catch (error) {
+        console.warn("Le brouillon hors connexion n’a pas pu être localisé.", error);
+      }
+      if (!restoredLocationId) {
+        restoredLocationId = findCommercePosDraftLocation(window.localStorage, availableLocations.map((location) => location.id), currentUserId);
+      }
+      if (active) setLocationId(restoredLocationId ?? availableLocations[0].id);
+    })();
+    return () => { active = false; };
+  }, [availableLocations, currentUserId, locationId]);
 
   useEffect(() => {
     if (!posSession.isRestored || !draft?.clientId) return;
@@ -349,22 +387,25 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     window.addEventListener("beforeunload", warnBeforeUnload);
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
   }, [draft, posSession.isReady]);
+  const activeCatalogue = workspace?.items ?? posSession.catalogueItems;
+  const isUsingOfflineCatalogue = !workspace && posSession.catalogueItems.length > 0;
+  const currentLocationName = workspace?.location.name ?? availableLocations.find((location) => location.id === selectedLocationId)?.name ?? "Point de vente";
   const items = useMemo(
-    () => (workspace?.items ?? []).filter((item) => `${item.name} ${item.sku ?? ""}`.toLowerCase().includes(search.toLowerCase())),
-    [workspace?.items, search],
+    () => activeCatalogue.filter((item) => `${item.name} ${item.sku ?? ""}`.toLowerCase().includes(search.toLowerCase())),
+    [activeCatalogue, search],
   );
   const catalogueItems = useMemo(
-    () => (workspace?.items ?? []).filter((item) => `${item.name} ${item.sku ?? ""}`.toLowerCase().includes(catalogueSearch.toLowerCase())),
-    [catalogueSearch, workspace?.items],
+    () => activeCatalogue.filter((item) => `${item.name} ${item.sku ?? ""}`.toLowerCase().includes(catalogueSearch.toLowerCase())),
+    [activeCatalogue, catalogueSearch],
   );
   const enrichedCart = useMemo(
-    () => cart.map((line) => ({ ...line, item: line.lineType === "ARTICLE" ? workspace?.items.find((entry) => entry.id === line.itemId) ?? null : null })),
-    [cart, workspace?.items],
+    () => cart.map((line) => ({ ...line, item: line.lineType === "ARTICLE" ? activeCatalogue.find((entry) => entry.id === line.itemId) ?? null : null })),
+    [activeCatalogue, cart],
   );
   const total = cart.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
   const stockConflicts = useMemo(
-    () => getCommercePosStockConflicts(cart, (workspace?.items ?? []).map((item) => ({ itemId: item.id, label: item.name, availableQuantity: item.quantity }))),
-    [cart, workspace?.items],
+    () => getCommercePosStockConflicts(cart, activeCatalogue.map((item) => ({ itemId: item.id, label: item.name, availableQuantity: item.quantity }))),
+    [activeCatalogue, cart],
   );
   const cashChange = method === "CASH" && cashReceived !== null ? Math.max(cashReceived - total, 0) : 0;
   const ticketReference = draft ? `POS-${draft.sessionId.slice(-8).toUpperCase()}` : "—";
@@ -410,6 +451,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     },
     onError: (error) => {
       const requiresReconciliation = isIndeterminateCheckoutError(error);
+      if (requiresReconciliation) posSession.reportNetworkFailure();
       updateDraft((current) => ({ ...current, checkoutState: requiresReconciliation ? "RECONCILIATION_REQUIRED" : "READY" }));
       toast.error(requiresReconciliation
         ? "La réponse de la caisse est inconnue. La vente est conservée et bloquée à vérification pour éviter un double encaissement."
@@ -419,7 +461,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
 
   const addArticle = useCallback((itemId: string, defaultPrice: number | null, label: string, quantity = 1) => {
     if (!posSession.isReady || checkoutState !== "READY") return;
-    const availableQuantity = workspace?.items.find((item) => item.id === itemId)?.quantity ?? 0;
+    const availableQuantity = activeCatalogue.find((item) => item.id === itemId)?.quantity ?? 0;
     updateDraft((current) => {
       const line = current.lines.find((entry) => entry.lineType === "ARTICLE" && entry.itemId === itemId);
       const lines = line
@@ -427,7 +469,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
         : availableQuantity > 0 ? [...current.lines, { lineId: `article-${itemId}`, lineType: "ARTICLE" as const, itemId, label, quantity: Math.min(quantity, availableQuantity), unitPrice: defaultPrice ?? 0 }] : current.lines;
       return { ...current, lines };
     });
-  }, [checkoutState, posSession.isReady, updateDraft, workspace?.items]);
+  }, [activeCatalogue, checkoutState, posSession.isReady, updateDraft]);
   const addService = () => {
     const parsedPrice = Number(servicePrice);
     const normalizedName = serviceName.trim();
@@ -496,12 +538,12 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
   useEffect(() => {
     const addFromCashierSidebar = (event: Event) => {
       const itemId = (event as CustomEvent<{ itemId?: string }>).detail?.itemId;
-      const item = workspace?.items.find((entry) => entry.id === itemId);
+      const item = activeCatalogue.find((entry) => entry.id === itemId);
       if (item) addArticle(item.id, item.salePrice, item.name);
     };
     window.addEventListener("commerce:add-item", addFromCashierSidebar);
     return () => window.removeEventListener("commerce:add-item", addFromCashierSidebar);
-  }, [addArticle, workspace?.items]);
+  }, [activeCatalogue, addArticle]);
   const update = (lineId: string, values: Partial<Pick<CartLine, "quantity" | "unitPrice">>) => {
     if (checkoutState !== "READY") return;
     updateDraft((current) => ({
@@ -513,6 +555,10 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
   };
   const setPaymentMethod = (nextMethod: PaymentMethod) => {
     if (checkoutState !== "READY") return;
+    if (posSession.networkStatus !== "ONLINE" && nextMethod !== "CASH") {
+      toast.info("Seul l’encaissement en espèces reste disponible hors connexion.");
+      return;
+    }
     updateDraft((current) => ({ ...current, paymentMethod: nextMethod, cashReceived: nextMethod === "CASH" ? current.cashReceived : null }));
   };
   const checkout = () => {
@@ -528,16 +574,32 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
       toast.error("Le stock a changé. Ajustez le panier avant d’encaisser.");
       return;
     }
-    if (!primaryCashDrawerWallet) {
-      toast.error("Aucun wallet principal de caisse n’est configuré pour ce magasin.");
-      return;
-    }
     if (method === "CASH" && cashReceived !== null && cashReceived < total) {
       toast.error("Le montant reçu doit couvrir le total à encaisser.");
       return;
     }
     if (method === "JEKO") {
       toast.info("Le paiement mobile via Jèko est en attente d’activation transactionnelle. Aucun ticket n’a été créé.");
+      return;
+    }
+    if (posSession.networkStatus !== "ONLINE") {
+      if (method !== "CASH" || !posSession.canCompleteOfflineCashSale) {
+        toast.error("Cette vente ne peut pas être conservée hors connexion sur ce poste.");
+        return;
+      }
+      void posSession.completeOfflineCashSale()
+        .then((eventId) => {
+          setShowClient(false);
+          setMobileCartOpen(false);
+          toast.success(`Vente enregistrée localement. Elle reste en attente de synchronisation contrôlée (événement ${eventId.slice(-8).toUpperCase()}).`);
+        })
+        .catch((error: unknown) => {
+          toast.error(error instanceof Error ? error.message : "La vente locale n’a pas pu être sauvegardée.");
+        });
+      return;
+    }
+    if (!primaryCashDrawerWallet) {
+      toast.error("Aucun wallet principal de caisse n’est configuré pour ce magasin.");
       return;
     }
     updateDraft((current) => ({ ...current, checkoutState: "PROCESSING" }));
@@ -586,9 +648,14 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     return () => window.removeEventListener("keydown", handleCashierShortcut);
   }, [checkout]);
 
-  if (locationsQuery.isPending) return <div className="grid gap-4 lg:grid-cols-3"><Skeleton className="h-72 lg:col-span-2" /><Skeleton className="h-72" /></div>;
-  if (locationsQuery.isError) return <Card variant="information"><CardContent className="p-6">Impossible de charger vos points de vente autorisés.</CardContent></Card>;
-  if (!locationsQuery.data?.length) {
+  const canCheckout = total > 0
+    && stockConflicts.length === 0
+    && checkoutState === "READY"
+    && (posSession.networkStatus === "ONLINE" ? Boolean(primaryCashDrawerWallet) : posSession.canCompleteOfflineCashSale && method === "CASH");
+
+  if (locationsQuery.isPending && !availableLocations.length) return <div className="grid gap-4 lg:grid-cols-3"><Skeleton className="h-72 lg:col-span-2" /><Skeleton className="h-72" /></div>;
+  if (locationsQuery.isError && !availableLocations.length) return <Card variant="information"><CardContent className="p-6">Impossible de charger vos points de vente autorisés. Ouvrez d’abord la caisse une fois avec Internet pour la rendre disponible hors connexion.</CardContent></Card>;
+  if (!availableLocations.length) {
     return canManageLocations
       ? <CommerceLocationSetup onDone={handleLocationSaved} />
       : <Card variant="information"><CardHeader><CardTitle>Aucune caisse disponible</CardTitle></CardHeader><CardContent>Votre compte doit être affecté à un magasin Commerce avant de pouvoir encaisser. Un administrateur doit créer le magasin, associer son wallet puis vous y affecter.</CardContent></Card>;
@@ -600,7 +667,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
         <CardContent className="grid gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div className="grid gap-x-5 gap-y-2 sm:grid-cols-2 xl:grid-cols-4">
             <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Ticket en cours</p><p className="mt-1 font-mono text-sm font-bold tracking-wide text-primary">{ticketReference}</p></div>
-            <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Point de vente</p><p className="mt-1 truncate text-sm font-semibold" title={workspace?.location.name}>{workspace?.location.name ?? "Chargement…"}</p></div>
+            <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Point de vente</p><p className="mt-1 truncate text-sm font-semibold" title={currentLocationName}>{currentLocationName}</p></div>
             <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Caissier</p><p className="mt-1 text-sm font-medium">Session caisse active</p></div>
             <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Client · date</p><p className="mt-1 truncate text-sm font-medium">{clientId ? "Ticket nominatif" : "Client comptoir"} · {ticketDate}</p></div>
           </div>
@@ -610,6 +677,8 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
           </div>
         </CardContent>
       </Card>
+
+      {posSession.networkStatus !== "ONLINE" ? <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-warning/30 bg-warning/[0.08] px-4 py-2.5 text-sm text-warning" role="status"><span className="font-semibold">Hors connexion — la caisse continue localement.</span><span>{posSession.pendingOutboxCount} vente{posSession.pendingOutboxCount > 1 ? "s" : ""} en attente de synchronisation</span></div> : <div className="flex shrink-0 items-center justify-between rounded-xl border border-success/25 bg-success/[0.07] px-4 py-2.5 text-sm text-success" role="status"><span className="font-semibold">En ligne — caisse prête</span><span>{posSession.pendingOutboxCount ? `${posSession.pendingOutboxCount} opération${posSession.pendingOutboxCount > 1 ? "s" : ""} locale${posSession.pendingOutboxCount > 1 ? "s" : ""} en attente de synchronisation contrôlée` : "Aucune vente locale en attente"}</span></div>}
 
       <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-sm">
         <div className="grid shrink-0 gap-3 border-b border-border/75 bg-muted/[0.16] p-3 lg:grid-cols-[minmax(0,1fr)_7rem_auto_auto_auto_auto] lg:items-end">
@@ -629,9 +698,10 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
         {checkoutState === "RECONCILIATION_REQUIRED" ? <div className="shrink-0 border-b border-warning/25 bg-warning/[0.08] px-4 py-2 text-sm text-warning">Encaissement à vérifier : le brouillon est protégé afin d’éviter un double encaissement.</div> : null}
 
         <div className="min-h-0 flex-1 overflow-auto">
-          {workspaceQuery.isPending ? <div className="space-y-2 p-3"><Skeleton className="h-12" /><Skeleton className="h-12" /><Skeleton className="h-12" /></div> : null}
-          {workspaceQuery.isError ? <div className="p-6"><Card variant="information"><CardContent className="p-6">La caisse ne peut pas être ouverte pour ce point de vente. Réessayez dans un instant ou contactez un responsable.</CardContent></Card></div> : null}
-          {!workspaceQuery.isPending && !workspaceQuery.isError ? <>
+          {workspaceQuery.isPending && !isUsingOfflineCatalogue ? <div className="space-y-2 p-3"><Skeleton className="h-12" /><Skeleton className="h-12" /><Skeleton className="h-12" /></div> : null}
+          {workspaceQuery.isError && !isUsingOfflineCatalogue ? <div className="p-6"><Card variant="information"><CardContent className="p-6">La caisse ne peut pas être ouverte pour ce point de vente. Réessayez dans un instant ou contactez un responsable.</CardContent></Card></div> : null}
+          {isUsingOfflineCatalogue ? <div className="border-b border-warning/20 bg-warning/[0.06] px-4 py-2 text-sm text-warning">Catalogue et stock local affichés. Les ventes en espèces sont conservées localement ; aucun envoi financier n’est effectué dans cette version.</div> : null}
+          {(!workspaceQuery.isPending || isUsingOfflineCatalogue) && (!workspaceQuery.isError || isUsingOfflineCatalogue) ? <>
             <table className="hidden w-full min-w-[760px] border-collapse text-sm lg:table">
               <thead className="sticky top-0 z-10 border-b border-border/80 bg-muted/[0.88] text-left text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground backdrop-blur">
                 <tr><th className="px-4 py-3">Référence</th><th className="px-4 py-3">Désignation</th><th className="px-4 py-3 text-right">Prix unitaire</th><th className="px-4 py-3 text-center">Quantité</th><th className="px-4 py-3 text-right">Montant</th><th className="w-16 px-4 py-3 text-right">Action</th></tr>
@@ -673,15 +743,15 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
       <Card variant="section" className="hidden shrink-0 overflow-hidden border-primary/20 bg-surface shadow-md lg:block">
         <div className="grid gap-3 p-3 xl:grid-cols-[minmax(280px,.8fr)_minmax(390px,1.2fr)_auto] xl:items-end">
           <div className="min-w-0">{showClient ? <div className="flex items-center gap-2"><ClientSelect value={clientId} onValueChange={(value) => updateDraft((current) => ({ ...current, clientId: value || null }))} placeholder="Client facultatif" /><Button type="button" size="sm" variant="ghost" onClick={() => { updateDraft((current) => ({ ...current, clientId: null })); setShowClient(false); }}>Comptoir</Button></div> : <button type="button" onClick={() => setShowClient(true)} className="flex w-full items-center justify-between rounded-xl border border-dashed border-border/90 bg-surface/75 px-3 py-2.5 text-left text-sm transition-colors hover:border-primary/35 hover:bg-primary/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"><span><span className="font-semibold">Vente comptoir</span><span className="ml-2 text-xs text-muted-foreground">Client non requis</span></span><span className="text-xs font-semibold text-primary">F4 · + Client</span></button>}</div>
-          <div className="grid gap-2 md:grid-cols-[auto_minmax(160px,1fr)_auto] md:items-end"><div className="space-y-1"><Label className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Paiement</Label><div className="flex items-center gap-1" role="radiogroup" aria-label="Moyen de paiement">{paymentMethods.map(({ value, label, icon: Icon }) => { const selected = method === value; const jekoDisabled = value === "JEKO"; return <button key={value} type="button" role="radio" aria-checked={selected} onClick={() => setPaymentMethod(value)} disabled={checkoutState !== "READY" || jekoDisabled} title={jekoDisabled ? "Jèko sera disponible lorsque l’encaissement transactionnel POS sera relié." : value === "WAVE" ? "Saisie mobile manuelle : aucune API Wave directe" : label} className={`flex h-10 min-w-10 items-center justify-center gap-1 rounded-lg border px-2 text-xs font-semibold transition-[background-color,border-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55 ${selected ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-surface text-muted-foreground hover:border-primary/35 hover:text-foreground"}`}><Icon className="size-4" /><span className="hidden 2xl:inline">{jekoDisabled ? "Jèko bientôt" : value === "WAVE" ? "Mobile" : label}</span></button>; })}</div></div>{method === "CASH" ? <div className="space-y-1"><Label htmlFor="commerce-pos-cash-received" className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Montant reçu</Label><Input id="commerce-pos-cash-received" className="h-10 text-right tabular-nums" type="number" min={total} step="1" disabled={checkoutState !== "READY"} placeholder={money(total)} value={cashReceived ?? ""} onChange={(event) => updateDraft((current) => ({ ...current, cashReceived: event.target.value === "" ? null : Number(event.target.value) }))} /></div> : <div className="text-sm text-muted-foreground">Règlement manuel sélectionné.</div>}<div className="rounded-xl border border-success/20 bg-success/[0.07] px-3 py-2 text-sm"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-success">Wallet automatique</p><p className="mt-1 truncate font-semibold text-success" title={primaryCashDrawerWallet?.name}>{primaryCashDrawerWallet?.name ?? "À configurer"}</p></div></div>
-          <div className="flex items-end justify-between gap-4 xl:justify-end"><div className="text-right"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{method === "CASH" && cashReceived !== null ? "Monnaie à rendre" : "Total à encaisser"}</p><p className="mt-1 text-xl font-bold tabular-nums">{method === "CASH" && cashReceived !== null ? money(cashChange) : money(total)}</p></div><Button className="h-12 min-w-56" loading={saleMutation.isPending} loadingLabel="Comptabilisation" disabled={total <= 0 || !primaryCashDrawerWallet || stockConflicts.length > 0 || checkoutState !== "READY"} onClick={checkout}><WalletCards />{saleMutation.isPending || checkoutState === "PROCESSING" ? "Comptabilisation…" : `Encaisser ${money(total)}`}<span className="ml-1 hidden 2xl:inline">· F10</span></Button></div>
+          <div className="grid gap-2 md:grid-cols-[auto_minmax(160px,1fr)_auto] md:items-end"><div className="space-y-1"><Label className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Paiement</Label><div className="flex items-center gap-1" role="radiogroup" aria-label="Moyen de paiement">{paymentMethods.map(({ value, label, icon: Icon }) => { const selected = method === value; const jekoDisabled = value === "JEKO"; const offlineUnavailable = posSession.networkStatus !== "ONLINE" && value !== "CASH"; return <button key={value} type="button" role="radio" aria-checked={selected} onClick={() => setPaymentMethod(value)} disabled={checkoutState !== "READY" || jekoDisabled || offlineUnavailable} title={jekoDisabled ? "Jèko sera disponible lorsque l’encaissement transactionnel POS sera relié." : offlineUnavailable ? "Paiement indisponible hors connexion." : value === "WAVE" ? "Saisie mobile manuelle : aucune API Wave directe" : label} className={`flex h-10 min-w-10 items-center justify-center gap-1 rounded-lg border px-2 text-xs font-semibold transition-[background-color,border-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55 ${selected ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-surface text-muted-foreground hover:border-primary/35 hover:text-foreground"}`}><Icon className="size-4" /><span className="hidden 2xl:inline">{jekoDisabled ? "Jèko bientôt" : value === "WAVE" ? "Mobile" : label}</span></button>; })}</div></div>{method === "CASH" ? <div className="space-y-1"><Label htmlFor="commerce-pos-cash-received" className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Montant reçu</Label><Input id="commerce-pos-cash-received" className="h-10 text-right tabular-nums" type="number" min={total} step="1" disabled={checkoutState !== "READY"} placeholder={money(total)} value={cashReceived ?? ""} onChange={(event) => updateDraft((current) => ({ ...current, cashReceived: event.target.value === "" ? null : Number(event.target.value) }))} /></div> : <div className="text-sm text-muted-foreground">Règlement manuel sélectionné.</div>}<div className="rounded-xl border border-success/20 bg-success/[0.07] px-3 py-2 text-sm"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-success">{posSession.networkStatus === "ONLINE" ? "Wallet automatique" : "Aucune écriture financière hors ligne"}</p><p className="mt-1 truncate font-semibold text-success" title={primaryCashDrawerWallet?.name}>{primaryCashDrawerWallet?.name ?? "Vente locale en attente"}</p></div></div>
+          <div className="flex items-end justify-between gap-4 xl:justify-end"><div className="text-right"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{method === "CASH" && cashReceived !== null ? "Monnaie à rendre" : "Total à encaisser"}</p><p className="mt-1 text-xl font-bold tabular-nums">{method === "CASH" && cashReceived !== null ? money(cashChange) : money(total)}</p></div><Button className="h-12 min-w-56" loading={saleMutation.isPending} loadingLabel="Comptabilisation" disabled={!canCheckout} onClick={checkout}><WalletCards />{saleMutation.isPending || checkoutState === "PROCESSING" ? "Comptabilisation…" : posSession.networkStatus !== "ONLINE" ? `Conserver ${money(total)}` : `Encaisser ${money(total)}`}<span className="ml-1 hidden 2xl:inline">· F10</span></Button></div>
         </div>
         {hasDraftInProgress ? <div className="flex border-t border-border/70 px-3 py-2 text-right"><div className="ml-auto flex gap-2"><Button type="button" size="sm" variant="outline" disabled={checkoutState !== "READY" || cart.length === 0} onClick={() => { if (posSession.suspendDraft()) { setShowClient(false); toast.success("Ticket suspendu : aucune opération n’a été comptabilisée."); } }}>Suspendre</Button><Button type="button" size="sm" variant="ghost" disabled={checkoutState !== "READY"} onClick={() => setPendingDraftAction({ type: "DISCARD" })}>Abandonner le brouillon</Button></div></div> : null}
       </Card>
 
       <Dialog open={catalogueOpen} onOpenChange={setCatalogueOpen}>
         <DialogContent className="max-w-5xl overflow-hidden p-0">
-          <DialogHeader className="border-b border-border/70 px-5 py-4 text-left"><DialogTitle>Articles disponibles · {workspace?.location.name ?? "Point de vente"}</DialogTitle><DialogDescription>Flèches pour choisir, Entrée pour ajouter, Échap pour fermer. Les prix d’achat et les codes-barres ne sont pas disponibles dans cette caisse.</DialogDescription></DialogHeader>
+          <DialogHeader className="border-b border-border/70 px-5 py-4 text-left"><DialogTitle>Articles disponibles · {currentLocationName}</DialogTitle><DialogDescription>Flèches pour choisir, Entrée pour ajouter, Échap pour fermer. Les prix d’achat et les codes-barres ne sont pas disponibles dans cette caisse.</DialogDescription></DialogHeader>
           <div className="border-b border-border/70 bg-muted/[0.16] p-4"><div className="relative"><Search className="absolute left-3 top-3 size-5 text-primary" /><Input autoFocus className="h-11 pl-10" value={catalogueSearch} onChange={(event) => { setCatalogueSearch(event.target.value); setCatalogueSelectedIndex(0); }} onKeyDown={(event) => { if (event.key === "ArrowDown") { event.preventDefault(); setCatalogueSelectedIndex((current) => Math.min(current + 1, Math.max(catalogueItems.length - 1, 0))); } if (event.key === "ArrowUp") { event.preventDefault(); setCatalogueSelectedIndex((current) => Math.max(current - 1, 0)); } if (event.key === "Enter") { event.preventDefault(); addFromCatalogue(catalogueSelectedIndex); } }} placeholder="Rechercher une référence, un SKU ou une désignation" /></div></div>
           <div className="max-h-[60dvh] overflow-auto"><table className="w-full min-w-[620px] border-collapse text-sm"><thead className="sticky top-0 z-10 bg-surface text-left text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground"><tr><th className="px-5 py-3">Référence</th><th className="px-5 py-3">Désignation</th><th className="px-5 py-3 text-right">Prix de vente</th><th className="px-5 py-3 text-right">Stock</th><th className="w-24 px-5 py-3" /></tr></thead><tbody>{catalogueItems.map((item, index) => { const unavailable = item.quantity <= 0; return <tr key={item.id} onMouseEnter={() => setCatalogueSelectedIndex(index)} onDoubleClick={() => addFromCatalogue(index)} className={`border-t border-border/60 ${catalogueSelectedIndex === index ? "bg-primary/[0.08]" : "hover:bg-muted/[0.24]"} ${unavailable ? "opacity-55" : "cursor-pointer"}`}><td className="px-5 py-3 font-mono text-xs text-muted-foreground">{item.sku ?? "—"}</td><td className="px-5 py-3 font-semibold">{item.name}</td><td className="px-5 py-3 text-right font-medium tabular-nums">{item.salePrice === null ? "Prix à saisir" : money(item.salePrice)}</td><td className="px-5 py-3 text-right tabular-nums">{item.quantity} {item.unit ?? "unité"}{item.quantity > 1 ? "s" : ""}</td><td className="px-5 py-3 text-right"><Button type="button" size="sm" variant="outline" disabled={unavailable || checkoutState !== "READY"} onClick={() => addFromCatalogue(index)}>{unavailable ? "Rupture" : "Ajouter"}</Button></td></tr>; })}{catalogueItems.length === 0 ? <tr><td colSpan={5} className="px-5 py-12 text-center text-muted-foreground">Aucun article ne correspond à cette recherche.</td></tr> : null}</tbody></table></div>
           <DialogFooter className="border-t border-border/70 bg-muted/[0.10] px-5 py-3"><p className="mr-auto text-xs text-muted-foreground">{catalogueItems.length} article{catalogueItems.length > 1 ? "s" : ""} chargé{catalogueItems.length > 1 ? "s" : ""} pour ce magasin.</p><Button type="button" variant="outline" onClick={() => setCatalogueOpen(false)}>Fermer</Button></DialogFooter>
@@ -732,7 +802,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
             <div className="min-h-0 space-y-4 overflow-y-auto px-4 pb-4">
               {showClient ? <div className="flex items-center gap-2"><ClientSelect value={clientId} onValueChange={(value) => updateDraft((current) => ({ ...current, clientId: value || null }))} placeholder="Client facultatif" /><Button type="button" size="sm" variant="ghost" onClick={() => { updateDraft((current) => ({ ...current, clientId: null })); setShowClient(false); }}>Comptoir</Button></div> : <button type="button" onClick={() => setShowClient(true)} className="flex w-full items-center justify-between rounded-xl border border-dashed border-border/90 bg-surface/75 px-3 py-3 text-left text-sm transition-colors hover:border-primary/35 hover:bg-primary/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"><span><span className="font-semibold">Vente comptoir</span><span className="ml-2 text-xs text-muted-foreground">Client non requis</span></span><span className="text-xs font-semibold text-primary">+ Client</span></button>}
               <div className="flex gap-2 overflow-x-auto pb-1" role="radiogroup" aria-label="Moyen de paiement">
-                {paymentMethods.map(({ value, label, icon: Icon }) => { const selected = method === value; const jekoDisabled = value === "JEKO"; return <button key={value} type="button" role="radio" aria-checked={selected} onClick={() => setPaymentMethod(value)} disabled={checkoutState !== "READY" || jekoDisabled} title={jekoDisabled ? "Jèko sera disponible lorsque l’encaissement transactionnel POS sera relié." : value === "WAVE" ? "Saisie mobile manuelle : aucune API Wave directe" : label} className={`flex h-12 min-w-24 shrink-0 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-[background-color,border-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55 ${selected ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-surface text-muted-foreground hover:border-primary/35 hover:text-foreground"}`}><Icon className="size-4" /><span>{jekoDisabled ? "Jèko bientôt" : value === "WAVE" ? "Mobile" : label}</span></button>; })}
+                {paymentMethods.map(({ value, label, icon: Icon }) => { const selected = method === value; const jekoDisabled = value === "JEKO"; const offlineUnavailable = posSession.networkStatus !== "ONLINE" && value !== "CASH"; return <button key={value} type="button" role="radio" aria-checked={selected} onClick={() => setPaymentMethod(value)} disabled={checkoutState !== "READY" || jekoDisabled || offlineUnavailable} title={jekoDisabled ? "Jèko sera disponible lorsque l’encaissement transactionnel POS sera relié." : offlineUnavailable ? "Paiement indisponible hors connexion." : value === "WAVE" ? "Saisie mobile manuelle : aucune API Wave directe" : label} className={`flex h-12 min-w-24 shrink-0 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-[background-color,border-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55 ${selected ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-surface text-muted-foreground hover:border-primary/35 hover:text-foreground"}`}><Icon className="size-4" /><span>{jekoDisabled ? "Jèko bientôt" : value === "WAVE" ? "Mobile" : label}</span></button>; })}
               </div>
               <div className="flex items-center gap-2 rounded-xl border border-success/20 bg-success/[0.07] px-3 py-2"><WalletCards className="size-4 shrink-0 text-success" /><span className="min-w-0 truncate text-sm font-semibold text-success" title={primaryCashDrawerWallet?.name}>{primaryCashDrawerWallet?.name ?? "Wallet de caisse à configurer"}</span></div>
               <div className="space-y-2">
@@ -747,7 +817,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
             </div>
             <DrawerFooter className="border-t border-border/70 bg-surface">
               <div className="flex items-end justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Total à encaisser</p><p className="mt-1 text-2xl font-bold tracking-tight tabular-nums">{money(total)}</p></div>{method === "CASH" ? <div className="w-44 space-y-1"><Label className="text-xs">Montant reçu</Label><Input aria-label="Montant reçu en espèces" className="h-9 text-right" type="number" min={total} step="1" disabled={checkoutState !== "READY"} placeholder={money(total)} value={cashReceived ?? ""} onChange={(event) => updateDraft((current) => ({ ...current, cashReceived: event.target.value === "" ? null : Number(event.target.value) }))} />{cashReceived !== null ? <p className="text-xs text-muted-foreground">À rendre : <span className="font-semibold text-foreground">{money(cashChange)}</span></p> : null}</div> : null}</div>
-              <Button className="h-12 w-full" loading={saleMutation.isPending} loadingLabel="Comptabilisation" disabled={total <= 0 || !primaryCashDrawerWallet || stockConflicts.length > 0 || checkoutState !== "READY"} onClick={checkout}><WalletCards />{saleMutation.isPending || checkoutState === "PROCESSING" ? "Comptabilisation…" : `Encaisser ${money(total)}`}</Button>
+              <Button className="h-12 w-full" loading={saleMutation.isPending} loadingLabel="Comptabilisation" disabled={!canCheckout} onClick={checkout}><WalletCards />{saleMutation.isPending || checkoutState === "PROCESSING" ? "Comptabilisation…" : posSession.networkStatus !== "ONLINE" ? `Conserver ${money(total)}` : `Encaisser ${money(total)}`}</Button>
             </DrawerFooter>
           </DrawerContent>
         </Drawer>

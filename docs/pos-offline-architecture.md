@@ -1,72 +1,161 @@
-# Architecture cible de caisse hors connexion
+# POS Offline First - POS-04A
 
-## État actuel
+## Scope delivered
 
-Le poste de caisse conserve déjà le brouillon en cours et les tickets suspendus dans le stockage local du navigateur, isolés par point de vente et par caissier. Cette persistance protège une vente contre un rechargement ou un changement de taille d'écran, mais elle ne transforme pas encore une vente en vente hors connexion.
+POS-04A creates the durable local foundation for a previously provisioned
+cash-register terminal. It deliberately does **not** synchronize an offline
+sale to Supabase yet. In particular, it does not alter `wallets`,
+`finance_operations`, server-side stock, invoices, payments, permissions, or
+the existing online `create_commerce_cash_sale` workflow.
 
-L'encaissement confirmé reste aujourd'hui en ligne : la RPC `create_commerce_cash_sale` crée, dans une transaction serveur unique, la vente, la facture, le paiement, l'opération de `finance_operations`, le lien financier et le recalcul du wallet. Cette règle reste indispensable.
+While the terminal is offline, only a cash sale can be recorded locally. It is
+not an ERP sale yet: it is a durable local ticket and an outbox event awaiting
+the future server protocol of POS-04B.
 
-## Objectif du futur mode offline-first
+## Existing behavior retained
 
-Sans réseau, un caissier doit pouvoir consulter un catalogue local, préparer des articles ou services, suspendre/reprendre un ticket et enregistrer une vente en espèces. Dès le retour du réseau, les opérations sont synchronisées automatiquement, une seule fois, sans déclaration manuelle.
+The online checkout is unchanged. When the application can contact the POS
+backend, it continues to use the existing transactional sale workflow, which
+creates the sale, invoice, payment, financial operation, wallet update and
+stock movement on the server.
 
-Les paiements électroniques (Jèko, Wave, carte) restent désactivés hors ligne : leur confirmation doit provenir du prestataire. Le mode hors ligne ne doit jamais afficher une fausse réussite de paiement électronique.
+Older browser drafts stored by the prior POS implementation are copied once to
+IndexedDB when the current cashier opens the matching point of sale. They are
+deleted from legacy local storage only after the IndexedDB copy succeeds.
 
-## Stockage local durable
+## IndexedDB database
 
-La cible est IndexedDB, et non `localStorage`, avec quatre ensembles distincts :
+Database name: `halal-erp-pos-offline` (version 1).
 
-- `catalogue_snapshot` : articles autorisés au point de vente, prix de vente, stock connu, date et version de synchronisation ;
-- `tickets` : brouillons et tickets suspendus ;
-- `outbox` : opérations à transmettre au serveur ;
-- `sync_runs` : diagnostic local minimal de la dernière synchronisation.
+| Store | Purpose |
+| --- | --- |
+| `pos_terminal` | Stable terminal UUID and the previously authorized points of sale for each user. |
+| `pos_catalog` | Minimal authorized catalogue: item ID, SKU/reference, name, unit and selling price. |
+| `pos_stock_snapshot` | Server stock baseline and local available stock for the point of sale. |
+| `pos_sessions` | Local cash-session identity and state. |
+| `pos_tickets` | Active, suspended and locally paid ticket metadata. |
+| `pos_ticket_lines` | Ticket lines stored independently from ticket metadata. |
+| `pos_suspended_tickets` | References and timestamps for suspended tickets. |
+| `pos_outbox` | Durable events that POS-04B will send to the server. |
+| `pos_sync_state` | Local connectivity hint and timestamp. |
 
-Chaque ticket et chaque opération d'outbox possède un UUID créé côté client avant toute tentative réseau. Cet UUID devient la clé d'idempotence envoyée au moteur POS existant. Aucun montant de wallet, aucune écriture financière et aucun solde ne sont calculés ou écrits localement comme source de vérité.
+This is structured data, not a single serialized cashier blob. All records are
+scoped by location and authenticated cashier ID.
 
-## États d'une opération d'outbox
+## Terminal and session identity
 
-`PENDING` → `SYNCING` → `SYNCED` ou `ERROR`.
+On first local use, the terminal creates a browser UUID and stores it in
+`pos_terminal`. It is reused across refreshes and browser restarts. Each local
+ticket also records its location, cashier, terminal and cash-session IDs.
 
-Une opération `ERROR` conserve le message utile et peut être réessayée automatiquement avec un délai progressif. Une réponse inconnue après envoi n'autorise jamais la caisse à créer un nouveau ticket : elle redemande le même UUID au serveur. Le serveur retourne alors le reçu existant ou applique une seule transaction, grâce à l'idempotence déjà présente du POS.
+Prepared local session states are `OPEN`, `CLOSED_LOCAL`, `SYNC_PENDING`, and
+`SYNCED`. POS-04A persists `OPEN` sessions used by tickets. The actual cash
+closing procedure and server acknowledgement are intentionally postponed until
+POS-04B; no misleading local closure action is exposed yet.
 
-## Synchronisation
+## Catalogue and local stock
 
-Le client écoute les événements `online` et `offline`, puis lance une synchronisation au démarrage, au retour du réseau et à intervalles limités. Une seule synchronisation est autorisée par poste à la fois.
+When a cashier is online at an authorized point of sale, the existing POS
+catalogue query populates the local catalogue and stock snapshot. Only fields
+needed to sell are stored.
 
-1. Télécharger le catalogue et son horodatage pour le point de vente.
-2. Trier l'outbox dans l'ordre de création.
-3. Envoyer une vente espèces avec son UUID d'origine.
-4. Laisser la RPC existante valider stock, permission, vente, facture, paiement, `finance_operations` et wallet dans sa transaction.
-5. Marquer l'opération locale `SYNCED` seulement après réception du reçu serveur.
-6. Rafraîchir le catalogue et les stocks locaux.
+An offline article sale decreases `availableQuantity` locally. A service has
+no stock entry and never decreases stock. A later background catalogue refresh
+does not overwrite this local deduction: each stock record keeps the last
+server quantity and preserves the unsynced local delta. This prevents a
+refresh from showing sold units as available again before POS-04B accepts the
+event.
 
-Une clôture de caisse réalisée hors ligne est seulement **provisoire**. Elle est placée dans l'outbox et devient définitive uniquement après validation serveur.
+The local stock is an operational limit, not the central authority. Two
+terminals may still sell the same item while disconnected. During POS-04B, the
+server will remain the final authority and may return a conflict without any
+financial side effect.
 
-## Réconciliation du stock
+## Tickets, services and suspended work
 
-Le stock affiché hors ligne est un instantané, pas une réservation mondiale. Deux caisses hors ligne peuvent vendre simultanément le même article ; aucune interface ne doit prétendre garantir le stock temps réel dans ce cas.
+The active ticket, its article and service lines, customer selection and cash
+amount survive refresh, resize and browser restart. Suspending a ticket only
+changes local ticket state: it creates no financial operation. Resuming
+restores the exact local lines; deleting a suspended ticket only removes that
+local draft.
 
-Au retour du réseau, le serveur reste l'arbitre :
+Mixed tickets are supported offline: article lines affect local stock and
+service lines do not.
 
-- si le stock est suffisant, la vente est confirmée une fois ;
-- s'il ne l'est plus, l'opération passe à `ERROR` sans mouvement financier ni déduction de stock ;
-- un responsable corrige ou arbitre l'écart selon une procédure de stock existante ;
-- le caissier voit une explication claire, sans pouvoir forcer une écriture financière.
+## Offline cash sales and the outbox
 
-Les services ne créent jamais de conflit de stock : ils suivent néanmoins la même transaction de vente, facture, paiement et finance au moment de la synchronisation.
+For an offline cash sale, the browser writes atomically to IndexedDB:
 
-## Sécurité et audit
+1. the paid-local ticket and lines;
+2. one `CREATE_CASH_SALE` outbox event with a UUID created before any future
+   request;
+3. local stock decrements for article lines only;
+4. a fresh active ticket.
 
-Les données IndexedDB sont un cache de travail sur un terminal identifié, jamais une preuve comptable. Le serveur vérifie toujours l'utilisateur, son affectation au point de vente, ses permissions, le wallet de caisse et les quantités réellement disponibles. Les clés API et secrets ne sont jamais stockés dans le navigateur.
+Outbox states are `PENDING`, `SYNCING`, `SYNCED`, `FAILED`, and `CONFLICT`.
+Events are retained until a reliable server acknowledgement marks them
+`SYNCED`. Future retries use deterministic chronological order and the same
+event ID, so the event cannot create a second local stock decrement.
 
-La comptabilité reste exclusivement produite par le moteur serveur : aucun code offline ne peut insérer directement dans `finance_operations`, `wallets`, les paiements ou les mouvements de stock.
+POS-04B must submit that stable ID to a dedicated transactional server entry
+point. That entry point must delegate to the existing POS financial workflow;
+the browser must never insert directly into `finance_operations` or update a
+wallet.
 
-## Mise en œuvre future par étapes
+## Connectivity UX
 
-1. Ajouter le cache IndexedDB versionné et le téléchargement de catalogue.
-2. Ajouter l'outbox espèces avec UUID et reprise après coupure.
-3. Ajouter l'écran de synchronisation et les erreurs de réconciliation.
-4. Ajouter les clôtures provisoires puis leur confirmation serveur.
-5. Tester les conflits de deux caisses et les scénarios de réponse réseau inconnue.
+`navigator.onLine` is only a UI hint. The POS also records real checkout
+network failures as an offline hint. The cashier sees a simple online/offline
+state and the number of locally pending cash sales. POS-04A does not expose a
+manual synchronization button and does not automatically post queued sales.
 
-Le déploiement devra commencer sur un magasin pilote, avec une procédure de retour au mode en ligne et un contrôle quotidien des écarts de caisse.
+Mobile payments (Jeko, Wave, card) remain unavailable offline. A cashier
+cannot manually claim that a mobile payment succeeded.
+
+## Security
+
+No password, service role, API key, webhook secret, access token or
+authorization value may be written to the POS local stores. The implementation
+rejects sensitive field names before persisting an outbox payload. IndexedDB is
+only a working cache on a previously authenticated and provisioned terminal;
+it does not bypass authentication or server permissions.
+
+All definitive audit timestamps, stock authority, payment confirmation,
+financial operations and wallet balances remain server-controlled.
+
+## PWA status
+
+The application already registers a service worker for the application shell.
+POS-04A does not cache Supabase/API responses and does not claim that first
+launch without a connection is supported. Offline opening requires a terminal
+that has already loaded the app and its allowed POS data while online. A
+separate PWA cache audit is required before promising full cold-start offline
+support on every browser.
+
+## Local verification
+
+`scripts/test-commerce-pos-offline.ts` uses an IndexedDB emulator and covers:
+
+- stable terminal identity;
+- cached point of sale and catalogue;
+- article plus service ticket;
+- suspended/resumed/deleted tickets;
+- one durable cash outbox event;
+- retry with the same event ID and no double stock decrement;
+- catalogue refresh preserving a pending local deduction;
+- deterministic retry order;
+- sensitive-data rejection.
+
+## POS-04B prerequisites and limits
+
+POS-04B must define, test and secure the server-side synchronization contract:
+
+- a transactionally idempotent endpoint/RPC for each stable outbox event;
+- authoritative stock reconciliation and conflict status;
+- server receipt and audit timestamps;
+- automatic retry/backoff and one-terminal synchronization locking;
+- session close acknowledgement;
+- safe recovery after an unknown HTTP outcome.
+
+Until that work exists, queued offline cash sales remain local and no wallet,
+invoice, payment, stock or financial journal is changed remotely.
