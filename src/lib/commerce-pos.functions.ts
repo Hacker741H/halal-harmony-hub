@@ -31,6 +31,21 @@ const commerceManagementDashboardSchema = z.object({
   })),
 });
 
+const articleSaleLineSchema = z.object({
+  lineType: z.literal("ARTICLE"),
+  inventoryItemId: z.string().uuid(),
+  quantity: z.number().positive(),
+  unitPrice: z.number().nonnegative(),
+}).strict();
+
+const serviceSaleLineSchema = z.object({
+  lineType: z.literal("SERVICE"),
+  serviceName: z.string().trim().min(1).max(160),
+  serviceNote: z.string().trim().max(1000).nullable(),
+  quantity: z.number().positive(),
+  unitPrice: z.number().nonnegative(),
+}).strict();
+
 const saleInputSchema = z.object({
   businessLocationId: z.string().uuid(),
   clientId: z.string().uuid().nullable(),
@@ -38,7 +53,7 @@ const saleInputSchema = z.object({
   idempotencyKey: z.string().trim().regex(/^[A-Za-z0-9_-]{8,80}$/),
   reference: z.string().trim().max(120).nullable(),
   notes: z.string().trim().max(1000).nullable(),
-  lines: z.array(z.object({ inventoryItemId: z.string().uuid(), quantity: z.number().positive(), unitPrice: z.number().nonnegative() })).min(1).max(100),
+  lines: z.array(z.discriminatedUnion("lineType", [articleSaleLineSchema, serviceSaleLineSchema])).min(1).max(100),
 }).strict();
 
 export type CommercePosWorkspace = z.infer<typeof workspaceSchema>;
@@ -131,7 +146,9 @@ export const createCommerceCashSale = createServerFn({ method: "POST" })
         idempotency_key: data.idempotencyKey,
         reference: data.reference,
         notes: data.notes,
-        lines: data.lines.map((line) => ({ inventory_item_id: line.inventoryItemId, quantity: line.quantity, unit_price: line.unitPrice })),
+        lines: data.lines.map((line) => line.lineType === "ARTICLE"
+          ? { line_type: "ARTICLE", inventory_item_id: line.inventoryItemId, quantity: line.quantity, unit_price: line.unitPrice }
+          : { line_type: "SERVICE", service_name: line.serviceName, service_note: line.serviceNote, quantity: line.quantity, unit_price: line.unitPrice }),
       },
     });
     if (error) throw error;

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Banknote, BarChart3, CheckCircle2, CircleDollarSign, CreditCard, Minus, Package, PackagePlus, Pencil, Plus, ReceiptText, Search, ShoppingCart, Smartphone, Store, TrendingUp, TriangleAlert, Trash2, UserPlus, UserRoundX, WalletCards, Warehouse } from "lucide-react";
+import { ArrowRight, Banknote, BarChart3, CheckCircle2, CircleDollarSign, CreditCard, ListTodo, Minus, Package, PackagePlus, Pencil, Plus, ReceiptText, Search, ShoppingCart, Smartphone, Store, TrendingUp, TriangleAlert, Trash2, UserPlus, UserRoundX, WalletCards, Warehouse, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 import { ClientSelect } from "@/components/selects/entity-selects";
@@ -34,7 +34,7 @@ import { getWallets } from "@/lib/wallet.functions";
 import { useCommercePosSession } from "@/hooks/use-commerce-pos-session";
 import { usePermissions } from "@/hooks/use-permissions";
 import { supabase } from "@/integrations/supabase/client";
-import { findCommercePosDraftLocation, getCommercePosStockConflicts, type CommercePosDraftLine, type CommercePosPaymentMethod } from "@/lib/commerce-pos-session";
+import { createCommercePosId, findCommercePosDraftLocation, getCommercePosStockConflicts, type CommercePosDraftLine, type CommercePosPaymentMethod, type CommercePosSuspendedTicket } from "@/lib/commerce-pos-session";
 
 type CartLine = CommercePosDraftLine;
 type PaymentMethod = CommercePosPaymentMethod;
@@ -308,6 +308,12 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
   const [catalogueOpen, setCatalogueOpen] = useState(false);
   const [catalogueSearch, setCatalogueSearch] = useState("");
   const [catalogueSelectedIndex, setCatalogueSelectedIndex] = useState(0);
+  const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
+  const [serviceName, setServiceName] = useState("");
+  const [servicePrice, setServicePrice] = useState("");
+  const [serviceNote, setServiceNote] = useState("");
+  const [suspendedTicketsOpen, setSuspendedTicketsOpen] = useState(false);
+  const [pendingSuspendedDeletion, setPendingSuspendedDeletion] = useState<CommercePosSuspendedTicket | null>(null);
   const [showClient, setShowClient] = useState(false);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [pendingDraftAction, setPendingDraftAction] = useState<CashierDraftAction | null>(null);
@@ -352,7 +358,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     [catalogueSearch, workspace?.items],
   );
   const enrichedCart = useMemo(
-    () => cart.map((line) => ({ ...line, item: workspace?.items.find((entry) => entry.id === line.itemId) ?? null })),
+    () => cart.map((line) => ({ ...line, item: line.lineType === "ARTICLE" ? workspace?.items.find((entry) => entry.id === line.itemId) ?? null : null })),
     [cart, workspace?.items],
   );
   const total = cart.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
@@ -411,17 +417,42 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     },
   });
 
-  const add = useCallback((itemId: string, defaultPrice: number | null, label: string, quantity = 1) => {
+  const addArticle = useCallback((itemId: string, defaultPrice: number | null, label: string, quantity = 1) => {
     if (!posSession.isReady || checkoutState !== "READY") return;
     const availableQuantity = workspace?.items.find((item) => item.id === itemId)?.quantity ?? 0;
     updateDraft((current) => {
-      const line = current.lines.find((entry) => entry.itemId === itemId);
+      const line = current.lines.find((entry) => entry.lineType === "ARTICLE" && entry.itemId === itemId);
       const lines = line
-        ? current.lines.map((entry) => entry.itemId === itemId ? { ...entry, quantity: Math.min(entry.quantity + quantity, availableQuantity), label } : entry)
-        : availableQuantity > 0 ? [...current.lines, { itemId, label, quantity: Math.min(quantity, availableQuantity), unitPrice: defaultPrice ?? 0 }] : current.lines;
+        ? current.lines.map((entry) => entry.lineId === line.lineId ? { ...entry, quantity: Math.min(entry.quantity + quantity, availableQuantity), label } : entry)
+        : availableQuantity > 0 ? [...current.lines, { lineId: `article-${itemId}`, lineType: "ARTICLE" as const, itemId, label, quantity: Math.min(quantity, availableQuantity), unitPrice: defaultPrice ?? 0 }] : current.lines;
       return { ...current, lines };
     });
   }, [checkoutState, posSession.isReady, updateDraft, workspace?.items]);
+  const addService = () => {
+    const parsedPrice = Number(servicePrice);
+    const normalizedName = serviceName.trim();
+    if (!posSession.isReady || checkoutState !== "READY" || !normalizedName || !Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+      toast.error("Saisissez la désignation et le montant du service.");
+      return;
+    }
+    updateDraft((current) => ({
+      ...current,
+      lines: [...current.lines, {
+        lineId: createCommercePosId("service"),
+        lineType: "SERVICE",
+        itemId: createCommercePosId("service-item"),
+        label: normalizedName,
+        quantity: 1,
+        unitPrice: parsedPrice,
+        serviceNote: serviceNote.trim() || null,
+      }],
+    }));
+    setServiceName("");
+    setServicePrice("");
+    setServiceNote("");
+    setServiceDialogOpen(false);
+    refocusQuickEntry();
+  };
   const refocusQuickEntry = () => {
     if (typeof window === "undefined") return;
     window.requestAnimationFrame(() => quickEntryRef.current?.focus());
@@ -439,7 +470,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
       return;
     }
     const item = items[0];
-    add(item.id, item.salePrice, item.name, quantity);
+    addArticle(item.id, item.salePrice, item.name, quantity);
     setSearch("");
     setQuickQuantity("1");
     refocusQuickEntry();
@@ -456,7 +487,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
       toast.error("Cet article n’est plus disponible dans ce magasin.");
       return;
     }
-    add(item.id, item.salePrice, item.name);
+    addArticle(item.id, item.salePrice, item.name);
     setCatalogueOpen(false);
     setSearch("");
     setCatalogueSearch("");
@@ -466,14 +497,19 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     const addFromCashierSidebar = (event: Event) => {
       const itemId = (event as CustomEvent<{ itemId?: string }>).detail?.itemId;
       const item = workspace?.items.find((entry) => entry.id === itemId);
-      if (item) add(item.id, item.salePrice, item.name);
+      if (item) addArticle(item.id, item.salePrice, item.name);
     };
     window.addEventListener("commerce:add-item", addFromCashierSidebar);
     return () => window.removeEventListener("commerce:add-item", addFromCashierSidebar);
-  }, [add, workspace?.items]);
-  const update = (itemId: string, values: Partial<CartLine>) => {
+  }, [addArticle, workspace?.items]);
+  const update = (lineId: string, values: Partial<Pick<CartLine, "quantity" | "unitPrice">>) => {
     if (checkoutState !== "READY") return;
-    updateDraft((current) => ({ ...current, lines: current.lines.map((line) => line.itemId === itemId ? { ...line, ...values } : line).filter((line) => line.quantity > 0) }));
+    updateDraft((current) => ({
+      ...current,
+      lines: current.lines
+        .map((line) => line.lineId === lineId ? { ...line, ...values } : line)
+        .filter((line) => line.quantity > 0),
+    }));
   };
   const setPaymentMethod = (nextMethod: PaymentMethod) => {
     if (checkoutState !== "READY") return;
@@ -481,7 +517,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
   };
   const checkout = () => {
     if (!posSession.isReady || !draft || !selectedLocationId || cart.length === 0 || total <= 0) {
-      toast.error("Ajoutez au moins un article avec un prix de vente valide.");
+      toast.error("Ajoutez au moins un article ou un service avec un prix de vente valide.");
       return;
     }
     if (checkoutState === "RECONCILIATION_REQUIRED") {
@@ -513,7 +549,9 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
         idempotencyKey: draft.sessionId,
         reference: `POS:${draft.sessionId}`,
         notes: null,
-        lines: cart.map((line) => ({ inventoryItemId: line.itemId, quantity: line.quantity, unitPrice: line.unitPrice })),
+        lines: cart.map((line) => line.lineType === "ARTICLE"
+          ? { lineType: "ARTICLE" as const, inventoryItemId: line.itemId, quantity: line.quantity, unitPrice: line.unitPrice }
+          : { lineType: "SERVICE" as const, serviceName: line.label, serviceNote: line.serviceNote, quantity: line.quantity, unitPrice: line.unitPrice }),
       },
     });
   };
@@ -574,7 +612,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
       </Card>
 
       <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-sm">
-        <div className="grid shrink-0 gap-3 border-b border-border/75 bg-muted/[0.16] p-3 lg:grid-cols-[minmax(0,1fr)_7rem_auto_auto] lg:items-end">
+        <div className="grid shrink-0 gap-3 border-b border-border/75 bg-muted/[0.16] p-3 lg:grid-cols-[minmax(0,1fr)_7rem_auto_auto_auto_auto] lg:items-end">
           <form className="space-y-1" onSubmit={(event) => { event.preventDefault(); addQuickResult(); }}>
             <Label htmlFor="commerce-pos-quick-entry" className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Saisie rapide · F2</Label>
             <div className="relative"><Search className="absolute left-3 top-3 size-5 text-primary" /><Input ref={quickEntryRef} id="commerce-pos-quick-entry" className="h-11 bg-surface pl-10 text-base" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Référence, SKU ou désignation" autoComplete="off" /></div>
@@ -582,6 +620,8 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
           <div className="space-y-1"><Label htmlFor="commerce-pos-quantity" className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Quantité</Label><Input id="commerce-pos-quantity" className="h-11 bg-surface text-right tabular-nums" type="number" min="1" step="1" value={quickQuantity} onChange={(event) => setQuickQuantity(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addQuickResult(); } }} /></div>
           <Button type="button" className="h-11" disabled={checkoutState !== "READY"} onClick={addQuickResult}><Plus />Ajouter <span className="hidden 2xl:inline">· Entrée</span></Button>
           <Button type="button" variant="outline" className="h-11" onClick={openCatalogue}><Package />Articles</Button>
+          <Button type="button" variant="outline" className="h-11" disabled={checkoutState !== "READY"} onClick={() => setServiceDialogOpen(true)}><Wrench />Service</Button>
+          <Button type="button" variant="outline" className="h-11" onClick={() => setSuspendedTicketsOpen(true)}><ListTodo />Tickets ({posSession.suspendedTickets.length})</Button>
         </div>
 
         {posSession.isRestored ? <div className="shrink-0 border-b border-info/20 bg-info/[0.06] px-4 py-2 text-sm text-info">Brouillon restauré sur ce poste : aucune ligne n’a été perdue.</div> : null}
@@ -599,8 +639,20 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
               <tbody>
                 {enrichedCart.map((line) => {
                   const lineLabel = line.item?.name ?? line.label;
-                  const availableQuantity = line.item?.quantity ?? 0;
-                  return <tr key={line.itemId} className="border-b border-border/60 transition-colors hover:bg-primary/[0.035]"><td className="px-4 py-3 font-mono text-xs text-muted-foreground">{line.item?.sku ?? "—"}</td><td className="max-w-80 px-4 py-3"><p className="truncate font-semibold">{lineLabel}</p><p className="mt-0.5 text-xs text-muted-foreground">{availableQuantity} {line.item?.unit ?? "unité"}{availableQuantity > 1 ? "s" : ""} disponible{availableQuantity > 1 ? "s" : ""}</p></td><td className="px-4 py-3 text-right font-medium tabular-nums">{money(line.unitPrice)}</td><td className="px-4 py-3"><div className="mx-auto flex w-fit items-center rounded-lg border border-border bg-surface"><Button type="button" variant="ghost" size="icon-sm" aria-label={`Diminuer la quantité de ${lineLabel}`} disabled={checkoutState !== "READY"} onClick={() => update(line.itemId, { quantity: line.quantity - 1 })}><Minus /></Button><span className="min-w-9 text-center text-sm font-bold tabular-nums">{line.quantity}</span><Button type="button" variant="ghost" size="icon-sm" aria-label={`Augmenter la quantité de ${lineLabel}`} disabled={checkoutState !== "READY" || line.quantity >= availableQuantity} onClick={() => add(line.itemId, line.item?.salePrice ?? line.unitPrice, lineLabel)}><Plus /></Button></div></td><td className="px-4 py-3 text-right font-bold tabular-nums">{money(line.quantity * line.unitPrice)}</td><td className="px-4 py-3 text-right"><Button type="button" size="icon-sm" variant="ghost" aria-label={`Retirer ${lineLabel} du ticket`} title="Retirer du ticket" disabled={checkoutState !== "READY"} onClick={() => update(line.itemId, { quantity: 0 })}><Trash2 className="text-destructive" /></Button></td></tr>;
+                  const isService = line.lineType === "SERVICE";
+                  const availableQuantity = isService ? Number.POSITIVE_INFINITY : line.item?.quantity ?? 0;
+                  const availabilityLabel = isService
+                    ? "Prestation sans mouvement de stock"
+                    : `${availableQuantity} ${line.item?.unit ?? "unité"}${availableQuantity > 1 ? "s" : ""} disponible${availableQuantity > 1 ? "s" : ""}`;
+
+                  return <tr key={line.lineId} className="border-b border-border/60 transition-colors hover:bg-primary/[0.035]">
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{isService ? "SERVICE" : line.item?.sku ?? "—"}</td>
+                    <td className="max-w-80 px-4 py-3"><p className="truncate font-semibold">{lineLabel}</p><p className="mt-0.5 text-xs text-muted-foreground">{availabilityLabel}</p></td>
+                    <td className="px-4 py-3 text-right font-medium tabular-nums">{money(line.unitPrice)}</td>
+                    <td className="px-4 py-3"><div className="mx-auto flex w-fit items-center rounded-lg border border-border bg-surface"><Button type="button" variant="ghost" size="icon-sm" aria-label={`Diminuer la quantité de ${lineLabel}`} disabled={checkoutState !== "READY"} onClick={() => update(line.lineId, { quantity: line.quantity - 1 })}><Minus /></Button><span className="min-w-9 text-center text-sm font-bold tabular-nums">{line.quantity}</span><Button type="button" variant="ghost" size="icon-sm" aria-label={`Augmenter la quantité de ${lineLabel}`} disabled={checkoutState !== "READY" || (!isService && line.quantity >= availableQuantity)} onClick={() => isService ? update(line.lineId, { quantity: line.quantity + 1 }) : addArticle(line.itemId, line.item?.salePrice ?? line.unitPrice, lineLabel)}><Plus /></Button></div></td>
+                    <td className="px-4 py-3 text-right font-bold tabular-nums">{money(line.quantity * line.unitPrice)}</td>
+                    <td className="px-4 py-3 text-right"><Button type="button" size="icon-sm" variant="ghost" aria-label={`Retirer ${lineLabel} du ticket`} title="Retirer du ticket" disabled={checkoutState !== "READY"} onClick={() => update(line.lineId, { quantity: 0 })}><Trash2 className="text-destructive" /></Button></td>
+                  </tr>;
                 })}
                 {enrichedCart.length === 0 ? <tr><td colSpan={6} className="px-5 py-16 text-center"><ShoppingCart className="mx-auto size-7 text-muted-foreground" /><p className="mt-3 font-semibold">Le ticket est prêt</p><p className="mt-1 text-sm text-muted-foreground">Saisissez une référence, utilisez Entrée ou ouvrez le catalogue Articles.</p></td></tr> : null}
               </tbody>
@@ -608,8 +660,9 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
             <div className="space-y-2 p-3 lg:hidden">
               {enrichedCart.map((line) => {
                 const lineLabel = line.item?.name ?? line.label;
-                const availableQuantity = line.item?.quantity ?? 0;
-                return <div key={line.itemId} className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate font-semibold">{lineLabel}</p><p className="mt-1 font-mono text-xs text-muted-foreground">{line.item?.sku ?? "Sans référence"} · {money(line.unitPrice)}</p></div><p className="shrink-0 font-bold tabular-nums">{money(line.quantity * line.unitPrice)}</p></div><div className="mt-3 flex items-center justify-between gap-3"><div className="flex items-center rounded-lg border border-border bg-surface"><Button type="button" variant="ghost" size="icon-sm" aria-label={`Diminuer la quantité de ${lineLabel}`} disabled={checkoutState !== "READY"} onClick={() => update(line.itemId, { quantity: line.quantity - 1 })}><Minus /></Button><span className="min-w-9 text-center text-sm font-bold tabular-nums">{line.quantity}</span><Button type="button" variant="ghost" size="icon-sm" aria-label={`Augmenter la quantité de ${lineLabel}`} disabled={checkoutState !== "READY" || line.quantity >= availableQuantity} onClick={() => add(line.itemId, line.item?.salePrice ?? line.unitPrice, lineLabel)}><Plus /></Button></div><Button type="button" size="sm" variant="ghost" disabled={checkoutState !== "READY"} onClick={() => update(line.itemId, { quantity: 0 })}><Trash2 className="text-destructive" />Retirer</Button></div></div>;
+                const isService = line.lineType === "SERVICE";
+                const availableQuantity = isService ? Number.POSITIVE_INFINITY : line.item?.quantity ?? 0;
+                return <div key={line.lineId} className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate font-semibold">{lineLabel}</p><p className="mt-1 font-mono text-xs text-muted-foreground">{isService ? "Service sans stock" : line.item?.sku ?? "Sans référence"} · {money(line.unitPrice)}</p></div><p className="shrink-0 font-bold tabular-nums">{money(line.quantity * line.unitPrice)}</p></div><div className="mt-3 flex items-center justify-between gap-3"><div className="flex items-center rounded-lg border border-border bg-surface"><Button type="button" variant="ghost" size="icon-sm" aria-label={`Diminuer la quantité de ${lineLabel}`} disabled={checkoutState !== "READY"} onClick={() => update(line.lineId, { quantity: line.quantity - 1 })}><Minus /></Button><span className="min-w-9 text-center text-sm font-bold tabular-nums">{line.quantity}</span><Button type="button" variant="ghost" size="icon-sm" aria-label={`Augmenter la quantité de ${lineLabel}`} disabled={checkoutState !== "READY" || (!isService && line.quantity >= availableQuantity)} onClick={() => isService ? update(line.lineId, { quantity: line.quantity + 1 }) : addArticle(line.itemId, line.item?.salePrice ?? line.unitPrice, lineLabel)}><Plus /></Button></div><Button type="button" size="sm" variant="ghost" disabled={checkoutState !== "READY"} onClick={() => update(line.lineId, { quantity: 0 })}><Trash2 className="text-destructive" />Retirer</Button></div></div>;
               })}
               {enrichedCart.length === 0 ? <div className="rounded-xl border border-dashed border-border/90 px-5 py-12 text-center"><ShoppingCart className="mx-auto size-6 text-muted-foreground" /><p className="mt-3 font-semibold">Le ticket est prêt</p><p className="mt-1 text-sm text-muted-foreground">Ajoutez un article pour commencer.</p></div> : null}
             </div>
@@ -623,7 +676,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
           <div className="grid gap-2 md:grid-cols-[auto_minmax(160px,1fr)_auto] md:items-end"><div className="space-y-1"><Label className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Paiement</Label><div className="flex items-center gap-1" role="radiogroup" aria-label="Moyen de paiement">{paymentMethods.map(({ value, label, icon: Icon }) => { const selected = method === value; const jekoDisabled = value === "JEKO"; return <button key={value} type="button" role="radio" aria-checked={selected} onClick={() => setPaymentMethod(value)} disabled={checkoutState !== "READY" || jekoDisabled} title={jekoDisabled ? "Jèko sera disponible lorsque l’encaissement transactionnel POS sera relié." : value === "WAVE" ? "Saisie mobile manuelle : aucune API Wave directe" : label} className={`flex h-10 min-w-10 items-center justify-center gap-1 rounded-lg border px-2 text-xs font-semibold transition-[background-color,border-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55 ${selected ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-surface text-muted-foreground hover:border-primary/35 hover:text-foreground"}`}><Icon className="size-4" /><span className="hidden 2xl:inline">{jekoDisabled ? "Jèko bientôt" : value === "WAVE" ? "Mobile" : label}</span></button>; })}</div></div>{method === "CASH" ? <div className="space-y-1"><Label htmlFor="commerce-pos-cash-received" className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Montant reçu</Label><Input id="commerce-pos-cash-received" className="h-10 text-right tabular-nums" type="number" min={total} step="1" disabled={checkoutState !== "READY"} placeholder={money(total)} value={cashReceived ?? ""} onChange={(event) => updateDraft((current) => ({ ...current, cashReceived: event.target.value === "" ? null : Number(event.target.value) }))} /></div> : <div className="text-sm text-muted-foreground">Règlement manuel sélectionné.</div>}<div className="rounded-xl border border-success/20 bg-success/[0.07] px-3 py-2 text-sm"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-success">Wallet automatique</p><p className="mt-1 truncate font-semibold text-success" title={primaryCashDrawerWallet?.name}>{primaryCashDrawerWallet?.name ?? "À configurer"}</p></div></div>
           <div className="flex items-end justify-between gap-4 xl:justify-end"><div className="text-right"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{method === "CASH" && cashReceived !== null ? "Monnaie à rendre" : "Total à encaisser"}</p><p className="mt-1 text-xl font-bold tabular-nums">{method === "CASH" && cashReceived !== null ? money(cashChange) : money(total)}</p></div><Button className="h-12 min-w-56" loading={saleMutation.isPending} loadingLabel="Comptabilisation" disabled={total <= 0 || !primaryCashDrawerWallet || stockConflicts.length > 0 || checkoutState !== "READY"} onClick={checkout}><WalletCards />{saleMutation.isPending || checkoutState === "PROCESSING" ? "Comptabilisation…" : `Encaisser ${money(total)}`}<span className="ml-1 hidden 2xl:inline">· F10</span></Button></div>
         </div>
-        {hasDraftInProgress ? <div className="border-t border-border/70 px-3 py-2 text-right"><Button type="button" size="sm" variant="ghost" disabled={checkoutState !== "READY"} onClick={() => setPendingDraftAction({ type: "DISCARD" })}>Abandonner le brouillon</Button></div> : null}
+        {hasDraftInProgress ? <div className="flex border-t border-border/70 px-3 py-2 text-right"><div className="ml-auto flex gap-2"><Button type="button" size="sm" variant="outline" disabled={checkoutState !== "READY" || cart.length === 0} onClick={() => { if (posSession.suspendDraft()) { setShowClient(false); toast.success("Ticket suspendu : aucune opération n’a été comptabilisée."); } }}>Suspendre</Button><Button type="button" size="sm" variant="ghost" disabled={checkoutState !== "READY"} onClick={() => setPendingDraftAction({ type: "DISCARD" })}>Abandonner le brouillon</Button></div></div> : null}
       </Card>
 
       <Dialog open={catalogueOpen} onOpenChange={setCatalogueOpen}>
@@ -632,6 +685,31 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
           <div className="border-b border-border/70 bg-muted/[0.16] p-4"><div className="relative"><Search className="absolute left-3 top-3 size-5 text-primary" /><Input autoFocus className="h-11 pl-10" value={catalogueSearch} onChange={(event) => { setCatalogueSearch(event.target.value); setCatalogueSelectedIndex(0); }} onKeyDown={(event) => { if (event.key === "ArrowDown") { event.preventDefault(); setCatalogueSelectedIndex((current) => Math.min(current + 1, Math.max(catalogueItems.length - 1, 0))); } if (event.key === "ArrowUp") { event.preventDefault(); setCatalogueSelectedIndex((current) => Math.max(current - 1, 0)); } if (event.key === "Enter") { event.preventDefault(); addFromCatalogue(catalogueSelectedIndex); } }} placeholder="Rechercher une référence, un SKU ou une désignation" /></div></div>
           <div className="max-h-[60dvh] overflow-auto"><table className="w-full min-w-[620px] border-collapse text-sm"><thead className="sticky top-0 z-10 bg-surface text-left text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground"><tr><th className="px-5 py-3">Référence</th><th className="px-5 py-3">Désignation</th><th className="px-5 py-3 text-right">Prix de vente</th><th className="px-5 py-3 text-right">Stock</th><th className="w-24 px-5 py-3" /></tr></thead><tbody>{catalogueItems.map((item, index) => { const unavailable = item.quantity <= 0; return <tr key={item.id} onMouseEnter={() => setCatalogueSelectedIndex(index)} onDoubleClick={() => addFromCatalogue(index)} className={`border-t border-border/60 ${catalogueSelectedIndex === index ? "bg-primary/[0.08]" : "hover:bg-muted/[0.24]"} ${unavailable ? "opacity-55" : "cursor-pointer"}`}><td className="px-5 py-3 font-mono text-xs text-muted-foreground">{item.sku ?? "—"}</td><td className="px-5 py-3 font-semibold">{item.name}</td><td className="px-5 py-3 text-right font-medium tabular-nums">{item.salePrice === null ? "Prix à saisir" : money(item.salePrice)}</td><td className="px-5 py-3 text-right tabular-nums">{item.quantity} {item.unit ?? "unité"}{item.quantity > 1 ? "s" : ""}</td><td className="px-5 py-3 text-right"><Button type="button" size="sm" variant="outline" disabled={unavailable || checkoutState !== "READY"} onClick={() => addFromCatalogue(index)}>{unavailable ? "Rupture" : "Ajouter"}</Button></td></tr>; })}{catalogueItems.length === 0 ? <tr><td colSpan={5} className="px-5 py-12 text-center text-muted-foreground">Aucun article ne correspond à cette recherche.</td></tr> : null}</tbody></table></div>
           <DialogFooter className="border-t border-border/70 bg-muted/[0.10] px-5 py-3"><p className="mr-auto text-xs text-muted-foreground">{catalogueItems.length} article{catalogueItems.length > 1 ? "s" : ""} chargé{catalogueItems.length > 1 ? "s" : ""} pour ce magasin.</p><Button type="button" variant="outline" onClick={() => setCatalogueOpen(false)}>Fermer</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={serviceDialogOpen} onOpenChange={setServiceDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Ajouter un service</DialogTitle>
+            <DialogDescription>Le service est facturé avec ce ticket et créditera la caisse seulement lors de l’encaissement. Il ne crée aucun mouvement de stock.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1"><Label htmlFor="commerce-pos-service-name">Désignation du service</Label><Input id="commerce-pos-service-name" autoFocus value={serviceName} onChange={(event) => setServiceName(event.target.value)} placeholder="Ex. Réparation écran téléphone" /></div>
+            <div className="space-y-1"><Label htmlFor="commerce-pos-service-price">Montant (FCFA)</Label><Input id="commerce-pos-service-price" type="number" min="1" step="1" inputMode="numeric" value={servicePrice} onChange={(event) => setServicePrice(event.target.value)} placeholder="15000" /></div>
+            <div className="space-y-1"><Label htmlFor="commerce-pos-service-note">Note <span className="font-normal text-muted-foreground">(facultative)</span></Label><Input id="commerce-pos-service-note" value={serviceNote} onChange={(event) => setServiceNote(event.target.value)} placeholder="Détail de l'intervention" /></div>
+          </div>
+          <DialogFooter><Button type="button" variant="outline" onClick={() => setServiceDialogOpen(false)}>Annuler</Button><Button type="button" disabled={checkoutState !== "READY" || !serviceName.trim() || Number(servicePrice) <= 0} onClick={addService}><Wrench />Ajouter au ticket</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={suspendedTicketsOpen} onOpenChange={setSuspendedTicketsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Tickets en attente</DialogTitle><DialogDescription>Ces tickets sont enregistrés sur ce poste uniquement. Ils ne créent ni vente, ni mouvement de stock, ni écriture financière avant l’encaissement.</DialogDescription></DialogHeader>
+          <div className="max-h-[56dvh] space-y-2 overflow-y-auto pr-1">
+            {posSession.suspendedTickets.map((ticket) => <SuspendedTicketRow key={ticket.id} ticket={ticket} onResume={() => { if (posSession.resumeSuspendedTicket(ticket.id)) { setShowClient(Boolean(ticket.draft.clientId)); setSuspendedTicketsOpen(false); toast.success("Ticket repris dans la caisse."); } }} onDelete={() => setPendingSuspendedDeletion(ticket)} />)}
+            {!posSession.suspendedTickets.length ? <div className="rounded-xl border border-dashed border-border px-5 py-10 text-center text-sm text-muted-foreground">Aucun ticket n’est en attente sur ce poste.</div> : null}
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -660,8 +738,9 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
               <div className="space-y-2">
                 {enrichedCart.map((line) => {
                   const lineLabel = line.item?.name ?? line.label;
-                  const availableQuantity = line.item?.quantity ?? 0;
-                  return <div key={line.itemId} className="rounded-xl border border-border/70 bg-muted/[0.18] p-3"><div className="flex items-start justify-between gap-3"><p className="min-w-0 truncate font-semibold">{lineLabel}</p><p className="shrink-0 font-bold tabular-nums">{money(line.quantity * line.unitPrice)}</p></div><div className="mt-3 grid grid-cols-[auto_1fr_auto] items-center gap-2"><div className="flex items-center rounded-lg border border-border bg-surface"><Button type="button" variant="ghost" size="icon-sm" aria-label={`Diminuer la quantité de ${lineLabel}`} disabled={checkoutState !== "READY"} onClick={() => update(line.itemId, { quantity: line.quantity - 1 })}><Minus /></Button><span className="min-w-9 text-center text-sm font-bold tabular-nums">{line.quantity}</span><Button type="button" variant="ghost" size="icon-sm" aria-label={`Augmenter la quantité de ${lineLabel}`} disabled={checkoutState !== "READY" || line.quantity >= availableQuantity} onClick={() => add(line.itemId, line.item?.salePrice ?? line.unitPrice, lineLabel)}><Plus /></Button></div><Input aria-label={`Prix unitaire de ${lineLabel}`} className="h-8 min-w-0 text-right text-sm" type="number" min="0" step="1" disabled={checkoutState !== "READY"} value={line.unitPrice} onChange={(event) => update(line.itemId, { unitPrice: Number(event.target.value) })} /><Button type="button" size="icon-sm" variant="ghost" aria-label={`Retirer ${lineLabel}`} disabled={checkoutState !== "READY"} onClick={() => update(line.itemId, { quantity: 0 })}><Trash2 className="text-destructive" /></Button></div></div>;
+                  const isService = line.lineType === "SERVICE";
+                  const availableQuantity = isService ? Number.POSITIVE_INFINITY : line.item?.quantity ?? 0;
+                  return <div key={line.lineId} className="rounded-xl border border-border/70 bg-muted/[0.18] p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate font-semibold">{lineLabel}</p><p className="mt-1 text-xs text-muted-foreground">{isService ? "Service sans stock" : line.item?.sku ?? "Sans référence"}</p></div><p className="shrink-0 font-bold tabular-nums">{money(line.quantity * line.unitPrice)}</p></div><div className="mt-3 grid grid-cols-[auto_1fr_auto] items-center gap-2"><div className="flex items-center rounded-lg border border-border bg-surface"><Button type="button" variant="ghost" size="icon-sm" aria-label={`Diminuer la quantité de ${lineLabel}`} disabled={checkoutState !== "READY"} onClick={() => update(line.lineId, { quantity: line.quantity - 1 })}><Minus /></Button><span className="min-w-9 text-center text-sm font-bold tabular-nums">{line.quantity}</span><Button type="button" variant="ghost" size="icon-sm" aria-label={`Augmenter la quantité de ${lineLabel}`} disabled={checkoutState !== "READY" || (!isService && line.quantity >= availableQuantity)} onClick={() => isService ? update(line.lineId, { quantity: line.quantity + 1 }) : addArticle(line.itemId, line.item?.salePrice ?? line.unitPrice, lineLabel)}><Plus /></Button></div><Input aria-label={`Prix unitaire de ${lineLabel}`} className="h-8 min-w-0 text-right text-sm" type="number" min="0" step="1" disabled={checkoutState !== "READY"} value={line.unitPrice} onChange={(event) => update(line.lineId, { unitPrice: Number(event.target.value) })} /><Button type="button" size="icon-sm" variant="ghost" aria-label={`Retirer ${lineLabel}`} disabled={checkoutState !== "READY"} onClick={() => update(line.lineId, { quantity: 0 })}><Trash2 className="text-destructive" /></Button></div></div>;
                 })}
                 {enrichedCart.length === 0 ? <div className="rounded-xl border border-dashed border-border/90 bg-muted/[0.12] px-5 py-8 text-center"><ShoppingCart className="mx-auto size-5 text-muted-foreground" /><p className="mt-2 text-sm font-semibold">Votre panier est vide</p><p className="mt-1 text-xs text-muted-foreground">Sélectionnez un article dans le rayon.</p></div> : null}
               </div>
@@ -686,6 +765,15 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
             <AlertDialogCancel>Conserver la vente</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={applyDraftAction}>Abandonner</AlertDialogAction>
           </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={pendingSuspendedDeletion !== null} onOpenChange={(open) => { if (!open) setPendingSuspendedDeletion(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce ticket suspendu ?</AlertDialogTitle>
+            <AlertDialogDescription>Le ticket {pendingSuspendedDeletion ? `POS-${pendingSuspendedDeletion.draft.sessionId.slice(-8).toUpperCase()}` : ""} sera supprimé de ce poste. Aucune vente, aucun stock et aucune écriture financière ne seront annulés car rien n’a encore été comptabilisé.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel>Conserver</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (pendingSuspendedDeletion) posSession.removeSuspendedTicket(pendingSuspendedDeletion.id); setPendingSuspendedDeletion(null); toast.success("Ticket suspendu supprimé."); }}>Supprimer</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
@@ -768,6 +856,15 @@ function CommerceLocationForm({ mode, location, primaryWalletId = "", onDone }: 
       </div>
     </div>
   );
+}
+
+function SuspendedTicketRow({ ticket, onResume, onDelete }: { ticket: CommercePosSuspendedTicket; onResume: () => void; onDelete: () => void }) {
+  const total = ticket.draft.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
+  const articleCount = ticket.draft.lines.filter((line) => line.lineType === "ARTICLE").length;
+  const serviceCount = ticket.draft.lines.filter((line) => line.lineType === "SERVICE").length;
+  const timestamp = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short" }).format(new Date(ticket.suspendedAt));
+
+  return <div className="rounded-xl border border-border/75 bg-muted/[0.12] p-3"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="font-mono text-sm font-bold text-primary">POS-{ticket.draft.sessionId.slice(-8).toUpperCase()}</p><p className="mt-1 text-sm text-muted-foreground">{timestamp} · {ticket.draft.clientId ? "Client renseigné" : "Client comptoir"} · Caissier de ce poste</p><p className="mt-1 text-xs text-muted-foreground">{ticket.draft.lines.length} ligne{ticket.draft.lines.length > 1 ? "s" : ""} · {articleCount} article{articleCount > 1 ? "s" : ""}{serviceCount ? ` · ${serviceCount} service${serviceCount > 1 ? "s" : ""}` : ""}</p></div><p className="shrink-0 font-bold tabular-nums">{money(total)}</p></div><div className="mt-3 flex justify-end gap-2"><Button type="button" size="sm" variant="outline" onClick={onDelete}>Supprimer</Button><Button type="button" size="sm" onClick={onResume}>Reprendre</Button></div></div>;
 }
 
 function CommerceLocationSetup({ onDone }: { onDone: (locationId: string) => void }) {

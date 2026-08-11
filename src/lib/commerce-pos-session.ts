@@ -1,14 +1,29 @@
-export const COMMERCE_POS_DRAFT_VERSION = 1;
+export const COMMERCE_POS_DRAFT_VERSION = 2;
 
 export type CommercePosPaymentMethod = "CASH" | "WAVE" | "JEKO" | "CARD" | "OTHER";
 export type CommercePosCheckoutState = "READY" | "PROCESSING" | "RECONCILIATION_REQUIRED";
+export type CommercePosLineType = "ARTICLE" | "SERVICE";
 
-export interface CommercePosDraftLine {
-  itemId: string;
+interface CommercePosDraftLineBase {
+  lineId: string;
   label: string;
   quantity: number;
   unitPrice: number;
 }
+
+export interface CommercePosArticleLine extends CommercePosDraftLineBase {
+  lineType: "ARTICLE";
+  itemId: string;
+}
+
+export interface CommercePosServiceLine extends CommercePosDraftLineBase {
+  lineType: "SERVICE";
+  /** Local-only row identity; never sent as an inventory reference. */
+  itemId: string;
+  serviceNote: string | null;
+}
+
+export type CommercePosDraftLine = CommercePosArticleLine | CommercePosServiceLine;
 
 export interface CommercePosJekoPaymentState {
   status: "PENDING";
@@ -27,6 +42,12 @@ export interface CommercePosDraft {
   checkoutState: CommercePosCheckoutState;
   jekoPayment: CommercePosJekoPaymentState | null;
   updatedAt: string;
+}
+
+export interface CommercePosSuspendedTicket {
+  id: string;
+  suspendedAt: string;
+  draft: CommercePosDraft;
 }
 
 export interface CommercePosStorage {
@@ -55,22 +76,26 @@ function isFiniteNonNegative(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
 
-function createSessionId(): string {
+export function createCommercePosId(prefix: string): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
+    return `${prefix}-${crypto.randomUUID()}`;
   }
 
-  return `pos-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
 export function commercePosDraftStorageKey(locationId: string, userId: string): string {
   return `halal_erp_pos_draft:${locationId}:${userId}`;
 }
 
+export function commercePosSuspendedTicketsStorageKey(locationId: string, userId: string): string {
+  return `halal_erp_pos_suspended:${locationId}:${userId}`;
+}
+
 export function createCommercePosDraft(locationId: string, userId: string): CommercePosDraft {
   return {
     version: COMMERCE_POS_DRAFT_VERSION,
-    sessionId: createSessionId(),
+    sessionId: createCommercePosId("pos"),
     locationId,
     userId,
     lines: [],
@@ -96,12 +121,40 @@ export function commercePosDraftTotal(draft: CommercePosDraft): number {
   return draft.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
 }
 
+function parseLine(value: unknown): CommercePosDraftLine | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Partial<CommercePosDraftLine> & { lineType?: unknown; itemId?: unknown; serviceNote?: unknown };
+  const lineType = candidate.lineType === "SERVICE" ? "SERVICE" : candidate.lineType === "ARTICLE" || candidate.lineType === undefined ? "ARTICLE" : null;
+  const lineId = typeof candidate.lineId === "string" && candidate.lineId
+    ? candidate.lineId
+    : lineType === "ARTICLE" && typeof candidate.itemId === "string" && candidate.itemId ? `article-${candidate.itemId}` : null;
+
+  if (
+    !lineType
+    || !lineId
+    || typeof candidate.label !== "string"
+    || !candidate.label.trim()
+    || !isFiniteNonNegative(candidate.quantity)
+    || candidate.quantity <= 0
+    || !isFiniteNonNegative(candidate.unitPrice)
+  ) return null;
+
+  if (lineType === "ARTICLE") {
+    if (typeof candidate.itemId !== "string" || !candidate.itemId) return null;
+    return { lineId, lineType, itemId: candidate.itemId, label: candidate.label, quantity: candidate.quantity, unitPrice: candidate.unitPrice };
+  }
+
+  if (candidate.serviceNote !== null && candidate.serviceNote !== undefined && typeof candidate.serviceNote !== "string") return null;
+  return { lineId, lineType, itemId: typeof candidate.itemId === "string" && candidate.itemId ? candidate.itemId : lineId, label: candidate.label, quantity: candidate.quantity, unitPrice: candidate.unitPrice, serviceNote: candidate.serviceNote ?? null };
+}
+
 export function parseCommercePosDraft(value: unknown, expectedLocationId: string, expectedUserId: string): CommercePosDraft | null {
   if (!value || typeof value !== "object") return null;
 
   const candidate = value as Partial<CommercePosDraft>;
+  const rawVersion = (value as { version?: unknown }).version;
   if (
-    candidate.version !== COMMERCE_POS_DRAFT_VERSION
+    (rawVersion !== 1 && rawVersion !== COMMERCE_POS_DRAFT_VERSION)
     || candidate.locationId !== expectedLocationId
     || candidate.userId !== expectedUserId
     || typeof candidate.sessionId !== "string"
@@ -109,44 +162,24 @@ export function parseCommercePosDraft(value: unknown, expectedLocationId: string
     || !Array.isArray(candidate.lines)
     || !paymentMethods.has(candidate.paymentMethod as CommercePosPaymentMethod)
     || !checkoutStates.has(candidate.checkoutState as CommercePosCheckoutState)
-  ) {
-    return null;
-  }
+  ) return null;
 
-  const lines = candidate.lines.flatMap((line): CommercePosDraftLine[] => {
-    if (
-      !line
-      || typeof line.itemId !== "string"
-      || !line.itemId
-      || typeof line.label !== "string"
-      || !line.label
-      || !isFiniteNonNegative(line.quantity)
-      || line.quantity <= 0
-      || !isFiniteNonNegative(line.unitPrice)
-    ) {
-      return [];
-    }
-
-    return [{ itemId: line.itemId, label: line.label, quantity: line.quantity, unitPrice: line.unitPrice }];
-  });
-
-  if (lines.length !== candidate.lines.length) return null;
+  const lines = candidate.lines.map(parseLine);
+  if (lines.some((line) => line === null)) return null;
   if (candidate.clientId !== null && typeof candidate.clientId !== "string") return null;
   if (candidate.cashReceived !== null && candidate.cashReceived !== undefined && !isFiniteNonNegative(candidate.cashReceived)) return null;
 
   const jekoPayment = candidate.jekoPayment;
   if (jekoPayment !== null && jekoPayment !== undefined && (
     jekoPayment.status !== "PENDING" || typeof jekoPayment.requestReference !== "string" || !jekoPayment.requestReference
-  )) {
-    return null;
-  }
+  )) return null;
 
   return {
     version: COMMERCE_POS_DRAFT_VERSION,
     sessionId: candidate.sessionId,
     locationId: expectedLocationId,
     userId: expectedUserId,
-    lines,
+    lines: lines as CommercePosDraftLine[],
     clientId: candidate.clientId ?? null,
     paymentMethod: candidate.paymentMethod as CommercePosPaymentMethod,
     cashReceived: candidate.cashReceived ?? null,
@@ -171,7 +204,6 @@ export function saveCommercePosDraft(storage: CommercePosStorage, draft: Commerc
     storage.removeItem(key);
     return;
   }
-
   storage.setItem(key, JSON.stringify(draft));
 }
 
@@ -179,31 +211,56 @@ export function removeCommercePosDraft(storage: CommercePosStorage, locationId: 
   storage.removeItem(commercePosDraftStorageKey(locationId, userId));
 }
 
+export function loadCommercePosSuspendedTickets(storage: CommercePosStorage, locationId: string, userId: string): CommercePosSuspendedTicket[] {
+  try {
+    const stored = storage.getItem(commercePosSuspendedTicketsStorageKey(locationId, userId));
+    if (!stored) return [];
+    const values: unknown = JSON.parse(stored);
+    if (!Array.isArray(values)) return [];
+    return values.flatMap((value): CommercePosSuspendedTicket[] => {
+      if (!value || typeof value !== "object") return [];
+      const candidate = value as Partial<CommercePosSuspendedTicket>;
+      if (typeof candidate.id !== "string" || !candidate.id || typeof candidate.suspendedAt !== "string") return [];
+      const draft = parseCommercePosDraft(candidate.draft, locationId, userId);
+      return draft && commercePosDraftHasContent(draft) && draft.checkoutState === "READY" ? [{ id: candidate.id, suspendedAt: candidate.suspendedAt, draft }] : [];
+    });
+  } catch {
+    return [];
+  }
+}
+
+export function saveCommercePosSuspendedTickets(storage: CommercePosStorage, locationId: string, userId: string, tickets: readonly CommercePosSuspendedTicket[]): void {
+  const key = commercePosSuspendedTicketsStorageKey(locationId, userId);
+  if (!tickets.length) {
+    storage.removeItem(key);
+    return;
+  }
+  storage.setItem(key, JSON.stringify(tickets));
+}
+
 export function findCommercePosDraftLocation(storage: CommercePosStorage, locationIds: readonly string[], userId: string): string | null {
   for (const locationId of locationIds) {
     const draft = loadCommercePosDraft(storage, locationId, userId);
     if (draft && commercePosDraftHasContent(draft)) return locationId;
+    if (loadCommercePosSuspendedTickets(storage, locationId, userId).length) return locationId;
   }
-
   return null;
 }
 
-export function getCommercePosStockConflicts(
-  lines: readonly CommercePosDraftLine[],
-  availability: readonly CommercePosStockAvailability[],
-): CommercePosStockConflict[] {
+export function getCommercePosStockConflicts(lines: readonly CommercePosDraftLine[], availability: readonly CommercePosStockAvailability[]): CommercePosStockConflict[] {
   const availableByItem = new Map(availability.map((item) => [item.itemId, item]));
+  const requestedByItem = new Map<string, { label: string; quantity: number }>();
 
-  return lines.flatMap((line) => {
-    const item = availableByItem.get(line.itemId);
+  for (const line of lines) {
+    if (line.lineType !== "ARTICLE") continue;
+    const current = requestedByItem.get(line.itemId);
+    requestedByItem.set(line.itemId, { label: line.label, quantity: (current?.quantity ?? 0) + line.quantity });
+  }
+
+  return [...requestedByItem.entries()].flatMap(([itemId, requested]) => {
+    const item = availableByItem.get(itemId);
     const availableQuantity = item?.availableQuantity ?? 0;
-    if (line.quantity <= availableQuantity) return [];
-
-    return [{
-      itemId: line.itemId,
-      label: item?.label ?? line.label,
-      requestedQuantity: line.quantity,
-      availableQuantity,
-    }];
+    if (requested.quantity <= availableQuantity) return [];
+    return [{ itemId, label: item?.label ?? requested.label, requestedQuantity: requested.quantity, availableQuantity }];
   });
 }
