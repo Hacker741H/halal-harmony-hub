@@ -36,6 +36,7 @@ const roleLabels: Record<AppRole, string> = {
   operations: "Opérations",
   stocks: "Stocks",
   exploitations: "Exploitations",
+  caissier: "Caissier",
   gestionnaire: "Gestionnaire",
   chauffeur: "Chauffeur",
   employe: "Employé",

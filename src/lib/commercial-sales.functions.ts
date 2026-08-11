@@ -186,7 +186,7 @@ export const getCommercialSales = createServerFn({ method: "GET" })
     if (error) throw error;
     const rows = sales ?? [];
     const saleIds = rows.map((sale) => sale.id);
-    const clientIds = [...new Set(rows.map((sale) => sale.client_id))];
+    const clientIds = [...new Set(rows.flatMap((sale) => sale.client_id ? [sale.client_id] : []))];
     const farmIds = [...new Set(rows.flatMap((sale) => sale.farm_id ? [sale.farm_id] : []))];
     const permissionCodes = new Set(await getPermissionCodesForClient(context.supabase));
     const canReadFinance = permissionCodes.has("sales.finance.read");
@@ -229,7 +229,7 @@ export const getCommercialSales = createServerFn({ method: "GET" })
           .reduce((sum, payment) => sum + Number(payment.amount), 0);
         return {
           ...sale,
-          clientName: clients.get(sale.client_id) ?? null,
+          clientName: sale.client_id ? clients.get(sale.client_id) ?? null : null,
           farmName: sale.farm_id ? farms.get(sale.farm_id) ?? null : null,
           totalInvoiced: canReadFinance ? totalInvoiced : null,
           totalReceived: canReadFinance ? totalReceived : null,
@@ -256,7 +256,9 @@ export const getCommercialSale = createServerFn({ method: "GET" })
     const permissionCodes = new Set(await getPermissionCodesForClient(context.supabase));
     const canReadFinance = permissionCodes.has("sales.finance.read");
     const [clientResult, farmResult, linesResult, invoicesResult, paymentsResult, summaryResult] = await Promise.all([
-      context.supabase.from("transport_clients").select("display_name").eq("id", sale.client_id).maybeSingle(),
+      sale.client_id
+        ? context.supabase.from("transport_clients").select("display_name").eq("id", sale.client_id).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
       sale.farm_id
         ? context.supabase.from("farms").select("nom").eq("id", sale.farm_id).maybeSingle()
         : Promise.resolve({ data: null, error: null }),

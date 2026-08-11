@@ -15,6 +15,7 @@ export const APP_ROLE_VALUES = [
   "operations",
   "stocks",
   "exploitations",
+  "caissier",
   "gestionnaire",
   "chauffeur",
   "employe",

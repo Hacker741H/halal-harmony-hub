@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedAssignmentsRouteImport } from './routes/_authenticated/assignments'
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
+import { Route as AuthenticatedCommerceRouteImport } from './routes/_authenticated/commerce'
 import { Route as AuthenticatedContractsRouteImport } from './routes/_authenticated/contracts'
 import { Route as AuthenticatedCoursesRouteImport } from './routes/_authenticated/courses'
 import { Route as AuthenticatedDeliveriesRouteImport } from './routes/_authenticated/deliveries'
@@ -42,6 +43,7 @@ import { Route as AuthenticatedVehiclesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedWalletsRouteImport } from './routes/_authenticated/wallets'
 import { Route as AuthenticatedClientsIndexRouteImport } from './routes/_authenticated/clients/index'
 import { Route as AuthenticatedClientsClientIdRouteImport } from './routes/_authenticated/clients/$clientId'
+import { Route as AuthenticatedCommerceIndexRouteImport } from './routes/_authenticated/commerce/index'
 import { Route as AuthenticatedContractsIndexRouteImport } from './routes/_authenticated/contracts/index'
 import { Route as AuthenticatedContractsContractIdRouteImport } from './routes/_authenticated/contracts/$contractId'
 import { Route as AuthenticatedCoursesIndexRouteImport } from './routes/_authenticated/courses/index'
@@ -86,6 +88,11 @@ const AuthenticatedAssignmentsRoute =
 const AuthenticatedClientsRoute = AuthenticatedClientsRouteImport.update({
   id: '/clients',
   path: '/clients',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCommerceRoute = AuthenticatedCommerceRouteImport.update({
+  id: '/commerce',
+  path: '/commerce',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedContractsRoute = AuthenticatedContractsRouteImport.update({
@@ -234,6 +241,12 @@ const AuthenticatedClientsClientIdRoute =
     path: '/$clientId',
     getParentRoute: () => AuthenticatedClientsRoute,
   } as any)
+const AuthenticatedCommerceIndexRoute =
+  AuthenticatedCommerceIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedCommerceRoute,
+  } as any)
 const AuthenticatedContractsIndexRoute =
   AuthenticatedContractsIndexRouteImport.update({
     id: '/',
@@ -358,6 +371,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/assignments': typeof AuthenticatedAssignmentsRoute
   '/clients': typeof AuthenticatedClientsRouteWithChildren
+  '/commerce': typeof AuthenticatedCommerceRouteWithChildren
   '/contracts': typeof AuthenticatedContractsRouteWithChildren
   '/courses': typeof AuthenticatedCoursesRouteWithChildren
   '/deliveries': typeof AuthenticatedDeliveriesRoute
@@ -397,6 +411,7 @@ export interface FileRoutesByFullPath {
   '/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
   '/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
   '/clients/': typeof AuthenticatedClientsIndexRoute
+  '/commerce/': typeof AuthenticatedCommerceIndexRoute
   '/contracts/': typeof AuthenticatedContractsIndexRoute
   '/courses/': typeof AuthenticatedCoursesIndexRoute
   '/drivers/': typeof AuthenticatedDriversIndexRoute
@@ -442,6 +457,7 @@ export interface FileRoutesByTo {
   '/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
   '/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
   '/clients': typeof AuthenticatedClientsIndexRoute
+  '/commerce': typeof AuthenticatedCommerceIndexRoute
   '/contracts': typeof AuthenticatedContractsIndexRoute
   '/courses': typeof AuthenticatedCoursesIndexRoute
   '/drivers': typeof AuthenticatedDriversIndexRoute
@@ -458,6 +474,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/assignments': typeof AuthenticatedAssignmentsRoute
   '/_authenticated/clients': typeof AuthenticatedClientsRouteWithChildren
+  '/_authenticated/commerce': typeof AuthenticatedCommerceRouteWithChildren
   '/_authenticated/contracts': typeof AuthenticatedContractsRouteWithChildren
   '/_authenticated/courses': typeof AuthenticatedCoursesRouteWithChildren
   '/_authenticated/deliveries': typeof AuthenticatedDeliveriesRoute
@@ -498,6 +515,7 @@ export interface FileRoutesById {
   '/_authenticated/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
   '/_authenticated/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
   '/_authenticated/clients/': typeof AuthenticatedClientsIndexRoute
+  '/_authenticated/commerce/': typeof AuthenticatedCommerceIndexRoute
   '/_authenticated/contracts/': typeof AuthenticatedContractsIndexRoute
   '/_authenticated/courses/': typeof AuthenticatedCoursesIndexRoute
   '/_authenticated/drivers/': typeof AuthenticatedDriversIndexRoute
@@ -515,6 +533,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/assignments'
     | '/clients'
+    | '/commerce'
     | '/contracts'
     | '/courses'
     | '/deliveries'
@@ -554,6 +573,7 @@ export interface FileRouteTypes {
     | '/vehicles/$vehicleId'
     | '/wallets/$walletId'
     | '/clients/'
+    | '/commerce/'
     | '/contracts/'
     | '/courses/'
     | '/drivers/'
@@ -599,6 +619,7 @@ export interface FileRouteTypes {
     | '/vehicles/$vehicleId'
     | '/wallets/$walletId'
     | '/clients'
+    | '/commerce'
     | '/contracts'
     | '/courses'
     | '/drivers'
@@ -614,6 +635,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/assignments'
     | '/_authenticated/clients'
+    | '/_authenticated/commerce'
     | '/_authenticated/contracts'
     | '/_authenticated/courses'
     | '/_authenticated/deliveries'
@@ -654,6 +676,7 @@ export interface FileRouteTypes {
     | '/_authenticated/vehicles/$vehicleId'
     | '/_authenticated/wallets/$walletId'
     | '/_authenticated/clients/'
+    | '/_authenticated/commerce/'
     | '/_authenticated/contracts/'
     | '/_authenticated/courses/'
     | '/_authenticated/drivers/'
@@ -705,6 +728,13 @@ declare module '@tanstack/react-router' {
       path: '/clients'
       fullPath: '/clients'
       preLoaderRoute: typeof AuthenticatedClientsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/commerce': {
+      id: '/_authenticated/commerce'
+      path: '/commerce'
+      fullPath: '/commerce'
+      preLoaderRoute: typeof AuthenticatedCommerceRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/contracts': {
@@ -903,6 +933,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientsClientIdRouteImport
       parentRoute: typeof AuthenticatedClientsRoute
     }
+    '/_authenticated/commerce/': {
+      id: '/_authenticated/commerce/'
+      path: '/'
+      fullPath: '/commerce/'
+      preLoaderRoute: typeof AuthenticatedCommerceIndexRouteImport
+      parentRoute: typeof AuthenticatedCommerceRoute
+    }
     '/_authenticated/contracts/': {
       id: '/_authenticated/contracts/'
       path: '/'
@@ -1058,6 +1095,19 @@ const AuthenticatedClientsRouteChildren: AuthenticatedClientsRouteChildren = {
 
 const AuthenticatedClientsRouteWithChildren =
   AuthenticatedClientsRoute._addFileChildren(AuthenticatedClientsRouteChildren)
+
+interface AuthenticatedCommerceRouteChildren {
+  AuthenticatedCommerceIndexRoute: typeof AuthenticatedCommerceIndexRoute
+}
+
+const AuthenticatedCommerceRouteChildren: AuthenticatedCommerceRouteChildren = {
+  AuthenticatedCommerceIndexRoute: AuthenticatedCommerceIndexRoute,
+}
+
+const AuthenticatedCommerceRouteWithChildren =
+  AuthenticatedCommerceRoute._addFileChildren(
+    AuthenticatedCommerceRouteChildren,
+  )
 
 interface AuthenticatedContractsRouteChildren {
   AuthenticatedContractsContractIdRoute: typeof AuthenticatedContractsContractIdRoute
@@ -1233,6 +1283,7 @@ const AuthenticatedWalletsRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAssignmentsRoute: typeof AuthenticatedAssignmentsRoute
   AuthenticatedClientsRoute: typeof AuthenticatedClientsRouteWithChildren
+  AuthenticatedCommerceRoute: typeof AuthenticatedCommerceRouteWithChildren
   AuthenticatedContractsRoute: typeof AuthenticatedContractsRouteWithChildren
   AuthenticatedCoursesRoute: typeof AuthenticatedCoursesRouteWithChildren
   AuthenticatedDeliveriesRoute: typeof AuthenticatedDeliveriesRoute
@@ -1265,6 +1316,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAssignmentsRoute: AuthenticatedAssignmentsRoute,
   AuthenticatedClientsRoute: AuthenticatedClientsRouteWithChildren,
+  AuthenticatedCommerceRoute: AuthenticatedCommerceRouteWithChildren,
   AuthenticatedContractsRoute: AuthenticatedContractsRouteWithChildren,
   AuthenticatedCoursesRoute: AuthenticatedCoursesRouteWithChildren,
   AuthenticatedDeliveriesRoute: AuthenticatedDeliveriesRoute,

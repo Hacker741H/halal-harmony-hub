@@ -22,6 +22,8 @@ import { ProductHeader } from "@/components/shell/product-header";
 import { ShellPreferencesProvider, useShellPreferences } from "@/components/shell/shell-preferences";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { PwaRegistration } from "@/components/pwa/pwa-registration";
+import { useCurrentUserAccess } from "@/hooks/use-current-user-access";
+import { cn } from "@/lib/utils";
 
 function NotFoundComponent() {
   return (
@@ -130,9 +132,12 @@ function useSession() {
 
 function AuthenticatedShell() {
   const session = useSession();
+  const access = useCurrentUserAccess(Boolean(session));
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (router) => router.location.pathname });
   const { sidebarWidth, density } = useShellPreferences();
+
+  if (session && access.isPending) return null;
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -147,12 +152,12 @@ function AuthenticatedShell() {
         } as CSSProperties
       }
     >
-      <div className="flex min-h-screen w-full bg-canvas" data-density={density}>
-        <AppSidebar />
-        <div className="flex min-w-0 flex-1 flex-col pb-3 md:pb-4">
-          <ProductHeader user={session} onSignOut={signOut} />
-          <main className="flex-1 overflow-x-hidden pt-3 md:pt-4">
-            <div key={pathname} className="animate-fade-in">
+      <div className={cn("flex min-h-screen w-full bg-canvas", access.isCashierOnly && "lg:h-dvh lg:min-h-0 lg:overflow-hidden")} data-density={density}>
+        <AppSidebar cashierMode={access.isCashierOnly} />
+        <div className={cn("flex min-w-0 flex-1 flex-col pb-3 md:pb-4", access.isCashierOnly && "lg:min-h-0")}>
+          <ProductHeader user={session} onSignOut={signOut} cashierMode={access.isCashierOnly} />
+          <main className={cn("flex-1 overflow-x-hidden pt-3 md:pt-4", access.isCashierOnly && "lg:min-h-0 lg:overflow-hidden")}>
+            <div key={pathname} className={cn("animate-fade-in", access.isCashierOnly && "lg:h-full lg:min-h-0")}>
               <Outlet />
             </div>
           </main>

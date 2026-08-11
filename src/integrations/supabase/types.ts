@@ -83,6 +83,263 @@ export type Database = {
           },
         ]
       }
+      business_location_assignments: {
+        Row: {
+          assigned_by: string | null
+          assignment_role: string
+          business_location_id: string
+          created_at: string
+          end_date: string | null
+          ended_by: string | null
+          id: string
+          notes: string | null
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          assignment_role?: string
+          business_location_id: string
+          created_at?: string
+          end_date?: string | null
+          ended_by?: string | null
+          id?: string
+          notes?: string | null
+          start_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          assignment_role?: string
+          business_location_id?: string
+          created_at?: string
+          end_date?: string | null
+          ended_by?: string | null
+          id?: string
+          notes?: string | null
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_location_assignments_business_location_id_fkey"
+            columns: ["business_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_location_inventory_items: {
+        Row: {
+          business_location_id: string
+          created_at: string
+          id: string
+          inventory_item_id: string
+          quantity: number
+          reorder_level: number | null
+          sale_price: number | null
+          updated_at: string
+        }
+        Insert: {
+          business_location_id: string
+          created_at?: string
+          id?: string
+          inventory_item_id: string
+          quantity?: number
+          reorder_level?: number | null
+          sale_price?: number | null
+          updated_at?: string
+        }
+        Update: {
+          business_location_id?: string
+          created_at?: string
+          id?: string
+          inventory_item_id?: string
+          quantity?: number
+          reorder_level?: number | null
+          sale_price?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_location_inventory_items_business_location_id_fkey"
+            columns: ["business_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_location_inventory_items_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_location_wallets: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          business_location_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_primary: boolean
+          purpose: string
+          revoked_at: string | null
+          updated_at: string
+          wallet_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          business_location_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_primary?: boolean
+          purpose?: string
+          revoked_at?: string | null
+          updated_at?: string
+          wallet_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          business_location_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_primary?: boolean
+          purpose?: string
+          revoked_at?: string | null
+          updated_at?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_location_wallets_business_location_id_fkey"
+            columns: ["business_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_location_wallets_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "finance_wallet_reconciliation"
+            referencedColumns: ["wallet_id"]
+          },
+          {
+            foreignKeyName: "business_location_wallets_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_locations: {
+        Row: {
+          address: string | null
+          archived_at: string | null
+          business_unit_id: string
+          code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          location_type: string
+          name: string
+          notes: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          address?: string | null
+          archived_at?: string | null
+          business_unit_id: string
+          code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          location_type?: string
+          name: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          address?: string | null
+          archived_at?: string | null
+          business_unit_id?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          location_type?: string
+          name?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_locations_business_unit_id_fkey"
+            columns: ["business_unit_id"]
+            isOneToOne: false
+            referencedRelation: "business_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_units: {
+        Row: {
+          archived_at: string | null
+          code: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          code: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       client_identifier_validation_rules: {
         Row: {
           country_code: string
@@ -115,6 +372,96 @@ export type Database = {
           validation_pattern?: string | null
         }
         Relationships: []
+      }
+      commerce_cash_remittances: {
+        Row: {
+          amount: number
+          business_location_id: string
+          cancelled_at: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          declared_by: string | null
+          destination_wallet_id: string
+          id: string
+          notes: string | null
+          reference: string | null
+          remittance_date: string
+          source_wallet_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          business_location_id: string
+          cancelled_at?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          declared_by?: string | null
+          destination_wallet_id: string
+          id?: string
+          notes?: string | null
+          reference?: string | null
+          remittance_date?: string
+          source_wallet_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          business_location_id?: string
+          cancelled_at?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          declared_by?: string | null
+          destination_wallet_id?: string
+          id?: string
+          notes?: string | null
+          reference?: string | null
+          remittance_date?: string
+          source_wallet_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_cash_remittances_business_location_id_fkey"
+            columns: ["business_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_cash_remittances_destination_wallet_id_fkey"
+            columns: ["destination_wallet_id"]
+            isOneToOne: false
+            referencedRelation: "finance_wallet_reconciliation"
+            referencedColumns: ["wallet_id"]
+          },
+          {
+            foreignKeyName: "commerce_cash_remittances_destination_wallet_id_fkey"
+            columns: ["destination_wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_cash_remittances_source_wallet_id_fkey"
+            columns: ["source_wallet_id"]
+            isOneToOne: false
+            referencedRelation: "finance_wallet_reconciliation"
+            referencedColumns: ["wallet_id"]
+          },
+          {
+            foreignKeyName: "commerce_cash_remittances_source_wallet_id_fkey"
+            columns: ["source_wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       commercial_invoice_payments: {
         Row: {
@@ -206,7 +553,7 @@ export type Database = {
         Row: {
           cancellation_reason: string | null
           cancelled_at: string | null
-          client_id: string
+          client_id: string | null
           created_at: string
           created_by: string | null
           due_date: string | null
@@ -227,7 +574,7 @@ export type Database = {
         Insert: {
           cancellation_reason?: string | null
           cancelled_at?: string | null
-          client_id: string
+          client_id?: string | null
           created_at?: string
           created_by?: string | null
           due_date?: string | null
@@ -248,7 +595,7 @@ export type Database = {
         Update: {
           cancellation_reason?: string | null
           cancelled_at?: string | null
-          client_id?: string
+          client_id?: string | null
           created_at?: string
           created_by?: string | null
           due_date?: string | null
@@ -393,8 +740,10 @@ export type Database = {
       commercial_sales: {
         Row: {
           archived_at: string | null
+          business_location_id: string | null
+          business_unit_id: string | null
           cancelled_at: string | null
-          client_id: string
+          client_id: string | null
           confirmed_at: string | null
           created_at: string
           created_by: string | null
@@ -410,8 +759,10 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
+          business_location_id?: string | null
+          business_unit_id?: string | null
           cancelled_at?: string | null
-          client_id: string
+          client_id?: string | null
           confirmed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -427,8 +778,10 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
+          business_location_id?: string | null
+          business_unit_id?: string | null
           cancelled_at?: string | null
-          client_id?: string
+          client_id?: string | null
           confirmed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -443,6 +796,20 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "commercial_sales_business_location_id_fkey"
+            columns: ["business_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_sales_business_unit_id_fkey"
+            columns: ["business_unit_id"]
+            isOneToOne: false
+            referencedRelation: "business_units"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "commercial_sales_client_id_fkey"
             columns: ["client_id"]
@@ -1753,6 +2120,39 @@ export type Database = {
             columns: ["wallet_id"]
             isOneToOne: false
             referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_commerce_cash_remittance_links: {
+        Row: {
+          created_at: string
+          operation_id: string
+          remittance_id: string
+        }
+        Insert: {
+          created_at?: string
+          operation_id: string
+          remittance_id: string
+        }
+        Update: {
+          created_at?: string
+          operation_id?: string
+          remittance_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_commerce_cash_remittance_links_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_commerce_cash_remittance_links_remittance_id_fkey"
+            columns: ["remittance_id"]
+            isOneToOne: true
+            referencedRelation: "commerce_cash_remittances"
             referencedColumns: ["id"]
           },
         ]
@@ -3709,6 +4109,8 @@ export type Database = {
       payment_events: {
         Row: {
           attempt_count: number
+          commercial_invoice_id: string | null
+          commercial_payment_id: string | null
           created_at: string
           currency: string | null
           event_type: string
@@ -3733,6 +4135,8 @@ export type Database = {
         }
         Insert: {
           attempt_count?: number
+          commercial_invoice_id?: string | null
+          commercial_payment_id?: string | null
           created_at?: string
           currency?: string | null
           event_type?: string
@@ -3757,6 +4161,8 @@ export type Database = {
         }
         Update: {
           attempt_count?: number
+          commercial_invoice_id?: string | null
+          commercial_payment_id?: string | null
           created_at?: string
           currency?: string | null
           event_type?: string
@@ -3780,6 +4186,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payment_events_commercial_invoice_id_fkey"
+            columns: ["commercial_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_events_commercial_payment_id_fkey"
+            columns: ["commercial_payment_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_invoice_payments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payment_events_finance_operation_id_fkey"
             columns: ["finance_operation_id"]
@@ -3805,57 +4225,80 @@ export type Database = {
       }
       payment_provider_payment_requests: {
         Row: {
+          commercial_invoice_id: string | null
+          commercial_payment_id: string | null
           completed_at: string | null
           created_at: string
           currency: string
           erp_amount: number
           expected_provider_amount: number
           id: string
-          invoice_id: string
+          invoice_id: string | null
           payment_id: string | null
           provider: string
           provider_reference: string
           provider_request_id: string
           provider_store_id: string
+          source_type: string
           status: string
           updated_at: string
           wallet_id: string
         }
         Insert: {
+          commercial_invoice_id?: string | null
+          commercial_payment_id?: string | null
           completed_at?: string | null
           created_at?: string
           currency?: string
           erp_amount: number
           expected_provider_amount: number
           id?: string
-          invoice_id: string
+          invoice_id?: string | null
           payment_id?: string | null
           provider?: string
           provider_reference: string
           provider_request_id: string
           provider_store_id: string
+          source_type?: string
           status?: string
           updated_at?: string
           wallet_id: string
         }
         Update: {
+          commercial_invoice_id?: string | null
+          commercial_payment_id?: string | null
           completed_at?: string | null
           created_at?: string
           currency?: string
           erp_amount?: number
           expected_provider_amount?: number
           id?: string
-          invoice_id?: string
+          invoice_id?: string | null
           payment_id?: string | null
           provider?: string
           provider_reference?: string
           provider_request_id?: string
           provider_store_id?: string
+          source_type?: string
           status?: string
           updated_at?: string
           wallet_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payment_provider_payment_requests_commercial_invoice_id_fkey"
+            columns: ["commercial_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_provider_payment_requests_commercial_payment_id_fkey"
+            columns: ["commercial_payment_id"]
+            isOneToOne: true
+            referencedRelation: "commercial_invoice_payments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payment_provider_payment_requests_invoice_id_fkey"
             columns: ["invoice_id"]
@@ -4325,6 +4768,7 @@ export type Database = {
       }
       stock_movements: {
         Row: {
+          business_location_id: string | null
           client: string | null
           created_at: string
           created_by: string | null
@@ -4342,6 +4786,7 @@ export type Database = {
           wallet_id: string | null
         }
         Insert: {
+          business_location_id?: string | null
           client?: string | null
           created_at?: string
           created_by?: string | null
@@ -4359,6 +4804,7 @@ export type Database = {
           wallet_id?: string | null
         }
         Update: {
+          business_location_id?: string | null
           client?: string | null
           created_at?: string
           created_by?: string | null
@@ -4376,6 +4822,13 @@ export type Database = {
           wallet_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "stock_movements_business_location_id_fkey"
+            columns: ["business_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "stock_movements_inventory_item_id_fkey"
             columns: ["inventory_item_id"]
@@ -5320,6 +5773,33 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      _internal_confirm_commercial_invoice_payment: {
+        Args: { p_actor_id?: string; p_payment_id: string }
+        Returns: {
+          amount: number
+          cancelled_at: string | null
+          confirmed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_id: string
+          notes: string | null
+          payment_date: string
+          payment_kind: string
+          reference: string | null
+          sale_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          wallet_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commercial_invoice_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       _internal_confirm_transport_invoice_payment: {
         Args: { p_actor_id?: string; p_payment_id: string }
         Returns: {
@@ -5397,6 +5877,33 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "finance_operations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      _internal_create_commercial_invoice_payment: {
+        Args: { p_actor_id?: string; p_invoice_id: string; p_payment: Json }
+        Returns: {
+          amount: number
+          cancelled_at: string | null
+          confirmed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_id: string
+          notes: string | null
+          payment_date: string
+          payment_kind: string
+          reference: string | null
+          sale_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          wallet_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commercial_invoice_payments"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -5563,6 +6070,7 @@ export type Database = {
       _internal_create_stock_movement_with_finance: {
         Args: { p_movement: Json }
         Returns: {
+          business_location_id: string | null
           client: string | null
           created_at: string
           created_by: string | null
@@ -5822,6 +6330,7 @@ export type Database = {
       _internal_update_stock_movement_with_finance: {
         Args: { p_movement: Json }
         Returns: {
+          business_location_id: string | null
           client: string | null
           created_at: string
           created_by: string | null
@@ -5970,6 +6479,28 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "documents"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      assign_business_location_user: {
+        Args: { p_assignment: Json }
+        Returns: {
+          assigned_by: string | null
+          assignment_role: string
+          business_location_id: string
+          created_at: string
+          end_date: string | null
+          ended_by: string | null
+          id: string
+          notes: string | null
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "business_location_assignments"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -6161,6 +6692,10 @@ export type Database = {
         Returns: undefined
       }
       business_finance_require_write_role: { Args: never; Returns: undefined }
+      business_location_is_assigned_to_current_user: {
+        Args: { p_location_id: string }
+        Returns: boolean
+      }
       business_upsert_finance_operation:
         | {
             Args: {
@@ -6306,7 +6841,7 @@ export type Database = {
         Returns: {
           cancellation_reason: string | null
           cancelled_at: string | null
-          client_id: string
+          client_id: string | null
           created_at: string
           created_by: string | null
           due_date: string | null
@@ -6362,8 +6897,10 @@ export type Database = {
         Args: { p_reason: string; p_sale_id: string }
         Returns: {
           archived_at: string | null
+          business_location_id: string | null
+          business_unit_id: string | null
           cancelled_at: string | null
-          client_id: string
+          client_id: string | null
           confirmed_at: string | null
           created_at: string
           created_by: string | null
@@ -6510,6 +7047,18 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      commerce_location_access_allowed: {
+        Args: { p_location_id: string }
+        Returns: boolean
+      }
+      configure_commerce_location_item: {
+        Args: { p_item: Json }
+        Returns: Json
+      }
+      receive_commerce_inventory_item: {
+        Args: { p_receipt: Json }
+        Returns: Json
+      }
       confirm_commercial_invoice_payment: {
         Args: { p_payment_id: string }
         Returns: {
@@ -6541,8 +7090,10 @@ export type Database = {
         Args: { p_sale_id: string }
         Returns: {
           archived_at: string | null
+          business_location_id: string | null
+          business_unit_id: string | null
           cancelled_at: string | null
-          client_id: string
+          client_id: string | null
           confirmed_at: string | null
           created_at: string
           created_by: string | null
@@ -6811,6 +7362,51 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_business_location: {
+        Args: { p_location: Json }
+        Returns: {
+          address: string | null
+          archived_at: string | null
+          business_unit_id: string
+          code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          location_type: string
+          name: string
+          notes: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "business_locations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_business_unit: {
+        Args: { p_business_unit: Json }
+        Returns: {
+          archived_at: string | null
+          code: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "business_units"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_client: {
         Args: { p_client: Json }
         Returns: {
@@ -6846,12 +7442,13 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_commerce_cash_sale: { Args: { p_sale: Json }; Returns: Json }
       create_commercial_invoice: {
         Args: { p_invoice?: Json; p_sale_id: string }
         Returns: {
           cancellation_reason: string | null
           cancelled_at: string | null
-          client_id: string
+          client_id: string | null
           created_at: string
           created_by: string | null
           due_date: string | null
@@ -6907,8 +7504,10 @@ export type Database = {
         Args: { p_sale: Json }
         Returns: {
           archived_at: string | null
+          business_location_id: string | null
+          business_unit_id: string | null
           cancelled_at: string | null
-          client_id: string
+          client_id: string | null
           confirmed_at: string | null
           created_at: string
           created_by: string | null
@@ -7215,6 +7814,7 @@ export type Database = {
       create_stock_movement_with_finance: {
         Args: { p_movement: Json }
         Returns: {
+          business_location_id: string | null
           client: string | null
           created_at: string
           created_by: string | null
@@ -7545,6 +8145,10 @@ export type Database = {
         Args: { p_document_id: string }
         Returns: boolean
       }
+      end_commerce_location_assignment: {
+        Args: { p_assignment_id: string }
+        Returns: Json
+      }
       finance_create_operation: {
         Args: {
           p_link_module?: string
@@ -7695,6 +8299,24 @@ export type Database = {
           total_received: number
         }[]
       }
+      get_commerce_inventory_catalogue: {
+        Args: { p_location_id: string }
+        Returns: Json
+      }
+      get_commerce_location_assignments: {
+        Args: { p_location_id: string }
+        Returns: Json
+      }
+      get_commerce_management_dashboard: {
+        Args: { p_location_id: string }
+        Returns: Json
+      }
+      get_commerce_pos_locations: { Args: never; Returns: Json }
+      get_commerce_pos_workspace: {
+        Args: { p_location_id: string }
+        Returns: Json
+      }
+      get_commerce_setup_options: { Args: never; Returns: Json }
       get_commercial_sale_financial_summary: {
         Args: { p_sale_id: string }
         Returns: {
@@ -7846,7 +8468,7 @@ export type Database = {
         Returns: {
           cancellation_reason: string | null
           cancelled_at: string | null
-          client_id: string
+          client_id: string | null
           created_at: string
           created_by: string | null
           due_date: string | null
@@ -7962,6 +8584,8 @@ export type Database = {
         Args: { p_event_id: string }
         Returns: {
           attempt_count: number
+          commercial_invoice_id: string | null
+          commercial_payment_id: string | null
           created_at: string
           currency: string | null
           event_type: string
@@ -8002,18 +8626,21 @@ export type Database = {
       register_jeko_payment_request: {
         Args: { p_request: Json }
         Returns: {
+          commercial_invoice_id: string | null
+          commercial_payment_id: string | null
           completed_at: string | null
           created_at: string
           currency: string
           erp_amount: number
           expected_provider_amount: number
           id: string
-          invoice_id: string
+          invoice_id: string | null
           payment_id: string | null
           provider: string
           provider_reference: string
           provider_request_id: string
           provider_store_id: string
+          source_type: string
           status: string
           updated_at: string
           wallet_id: string
@@ -8157,6 +8784,28 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      revoke_business_location_wallet: {
+        Args: { p_mapping_id: string }
+        Returns: {
+          assigned_at: string
+          assigned_by: string | null
+          business_location_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_primary: boolean
+          purpose: string
+          revoked_at: string | null
+          updated_at: string
+          wallet_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "business_location_wallets"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       revoke_field_wallet_assignment: {
         Args: { p_assignment_id: string }
         Returns: {
@@ -8258,6 +8907,28 @@ export type Database = {
         }
       }
       security_require_finance_role: { Args: never; Returns: undefined }
+      set_business_location_wallet: {
+        Args: { p_mapping: Json }
+        Returns: {
+          assigned_at: string
+          assigned_by: string | null
+          business_location_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_primary: boolean
+          purpose: string
+          revoked_at: string | null
+          updated_at: string
+          wallet_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "business_location_wallets"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       set_inventory_alert_threshold: {
         Args: { p_alert_threshold: number; p_inventory_item_id: string }
         Returns: {
@@ -8371,6 +9042,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      setup_commerce_location: { Args: { p_setup: Json }; Returns: Json }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       stock_movement_delta: {
@@ -8438,12 +9110,15 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      update_commerce_location: { Args: { p_location: Json }; Returns: Json }
       update_commercial_sale: {
         Args: { p_sale: Json; p_sale_id: string }
         Returns: {
           archived_at: string | null
+          business_location_id: string | null
+          business_unit_id: string | null
           cancelled_at: string | null
-          client_id: string
+          client_id: string | null
           confirmed_at: string | null
           created_at: string
           created_by: string | null
@@ -8603,6 +9278,7 @@ export type Database = {
       update_stock_movement_with_finance: {
         Args: { p_movement: Json }
         Returns: {
+          business_location_id: string | null
           client: string | null
           created_at: string
           created_by: string | null
@@ -8839,6 +9515,7 @@ export type Database = {
         | "operations"
         | "stocks"
         | "exploitations"
+        | "caissier"
       entity_kind:
         | "employe"
         | "chauffeur"
@@ -8995,6 +9672,7 @@ export const Constants = {
         "operations",
         "stocks",
         "exploitations",
+        "caissier",
       ],
       entity_kind: [
         "employe",

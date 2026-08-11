@@ -1,5 +1,6 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useCurrentUserAccess } from "@/hooks/use-current-user-access";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -9,7 +10,9 @@ export const Route = createFileRoute("/_authenticated")({
 
 function AuthenticatedRoute() {
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (router) => router.location.pathname });
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const access = useCurrentUserAccess(!isCheckingSession);
 
   useEffect(() => {
     let isCurrent = true;
@@ -30,7 +33,15 @@ function AuthenticatedRoute() {
     };
   }, [navigate]);
 
-  if (isCheckingSession) return null;
+  useEffect(() => {
+    if (access.isCashierOnly && !pathname.startsWith("/commerce")) {
+      void navigate({ to: "/commerce", replace: true });
+    }
+  }, [access.isCashierOnly, navigate, pathname]);
+
+  if (isCheckingSession || access.isPending) return null;
+
+  if (access.isCashierOnly && !pathname.startsWith("/commerce")) return null;
 
   return <Outlet />;
 }
