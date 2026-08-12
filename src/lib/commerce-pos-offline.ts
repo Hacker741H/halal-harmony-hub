@@ -67,20 +67,52 @@ export type PosOfflineCashSession = {
   id: string;
   scopeKey: string;
   terminalId: string;
+  locationId: string;
+  cashierUserId: string;
   status: PosOfflineSessionStatus;
   openedAtDevice: string;
   closedAtDevice: string | null;
+  closingEventId: string | null;
+  closeSummary: PosOfflineCashSessionClosePayload | null;
+  lastSyncError: string | null;
 };
 
-export type PosOfflineOutboxEvent = {
+export type PosOfflineCashSessionSummary = {
+  ticketCount: number;
+  articleTotal: number;
+  serviceTotal: number;
+  cashTotal: number;
+  otherPaymentTotal: number;
+  theoreticalCash: number;
+  cancelledTicketCount: number;
+};
+
+export type PosOfflineCashSessionClosePayload = PosOfflineCashSessionSummary & {
+  openedAtDevice: string;
+  closedAtDevice: string;
+  countedCash: number;
+  difference: number;
+  note: string | null;
+};
+
+type PosOfflineOutboxBase = {
   eventId: string;
   deviceId: string;
   terminalId: string;
   locationId: string;
   userId: string;
   cashSessionId: string;
-  entityType: "SALE";
   entityId: string;
+  createdAtDevice: string;
+  status: PosOfflineOutboxStatus;
+  attemptCount: number;
+  lastAttemptAt: string | null;
+  lastError: string | null;
+  syncedAt: string | null;
+};
+
+export type PosOfflineSaleOutboxEvent = PosOfflineOutboxBase & {
+  entityType: "SALE";
   operation: "CREATE_CASH_SALE";
   payload: {
     ticketId: string;
@@ -92,12 +124,6 @@ export type PosOfflineOutboxEvent = {
     changeDue: number;
     lines: CommercePosDraftLine[];
   };
-  createdAtDevice: string;
-  status: PosOfflineOutboxStatus;
-  attemptCount: number;
-  lastAttemptAt: string | null;
-  lastError: string | null;
-  syncedAt: string | null;
   serverReceiptId?: string;
   serverSaleId?: string;
   serverInvoiceNumber?: string;
@@ -106,6 +132,16 @@ export type PosOfflineOutboxEvent = {
   serverAmount?: number;
   stockReconciledAt?: string;
 };
+
+export type PosOfflineCashSessionCloseOutboxEvent = PosOfflineOutboxBase & {
+  entityType: "CASH_SESSION";
+  operation: "CASH_SESSION_CLOSE";
+  payload: PosOfflineCashSessionClosePayload;
+  serverClosureId?: string;
+  serverStatus?: "SYNCED" | "REVIEW_REQUIRED";
+};
+
+export type PosOfflineOutboxEvent = PosOfflineSaleOutboxEvent | PosOfflineCashSessionCloseOutboxEvent;
 
 type PosOfflineTicketRecord = {
   id: string;
@@ -156,14 +192,20 @@ type PosOfflineSyncStateRecord = {
   updatedAtDevice: string;
 };
 
-type PosOfflineDatabaseState = {
+export type PosOfflineDatabaseState = {
   terminal: PosOfflineTerminal;
   activeDraft: CommercePosDraft | null;
   suspendedTickets: CommercePosSuspendedTicket[];
   catalogue: PosOfflineCatalogueItem[];
   pendingOutboxCount: number;
   outboxEvents: PosOfflineOutboxEvent[];
+  cashSession: PosOfflineCashSession | null;
+  cashSessionSummary: PosOfflineCashSessionSummary | null;
 };
+
+function isPosOfflineSaleEvent(event: PosOfflineOutboxEvent): event is PosOfflineSaleOutboxEvent {
+  return event.operation === "CREATE_CASH_SALE";
+}
 
 function scopeKey({ locationId, userId }: PosOfflineScope): string {
   return `${locationId}:${userId}`;
@@ -318,18 +360,36 @@ async function getOrCreateTerminalInTransaction(store: IDBObjectStore): Promise<
   return terminal;
 }
 
-async function getOrCreateOpenSession(sessions: IDBObjectStore, scope: PosOfflineScope, terminalId: string): Promise<PosOfflineCashSession> {
+async function getOrCreateOpenSession(
+  sessions: IDBObjectStore,
+  scope: PosOfflineScope,
+  terminalId: string,
+  allowCreateAfterClosed = false,
+): Promise<PosOfflineCashSession> {
   const scopedSessions = await getAllByIndex<PosOfflineCashSession>(sessions, "scopeKey", scopeKey(scope));
   const openSession = scopedSessions.find((session) => session.status === "OPEN");
-  if (openSession) return openSession;
+  if (openSession) {
+    const normalized = normalizePosOfflineCashSession(openSession, scope);
+    if (normalized !== openSession) await requestResult(sessions.put(normalized));
+    return normalized;
+  }
+
+  if (scopedSessions.length && !allowCreateAfterClosed) {
+    throw new Error("Cette session de caisse est clôturée. Ouvrez une nouvelle session pour enregistrer une vente.");
+  }
 
   const session: PosOfflineCashSession = {
     id: createCommercePosId("cash-session"),
     scopeKey: scopeKey(scope),
     terminalId,
+    locationId: scope.locationId,
+    cashierUserId: scope.userId,
     status: "OPEN",
     openedAtDevice: now(),
     closedAtDevice: null,
+    closingEventId: null,
+    closeSummary: null,
+    lastSyncError: null,
   };
   await requestResult(sessions.put(session));
   return session;
@@ -342,13 +402,17 @@ async function saveTicketDraft(
   status: PosOfflineTicketStatus,
   suspendedTicketId: string | null = null,
   suspendedAt: string | null = null,
+  allowCreateAfterClosed = false,
 ): Promise<PosOfflineTicketRecord> {
   const terminal = await getOrCreateTerminalInTransaction(stores[POS_OFFLINE_STORES.terminal]);
   const tickets = stores[POS_OFFLINE_STORES.tickets];
   const existing = await requestResult<PosOfflineTicketRecord | undefined>(tickets.get(draft.sessionId));
   const session = existing
-    ? { id: existing.cashSessionId }
-    : await getOrCreateOpenSession(stores[POS_OFFLINE_STORES.sessions], scope, terminal.terminalId);
+    ? await requestResult<PosOfflineCashSession | undefined>(stores[POS_OFFLINE_STORES.sessions].get(existing.cashSessionId))
+    : await getOrCreateOpenSession(stores[POS_OFFLINE_STORES.sessions], scope, terminal.terminalId, allowCreateAfterClosed);
+  if (!session || session.scopeKey !== scopeKey(scope) || session.status !== "OPEN") {
+    throw new Error("Cette session de caisse est clôturée. Ouvrez une nouvelle session pour enregistrer une vente.");
+  }
   const timestamp = now();
   const ticket: PosOfflineTicketRecord = {
     id: draft.sessionId,
@@ -504,11 +568,51 @@ export async function getPosOfflineCatalogue(scope: PosOfflineScope): Promise<Po
   });
 }
 
+function normalizePosOfflineCashSession(session: PosOfflineCashSession, scope: PosOfflineScope): PosOfflineCashSession {
+  return {
+    ...session,
+    locationId: session.locationId ?? scope.locationId,
+    cashierUserId: session.cashierUserId ?? scope.userId,
+    closingEventId: session.closingEventId ?? null,
+    closeSummary: session.closeSummary ?? null,
+    lastSyncError: session.lastSyncError ?? null,
+  };
+}
+
+async function getPosOfflineCashSessionSummary(
+  tickets: readonly PosOfflineTicketRecord[],
+  ticketLines: IDBObjectStore,
+  cashSessionId: string,
+): Promise<PosOfflineCashSessionSummary> {
+  const paidTickets = tickets.filter((ticket) => ticket.cashSessionId === cashSessionId && ticket.status === "PAID_LOCAL");
+  let articleTotal = 0;
+  let serviceTotal = 0;
+  for (const ticket of paidTickets) {
+    const lines = await getAllByIndex<PosOfflineTicketLineRecord>(ticketLines, "ticketId", ticket.id);
+    for (const { line } of lines) {
+      const amount = line.quantity * line.unitPrice;
+      if (line.lineType === "SERVICE") serviceTotal += amount;
+      else articleTotal += amount;
+    }
+  }
+  const cashTotal = articleTotal + serviceTotal;
+  return {
+    ticketCount: paidTickets.length,
+    articleTotal,
+    serviceTotal,
+    cashTotal,
+    otherPaymentTotal: 0,
+    theoreticalCash: cashTotal,
+    cancelledTicketCount: 0,
+  };
+}
+
 export async function getPosOfflineState(scope: PosOfflineScope): Promise<PosOfflineDatabaseState> {
   return inTransaction([
     POS_OFFLINE_STORES.terminal,
     POS_OFFLINE_STORES.catalog,
     POS_OFFLINE_STORES.stockSnapshot,
+    POS_OFFLINE_STORES.sessions,
     POS_OFFLINE_STORES.tickets,
     POS_OFFLINE_STORES.ticketLines,
     POS_OFFLINE_STORES.suspendedTickets,
@@ -537,7 +641,14 @@ export async function getPosOfflineState(scope: PosOfflineScope): Promise<PosOff
       .filter((event) => event.locationId === scope.locationId && event.userId === scope.userId)
       .sort((left, right) => right.createdAtDevice.localeCompare(left.createdAtDevice) || right.eventId.localeCompare(left.eventId));
     const pendingOutboxCount = outboxEvents.filter((event) => event.status !== "SYNCED").length;
-    return { terminal: actualTerminal, activeDraft, suspendedTickets, catalogue, pendingOutboxCount, outboxEvents };
+    const sessions = (await getAllByIndex<PosOfflineCashSession>(stores[POS_OFFLINE_STORES.sessions], "scopeKey", currentScopeKey))
+      .map((session) => normalizePosOfflineCashSession(session, scope))
+      .sort((left, right) => right.openedAtDevice.localeCompare(left.openedAtDevice));
+    const cashSession = sessions.find((session) => session.status === "OPEN") ?? sessions[0] ?? null;
+    const cashSessionSummary = cashSession?.closeSummary ?? (cashSession
+      ? await getPosOfflineCashSessionSummary(scopedTickets, stores[POS_OFFLINE_STORES.ticketLines], cashSession.id)
+      : null);
+    return { terminal: actualTerminal, activeDraft, suspendedTickets, catalogue, pendingOutboxCount, outboxEvents, cashSession, cashSessionSummary };
   });
 }
 
@@ -566,7 +677,11 @@ async function getPosOfflineCatalogueInTransaction(stores: Record<string, IDBObj
   })).sort((left, right) => left.name.localeCompare(right.name, "fr"));
 }
 
-export async function savePosOfflineActiveDraft(scope: PosOfflineScope, draft: CommercePosDraft): Promise<void> {
+export async function savePosOfflineActiveDraft(
+  scope: PosOfflineScope,
+  draft: CommercePosDraft,
+  options?: { allowCreateAfterClosed?: boolean },
+): Promise<void> {
   await inTransaction([
     POS_OFFLINE_STORES.terminal,
     POS_OFFLINE_STORES.sessions,
@@ -580,7 +695,7 @@ export async function savePosOfflineActiveDraft(scope: PosOfflineScope, draft: C
       await deleteTicketLines(stores[POS_OFFLINE_STORES.ticketLines], ticket.id);
       await requestResult(tickets.delete(ticket.id));
     }));
-    await saveTicketDraft(stores, scope, draft, "ACTIVE");
+    await saveTicketDraft(stores, scope, draft, "ACTIVE", null, null, options?.allowCreateAfterClosed);
   });
 }
 
@@ -714,6 +829,103 @@ export async function recordPosOfflineCashSale(scope: PosOfflineScope, draft: Co
   });
 }
 
+export type ClosePosOfflineCashSessionInput = {
+  countedCash: number;
+  note?: string | null;
+};
+
+export async function closePosOfflineCashSession(
+  scope: PosOfflineScope,
+  input: ClosePosOfflineCashSessionInput,
+): Promise<{ session: PosOfflineCashSession; summary: PosOfflineCashSessionClosePayload; eventId: string }> {
+  if (!Number.isFinite(input.countedCash) || input.countedCash < 0) {
+    throw new Error("Le montant d'espèces comptées est invalide.");
+  }
+  const note = input.note?.trim() || null;
+  if (note && note.length > 1000) throw new Error("La note d'écart est trop longue.");
+
+  return inTransaction([
+    POS_OFFLINE_STORES.terminal,
+    POS_OFFLINE_STORES.sessions,
+    POS_OFFLINE_STORES.tickets,
+    POS_OFFLINE_STORES.ticketLines,
+    POS_OFFLINE_STORES.suspendedTickets,
+    POS_OFFLINE_STORES.outbox,
+    POS_OFFLINE_STORES.syncState,
+  ], "readwrite", async (stores) => {
+    const terminal = await getOrCreateTerminalInTransaction(stores[POS_OFFLINE_STORES.terminal]);
+    const sessions = (await getAllByIndex<PosOfflineCashSession>(stores[POS_OFFLINE_STORES.sessions], "scopeKey", scopeKey(scope)))
+      .map((session) => normalizePosOfflineCashSession(session, scope))
+      .sort((left, right) => right.openedAtDevice.localeCompare(left.openedAtDevice));
+    const current = sessions.find((session) => session.status === "OPEN");
+    if (!current) {
+      const closed = sessions[0];
+      if (closed?.closeSummary && closed.closingEventId) {
+        return { session: closed, summary: closed.closeSummary, eventId: closed.closingEventId };
+      }
+      throw new Error("Aucune session de caisse ouverte n'est disponible à clôturer.");
+    }
+    if (current.terminalId !== terminal.terminalId) throw new Error("Cette session n'appartient pas à ce poste de caisse.");
+
+    const tickets = await getAllByIndex<PosOfflineTicketRecord>(stores[POS_OFFLINE_STORES.tickets], "scopeKey", scopeKey(scope));
+    const unfinishedTickets = tickets.filter((ticket) => ticket.cashSessionId === current.id && (ticket.status === "ACTIVE" || ticket.status === "SUSPENDED"));
+    for (const ticket of unfinishedTickets) {
+      const lines = await getAllByIndex<PosOfflineTicketLineRecord>(stores[POS_OFFLINE_STORES.ticketLines], "ticketId", ticket.id);
+      if (lines.length) throw new Error("Terminez, suspendez ailleurs ou abandonnez le ticket en cours avant de clôturer la caisse.");
+      await deleteTicketLines(stores[POS_OFFLINE_STORES.ticketLines], ticket.id);
+      await requestResult(stores[POS_OFFLINE_STORES.tickets].delete(ticket.id));
+      if (ticket.suspendedTicketId) await requestResult(stores[POS_OFFLINE_STORES.suspendedTickets].delete(ticket.suspendedTicketId));
+    }
+
+    const totals = await getPosOfflineCashSessionSummary(tickets, stores[POS_OFFLINE_STORES.ticketLines], current.id);
+    const closedAtDevice = now();
+    const summary: PosOfflineCashSessionClosePayload = {
+      ...totals,
+      openedAtDevice: current.openedAtDevice,
+      closedAtDevice,
+      countedCash: input.countedCash,
+      difference: input.countedCash - totals.theoreticalCash,
+      note,
+    };
+    const eventId = createCommercePosId("cash-close");
+    const event: PosOfflineCashSessionCloseOutboxEvent = {
+      eventId,
+      deviceId: terminal.terminalId,
+      terminalId: terminal.terminalId,
+      locationId: scope.locationId,
+      userId: scope.userId,
+      cashSessionId: current.id,
+      entityType: "CASH_SESSION",
+      entityId: current.id,
+      operation: "CASH_SESSION_CLOSE",
+      payload: summary,
+      createdAtDevice: closedAtDevice,
+      status: "PENDING",
+      attemptCount: 0,
+      lastAttemptAt: null,
+      lastError: null,
+      syncedAt: null,
+    };
+    assertNoPosOfflineSecret(event);
+    await requestResult(stores[POS_OFFLINE_STORES.outbox].put(event));
+    const closedSession: PosOfflineCashSession = {
+      ...current,
+      status: "CLOSED_LOCAL",
+      closedAtDevice,
+      closingEventId: eventId,
+      closeSummary: summary,
+      lastSyncError: null,
+    };
+    await requestResult(stores[POS_OFFLINE_STORES.sessions].put(closedSession));
+    await requestResult(stores[POS_OFFLINE_STORES.syncState].put({
+      scopeKey: scopeKey(scope),
+      networkHint: "OFFLINE",
+      updatedAtDevice: closedAtDevice,
+    } satisfies PosOfflineSyncStateRecord));
+    return { session: closedSession, summary, eventId };
+  });
+}
+
 export async function updatePosOfflineNetworkHint(scope: PosOfflineScope, networkHint: PosOfflineSyncStateRecord["networkHint"]): Promise<void> {
   await inTransaction([POS_OFFLINE_STORES.syncState], "readwrite", async (stores) => {
     await requestResult(stores[POS_OFFLINE_STORES.syncState].put({ scopeKey: scopeKey(scope), networkHint, updatedAtDevice: now() } satisfies PosOfflineSyncStateRecord));
@@ -773,11 +985,20 @@ export async function markPosOfflineOutboxFailed(
   error: string,
   status: Extract<PosOfflineOutboxStatus, "FAILED" | "CONFLICT"> = "FAILED",
 ): Promise<void> {
-  await inTransaction([POS_OFFLINE_STORES.outbox], "readwrite", async (stores) => {
+  await inTransaction([POS_OFFLINE_STORES.outbox, POS_OFFLINE_STORES.sessions], "readwrite", async (stores) => {
     const outbox = stores[POS_OFFLINE_STORES.outbox];
     const event = await requestResult<PosOfflineOutboxEvent | undefined>(outbox.get(eventId));
     if (!event || event.locationId !== scope.locationId || event.userId !== scope.userId) return;
-    await requestResult(outbox.put({ ...event, status, lastError: error.slice(0, 280) } satisfies PosOfflineOutboxEvent));
+    const nextError = error.slice(0, 280);
+    await requestResult(outbox.put({ ...event, status, lastError: nextError } satisfies PosOfflineOutboxEvent));
+    if (event.operation === "CASH_SESSION_CLOSE") {
+      const session = await requestResult<PosOfflineCashSession | undefined>(stores[POS_OFFLINE_STORES.sessions].get(event.cashSessionId));
+      if (session) await requestResult(stores[POS_OFFLINE_STORES.sessions].put({
+        ...normalizePosOfflineCashSession(session, scope),
+        status: "SYNC_PENDING",
+        lastSyncError: nextError,
+      }));
+    }
   });
 }
 
@@ -814,6 +1035,7 @@ export async function markPosOfflineOutboxSynced(
     const outbox = stores[POS_OFFLINE_STORES.outbox];
     const event = await requestResult<PosOfflineOutboxEvent | undefined>(outbox.get(eventId));
     if (!event || event.locationId !== scope.locationId || event.userId !== scope.userId || event.status === "SYNCED") return;
+    if (!isPosOfflineSaleEvent(event)) throw new Error("Cet événement n'est pas une vente hors connexion.");
 
     const reconciledAt = now();
     if (!event.stockReconciledAt) {
@@ -844,6 +1066,52 @@ export async function markPosOfflineOutboxSynced(
       serverAmount: receipt.amount ?? undefined,
       stockReconciledAt: event.stockReconciledAt ?? reconciledAt,
     } satisfies PosOfflineOutboxEvent));
+  });
+}
+
+export type PosOfflineCashSessionCloseServerReceipt = {
+  closureId: string | null;
+  status: "SYNCED" | "REVIEW_REQUIRED" | "PENDING_SALES";
+  errorCode: string | null;
+  errorMessage: string | null;
+};
+
+export async function markPosOfflineCashSessionClosePending(scope: PosOfflineScope, eventId: string, reason: string): Promise<void> {
+  await inTransaction([POS_OFFLINE_STORES.outbox, POS_OFFLINE_STORES.sessions], "readwrite", async (stores) => {
+    const event = await requestResult<PosOfflineOutboxEvent | undefined>(stores[POS_OFFLINE_STORES.outbox].get(eventId));
+    if (!event || event.locationId !== scope.locationId || event.userId !== scope.userId || event.operation !== "CASH_SESSION_CLOSE") return;
+    await requestResult(stores[POS_OFFLINE_STORES.outbox].put({ ...event, status: "PENDING", lastError: reason.slice(0, 280) }));
+    const session = await requestResult<PosOfflineCashSession | undefined>(stores[POS_OFFLINE_STORES.sessions].get(event.cashSessionId));
+    if (session) await requestResult(stores[POS_OFFLINE_STORES.sessions].put({ ...normalizePosOfflineCashSession(session, scope), status: "SYNC_PENDING", lastSyncError: reason.slice(0, 280) }));
+  });
+}
+
+export async function markPosOfflineCashSessionCloseSynced(
+  scope: PosOfflineScope,
+  eventId: string,
+  receipt: PosOfflineCashSessionCloseServerReceipt,
+): Promise<void> {
+  if (!receipt.closureId || (receipt.status !== "SYNCED" && receipt.status !== "REVIEW_REQUIRED")) {
+    throw new Error("Le reçu serveur ne permet pas de confirmer la clôture de caisse.");
+  }
+  await inTransaction([POS_OFFLINE_STORES.outbox, POS_OFFLINE_STORES.sessions], "readwrite", async (stores) => {
+    const event = await requestResult<PosOfflineOutboxEvent | undefined>(stores[POS_OFFLINE_STORES.outbox].get(eventId));
+    if (!event || event.locationId !== scope.locationId || event.userId !== scope.userId || event.operation !== "CASH_SESSION_CLOSE") return;
+    const syncedAt = now();
+    await requestResult(stores[POS_OFFLINE_STORES.outbox].put({
+      ...event,
+      status: "SYNCED",
+      syncedAt,
+      lastError: receipt.errorMessage,
+      serverClosureId: receipt.closureId,
+      serverStatus: receipt.status,
+    }));
+    const session = await requestResult<PosOfflineCashSession | undefined>(stores[POS_OFFLINE_STORES.sessions].get(event.cashSessionId));
+    if (session) await requestResult(stores[POS_OFFLINE_STORES.sessions].put({
+      ...normalizePosOfflineCashSession(session, scope),
+      status: "SYNCED",
+      lastSyncError: receipt.errorMessage,
+    }));
   });
 }
 

@@ -7,6 +7,7 @@ import {
   assertNoPosOfflineSecret,
   cachePosOfflineCatalogue,
   cachePosOfflineLocations,
+  closePosOfflineCashSession,
   getCachedPosOfflineLocations,
   getPendingPosOfflineOutboxCount,
   getPosOfflineCatalogue,
@@ -20,6 +21,7 @@ import {
   suspendPosOfflineDraft,
   type PosOfflineScope,
 } from "../src/lib/commerce-pos-offline";
+import { synchronizeCommercePosOfflineCashSessionClosures, synchronizeCommercePosOfflineSales } from "../src/lib/commerce-pos-sync";
 import { createCommercePosDraft, createCommercePosId } from "../src/lib/commerce-pos-session";
 
 Object.defineProperty(globalThis, "indexedDB", { configurable: true, value: indexedDB });
@@ -126,6 +128,64 @@ async function run(): Promise<void> {
   assert.equal(state.activeDraft?.lines.length, 0, "A blank active ticket must be ready after an offline sale.");
   assert.equal(state.pendingOutboxCount, 1, "The outbox must survive a reread after offline sale.");
 
+  const closed = await closePosOfflineCashSession(scope, { countedCash: 29_000, note: "Écart de caisse test" });
+  assert.equal(closed.summary.ticketCount, 1, "A close must summarize the paid ticket in its session.");
+  assert.equal(closed.summary.articleTotal, 15_000, "Only article lines belong to the article summary.");
+  assert.equal(closed.summary.serviceTotal, 15_000, "Only service lines belong to the service summary.");
+  assert.equal(closed.summary.theoreticalCash, 30_000, "The theoretical cash must be the accepted ticket total, not cash received.");
+  assert.equal(closed.summary.difference, -1_000, "The declared difference must remain visible.");
+
+  const closeRetry = await closePosOfflineCashSession(scope, { countedCash: 29_000, note: "Écart de caisse test" });
+  assert.equal(closeRetry.eventId, closed.eventId, "A local close retry must preserve its stable outbox event.");
+  state = await getPosOfflineState(scope);
+  assert.equal(state.cashSession?.status, "CLOSED_LOCAL", "The session must remain closed after a browser restart simulation.");
+  assert.equal(state.cashSessionSummary?.difference, -1_000, "The persisted close summary must retain the discrepancy.");
+  assert.equal(state.activeDraft, null, "A closed session must not reopen an active ticket.");
+  assert.equal(state.pendingOutboxCount, 2, "The durable outbox must contain one sale and one close.");
+
+  await assert.rejects(
+    () => savePosOfflineActiveDraft(scope, createCommercePosDraft(scope.locationId, scope.userId)),
+    /clôturée/i,
+    "A closed session must reject any new ticket until a new session is started.",
+  );
+
+  let prematureCloseTransportCalled = false;
+  const pendingCloseSync = await synchronizeCommercePosOfflineCashSessionClosures(scope, async () => {
+    prematureCloseTransportCalled = true;
+    throw new Error("A close must never reach the server before its sales.");
+  });
+  assert.equal(prematureCloseTransportCalled, false, "The close transport must wait for its pending sale.");
+  assert.equal(pendingCloseSync.synced, 0, "A close with unsynchronized sales must remain pending.");
+  state = await getPosOfflineState(scope);
+  assert.equal(state.cashSession?.status, "SYNC_PENDING", "The closed session must visibly wait for its sales.");
+
+  const saleSync = await synchronizeCommercePosOfflineSales(scope, async (event) => ({
+    receiptId: `receipt-${event.eventId}`,
+    status: "PROCESSED",
+    saleId: "00000000-0000-0000-0000-000000000001",
+    saleNumber: "VTE-TEST",
+    invoiceNumber: "FAC-TEST",
+    paymentId: "00000000-0000-0000-0000-000000000002",
+    operationId: "00000000-0000-0000-0000-000000000003",
+    amount: 30_000,
+    errorCode: null,
+    errorMessage: null,
+  }));
+  assert.equal(saleSync.synced, 1, "The offline sale must synchronize before its close.");
+
+  let closeTransportCalled = false;
+  const closeSync = await synchronizeCommercePosOfflineCashSessionClosures(scope, async (event) => {
+    closeTransportCalled = true;
+    assert.equal(event.eventId, closed.eventId, "The close transport must receive the durable close event.");
+    return { closureId: "00000000-0000-0000-0000-000000000004", status: "SYNCED", errorCode: null, errorMessage: null };
+  });
+  assert.equal(closeTransportCalled, true, "The close must run only after all of its sales are synchronized.");
+  assert.equal(closeSync.synced, 1, "The close must be acknowledged exactly once.");
+  state = await getPosOfflineState(scope);
+  assert.equal(state.cashSession?.status, "SYNCED", "The closed session must be marked synchronized only after its tickets.");
+
+  const nextSessionDraft = createCommercePosDraft(scope.locationId, scope.userId);
+  await savePosOfflineActiveDraft(scope, nextSessionDraft, { allowCreateAfterClosed: true });
   const anotherSuspended = {
     id: createCommercePosId("suspended"),
     suspendedAt: new Date().toISOString(),

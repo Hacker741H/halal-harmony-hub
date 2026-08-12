@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   cachePosOfflineCatalogue,
+  closePosOfflineCashSession,
   getPosOfflineCatalogue,
   getPosOfflineState,
   posOfflineStorageAvailable,
@@ -13,10 +14,12 @@ import {
   updatePosOfflineNetworkHint,
   type PosOfflineCatalogueInput,
   type PosOfflineCatalogueItem,
+  type PosOfflineCashSession,
+  type PosOfflineCashSessionSummary,
   type PosOfflineOutboxEvent,
   type PosOfflineScope,
 } from "@/lib/commerce-pos-offline";
-import { synchronizeCommercePosOfflineSales, type CommercePosSyncProgress } from "@/lib/commerce-pos-sync";
+import { synchronizeCommercePosOfflineCashSessionClosures, synchronizeCommercePosOfflineSales, type CommercePosSyncProgress } from "@/lib/commerce-pos-sync";
 import {
   commercePosDraftHasContent,
   commercePosDraftStorageKey,
@@ -65,6 +68,8 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
   const [catalogueItems, setCatalogueItems] = useState<PosOfflineCatalogueItem[]>([]);
   const [pendingOutboxCount, setPendingOutboxCount] = useState(0);
   const [outboxEvents, setOutboxEvents] = useState<PosOfflineOutboxEvent[]>([]);
+  const [cashSession, setCashSession] = useState<PosOfflineCashSession | null>(null);
+  const [cashSessionSummary, setCashSessionSummary] = useState<PosOfflineCashSessionSummary | null>(null);
   const [syncProgress, setSyncProgress] = useState<CommercePosSyncProgress | null>(null);
   const [syncRevision, setSyncRevision] = useState(0);
   const [storageMode, setStorageMode] = useState<CommercePosStorageMode>("UNAVAILABLE");
@@ -79,6 +84,8 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
     setCatalogueItems(state.catalogue);
     setPendingOutboxCount(state.pendingOutboxCount);
     setOutboxEvents(state.outboxEvents);
+    setCashSession(state.cashSession);
+    setCashSessionSummary(state.cashSessionSummary);
     return state;
   }, []);
 
@@ -86,9 +93,10 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
     if (!scope || storageMode !== "INDEXEDDB" || synchronizationInFlightRef.current || getInitialNetworkStatus() !== "ONLINE") return;
     synchronizationInFlightRef.current = true;
     try {
-      const result = await synchronizeCommercePosOfflineSales(scope, undefined, (progress) => setSyncProgress(progress));
+      const sales = await synchronizeCommercePosOfflineSales(scope, undefined, (progress) => setSyncProgress(progress));
+      const closures = await synchronizeCommercePosOfflineCashSessionClosures(scope, undefined, (progress) => setSyncProgress(progress));
       await refreshOfflineState(scope);
-      if (result.synced > 0) setSyncRevision((revision) => revision + 1);
+      if (sales.synced > 0 || closures.synced > 0) setSyncRevision((revision) => revision + 1);
     } catch (error) {
       // A failed auto-sync must leave the durable outbox untouched. Individual
       // retryable entries are recorded by the sync engine.
@@ -111,6 +119,8 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
       setCatalogueItems([]);
       setPendingOutboxCount(0);
       setOutboxEvents([]);
+      setCashSession(null);
+      setCashSessionSummary(null);
       setStorageMode("UNAVAILABLE");
       return () => { cancelled = true; };
     }
@@ -122,7 +132,7 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
           let state = await refreshOfflineState(scope);
           const legacyDraft = storage ? loadCommercePosDraft(storage, scope.locationId, scope.userId) : null;
           const legacySuspended = storage ? loadCommercePosSuspendedTickets(storage, scope.locationId, scope.userId) : [];
-          const hasStoredOfflineState = Boolean(state.activeDraft || state.suspendedTickets.length);
+          const hasStoredOfflineState = Boolean(state.activeDraft || state.suspendedTickets.length || state.cashSession);
 
           if (!hasStoredOfflineState) {
             const nextDraft = legacyDraft ?? createCommercePosDraft(scope.locationId, scope.userId);
@@ -138,17 +148,19 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
           }
 
           if (cancelled) return;
-          const restoredDraft = state.activeDraft ?? createCommercePosDraft(scope.locationId, scope.userId);
-          if (!state.activeDraft) await savePosOfflineActiveDraft(scope, restoredDraft);
-          setDraft(restoredDraft.checkoutState === "PROCESSING"
+          const restoredDraft = state.activeDraft ?? (state.cashSession?.status === "OPEN" ? createCommercePosDraft(scope.locationId, scope.userId) : null);
+          if (restoredDraft && !state.activeDraft) await savePosOfflineActiveDraft(scope, restoredDraft);
+          setDraft(restoredDraft?.checkoutState === "PROCESSING"
             ? { ...restoredDraft, checkoutState: "RECONCILIATION_REQUIRED" }
             : restoredDraft);
           setSuspendedTickets(state.suspendedTickets);
           setCatalogueItems(state.catalogue);
           setPendingOutboxCount(state.pendingOutboxCount);
           setOutboxEvents(state.outboxEvents);
+          setCashSession(state.cashSession);
+          setCashSessionSummary(state.cashSessionSummary);
           setStorageMode("INDEXEDDB");
-          setIsRestored(Boolean((state.activeDraft && commercePosDraftHasContent(state.activeDraft)) || state.suspendedTickets.length));
+          setIsRestored(Boolean((state.activeDraft && commercePosDraftHasContent(state.activeDraft)) || state.suspendedTickets.length || state.cashSession?.status !== "OPEN"));
           setIsReady(true);
           return;
         } catch (error) {
@@ -168,6 +180,8 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
         setCatalogueItems([]);
         setPendingOutboxCount(0);
         setOutboxEvents([]);
+        setCashSession(null);
+        setCashSessionSummary(null);
         setIsReady(true);
         return;
       }
@@ -181,6 +195,8 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
       setCatalogueItems([]);
       setPendingOutboxCount(0);
       setOutboxEvents([]);
+      setCashSession(null);
+      setCashSessionSummary(null);
       setStorageMode("LOCAL_STORAGE");
       setIsRestored(Boolean(normalizedRestored && commercePosDraftHasContent(normalizedRestored)));
       setIsReady(true);
@@ -231,13 +247,13 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
 
   useEffect(() => {
     const storage = getBrowserStorage();
-    if (!scope || !draft || draft.locationId !== scope.locationId || draft.userId !== scope.userId || !isReady) return;
+    if (!scope || !draft || cashSession?.status !== "OPEN" || draft.locationId !== scope.locationId || draft.userId !== scope.userId || !isReady) return;
     if (storageMode === "INDEXEDDB") {
       void savePosOfflineActiveDraft(scope, draft).catch((error: unknown) => console.warn("Le brouillon de caisse n’a pas pu être sauvegardé localement.", error));
       return;
     }
     if (storageMode === "LOCAL_STORAGE" && storage) saveCommercePosDraft(storage, draft);
-  }, [draft, isReady, scope, storageMode]);
+  }, [cashSession?.status, draft, isReady, scope, storageMode]);
 
   useEffect(() => {
     const storage = getBrowserStorage();
@@ -248,14 +264,15 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
   }, [isReady, scope, storageMode, suspendedTickets]);
 
   const updateDraft = useCallback((updater: (current: CommercePosDraft) => CommercePosDraft) => {
+    if (cashSession?.status !== "OPEN") return;
     setDraft((current) => {
       if (!current) return current;
       return { ...updater(current), updatedAt: new Date().toISOString() };
     });
-  }, []);
+  }, [cashSession?.status]);
 
   const clearDraft = useCallback(() => {
-    if (!scope) return;
+    if (!scope || cashSession?.status !== "OPEN") return;
     const nextDraft = createCommercePosDraft(scope.locationId, scope.userId);
     setDraft(nextDraft);
     setIsRestored(false);
@@ -265,10 +282,10 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
       const storage = getBrowserStorage();
       if (storage) removeCommercePosDraft(storage, scope.locationId, scope.userId);
     }
-  }, [scope, storageMode]);
+  }, [cashSession?.status, scope, storageMode]);
 
   const suspendDraft = useCallback(() => {
-    if (!scope || !draft || !commercePosDraftHasContent(draft) || draft.checkoutState !== "READY") return false;
+    if (!scope || cashSession?.status !== "OPEN" || !draft || !commercePosDraftHasContent(draft) || draft.checkoutState !== "READY") return false;
     const suspendedAt = new Date().toISOString();
     const ticket: CommercePosSuspendedTicket = {
       id: createCommercePosId("suspended"),
@@ -286,11 +303,11 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
       })().catch((error: unknown) => console.warn("Le ticket suspendu n’a pas pu être sauvegardé.", error));
     }
     return true;
-  }, [draft, scope, storageMode]);
+  }, [cashSession?.status, draft, scope, storageMode]);
 
   const resumeSuspendedTicket = useCallback((ticketId: string) => {
     const ticket = suspendedTickets.find((entry) => entry.id === ticketId);
-    if (!ticket || !scope) return false;
+    if (!ticket || !scope || cashSession?.status !== "OPEN") return false;
     const nextDraft = { ...ticket.draft, updatedAt: new Date().toISOString() };
     setDraft(nextDraft);
     setSuspendedTickets((tickets) => tickets.filter((entry) => entry.id !== ticketId));
@@ -301,7 +318,7 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
         .catch((error: unknown) => console.warn("Le ticket suspendu n’a pas pu être repris localement.", error));
     }
     return true;
-  }, [scope, storageMode, suspendedTickets]);
+  }, [cashSession?.status, scope, storageMode, suspendedTickets]);
 
   const removeSuspendedTicket = useCallback((ticketId: string) => {
     if (!scope) return;
@@ -312,7 +329,7 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
   }, [scope, storageMode]);
 
   const completeOfflineCashSale = useCallback(async (): Promise<string> => {
-    if (!scope || !draft || storageMode !== "INDEXEDDB") throw new Error("La vente hors connexion requiert le stockage local de caisse.");
+    if (!scope || cashSession?.status !== "OPEN" || !draft || storageMode !== "INDEXEDDB") throw new Error("La session de caisse doit être ouverte pour enregistrer une vente hors connexion.");
     const result = await recordPosOfflineCashSale(scope, draft);
     setDraft(result.nextDraft);
     setIsRestored(false);
@@ -320,7 +337,26 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
     await refreshOfflineState(scope);
     if (getInitialNetworkStatus() === "ONLINE") void synchronizeOutbox();
     return result.eventId;
-  }, [draft, refreshOfflineState, scope, storageMode, synchronizeOutbox]);
+  }, [cashSession?.status, draft, refreshOfflineState, scope, storageMode, synchronizeOutbox]);
+
+  const closeCashSession = useCallback(async (input: { countedCash: number; note?: string | null }) => {
+    if (!scope || storageMode !== "INDEXEDDB") throw new Error("La clôture hors connexion requiert le stockage local de caisse.");
+    const result = await closePosOfflineCashSession(scope, input);
+    setDraft(null);
+    setIsRestored(true);
+    await refreshOfflineState(scope);
+    if (getInitialNetworkStatus() === "ONLINE") void synchronizeOutbox();
+    return result;
+  }, [refreshOfflineState, scope, storageMode, synchronizeOutbox]);
+
+  const startNewCashSession = useCallback(async () => {
+    if (!scope || storageMode !== "INDEXEDDB") throw new Error("La nouvelle session requiert le stockage local de caisse.");
+    const nextDraft = createCommercePosDraft(scope.locationId, scope.userId);
+    await savePosOfflineActiveDraft(scope, nextDraft, { allowCreateAfterClosed: true });
+    setDraft(nextDraft);
+    setIsRestored(false);
+    await refreshOfflineState(scope);
+  }, [refreshOfflineState, scope, storageMode]);
 
   const reportNetworkFailure = useCallback(() => {
     setNetworkStatus("UNAVAILABLE");
@@ -331,13 +367,16 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
 
   return {
     draft,
-    isReady: isReady && Boolean(draft && scope && draft.locationId === scope.locationId && draft.userId === scope.userId),
+    isReady: isReady && Boolean(scope),
     isRestored,
     storageMode,
     networkStatus,
     catalogueItems,
     pendingOutboxCount,
     outboxEvents,
+    cashSession,
+    cashSessionSummary,
+    isCashSessionOpen: cashSession?.status === "OPEN",
     syncProgress,
     syncRevision,
     canCompleteOfflineCashSale: storageMode === "INDEXEDDB" && networkStatus !== "ONLINE",
@@ -348,6 +387,8 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
     resumeSuspendedTicket,
     removeSuspendedTicket,
     completeOfflineCashSale,
+    closeCashSession,
+    startNewCashSession,
     reportNetworkFailure,
   };
 }

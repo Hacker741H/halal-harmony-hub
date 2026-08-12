@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, Banknote, BarChart3, CheckCircle2, CircleDollarSign, CloudOff, CloudUpload, CreditCard, ListTodo, Minus, Package, PackagePlus, Pencil, Plus, ReceiptText, Search, ShoppingCart, Smartphone, Store, TrendingUp, TriangleAlert, Trash2, UserPlus, UserRoundX, WalletCards, Warehouse, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
+import { PosCashSessionClose } from "@/components/commerce/pos-cash-session-close";
 import { ClientSelect } from "@/components/selects/entity-selects";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -432,6 +433,17 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     if (action.type === "CHANGE_LOCATION") setLocationId(action.locationId);
     if (action.type === "RETURN_TO_MANAGEMENT") onBackToManagement?.();
   }, [onBackToManagement, pendingDraftAction, posSession]);
+  const closeCashSession = async (input: { countedCash: number; note: string | null }) => {
+    const result = await posSession.closeCashSession(input);
+    setMobileCartOpen(false);
+    toast.success(`Cl\u00f4ture locale enregistr\u00e9e : ${money(result.summary.countedCash)} compt\u00e9s. La synchronisation suivra les ventes de cette session.`);
+  };
+
+  const startNewCashSession = async () => {
+    await posSession.startNewCashSession();
+    toast.success("Nouvelle session de caisse ouverte.");
+  };
+
   const requestLocationChange = (nextLocationId: string) => {
     if (nextLocationId === selectedLocationId) return;
     if (hasDraftInProgress) {
@@ -658,6 +670,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
   const canCheckout = total > 0
     && stockConflicts.length === 0
     && checkoutState === "READY"
+    && posSession.isCashSessionOpen
     && (posSession.networkStatus === "ONLINE" ? Boolean(primaryCashDrawerWallet) : posSession.canCompleteOfflineCashSale && method === "CASH");
 
   if (locationsQuery.isPending && !availableLocations.length) return <div className="grid gap-4 lg:grid-cols-3"><Skeleton className="h-72 lg:col-span-2" /><Skeleton className="h-72" /></div>;
@@ -682,6 +695,13 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-background/65">Total à encaisser</p>
             <p className="mt-1 text-2xl font-bold tracking-tight tabular-nums">{money(total)}</p>
           </div>
+          <PosCashSessionClose
+            session={posSession.cashSession}
+            summary={posSession.cashSessionSummary}
+            disabled={hasDraftInProgress || posSession.suspendedTickets.length > 0}
+            onClose={closeCashSession}
+            onStartNew={startNewCashSession}
+          />
         </CardContent>
       </Card>
 

@@ -89,12 +89,42 @@ const offlineSaleSyncReceiptSchema = z.object({
   errorMessage: z.string().nullable(),
 });
 
+const offlineCashSessionCloseSchema = z.object({
+  cashSessionId: z.string().trim().regex(/^[A-Za-z0-9_-]{8,160}$/),
+  terminalId: z.string().trim().regex(/^[A-Za-z0-9_-]{8,160}$/),
+  businessLocationId: z.string().uuid(),
+  cashierUserId: z.string().uuid(),
+  eventId: z.string().trim().regex(/^[A-Za-z0-9_-]{8,160}$/),
+  payload: z.object({
+    openedAtDevice: z.string().datetime({ offset: true }),
+    closedAtDevice: z.string().datetime({ offset: true }),
+    ticketCount: z.number().int().nonnegative(),
+    articleTotal: z.number().finite().nonnegative(),
+    serviceTotal: z.number().finite().nonnegative(),
+    cashTotal: z.number().finite().nonnegative(),
+    otherPaymentTotal: z.number().finite().nonnegative(),
+    theoreticalCash: z.number().finite().nonnegative(),
+    countedCash: z.number().finite().nonnegative(),
+    difference: z.number().finite(),
+    note: z.string().trim().max(1000).nullable(),
+  }).strict(),
+}).strict();
+
+const offlineCashSessionCloseReceiptSchema = z.object({
+  closureId: z.string().uuid().nullable(),
+  status: z.enum(["SYNCED", "REVIEW_REQUIRED", "PENDING_SALES"]),
+  errorCode: z.string().nullable(),
+  errorMessage: z.string().nullable(),
+});
+
 export type CommercePosWorkspace = z.infer<typeof workspaceSchema>;
 export type CommerceManagementDashboard = z.infer<typeof commerceManagementDashboardSchema>;
 export type CommercePosLocation = z.infer<typeof locationSchema>;
 export type CommerceCashSaleInput = z.infer<typeof saleInputSchema>;
 export type CommerceOfflineSaleSyncInput = z.infer<typeof offlineSaleSyncSchema>;
 export type CommerceOfflineSaleSyncReceipt = z.infer<typeof offlineSaleSyncReceiptSchema>;
+export type CommerceOfflineCashSessionCloseInput = z.infer<typeof offlineCashSessionCloseSchema>;
+export type CommerceOfflineCashSessionCloseReceipt = z.infer<typeof offlineCashSessionCloseReceiptSchema>;
 const setupOptionsSchema = z.object({ wallets: z.array(z.object({ id: z.string().uuid(), name: z.string() })), users: z.array(z.object({ id: z.string().uuid(), name: z.string() })) });
 const commerceLocationCodeSchema = z.string().trim().transform((value) => value.toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "")).pipe(z.string().regex(/^[A-Z][A-Z0-9_]{1,39}$/));
 const setupLocationSchema = z.object({ name: z.string().trim().min(2).max(120), code: commerceLocationCodeSchema, walletId: z.string().uuid(), userId: z.string().uuid().nullable() }).strict();
@@ -221,6 +251,37 @@ export const syncCommercePosOfflineSale = createServerFn({ method: "POST" })
     });
     if (error) throw error;
     return offlineSaleSyncReceiptSchema.parse(result);
+  });
+
+/** POS-04C bridge: stores a physical cash count only after POS-04B receipts exist. */
+export const syncCommercePosOfflineCashSessionClose = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(offlineCashSessionCloseSchema)
+  .handler(async ({ context, data }): Promise<CommerceOfflineCashSessionCloseReceipt> => {
+    const { data: result, error } = await context.supabase.rpc("sync_commerce_pos_cash_session_close", {
+      p_event: {
+        cash_session_id: data.cashSessionId,
+        terminal_id: data.terminalId,
+        business_location_id: data.businessLocationId,
+        cashier_user_id: data.cashierUserId,
+        event_id: data.eventId,
+        payload: {
+          opened_at_device: data.payload.openedAtDevice,
+          closed_at_device: data.payload.closedAtDevice,
+          ticket_count: data.payload.ticketCount,
+          article_total: data.payload.articleTotal,
+          service_total: data.payload.serviceTotal,
+          cash_total: data.payload.cashTotal,
+          other_payment_total: data.payload.otherPaymentTotal,
+          theoretical_cash: data.payload.theoreticalCash,
+          counted_cash: data.payload.countedCash,
+          difference: data.payload.difference,
+          note: data.payload.note,
+        },
+      },
+    });
+    if (error) throw error;
+    return offlineCashSessionCloseReceiptSchema.parse(result);
   });
 
 export const getCommerceSetupOptions = createServerFn({ method: "GET" })

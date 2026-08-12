@@ -5,12 +5,16 @@ import {
   markPosOfflineOutboxFailed,
   markPosOfflineOutboxSynced,
   markPosOfflineOutboxSyncing,
+  markPosOfflineCashSessionClosePending,
+  markPosOfflineCashSessionCloseSynced,
   recoverPosOfflineSyncingEvents,
   type PosOfflineOutboxEvent,
   type PosOfflineScope,
   type PosOfflineServerReceipt,
+  type PosOfflineCashSessionCloseOutboxEvent,
+  type PosOfflineCashSessionCloseServerReceipt,
 } from "@/lib/commerce-pos-offline";
-import { syncCommercePosOfflineSale } from "@/lib/commerce-pos.functions";
+import { syncCommercePosOfflineCashSessionClose, syncCommercePosOfflineSale } from "@/lib/commerce-pos.functions";
 
 export type CommercePosSyncProgress = {
   total: number;
@@ -25,8 +29,9 @@ export type CommercePosSyncResult = CommercePosSyncProgress & {
 };
 
 export type CommercePosOfflineSyncTransport = (event: PosOfflineOutboxEvent) => Promise<PosOfflineServerReceipt>;
+export type CommercePosOfflineCashSessionCloseSyncTransport = (event: PosOfflineCashSessionCloseOutboxEvent) => Promise<PosOfflineCashSessionCloseServerReceipt>;
 
-function toOfflineSaleRequest(event: PosOfflineOutboxEvent) {
+function toOfflineSaleRequest(event: Extract<PosOfflineOutboxEvent, { operation: "CREATE_CASH_SALE" }>) {
   const total = Number.isFinite(event.payload.total)
     ? event.payload.total
     : event.payload.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
@@ -52,7 +57,35 @@ function toOfflineSaleRequest(event: PosOfflineOutboxEvent) {
 }
 
 export async function sendCommercePosOfflineSale(event: PosOfflineOutboxEvent): Promise<PosOfflineServerReceipt> {
+  if (event.operation !== "CREATE_CASH_SALE") throw new Error("Cet événement n'est pas une vente hors connexion.");
   return syncCommercePosOfflineSale({ data: toOfflineSaleRequest(event) });
+}
+
+function toOfflineCashSessionCloseRequest(event: PosOfflineCashSessionCloseOutboxEvent) {
+  return {
+    cashSessionId: event.cashSessionId,
+    terminalId: event.terminalId,
+    businessLocationId: event.locationId,
+    cashierUserId: event.userId,
+    eventId: event.eventId,
+    payload: {
+      openedAtDevice: event.payload.openedAtDevice,
+      closedAtDevice: event.payload.closedAtDevice,
+      ticketCount: event.payload.ticketCount,
+      articleTotal: event.payload.articleTotal,
+      serviceTotal: event.payload.serviceTotal,
+      cashTotal: event.payload.cashTotal,
+      otherPaymentTotal: event.payload.otherPaymentTotal,
+      theoreticalCash: event.payload.theoreticalCash,
+      countedCash: event.payload.countedCash,
+      difference: event.payload.difference,
+      note: event.payload.note,
+    },
+  };
+}
+
+export async function sendCommercePosOfflineCashSessionClose(event: PosOfflineCashSessionCloseOutboxEvent): Promise<PosOfflineCashSessionCloseServerReceipt> {
+  return syncCommercePosOfflineCashSessionClose({ data: toOfflineCashSessionCloseRequest(event) });
 }
 
 function getErrorDetails(error: unknown): { message: string; permanent: boolean } {
@@ -82,7 +115,7 @@ export async function synchronizeCommercePosOfflineSales(
   await recoverPosOfflineSyncingEvents(scope, staleBefore);
 
   const candidates = (await getPosOfflineOutboxEvents(scope))
-    .filter((event) => canRetryPosOfflineOutboxEvent(event));
+    .filter((event): event is Extract<PosOfflineOutboxEvent, { operation: "CREATE_CASH_SALE" }> => event.operation === "CREATE_CASH_SALE" && canRetryPosOfflineOutboxEvent(event));
   const order = new Set(getPosOfflineOutboxRetryOrder(candidates));
   const events = candidates.filter((event) => order.has(event.eventId));
   const progress: CommercePosSyncProgress = { total: events.length, completed: 0, synced: 0, failed: 0, conflicts: 0 };
@@ -109,5 +142,47 @@ export async function synchronizeCommercePosOfflineSales(
     onProgress?.({ ...progress });
   }
 
+  return { ...progress, attempted: progress.completed };
+}
+
+/**
+ * Session closures are intentionally processed only after every sale belonging
+ * to that session is synced. A pending, failed or conflicting sale keeps the
+ * durable close event waiting; it never pretends the day is complete.
+ */
+export async function synchronizeCommercePosOfflineCashSessionClosures(
+  scope: PosOfflineScope,
+  transport: CommercePosOfflineCashSessionCloseSyncTransport = sendCommercePosOfflineCashSessionClose,
+  onProgress?: (progress: CommercePosSyncProgress) => void,
+): Promise<CommercePosSyncResult> {
+  const events = await getPosOfflineOutboxEvents(scope);
+  const candidates = events.filter((event): event is PosOfflineCashSessionCloseOutboxEvent => event.operation === "CASH_SESSION_CLOSE" && canRetryPosOfflineOutboxEvent(event));
+  const progress: CommercePosSyncProgress = { total: candidates.length, completed: 0, synced: 0, failed: 0, conflicts: 0 };
+  onProgress?.(progress);
+
+  for (const candidate of candidates) {
+    const unresolvedSales = events.some((event) => event.operation === "CREATE_CASH_SALE" && event.cashSessionId === candidate.cashSessionId && event.status !== "SYNCED");
+    if (unresolvedSales) {
+      await markPosOfflineCashSessionClosePending(scope, candidate.eventId, "Clôture en attente : une ou plusieurs ventes de cette session ne sont pas encore synchronisées.");
+      continue;
+    }
+    const event = await markPosOfflineOutboxSyncing(scope, candidate.eventId);
+    if (!event || event.operation !== "CASH_SESSION_CLOSE") continue;
+    try {
+      const receipt = await transport(event);
+      if (receipt.status === "PENDING_SALES") {
+        await markPosOfflineCashSessionClosePending(scope, event.eventId, receipt.errorMessage ?? "Clôture en attente des ventes de cette session.");
+      } else {
+        await markPosOfflineCashSessionCloseSynced(scope, event.eventId, receipt);
+        progress.synced += 1;
+      }
+    } catch (error) {
+      progress.failed += 1;
+      const details = getErrorDetails(error);
+      await markPosOfflineOutboxFailed(scope, event.eventId, `${details.permanent ? "PERMANENT: " : ""}${details.message}`);
+    }
+    progress.completed += 1;
+    onProgress?.({ ...progress });
+  }
   return { ...progress, attempted: progress.completed };
 }
