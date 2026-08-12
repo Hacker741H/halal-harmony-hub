@@ -10,8 +10,11 @@ DECLARE
   v_location_id uuid;
   v_item_id uuid;
   v_token text := txid_current()::text;
+  v_simple_event_id text := 'offline-' || txid_current()::text || '-sale-simple';
   v_event_id text := 'offline-' || txid_current()::text || '-sale-a';
   v_conflict_event_id text := 'offline-' || txid_current()::text || '-sale-conflict';
+  v_simple_event jsonb;
+  v_simple_result jsonb;
   v_event jsonb;
   v_result jsonb;
   v_retry jsonb;
@@ -20,6 +23,10 @@ DECLARE
   v_item_stock numeric(14, 3);
   v_location_stock numeric(14, 3);
   v_finance_count integer;
+  v_sale_count integer;
+  v_invoice_count integer;
+  v_payment_count integer;
+  v_stock_movement_count integer;
 BEGIN
   SELECT user_id INTO v_actor_id
   FROM public.user_roles
@@ -59,10 +66,43 @@ BEGIN
   INSERT INTO public.business_location_wallets(business_location_id, wallet_id, purpose, is_primary, is_active, assigned_by)
   VALUES (v_location_id, v_wallet_id, 'CASH_DRAWER', true, true, v_actor_id);
   INSERT INTO public.inventory_items(sku, nom, categorie, unite, stock_actuel, seuil_alerte)
-  VALUES ('POS4B-' || v_token, 'Article test POS-04B', 'TEST', 'PIECE', 5, 0)
+  VALUES ('POS4B-' || v_token, 'Article test POS-04B', 'TEST', 'PIECE', 7, 0)
   RETURNING id INTO v_item_id;
   INSERT INTO public.business_location_inventory_items(business_location_id, inventory_item_id, quantity, sale_price)
-  VALUES (v_location_id, v_item_id, 5, 5000);
+  VALUES (v_location_id, v_item_id, 7, 5000);
+
+  -- A simple article-only cash sale proves that the recorded cash amount,
+  -- not the amount received before change, is credited once.
+  v_simple_event := jsonb_build_object(
+    'offline_sale_id', v_simple_event_id,
+    'terminal_id', 'terminal-pos04b-' || v_token,
+    'cash_session_id', 'session-pos04b-' || v_token,
+    'business_location_id', v_location_id,
+    'cashier_user_id', v_actor_id,
+    'created_at_device', now() - interval '6 minutes',
+    'payload', jsonb_build_object(
+      'ticket_id', 'ticket-pos04b-simple-' || v_token,
+      'payment_method', 'CASH', 'total', 5000, 'cash_received', 6000, 'change_due', 1000,
+      'lines', jsonb_build_array(jsonb_build_object('line_type', 'ARTICLE', 'inventory_item_id', v_item_id, 'quantity', 1, 'unit_price', 5000))
+    )
+  );
+  v_simple_result := public.sync_commerce_pos_offline_sale(v_simple_event);
+  SELECT balance INTO v_wallet_balance FROM public.wallets WHERE id = v_wallet_id;
+  SELECT stock_actuel INTO v_item_stock FROM public.inventory_items WHERE id = v_item_id;
+  SELECT quantity INTO v_location_stock
+  FROM public.business_location_inventory_items
+  WHERE business_location_id = v_location_id AND inventory_item_id = v_item_id;
+  SELECT count(*) INTO v_finance_count
+  FROM public.finance_operations
+  WHERE wallet_id = v_wallet_id AND origin = 'COMMERCE_POS_PAYMENT' AND status <> 'CANCELLED';
+  IF (v_simple_result ->> 'status') <> 'PROCESSED'
+    OR (v_simple_result ->> 'amount')::numeric <> 5000
+    OR v_wallet_balance <> 5000
+    OR v_item_stock <> 6
+    OR v_location_stock <> 6
+    OR v_finance_count <> 1 THEN
+    RAISE EXCEPTION 'Offline cash sale must credit 5000 once after 1000 change, with one stock decrement.';
+  END IF;
 
   v_event := jsonb_build_object(
     'offline_sale_id', v_event_id,
@@ -101,7 +141,7 @@ BEGIN
   FROM public.finance_operations
   WHERE wallet_id = v_wallet_id AND origin = 'COMMERCE_POS_PAYMENT' AND status <> 'CANCELLED';
 
-  IF v_wallet_balance <> 20000 OR v_item_stock <> 4 OR v_location_stock <> 4 OR v_finance_count <> 1 THEN
+  IF v_wallet_balance <> 25000 OR v_item_stock <> 5 OR v_location_stock <> 5 OR v_finance_count <> 2 THEN
     RAISE EXCEPTION 'Offline mixed sale regression: wallet %, item %, location %, finance operations %.', v_wallet_balance, v_item_stock, v_location_stock, v_finance_count;
   END IF;
   IF (SELECT count(*) FROM public.commercial_sale_lines WHERE sale_id = (v_result ->> 'saleId')::uuid AND line_type = 'SERVICE' AND inventory_item_id IS NULL) <> 1 THEN
@@ -141,8 +181,39 @@ BEGIN
       'lines', jsonb_build_array(jsonb_build_object('line_type', 'ARTICLE', 'inventory_item_id', v_item_id, 'quantity', 6, 'unit_price', 5000))
     )
   ));
-  IF (v_conflict ->> 'status') <> 'CONFLICT' OR (SELECT balance FROM public.wallets WHERE id = v_wallet_id) <> 20000 THEN
-    RAISE EXCEPTION 'A stock conflict must be retained without a financial write.';
+  SELECT balance INTO v_wallet_balance FROM public.wallets WHERE id = v_wallet_id;
+  SELECT stock_actuel INTO v_item_stock FROM public.inventory_items WHERE id = v_item_id;
+  SELECT quantity INTO v_location_stock
+  FROM public.business_location_inventory_items
+  WHERE business_location_id = v_location_id AND inventory_item_id = v_item_id;
+  SELECT count(*) INTO v_sale_count
+  FROM public.commercial_sales
+  WHERE business_location_id = v_location_id;
+  SELECT count(*) INTO v_invoice_count
+  FROM public.commercial_invoices AS invoice_row
+  JOIN public.commercial_sales AS sale_row ON sale_row.id = invoice_row.sale_id
+  WHERE sale_row.business_location_id = v_location_id;
+  SELECT count(*) INTO v_payment_count
+  FROM public.commercial_invoice_payments AS payment_row
+  JOIN public.commercial_sales AS sale_row ON sale_row.id = payment_row.sale_id
+  WHERE sale_row.business_location_id = v_location_id AND payment_row.status = 'CONFIRMED';
+  SELECT count(*) INTO v_finance_count
+  FROM public.finance_operations
+  WHERE wallet_id = v_wallet_id AND origin = 'COMMERCE_POS_PAYMENT' AND status <> 'CANCELLED';
+  SELECT count(*) INTO v_stock_movement_count
+  FROM public.stock_movements
+  WHERE business_location_id = v_location_id AND inventory_item_id = v_item_id AND movement_type = 'SALE';
+
+  IF (v_conflict ->> 'status') <> 'CONFLICT'
+    OR v_wallet_balance <> 25000
+    OR v_item_stock <> 5
+    OR v_location_stock <> 5
+    OR v_sale_count <> 2
+    OR v_invoice_count <> 2
+    OR v_payment_count <> 2
+    OR v_finance_count <> 2
+    OR v_stock_movement_count <> 2 THEN
+    RAISE EXCEPTION 'A stock conflict must retain the receipt without partial sale, invoice, payment, finance, wallet or stock writes.';
   END IF;
 
   -- An arbitrary authenticated subject has no commerce permission, so the RPC
