@@ -7,6 +7,7 @@ DECLARE
   v_actor_id uuid;
   v_commerce_unit_id uuid;
   v_wallet_id uuid;
+  v_other_wallet_id uuid;
   v_location_id uuid;
   v_item_id uuid;
   v_token text := txid_current()::text;
@@ -20,6 +21,7 @@ DECLARE
   v_retry jsonb;
   v_conflict jsonb;
   v_wallet_balance numeric(14, 2);
+  v_other_wallet_balance numeric(14, 2);
   v_item_stock numeric(14, 3);
   v_location_stock numeric(14, 3);
   v_finance_count integer;
@@ -60,13 +62,16 @@ BEGIN
   INSERT INTO public.wallets(name, type, balance, initial_balance, is_default)
   VALUES ('TEST POS-04B ' || v_token, 'CASH', 0, 0, false)
   RETURNING id INTO v_wallet_id;
+  INSERT INTO public.wallets(name, type, balance, initial_balance, is_default)
+  VALUES ('TEST POS-04B DECOY ' || v_token, 'CASH', 0, 0, false)
+  RETURNING id INTO v_other_wallet_id;
   INSERT INTO public.business_locations(business_unit_id, code, name, location_type, status, created_by, updated_by)
   VALUES (v_commerce_unit_id, 'POS4B' || v_token, 'Test POS-04B ' || v_token, 'STORE', 'ACTIVE', v_actor_id, v_actor_id)
   RETURNING id INTO v_location_id;
   INSERT INTO public.business_location_wallets(business_location_id, wallet_id, purpose, is_primary, is_active, assigned_by)
   VALUES (v_location_id, v_wallet_id, 'CASH_DRAWER', true, true, v_actor_id);
   INSERT INTO public.inventory_items(sku, nom, categorie, unite, stock_actuel, seuil_alerte)
-  VALUES ('POS4B-' || v_token, 'Article test POS-04B', 'TEST', 'PIECE', 7, 0)
+  VALUES ('POS4B-' || v_token, 'Chargeur Type C', 'TEST', 'PIECE', 7, 0)
   RETURNING id INTO v_item_id;
   INSERT INTO public.business_location_inventory_items(business_location_id, inventory_item_id, quantity, sale_price)
   VALUES (v_location_id, v_item_id, 7, 5000);
@@ -82,12 +87,14 @@ BEGIN
     'created_at_device', now() - interval '6 minutes',
     'payload', jsonb_build_object(
       'ticket_id', 'ticket-pos04b-simple-' || v_token,
-      'payment_method', 'CASH', 'total', 5000, 'cash_received', 6000, 'change_due', 1000,
+      'payment_method', 'CASH', 'wallet_id', v_other_wallet_id,
+      'total', 5000, 'cash_received', 6000, 'change_due', 1000,
       'lines', jsonb_build_array(jsonb_build_object('line_type', 'ARTICLE', 'inventory_item_id', v_item_id, 'quantity', 1, 'unit_price', 5000))
     )
   );
   v_simple_result := public.sync_commerce_pos_offline_sale(v_simple_event);
   SELECT balance INTO v_wallet_balance FROM public.wallets WHERE id = v_wallet_id;
+  SELECT balance INTO v_other_wallet_balance FROM public.wallets WHERE id = v_other_wallet_id;
   SELECT stock_actuel INTO v_item_stock FROM public.inventory_items WHERE id = v_item_id;
   SELECT quantity INTO v_location_stock
   FROM public.business_location_inventory_items
@@ -98,10 +105,11 @@ BEGIN
   IF (v_simple_result ->> 'status') <> 'PROCESSED'
     OR (v_simple_result ->> 'amount')::numeric <> 5000
     OR v_wallet_balance <> 5000
+    OR v_other_wallet_balance <> 0
     OR v_item_stock <> 6
     OR v_location_stock <> 6
     OR v_finance_count <> 1 THEN
-    RAISE EXCEPTION 'Offline cash sale must credit 5000 once after 1000 change, with one stock decrement.';
+    RAISE EXCEPTION 'Offline cash sale must credit only the configured wallet by 5000 after 1000 change.';
   END IF;
 
   v_event := jsonb_build_object(
@@ -120,7 +128,7 @@ BEGIN
       'change_due', 5000,
       'lines', jsonb_build_array(
         jsonb_build_object('line_type', 'ARTICLE', 'inventory_item_id', v_item_id, 'quantity', 1, 'unit_price', 5000),
-        jsonb_build_object('line_type', 'SERVICE', 'service_name', 'Réparation test', 'service_note', 'Sans stock', 'quantity', 1, 'unit_price', 15000)
+        jsonb_build_object('line_type', 'SERVICE', 'service_name', 'Réparation téléphone', 'service_note', 'Sans stock', 'quantity', 1, 'unit_price', 15000)
       )
     )
   );
@@ -165,6 +173,18 @@ BEGIN
     PERFORM public.sync_commerce_pos_offline_sale(jsonb_set(v_event, '{terminal_id}', '"bad terminal id"'::jsonb));
     RAISE EXCEPTION 'An invalid terminal identifier was accepted.';
   EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+  END;
+
+  -- An authorised caller still cannot submit a ticket in another cashier's name.
+  BEGIN
+    PERFORM public.sync_commerce_pos_offline_sale(
+      jsonb_set(
+        jsonb_set(v_event, '{offline_sale_id}', to_jsonb(v_event_id || '-wrong-cashier')),
+        '{cashier_user_id}', '"00000000-0000-0000-0000-000000000099"'::jsonb
+      )
+    );
+    RAISE EXCEPTION 'A caller could synchronize a ticket declared for another cashier.';
+  EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
   END;
 
   -- A stock conflict is retained as an auditable receipt and must not credit the wallet.
