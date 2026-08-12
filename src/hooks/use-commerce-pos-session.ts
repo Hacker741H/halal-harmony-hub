@@ -13,8 +13,10 @@ import {
   updatePosOfflineNetworkHint,
   type PosOfflineCatalogueInput,
   type PosOfflineCatalogueItem,
+  type PosOfflineOutboxEvent,
   type PosOfflineScope,
 } from "@/lib/commerce-pos-offline";
+import { synchronizeCommercePosOfflineSales, type CommercePosSyncProgress } from "@/lib/commerce-pos-sync";
 import {
   commercePosDraftHasContent,
   commercePosDraftStorageKey,
@@ -62,18 +64,40 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
   const [suspendedTickets, setSuspendedTickets] = useState<CommercePosSuspendedTicket[]>([]);
   const [catalogueItems, setCatalogueItems] = useState<PosOfflineCatalogueItem[]>([]);
   const [pendingOutboxCount, setPendingOutboxCount] = useState(0);
+  const [outboxEvents, setOutboxEvents] = useState<PosOfflineOutboxEvent[]>([]);
+  const [syncProgress, setSyncProgress] = useState<CommercePosSyncProgress | null>(null);
+  const [syncRevision, setSyncRevision] = useState(0);
   const [storageMode, setStorageMode] = useState<CommercePosStorageMode>("UNAVAILABLE");
   const [networkStatus, setNetworkStatus] = useState<CommercePosNetworkStatus>(getInitialNetworkStatus);
   const [isRestored, setIsRestored] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const catalogueRevisionRef = useRef<string | null>(null);
+  const synchronizationInFlightRef = useRef(false);
 
   const refreshOfflineState = useCallback(async (currentScope: PosOfflineScope) => {
     const state = await getPosOfflineState(currentScope);
     setCatalogueItems(state.catalogue);
     setPendingOutboxCount(state.pendingOutboxCount);
+    setOutboxEvents(state.outboxEvents);
     return state;
   }, []);
+
+  const synchronizeOutbox = useCallback(async () => {
+    if (!scope || storageMode !== "INDEXEDDB" || synchronizationInFlightRef.current || getInitialNetworkStatus() !== "ONLINE") return;
+    synchronizationInFlightRef.current = true;
+    try {
+      const result = await synchronizeCommercePosOfflineSales(scope, undefined, (progress) => setSyncProgress(progress));
+      await refreshOfflineState(scope);
+      if (result.synced > 0) setSyncRevision((revision) => revision + 1);
+    } catch (error) {
+      // A failed auto-sync must leave the durable outbox untouched. Individual
+      // retryable entries are recorded by the sync engine.
+      console.warn("La synchronisation automatique de la caisse a échoué.", error);
+    } finally {
+      synchronizationInFlightRef.current = false;
+      setSyncProgress(null);
+    }
+  }, [refreshOfflineState, scope, storageMode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -86,6 +110,7 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
       setSuspendedTickets([]);
       setCatalogueItems([]);
       setPendingOutboxCount(0);
+      setOutboxEvents([]);
       setStorageMode("UNAVAILABLE");
       return () => { cancelled = true; };
     }
@@ -121,6 +146,7 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
           setSuspendedTickets(state.suspendedTickets);
           setCatalogueItems(state.catalogue);
           setPendingOutboxCount(state.pendingOutboxCount);
+          setOutboxEvents(state.outboxEvents);
           setStorageMode("INDEXEDDB");
           setIsRestored(Boolean((state.activeDraft && commercePosDraftHasContent(state.activeDraft)) || state.suspendedTickets.length));
           setIsReady(true);
@@ -141,6 +167,7 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
         setSuspendedTickets([]);
         setCatalogueItems([]);
         setPendingOutboxCount(0);
+        setOutboxEvents([]);
         setIsReady(true);
         return;
       }
@@ -153,6 +180,7 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
       setSuspendedTickets(loadCommercePosSuspendedTickets(storage, scope.locationId, scope.userId));
       setCatalogueItems([]);
       setPendingOutboxCount(0);
+      setOutboxEvents([]);
       setStorageMode("LOCAL_STORAGE");
       setIsRestored(Boolean(normalizedRestored && commercePosDraftHasContent(normalizedRestored)));
       setIsReady(true);
@@ -181,7 +209,10 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
       });
     };
     updateNetworkState(getInitialNetworkStatus());
-    const onOnline = () => updateNetworkState("ONLINE");
+    const onOnline = () => {
+      updateNetworkState("ONLINE");
+      void synchronizeOutbox();
+    };
     const onOffline = () => updateNetworkState("OFFLINE");
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
@@ -189,7 +220,14 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
     };
-  }, [isReady, scope, storageMode]);
+  }, [isReady, scope, storageMode, synchronizeOutbox]);
+
+  useEffect(() => {
+    if (!scope || storageMode !== "INDEXEDDB" || !isReady || networkStatus !== "ONLINE") return;
+    void synchronizeOutbox();
+    const retryTimer = window.setInterval(() => { void synchronizeOutbox(); }, 30_000);
+    return () => window.clearInterval(retryTimer);
+  }, [isReady, networkStatus, scope, storageMode, synchronizeOutbox]);
 
   useEffect(() => {
     const storage = getBrowserStorage();
@@ -279,9 +317,10 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
     setDraft(result.nextDraft);
     setIsRestored(false);
     setCatalogueItems(await getPosOfflineCatalogue(scope));
-    setPendingOutboxCount((count) => count + 1);
+    await refreshOfflineState(scope);
+    if (getInitialNetworkStatus() === "ONLINE") void synchronizeOutbox();
     return result.eventId;
-  }, [draft, scope, storageMode]);
+  }, [draft, refreshOfflineState, scope, storageMode, synchronizeOutbox]);
 
   const reportNetworkFailure = useCallback(() => {
     setNetworkStatus("UNAVAILABLE");
@@ -298,6 +337,9 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
     networkStatus,
     catalogueItems,
     pendingOutboxCount,
+    outboxEvents,
+    syncProgress,
+    syncRevision,
     canCompleteOfflineCashSale: storageMode === "INDEXEDDB" && networkStatus !== "ONLINE",
     updateDraft,
     clearDraft,

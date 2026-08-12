@@ -86,6 +86,8 @@ export type PosOfflineOutboxEvent = {
     ticketId: string;
     clientId: string | null;
     paymentMethod: "CASH";
+    /** Snapshot of the ticket total at the moment cash was accepted. */
+    total: number;
     cashReceived: number | null;
     changeDue: number;
     lines: CommercePosDraftLine[];
@@ -96,6 +98,13 @@ export type PosOfflineOutboxEvent = {
   lastAttemptAt: string | null;
   lastError: string | null;
   syncedAt: string | null;
+  serverReceiptId?: string;
+  serverSaleId?: string;
+  serverInvoiceNumber?: string;
+  serverPaymentId?: string;
+  serverOperationId?: string;
+  serverAmount?: number;
+  stockReconciledAt?: string;
 };
 
 type PosOfflineTicketRecord = {
@@ -153,6 +162,7 @@ type PosOfflineDatabaseState = {
   suspendedTickets: CommercePosSuspendedTicket[];
   catalogue: PosOfflineCatalogueItem[];
   pendingOutboxCount: number;
+  outboxEvents: PosOfflineOutboxEvent[];
 };
 
 function scopeKey({ locationId, userId }: PosOfflineScope): string {
@@ -523,8 +533,11 @@ export async function getPosOfflineState(scope: PosOfflineScope): Promise<PosOff
     }))).filter((ticket): ticket is CommercePosSuspendedTicket => ticket !== null).sort((left, right) => right.suspendedAt.localeCompare(left.suspendedAt));
     const catalogue = await getPosOfflineCatalogueInTransaction(stores, scope);
     const outbox = await requestResult<PosOfflineOutboxEvent[]>(stores[POS_OFFLINE_STORES.outbox].getAll());
-    const pendingOutboxCount = outbox.filter((event) => event.locationId === scope.locationId && event.userId === scope.userId && event.status !== "SYNCED").length;
-    return { terminal: actualTerminal, activeDraft, suspendedTickets, catalogue, pendingOutboxCount };
+    const outboxEvents = outbox
+      .filter((event) => event.locationId === scope.locationId && event.userId === scope.userId)
+      .sort((left, right) => right.createdAtDevice.localeCompare(left.createdAtDevice) || right.eventId.localeCompare(left.eventId));
+    const pendingOutboxCount = outboxEvents.filter((event) => event.status !== "SYNCED").length;
+    return { terminal: actualTerminal, activeDraft, suspendedTickets, catalogue, pendingOutboxCount, outboxEvents };
   });
 }
 
@@ -653,6 +666,7 @@ export async function recordPosOfflineCashSale(scope: PosOfflineScope, draft: Co
           ticketId: ticket.id,
           clientId: draft.clientId,
           paymentMethod: "CASH",
+          total,
           cashReceived: draft.cashReceived,
           changeDue: Math.max((draft.cashReceived ?? total) - total, 0),
           lines: draft.lines,
@@ -713,6 +727,126 @@ export async function getPendingPosOfflineOutboxCount(scope: PosOfflineScope): P
   });
 }
 
+export async function getPosOfflineOutboxEvents(scope: PosOfflineScope): Promise<PosOfflineOutboxEvent[]> {
+  return inTransaction([POS_OFFLINE_STORES.outbox], "readonly", async (stores) => {
+    const events = await requestResult<PosOfflineOutboxEvent[]>(stores[POS_OFFLINE_STORES.outbox].getAll());
+    return events
+      .filter((event) => event.locationId === scope.locationId && event.userId === scope.userId)
+      .sort((left, right) => left.createdAtDevice.localeCompare(right.createdAtDevice) || left.eventId.localeCompare(right.eventId));
+  });
+}
+
+export async function recoverPosOfflineSyncingEvents(scope: PosOfflineScope, staleBefore: string): Promise<void> {
+  await inTransaction([POS_OFFLINE_STORES.outbox], "readwrite", async (stores) => {
+    const outbox = stores[POS_OFFLINE_STORES.outbox];
+    const events = await requestResult<PosOfflineOutboxEvent[]>(outbox.getAll());
+    await Promise.all(events
+      .filter((event) => event.locationId === scope.locationId && event.userId === scope.userId && event.status === "SYNCING" && (!event.lastAttemptAt || event.lastAttemptAt < staleBefore))
+      .map((event) => requestResult(outbox.put({
+        ...event,
+        status: "FAILED" as const,
+        lastError: "La synchronisation a été interrompue avant sa confirmation.",
+      }))));
+  });
+}
+
+export async function markPosOfflineOutboxSyncing(scope: PosOfflineScope, eventId: string): Promise<PosOfflineOutboxEvent | null> {
+  return inTransaction([POS_OFFLINE_STORES.outbox], "readwrite", async (stores) => {
+    const outbox = stores[POS_OFFLINE_STORES.outbox];
+    const event = await requestResult<PosOfflineOutboxEvent | undefined>(outbox.get(eventId));
+    if (!event || event.locationId !== scope.locationId || event.userId !== scope.userId || (event.status !== "PENDING" && event.status !== "FAILED")) return null;
+    const nextEvent: PosOfflineOutboxEvent = {
+      ...event,
+      status: "SYNCING",
+      attemptCount: event.attemptCount + 1,
+      lastAttemptAt: now(),
+      lastError: null,
+    };
+    await requestResult(outbox.put(nextEvent));
+    return nextEvent;
+  });
+}
+
+export async function markPosOfflineOutboxFailed(
+  scope: PosOfflineScope,
+  eventId: string,
+  error: string,
+  status: Extract<PosOfflineOutboxStatus, "FAILED" | "CONFLICT"> = "FAILED",
+): Promise<void> {
+  await inTransaction([POS_OFFLINE_STORES.outbox], "readwrite", async (stores) => {
+    const outbox = stores[POS_OFFLINE_STORES.outbox];
+    const event = await requestResult<PosOfflineOutboxEvent | undefined>(outbox.get(eventId));
+    if (!event || event.locationId !== scope.locationId || event.userId !== scope.userId) return;
+    await requestResult(outbox.put({ ...event, status, lastError: error.slice(0, 280) } satisfies PosOfflineOutboxEvent));
+  });
+}
+
+export function canRetryPosOfflineOutboxEvent(event: PosOfflineOutboxEvent, currentTime = Date.now()): boolean {
+  if (event.status === "PENDING") return true;
+  if (event.status !== "FAILED" || event.lastError?.startsWith("PERMANENT:")) return false;
+  if (!event.lastAttemptAt) return true;
+  const delayMs = Math.min(5 * 60_000, 1_000 * (2 ** Math.min(event.attemptCount, 8)));
+  return currentTime - Date.parse(event.lastAttemptAt) >= delayMs;
+}
+
+export type PosOfflineServerReceipt = {
+  receiptId: string;
+  status: "PROCESSED" | "CONFLICT";
+  saleId: string | null;
+  saleNumber: string | null;
+  invoiceNumber: string | null;
+  paymentId: string | null;
+  operationId: string | null;
+  amount: number | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+};
+
+export async function markPosOfflineOutboxSynced(
+  scope: PosOfflineScope,
+  eventId: string,
+  receipt: PosOfflineServerReceipt,
+): Promise<void> {
+  if (receipt.status !== "PROCESSED" || !receipt.saleId || !receipt.receiptId) {
+    throw new Error("Le reçu serveur ne permet pas de confirmer la vente hors connexion.");
+  }
+  await inTransaction([POS_OFFLINE_STORES.outbox, POS_OFFLINE_STORES.stockSnapshot], "readwrite", async (stores) => {
+    const outbox = stores[POS_OFFLINE_STORES.outbox];
+    const event = await requestResult<PosOfflineOutboxEvent | undefined>(outbox.get(eventId));
+    if (!event || event.locationId !== scope.locationId || event.userId !== scope.userId || event.status === "SYNCED") return;
+
+    const reconciledAt = now();
+    if (!event.stockReconciledAt) {
+      const stock = stores[POS_OFFLINE_STORES.stockSnapshot];
+      for (const line of event.payload.lines) {
+        if (line.lineType !== "ARTICLE") continue;
+        const recordId = catalogueKey(scope, line.itemId);
+        const current = await requestResult<PosOfflineStockRecord | undefined>(stock.get(recordId));
+        if (!current) continue;
+        await requestResult(stock.put({
+          ...current,
+          availableQuantity: current.availableQuantity + line.quantity,
+          updatedAtDevice: reconciledAt,
+        } satisfies PosOfflineStockRecord));
+      }
+    }
+
+    await requestResult(outbox.put({
+      ...event,
+      status: "SYNCED",
+      syncedAt: reconciledAt,
+      lastError: null,
+      serverReceiptId: receipt.receiptId,
+      serverSaleId: receipt.saleId ?? undefined,
+      serverInvoiceNumber: receipt.invoiceNumber ?? undefined,
+      serverPaymentId: receipt.paymentId ?? undefined,
+      serverOperationId: receipt.operationId ?? undefined,
+      serverAmount: receipt.amount ?? undefined,
+      stockReconciledAt: event.stockReconciledAt ?? reconciledAt,
+    } satisfies PosOfflineOutboxEvent));
+  });
+}
+
 export async function findPosOfflineDraftLocation(locationIds: readonly string[], userId: string): Promise<string | null> {
   if (!locationIds.length || !userId || !posOfflineStorageAvailable()) return null;
   return inTransaction([POS_OFFLINE_STORES.tickets], "readonly", async (stores) => {
@@ -742,7 +876,7 @@ export function assertNoPosOfflineSecret(value: unknown): void {
 
 export function getPosOfflineOutboxRetryOrder(events: readonly Pick<PosOfflineOutboxEvent, "createdAtDevice" | "eventId" | "status">[]): string[] {
   return events
-    .filter((event) => event.status === "PENDING" || event.status === "FAILED" || event.status === "CONFLICT")
+    .filter((event) => event.status === "PENDING" || event.status === "FAILED")
     .slice()
     .sort((left, right) => left.createdAtDevice.localeCompare(right.createdAtDevice) || left.eventId.localeCompare(right.eventId))
     .map((event) => event.eventId);

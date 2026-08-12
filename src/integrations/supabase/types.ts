@@ -9075,6 +9075,7 @@ export type Database = {
         }
       }
       sync_notification_daily_schedule: { Args: never; Returns: boolean }
+      sync_commerce_pos_offline_sale: { Args: { p_event: Json }; Returns: Json }
       update_client: {
         Args: { p_client_id: string; p_values: Json }
         Returns: {

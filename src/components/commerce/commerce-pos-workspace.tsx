@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Banknote, BarChart3, CheckCircle2, CircleDollarSign, CreditCard, ListTodo, Minus, Package, PackagePlus, Pencil, Plus, ReceiptText, Search, ShoppingCart, Smartphone, Store, TrendingUp, TriangleAlert, Trash2, UserPlus, UserRoundX, WalletCards, Warehouse, Wrench } from "lucide-react";
+import { ArrowRight, Banknote, BarChart3, CheckCircle2, CircleDollarSign, CloudOff, CloudUpload, CreditCard, ListTodo, Minus, Package, PackagePlus, Pencil, Plus, ReceiptText, Search, ShoppingCart, Smartphone, Store, TrendingUp, TriangleAlert, Trash2, UserPlus, UserRoundX, WalletCards, Warehouse, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 import { ClientSelect } from "@/components/selects/entity-selects";
@@ -336,6 +336,13 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
   const primaryCashDrawerWallet = workspace?.wallets.find((wallet) => wallet.isPrimary && wallet.purpose === "CASH_DRAWER");
   const primaryCashDrawerWalletId = primaryCashDrawerWallet?.id ?? "";
 
+  useEffect(() => {
+    if (!selectedLocationId || posSession.syncRevision === 0) return;
+    void Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["commerce-pos-workspace", selectedLocationId] }),
+      queryClient.invalidateQueries({ queryKey: ["commerce-management-dashboard", selectedLocationId] }),
+    ]);
+  }, [posSession.syncRevision, queryClient, selectedLocationId]);
   useEffect(() => {
     if (!currentUserId) return;
     let active = true;
@@ -678,7 +685,24 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
         </CardContent>
       </Card>
 
-      {posSession.networkStatus !== "ONLINE" ? <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-warning/30 bg-warning/[0.08] px-4 py-2.5 text-sm text-warning" role="status"><span className="font-semibold">Hors connexion — la caisse continue localement.</span><span>{posSession.pendingOutboxCount} vente{posSession.pendingOutboxCount > 1 ? "s" : ""} en attente de synchronisation</span></div> : <div className="flex shrink-0 items-center justify-between rounded-xl border border-success/25 bg-success/[0.07] px-4 py-2.5 text-sm text-success" role="status"><span className="font-semibold">En ligne — caisse prête</span><span>{posSession.pendingOutboxCount ? `${posSession.pendingOutboxCount} opération${posSession.pendingOutboxCount > 1 ? "s" : ""} locale${posSession.pendingOutboxCount > 1 ? "s" : ""} en attente de synchronisation contrôlée` : "Aucune vente locale en attente"}</span></div>}
+      <details className={`group shrink-0 rounded-xl border px-4 py-2.5 text-sm ${posSession.networkStatus !== "ONLINE" ? "border-warning/30 bg-warning/[0.08] text-warning" : "border-success/25 bg-success/[0.07] text-success"}`}>
+        <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+          <span className="flex items-center gap-2 font-semibold">
+            {posSession.networkStatus !== "ONLINE" ? <CloudOff className="size-4" aria-hidden="true" /> : <CloudUpload className="size-4" aria-hidden="true" />}
+            {posSession.networkStatus !== "ONLINE"
+              ? "Hors connexion — la caisse continue localement."
+              : posSession.syncProgress
+                ? `Synchronisation ${posSession.syncProgress.completed}/${posSession.syncProgress.total}`
+                : "En ligne — caisse prête"}
+          </span>
+          <span>{posSession.pendingOutboxCount
+            ? `${posSession.pendingOutboxCount} opération${posSession.pendingOutboxCount > 1 ? "s" : ""} locale${posSession.pendingOutboxCount > 1 ? "s" : ""} à synchroniser`
+            : "Aucune vente locale en attente"}</span>
+        </summary>
+        {posSession.outboxEvents.length ? <div className="mt-3 grid gap-1 border-t border-current/15 pt-2 text-xs">
+          {posSession.outboxEvents.slice(0, 4).map((event) => <div key={event.eventId} className="flex items-center justify-between gap-3"><span className="truncate font-mono">{event.eventId.slice(-8).toUpperCase()}</span><span className="shrink-0 font-medium">{event.status === "SYNCED" ? "Synchronisé" : event.status === "CONFLICT" ? "À contrôler" : event.status === "SYNCING" ? "Synchronisation" : event.status === "FAILED" ? "Nouvel essai programmé" : "En attente"}</span></div>)}
+        </div> : null}
+      </details>
 
       <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-sm">
         <div className="grid shrink-0 gap-3 border-b border-border/75 bg-muted/[0.16] p-3 lg:grid-cols-[minmax(0,1fr)_7rem_auto_auto_auto_auto] lg:items-end">

@@ -56,10 +56,45 @@ const saleInputSchema = z.object({
   lines: z.array(z.discriminatedUnion("lineType", [articleSaleLineSchema, serviceSaleLineSchema])).min(1).max(100),
 }).strict();
 
+const offlineArticleSaleLineSchema = articleSaleLineSchema;
+const offlineServiceSaleLineSchema = serviceSaleLineSchema;
+const offlineSaleSyncSchema = z.object({
+  offlineSaleId: z.string().trim().regex(/^[A-Za-z0-9_-]{8,120}$/),
+  terminalId: z.string().trim().regex(/^[A-Za-z0-9_-]{8,160}$/),
+  cashSessionId: z.string().trim().regex(/^[A-Za-z0-9_-]{8,160}$/),
+  businessLocationId: z.string().uuid(),
+  cashierUserId: z.string().uuid(),
+  createdAtDevice: z.string().datetime({ offset: true }),
+  payload: z.object({
+    ticketId: z.string().trim().min(1).max(160),
+    clientId: z.string().uuid().nullable(),
+    paymentMethod: z.literal("CASH"),
+    total: z.number().finite().positive(),
+    cashReceived: z.number().finite().nonnegative().nullable(),
+    changeDue: z.number().finite().nonnegative(),
+    lines: z.array(z.discriminatedUnion("lineType", [offlineArticleSaleLineSchema, offlineServiceSaleLineSchema])).min(1).max(100),
+  }).strict(),
+}).strict();
+
+const offlineSaleSyncReceiptSchema = z.object({
+  receiptId: z.string().uuid(),
+  status: z.enum(["PROCESSED", "CONFLICT"]),
+  saleId: z.string().uuid().nullable(),
+  saleNumber: z.string().nullable(),
+  invoiceNumber: z.string().nullable(),
+  paymentId: z.string().uuid().nullable(),
+  operationId: z.string().uuid().nullable(),
+  amount: z.number().nullable(),
+  errorCode: z.string().nullable(),
+  errorMessage: z.string().nullable(),
+});
+
 export type CommercePosWorkspace = z.infer<typeof workspaceSchema>;
 export type CommerceManagementDashboard = z.infer<typeof commerceManagementDashboardSchema>;
 export type CommercePosLocation = z.infer<typeof locationSchema>;
 export type CommerceCashSaleInput = z.infer<typeof saleInputSchema>;
+export type CommerceOfflineSaleSyncInput = z.infer<typeof offlineSaleSyncSchema>;
+export type CommerceOfflineSaleSyncReceipt = z.infer<typeof offlineSaleSyncReceiptSchema>;
 const setupOptionsSchema = z.object({ wallets: z.array(z.object({ id: z.string().uuid(), name: z.string() })), users: z.array(z.object({ id: z.string().uuid(), name: z.string() })) });
 const commerceLocationCodeSchema = z.string().trim().transform((value) => value.toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "")).pipe(z.string().regex(/^[A-Z][A-Z0-9_]{1,39}$/));
 const setupLocationSchema = z.object({ name: z.string().trim().min(2).max(120), code: commerceLocationCodeSchema, walletId: z.string().uuid(), userId: z.string().uuid().nullable() }).strict();
@@ -153,6 +188,39 @@ export const createCommerceCashSale = createServerFn({ method: "POST" })
     });
     if (error) throw error;
     return z.object({ saleId: z.string().uuid(), saleNumber: z.string(), invoiceNumber: z.string(), paymentId: z.string().uuid(), operationId: z.string().uuid(), amount: z.number() }).parse(result);
+  });
+
+/**
+ * POS-04B bridge. The database revalidates the cashier, location, stock and
+ * captured cash total, then delegates to the existing cash-sale transaction.
+ */
+export const syncCommercePosOfflineSale = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(offlineSaleSyncSchema)
+  .handler(async ({ context, data }): Promise<CommerceOfflineSaleSyncReceipt> => {
+    const { data: result, error } = await context.supabase.rpc("sync_commerce_pos_offline_sale", {
+      p_event: {
+        offline_sale_id: data.offlineSaleId,
+        terminal_id: data.terminalId,
+        cash_session_id: data.cashSessionId,
+        business_location_id: data.businessLocationId,
+        cashier_user_id: data.cashierUserId,
+        created_at_device: data.createdAtDevice,
+        payload: {
+          ticket_id: data.payload.ticketId,
+          client_id: data.payload.clientId,
+          payment_method: data.payload.paymentMethod,
+          total: data.payload.total,
+          cash_received: data.payload.cashReceived,
+          change_due: data.payload.changeDue,
+          lines: data.payload.lines.map((line) => line.lineType === "ARTICLE"
+            ? { line_type: "ARTICLE", inventory_item_id: line.inventoryItemId, quantity: line.quantity, unit_price: line.unitPrice }
+            : { line_type: "SERVICE", service_name: line.serviceName, service_note: line.serviceNote, quantity: line.quantity, unit_price: line.unitPrice }),
+        },
+      },
+    });
+    if (error) throw error;
+    return offlineSaleSyncReceiptSchema.parse(result);
   });
 
 export const getCommerceSetupOptions = createServerFn({ method: "GET" })
