@@ -1,6 +1,6 @@
 # STORE-01 — Design technique du centre de pilotage magasin
 
-Date : 12 août 2026  
+Date : 12 août 2026
 Statut : proposition technique à valider. Ce document ne crée ni migration, ni RPC, ni droit, ni composant.
 
 ## 1. Objectif et frontière
@@ -343,4 +343,3 @@ Chaque migration future doit être additive, idempotente lorsque possible, accom
 ## 14. Décision recommandée
 
 Commencer par STORE-02A : un centre de pilotage en lecture qui ne montre que les données exactes, puis afficher explicitement « non disponible — méthode de coût à configurer » pour le coût, la marge et le résultat net. Cette approche donne immédiatement de la visibilité au magasin sans présenter des chiffres inexacts, tout en préparant une fondation auditable pour la rentabilité complète.
-

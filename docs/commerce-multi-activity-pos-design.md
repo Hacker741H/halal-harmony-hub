@@ -1,6 +1,6 @@
 # CM-01 — Commerce multi-activité et caisse magasin
 
-Date : 10 août 2026  
+Date : 10 août 2026
 Statut : conception prête à être découpée en lots. Ce document n’applique aucune migration et ne modifie aucune donnée.
 
 ## 1. Décision d’architecture

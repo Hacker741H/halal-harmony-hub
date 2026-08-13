@@ -1,7 +1,7 @@
 # STORE-01 — Audit du centre de pilotage magasin
 
-Date d'audit : 12 août 2026  
-Périmètre : Commerce, stocks, POS, wallets, finance, ventes, paiements, clôtures de caisse et synchronisation offline.  
+Date d'audit : 12 août 2026
+Périmètre : Commerce, stocks, POS, wallets, finance, ventes, paiements, clôtures de caisse et synchronisation offline.
 Nature : audit de l'existant uniquement. Aucune migration, RPC, permission, règle financière ou interface n'est créée dans STORE-01.
 
 ## 1. Conclusion exécutive
@@ -181,4 +181,3 @@ Passer à STORE-02 en deux sous-étapes cohérentes :
 
 1. **Cockpit de lecture véridique** : étendre la RPC de pilotage existante et l'interface avec les données déjà calculables, des statuts « indisponible » et les liens vers les sources.
 2. **Fondation de rentabilité** : après validation des décisions ci-dessus, créer les migrations additives pour les coûts de stock, les dépenses magasin et les prévisions. C'est seulement à ce stade que marge et résultat net peuvent devenir des indicateurs opérationnels fiables.
-
