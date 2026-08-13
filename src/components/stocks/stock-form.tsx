@@ -119,6 +119,10 @@ export function StockForm({
 
   return (
     <div className="space-y-5">
+      <div className="rounded-xl border border-primary/15 bg-primary/[0.06] px-4 py-3 text-sm leading-6 text-muted-foreground">
+        <p className="font-semibold text-foreground">Étape 1 — Créer la fiche de l’article</p>
+        <p className="mt-1">Créez ici la référence, l’unité et le seuil d’alerte. Pour un achat réel, enregistrez ensuite un mouvement <span className="font-medium text-foreground">Achat fournisseur</span> : c’est lui qui conserve le prix d’achat et débite le wallet concerné.</p>
+      </div>
       <div className="grid gap-4 md:grid-cols-2">
 
         <div>
@@ -178,7 +182,7 @@ export function StockForm({
         </div>
 
         <div>
-          <Label>Stock actuel</Label>
+          <Label>Stock de départ / inventaire initial</Label>
           <Input
             type="number"
             placeholder="0"
@@ -190,6 +194,7 @@ export function StockForm({
               })
             }
           />
+          <p className="mt-1 text-xs text-muted-foreground">Utilisez ce champ seulement pour un inventaire de départ déjà possédé. Un achat fournisseur doit passer par « Nouveau mouvement ».</p>
         </div>
 
         <div>

@@ -44,6 +44,11 @@ export function StockMovementForm({ stocks, onSuccess }: Props) {
   });
 
   const isFinancial = movementType === "PURCHASE" || movementType === "SALE";
+  const movementGuidance = movementType === "PURCHASE"
+    ? "Réception fournisseur : la quantité entre en stock, une dépense est créée et le wallet sélectionné est débité."
+    : movementType === "SALE"
+      ? "Réservé aux ventes hors caisse. Pour une vente au comptoir, passez par Commerce → Ouvrir la caisse afin d’éviter toute double recette."
+      : "Mouvement physique uniquement : aucun wallet et aucune écriture financière ne seront créés.";
   const selectedItem = useMemo(
     () => stocks.find((stock) => stock.id === itemId) ?? null,
     [itemId, stocks],
@@ -89,6 +94,10 @@ export function StockMovementForm({ stocks, onSuccess }: Props) {
 
   return (
     <div className="space-y-4">
+      <div className={`rounded-xl border px-4 py-3 text-sm leading-6 ${movementType === "SALE" ? "border-warning/25 bg-warning/[0.08] text-warning" : "border-primary/15 bg-primary/[0.06] text-muted-foreground"}`}>
+        <p className="font-semibold text-foreground">{movementType === "PURCHASE" ? "Achat et entrée en stock" : movementType === "SALE" ? "Vente hors caisse" : "Mouvement de stock"}</p>
+        <p className="mt-1">{movementGuidance}</p>
+      </div>
       <div className="grid gap-4 md:grid-cols-2">
         <div>
           <Label>Article</Label>
@@ -114,11 +123,11 @@ export function StockMovementForm({ stocks, onSuccess }: Props) {
         {isFinancial && (
           <>
             <div>
-              <Label>Prix unitaire (FCFA)</Label>
+              <Label>{movementType === "PURCHASE" ? "Prix d’achat unitaire (FCFA)" : "Prix de vente unitaire (FCFA)"}</Label>
               <Input type="number" min="0" value={unitPrice} onChange={(event) => setUnitPrice(event.target.value)} />
             </div>
             <div>
-              <Label>Wallet</Label>
+              <Label>{movementType === "PURCHASE" ? "Wallet débité" : "Wallet crédité"}</Label>
               <select className="w-full rounded-md border px-3 py-2" value={walletId} onChange={(event) => setWalletId(event.target.value)}>
                 <option value="">Sélectionner un wallet</option>
                 {wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
