@@ -35,11 +35,12 @@ export function MetricCard({
     <Card
       variant="kpi"
       className={cn(
-        "group overflow-hidden transition-[border-color,box-shadow,transform] transition-ui hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md",
+        "group overflow-hidden border-border/70 bg-gradient-to-br from-surface-elevated via-surface to-primary/[0.025] transition-[border-color,box-shadow,transform] transition-ui hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md",
         className,
       )}
     >
-      <CardContent className="flex min-h-36 flex-col justify-between gap-5 p-5 sm:p-6">
+      <div className={cn("absolute inset-x-0 top-0 h-1 origin-left scale-x-75 opacity-75 transition-transform transition-ui group-hover:scale-x-100", toneClasses[tone])} aria-hidden="true" />
+      <CardContent className="flex min-h-36 flex-col justify-between gap-5 p-5 pt-6 sm:p-6 sm:pt-7">
         <div className="flex items-start justify-between gap-4">
           <p className="text-sm font-medium text-muted-foreground">{label}</p>
           <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", toneClasses[tone])}>

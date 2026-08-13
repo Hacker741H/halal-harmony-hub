@@ -9,8 +9,8 @@ const cardVariants = cva(
   variants: {
     variant: {
       default: "",
-      analytics: "border-border/70 bg-surface/95 shadow-sm",
-      section: "border-border/75 bg-surface/95 shadow-xs",
+      analytics: "border-border/70 bg-gradient-to-br from-surface-elevated via-surface to-primary/[0.02] shadow-sm",
+      section: "border-border/75 bg-gradient-to-br from-surface-elevated via-surface to-primary/[0.015] shadow-xs",
       information: "border-primary/15 bg-gradient-to-br from-primary/[0.08] via-surface to-surface shadow-xs",
       kpi: "border-border/75 bg-surface/95 shadow-sm",
       glass: "border-border/65 bg-surface/80 shadow-sm supports-[backdrop-filter]:backdrop-blur-sm",
