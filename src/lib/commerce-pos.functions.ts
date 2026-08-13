@@ -3,6 +3,9 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+const callUntypedRpc = (client: { rpc: unknown }, name: string, args: Record<string, unknown>) =>
+  (client.rpc as (functionName: string, parameters: Record<string, unknown>) => Promise<{ data: unknown; error: Error | null }>)(name, args);
+
 const locationSchema = z.object({ id: z.string().uuid(), name: z.string(), code: z.string() });
 const walletSchema = z.object({ id: z.string().uuid(), name: z.string(), purpose: z.string(), isPrimary: z.boolean() });
 const itemSchema = z.object({ id: z.string().uuid(), name: z.string(), sku: z.string().nullable(), unit: z.string().nullable(), quantity: z.number(), salePrice: z.number().nullable(), reorderLevel: z.number().nullable() });
@@ -30,6 +33,108 @@ const commerceManagementDashboardSchema = z.object({
     amount: z.number(),
   })),
 });
+
+const storeExpenseCategorySchema = z.enum(["RENT", "ELECTRICITY", "WATER", "INTERNET", "TRANSPORT", "MAINTENANCE", "REPAIR", "SUPPLIES", "SALARY_BONUS", "TAX_FEE", "OTHER"]);
+const storeCockpitAccessSchema = z.object({
+  financial: z.boolean(),
+  stockValuation: z.boolean(),
+  expensesRead: z.boolean(),
+  expensesCreate: z.boolean(),
+  expensesConfirm: z.boolean(),
+  cash: z.boolean(),
+  stock: z.boolean(),
+});
+const storeCockpitProfitabilitySchema = z.object({
+  from: z.string(),
+  to: z.string(),
+  isComplete: z.boolean(),
+  articleRevenue: z.number(),
+  serviceRevenue: z.number(),
+  totalRevenue: z.number(),
+  costOfGoodsSold: z.number().nullable(),
+  grossMargin: z.number().nullable(),
+  operatingExpenses: z.number(),
+  netResult: z.number().nullable(),
+});
+const commerceStoreCockpitSchema = z.object({
+  period: z.object({ from: z.string(), to: z.string() }),
+  access: storeCockpitAccessSchema,
+  location: z.object({
+    id: z.string().uuid(), name: z.string(), code: z.string(), status: z.string(), address: z.string().nullable(),
+    openedAt: z.string(), manager: z.object({ id: z.string().uuid(), name: z.string() }).nullable(),
+    lastActivityAt: z.string().nullable(),
+  }),
+  wallets: z.array(z.object({ id: z.string().uuid(), name: z.string(), purpose: z.string(), isPrimary: z.boolean(), balance: z.number() })),
+  profitability: storeCockpitProfitabilitySchema.nullable(),
+  costCertification: z.object({ firstSnapshotAt: z.string().nullable(), selectedPeriodCertified: z.boolean() }).nullable(),
+  sales: z.object({
+    ticketCount: z.number(), averageBasket: z.number(), cancelledCount: z.number(),
+    recent: z.array(z.object({
+      id: z.string().uuid(), saleNumber: z.string(), saleDate: z.string(), status: z.string(), reference: z.string().nullable(),
+      createdAt: z.string(), total: z.number(), articleLines: z.number(), serviceLines: z.number(),
+    })),
+    topItems: z.array(z.object({ id: z.string().uuid().nullable(), name: z.string(), quantity: z.number(), revenue: z.number() })),
+    services: z.array(z.object({ name: z.string(), quantity: z.number(), revenue: z.number() })),
+  }).nullable(),
+  stock: z.object({
+    isComplete: z.boolean(), itemCount: z.number(), valuedItemCount: z.number(), costValue: z.number().nullable(),
+    potentialSaleValue: z.number(), potentialMargin: z.number().nullable(), lowStockCount: z.number(),
+    items: z.array(z.object({
+      id: z.string().uuid(), sku: z.string().nullable(), name: z.string(), unit: z.string().nullable(), quantity: z.number(),
+      unitCost: z.number().nullable(), costValue: z.number().nullable(), salePrice: z.number().nullable(),
+      potentialSaleValue: z.number().nullable(), potentialMargin: z.number().nullable(), reorderLevel: z.number().nullable(), isLow: z.boolean(),
+    })),
+  }).nullable(),
+  expenses: z.object({
+    rows: z.array(z.object({
+      id: z.string().uuid(), category: storeExpenseCategorySchema, amount: z.number(), expenseDate: z.string(), status: z.enum(["DRAFT", "CONFIRMED", "CANCELLED"]),
+      description: z.string(), reference: z.string().nullable(), createdAt: z.string(), confirmedAt: z.string().nullable(),
+      createdBy: z.string(), confirmedBy: z.string().nullable(), walletId: z.string().uuid().nullable(), walletName: z.string().nullable(),
+      operationId: z.string().uuid().nullable(), financeReference: z.string().nullable(),
+    })),
+    planned: z.array(z.object({
+      id: z.string().uuid(), category: storeExpenseCategorySchema, expectedAmount: z.number(), dueDate: z.string(),
+      status: z.enum(["PLANNED", "PAID", "CANCELLED"]), reference: z.string().nullable(), description: z.string(),
+      paidExpenseId: z.string().uuid().nullable(), createdAt: z.string(), timing: z.enum(["OVERDUE", "UPCOMING", "PAID", "CANCELLED"]),
+    })),
+  }).nullable(),
+  cash: z.object({
+    reviewRequiredCount: z.number(), unclosedSessionCount: z.number(),
+    closures: z.array(z.object({
+      id: z.string().uuid(), cashSessionId: z.string(), terminalId: z.string(), cashier: z.string(), openedAt: z.string(), closedAt: z.string(),
+      theoreticalCash: z.number(), countedCash: z.number(), difference: z.number(), status: z.enum(["SYNCED", "REVIEW_REQUIRED"]), totalsMatch: z.boolean(),
+    })),
+  }).nullable(),
+  remittances: z.array(z.object({
+    id: z.string().uuid(), date: z.string(), amount: z.number(), status: z.string(), reference: z.string().nullable(), sourceWallet: z.string(), destinationWallet: z.string(),
+  })),
+  finance: z.object({
+    inflows: z.number(), outflows: z.number(), operations: z.array(z.object({
+      id: z.string().uuid(), date: z.string(), type: z.string(), amount: z.number(), category: z.string().nullable(), description: z.string().nullable(),
+      reference: z.string().nullable(), status: z.string().nullable(), origin: z.string().nullable(), createdAt: z.string(), walletName: z.string().nullable(),
+    })),
+  }).nullable(),
+  sync: z.object({
+    processedCount: z.number(), conflictCount: z.number(), pendingCount: z.number().nullable(),
+    receipts: z.array(z.object({
+      id: z.string().uuid(), offlineSaleId: z.string(), terminalId: z.string(), cashier: z.string(), createdAtDevice: z.string(), receivedAtServer: z.string(),
+      status: z.enum(["PROCESSED", "CONFLICT"]), saleId: z.string().uuid().nullable(), errorCode: z.string().nullable(), errorMessage: z.string().nullable(),
+    })),
+  }).nullable(),
+  attention: z.array(z.object({ type: z.string(), id: z.string(), priority: z.number(), date: z.string(), title: z.string(), detail: z.string() })),
+  timeline: z.array(z.object({ type: z.string(), id: z.string(), occurredAt: z.string(), title: z.string(), status: z.string().nullable(), detail: z.string().nullable() })),
+});
+
+const storeExpenseInputSchema = z.object({
+  businessLocationId: z.string().uuid(), category: storeExpenseCategorySchema, amount: z.number().finite().positive(), expenseDate: z.string().date(),
+  reference: z.string().trim().max(160).nullable(), description: z.string().trim().min(1).max(1000),
+}).strict();
+const storePlannedExpenseInputSchema = z.object({
+  businessLocationId: z.string().uuid(), category: storeExpenseCategorySchema, expectedAmount: z.number().finite().positive(), dueDate: z.string().date(),
+  reference: z.string().trim().max(160).nullable(), description: z.string().trim().min(1).max(1000),
+}).strict();
+const storeExpenseRecordSchema = z.object({ id: z.string().uuid(), status: z.string() });
+const storePlannedExpenseRecordSchema = z.object({ id: z.string().uuid(), status: z.string() });
 
 const articleSaleLineSchema = z.object({
   lineType: z.literal("ARTICLE"),
@@ -119,6 +224,8 @@ const offlineCashSessionCloseReceiptSchema = z.object({
 
 export type CommercePosWorkspace = z.infer<typeof workspaceSchema>;
 export type CommerceManagementDashboard = z.infer<typeof commerceManagementDashboardSchema>;
+export type CommerceStoreCockpit = z.infer<typeof commerceStoreCockpitSchema>;
+export type StoreExpenseCategory = z.infer<typeof storeExpenseCategorySchema>;
 export type CommercePosLocation = z.infer<typeof locationSchema>;
 export type CommerceCashSaleInput = z.infer<typeof saleInputSchema>;
 export type CommerceOfflineSaleSyncInput = z.infer<typeof offlineSaleSyncSchema>;
@@ -197,6 +304,77 @@ export const getCommerceManagementDashboard = createServerFn({ method: "GET" })
     const { data: result, error } = await context.supabase.rpc("get_commerce_management_dashboard", { p_location_id: data.locationId });
     if (error) throw error;
     return commerceManagementDashboardSchema.parse(result);
+  });
+
+export const getCommerceStoreCockpit = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator(z.object({ locationId: z.string().uuid(), from: z.string().date(), to: z.string().date() }).strict())
+  .handler(async ({ context, data }): Promise<CommerceStoreCockpit> => {
+    const { data: result, error } = await callUntypedRpc(context.supabase, "get_commerce_store_cockpit", {
+      p_location_id: data.locationId, p_from: data.from, p_to: data.to,
+    });
+    if (error) throw error;
+    return commerceStoreCockpitSchema.parse(result);
+  });
+
+export const createCommerceStoreExpense = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(storeExpenseInputSchema)
+  .handler(async ({ context, data }) => {
+    const { data: result, error } = await callUntypedRpc(context.supabase, "create_commerce_store_expense", { p_expense: {
+      business_location_id: data.businessLocationId, category: data.category, amount: data.amount,
+      expense_date: data.expenseDate, reference: data.reference, description: data.description,
+    } });
+    if (error) throw error;
+    return storeExpenseRecordSchema.parse(result);
+  });
+
+export const confirmCommerceStoreExpense = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(z.object({ expenseId: z.string().uuid(), walletId: z.string().uuid() }).strict())
+  .handler(async ({ context, data }) => {
+    const { data: result, error } = await callUntypedRpc(context.supabase, "confirm_commerce_store_expense", { p_expense_id: data.expenseId, p_wallet_id: data.walletId });
+    if (error) throw error;
+    return storeExpenseRecordSchema.parse(result);
+  });
+
+export const cancelCommerceStoreExpense = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(z.object({ expenseId: z.string().uuid(), reason: z.string().trim().min(1).max(500) }).strict())
+  .handler(async ({ context, data }) => {
+    const { data: result, error } = await callUntypedRpc(context.supabase, "cancel_commerce_store_expense", { p_expense_id: data.expenseId, p_reason: data.reason });
+    if (error) throw error;
+    return storeExpenseRecordSchema.parse(result);
+  });
+
+export const createCommerceStorePlannedExpense = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(storePlannedExpenseInputSchema)
+  .handler(async ({ context, data }) => {
+    const { data: result, error } = await callUntypedRpc(context.supabase, "create_commerce_store_planned_expense", { p_charge: {
+      business_location_id: data.businessLocationId, category: data.category, expected_amount: data.expectedAmount,
+      due_date: data.dueDate, reference: data.reference, description: data.description,
+    } });
+    if (error) throw error;
+    return storePlannedExpenseRecordSchema.parse(result);
+  });
+
+export const payCommerceStorePlannedExpense = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(z.object({ chargeId: z.string().uuid(), walletId: z.string().uuid() }).strict())
+  .handler(async ({ context, data }) => {
+    const { data: result, error } = await callUntypedRpc(context.supabase, "pay_commerce_store_planned_expense", { p_charge_id: data.chargeId, p_wallet_id: data.walletId });
+    if (error) throw error;
+    return storePlannedExpenseRecordSchema.parse(result);
+  });
+
+export const cancelCommerceStorePlannedExpense = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(z.object({ chargeId: z.string().uuid(), reason: z.string().trim().min(1).max(500) }).strict())
+  .handler(async ({ context, data }) => {
+    const { data: result, error } = await callUntypedRpc(context.supabase, "cancel_commerce_store_planned_expense", { p_charge_id: data.chargeId, p_reason: data.reason });
+    if (error) throw error;
+    return storePlannedExpenseRecordSchema.parse(result);
   });
 
 export const createCommerceCashSale = createServerFn({ method: "POST" })

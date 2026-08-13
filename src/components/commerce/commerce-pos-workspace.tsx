@@ -5,6 +5,7 @@ import { ArrowRight, Banknote, BarChart3, CheckCircle2, CircleDollarSign, CloudO
 import { toast } from "sonner";
 
 import { PosCashSessionClose } from "@/components/commerce/pos-cash-session-close";
+import { StoreManagementCockpit } from "@/components/commerce/store-management-cockpit";
 import { ClientSelect } from "@/components/selects/entity-selects";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -55,7 +56,7 @@ const paymentMethods: Array<{ value: PaymentMethod; label: string; icon: typeof 
 export function CommercePosWorkspace() {
   const { canAny, isPending } = usePermissions();
   const [workspaceMode, setWorkspaceMode] = useState<"management" | "cashier">("management");
-  const canUseManagementWorkspace = canAny(["locations.manage", "commerce.stock.receive", "sales.finance.read"]);
+  const canUseManagementWorkspace = canAny(["locations.manage", "commerce.stock.receive", "sales.finance.read", "store.financial.read", "store.stock_valuation.read", "store.expenses.read"]);
 
   if (isPending) return <div className="grid gap-4 lg:grid-cols-3"><Skeleton className="h-48 lg:col-span-2" /><Skeleton className="h-48" /></div>;
   if (canUseManagementWorkspace && workspaceMode === "management") {
@@ -79,8 +80,10 @@ function CommerceManagementWorkspace({ onOpenCashier }: { onOpenCashier: () => v
     enabled: Boolean(selectedLocationId),
   });
   const dashboard = dashboardQuery.data;
+  const managementLocations = locationsQuery.data ?? [];
   const refreshDashboard = async () => {
     await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["commerce-store-cockpit", selectedLocationId] }),
       queryClient.invalidateQueries({ queryKey: ["commerce-management-dashboard", selectedLocationId] }),
       queryClient.invalidateQueries({ queryKey: ["commerce-pos-workspace", selectedLocationId] }),
       queryClient.invalidateQueries({ queryKey: ["commerce-pos-locations"] }),
@@ -90,6 +93,7 @@ function CommerceManagementWorkspace({ onOpenCashier }: { onOpenCashier: () => v
     setLocationId(savedLocationId);
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["commerce-pos-locations"] }),
+      queryClient.invalidateQueries({ queryKey: ["commerce-store-cockpit", savedLocationId] }),
       queryClient.invalidateQueries({ queryKey: ["commerce-management-dashboard", savedLocationId] }),
       queryClient.invalidateQueries({ queryKey: ["commerce-pos-workspace", savedLocationId] }),
     ]);
@@ -107,6 +111,20 @@ function CommerceManagementWorkspace({ onOpenCashier }: { onOpenCashier: () => v
       : <Card variant="information"><CardHeader><CardTitle>Aucun magasin accessible</CardTitle></CardHeader><CardContent>Un administrateur doit vous affecter à un magasin Commerce avant de pouvoir en consulter le pilotage.</CardContent></Card>;
   }
 
+  return <StoreManagementCockpit
+    locations={managementLocations}
+    locationId={selectedLocationId}
+    onLocationChange={setLocationId}
+    onOpenCashier={onOpenCashier}
+    actions={<>
+      {canManageLocations ? <><CommerceLocationDialog mode="create" onDone={handleLocationSaved} /><CommerceLocationDialog mode="edit" location={dashboard?.location} primaryWalletId={dashboard?.cashDrawer?.id ?? ""} onDone={handleLocationSaved} /></> : null}
+      {canReceiveCommerceInventory ? <CommerceQuickInventoryReceipt locationId={selectedLocationId} locationName={dashboard?.location.name ?? managementLocations.find((location) => location.id === selectedLocationId)?.name ?? "ce magasin"} onSaved={refreshDashboard} /> : null}
+      {canManageStock ? <CommerceInventorySetup locationId={selectedLocationId} onSaved={refreshDashboard} /> : null}
+    </>}
+  />;
+
+  /* STORE-03 replaces the legacy presentation below while its setup dialogs remain reusable. */
+  /*
   return (
     <div className="space-y-5">
       <Card variant="glass" className="overflow-hidden border-primary/15 bg-gradient-to-br from-primary/[0.12] via-surface to-surface shadow-sm">
@@ -162,6 +180,7 @@ function CommerceManagementWorkspace({ onOpenCashier }: { onOpenCashier: () => v
       ) : null}
     </div>
   );
+  */
 }
 
 function CommerceMetric({ icon: Icon, label, value, detail, tone }: { icon: typeof CircleDollarSign; label: string; value: string; detail: string; tone: "success" | "info" | "primary" | "neutral" }) {
