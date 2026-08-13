@@ -88,6 +88,10 @@ BEGIN
   INSERT INTO public.business_location_inventory_items(
     business_location_id, inventory_item_id, quantity, sale_price
   ) VALUES (v_location_id, v_item_id, 5, 500);
+  INSERT INTO public.commerce_inventory_cost_states(
+    business_location_id, inventory_item_id, quantity_on_hand,
+    current_unit_cost, inventory_value, initialized_from
+  ) VALUES (v_location_id, v_item_id, 5, 250, 1250, 'OPENING');
 
   -- A service-only ticket must create a sale, invoice, confirmed payment and
   -- one revenue operation, without ever changing physical stock.

@@ -75,6 +75,10 @@ BEGIN
   RETURNING id INTO v_item_id;
   INSERT INTO public.business_location_inventory_items(business_location_id, inventory_item_id, quantity, sale_price)
   VALUES (v_location_id, v_item_id, 7, 5000);
+  INSERT INTO public.commerce_inventory_cost_states(
+    business_location_id, inventory_item_id, quantity_on_hand,
+    current_unit_cost, inventory_value, initialized_from
+  ) VALUES (v_location_id, v_item_id, 7, 2500, 17500, 'OPENING');
 
   -- A simple article-only cash sale proves that the recorded cash amount,
   -- not the amount received before change, is credited once.
