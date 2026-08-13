@@ -5296,6 +5296,9 @@ export type Database = {
         Row: {
           actual_arrival_at: string | null
           actual_departure_at: string | null
+          actual_transport_amount: number | null
+          actual_transport_confirmed_at: string | null
+          actual_transport_confirmed_by: string | null
           cancellation_reason: string | null
           cancelled_at: string | null
           cargo_description: string | null
@@ -5329,10 +5332,12 @@ export type Database = {
           overlap_exception_reason: string | null
           planned_arrival_at: string | null
           planned_departure_at: string | null
-          quoted_amount: number
+          pricing_mode: string | null
+          quoted_amount: number | null
           reference: string | null
           start_odometer: number | null
           status: string
+          unit_rate: number | null
           updated_at: string
           updated_by: string | null
           vehicle_id: string | null
@@ -5340,6 +5345,9 @@ export type Database = {
         Insert: {
           actual_arrival_at?: string | null
           actual_departure_at?: string | null
+          actual_transport_amount?: number | null
+          actual_transport_confirmed_at?: string | null
+          actual_transport_confirmed_by?: string | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cargo_description?: string | null
@@ -5373,10 +5381,12 @@ export type Database = {
           overlap_exception_reason?: string | null
           planned_arrival_at?: string | null
           planned_departure_at?: string | null
-          quoted_amount?: number
+          pricing_mode?: string | null
+          quoted_amount?: number | null
           reference?: string | null
           start_odometer?: number | null
           status?: string
+          unit_rate?: number | null
           updated_at?: string
           updated_by?: string | null
           vehicle_id?: string | null
@@ -5384,6 +5394,9 @@ export type Database = {
         Update: {
           actual_arrival_at?: string | null
           actual_departure_at?: string | null
+          actual_transport_amount?: number | null
+          actual_transport_confirmed_at?: string | null
+          actual_transport_confirmed_by?: string | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cargo_description?: string | null
@@ -5417,10 +5430,12 @@ export type Database = {
           overlap_exception_reason?: string | null
           planned_arrival_at?: string | null
           planned_departure_at?: string | null
-          quoted_amount?: number
+          pricing_mode?: string | null
+          quoted_amount?: number | null
           reference?: string | null
           start_odometer?: number | null
           status?: string
+          unit_rate?: number | null
           updated_at?: string
           updated_by?: string | null
           vehicle_id?: string | null
@@ -8396,16 +8411,20 @@ export type Database = {
       get_transport_mission_financial_summary: {
         Args: { p_mission_id: string }
         Returns: {
-          actual_expenses: number
+          actual_expenses: number | null
           amount_due: number
-          budget_amount: number
-          cash_result: number
-          cost_per_km: number
-          gross_result: number
+          budget_amount: number | null
+          cash_result: number | null
+          cost_per_km: number | null
+          gross_result: number | null
           invoiced_amount: number
-          quoted_amount: number
+          quoted_amount: number | null
           received_amount: number
         }[]
+      }
+      update_transport_mission_actuals: {
+        Args: { p_actuals: Json; p_mission_id: string }
+        Returns: Database["public"]["Tables"]["transport_missions"]["Row"]
       }
       get_transport_mission_history: {
         Args: { p_mission_id: string }

@@ -12,10 +12,11 @@ export type CourseInvoice = Tables<"transport_invoices">;
 export type CoursePayment = Tables<"transport_invoice_payments">;
 
 export const COURSE_STATUSES = ["DRAFT", "PLANNED", "IN_PROGRESS", "COMPLETED", "CLOSED", "CANCELLED"] as const;
-export const COURSE_EXPENSE_CATEGORIES = ["FUEL", "ROAD", "MEALS", "MISC", "EXCEPTIONAL_MAINTENANCE"] as const;
+export const COURSE_EXPENSE_CATEGORIES = ["FUEL", "ROAD", "HANDLING", "REPAIR", "DRIVER_ADVANCE", "PARKING", "MEALS", "MISC", "EXCEPTIONAL_MAINTENANCE"] as const;
 export const COURSE_EXPENSE_STATUSES = ["PLANNED", "ENGAGED", "PAID", "CANCELLED"] as const;
 export const COURSE_PAYMENT_KINDS = ["ADVANCE", "PAYMENT", "SETTLEMENT"] as const;
 export const COURSE_DELIVERY_STATUSES = ["DELIVERED", "PARTIAL", "INCIDENT"] as const;
+export const COURSE_PRICING_MODES = ["PER_KG", "PER_TONNE", "FLAT"] as const;
 
 export const COURSE_STATUS_LABELS: Record<(typeof COURSE_STATUSES)[number], string> = {
   DRAFT: "Brouillon",
@@ -26,8 +27,9 @@ export const COURSE_STATUS_LABELS: Record<(typeof COURSE_STATUSES)[number], stri
   CANCELLED: "Archivée",
 };
 export const COURSE_EXPENSE_CATEGORY_LABELS: Record<(typeof COURSE_EXPENSE_CATEGORIES)[number], string> = {
-  FUEL: "Carburant", ROAD: "Route", MEALS: "Repas", MISC: "Divers", EXCEPTIONAL_MAINTENANCE: "Maintenance exceptionnelle",
+  FUEL: "Carburant", ROAD: "Péage / route", HANDLING: "Manutention", REPAIR: "Réparation", DRIVER_ADVANCE: "Avance chauffeur", PARKING: "Stationnement", MEALS: "Repas", MISC: "Autre dépense", EXCEPTIONAL_MAINTENANCE: "Maintenance exceptionnelle",
 };
+export const COURSE_PRICING_MODE_LABELS: Record<(typeof COURSE_PRICING_MODES)[number], string> = { PER_KG: "Tarif par kg", PER_TONNE: "Tarif par tonne", FLAT: "Forfait" };
 export const COURSE_DELIVERY_STATUS_LABELS: Record<(typeof COURSE_DELIVERY_STATUSES)[number], string> = {
   DELIVERED: "Livrée",
   PARTIAL: "Livraison partielle",
@@ -58,12 +60,17 @@ const courseValuesBaseSchema = z.object({
   actual_arrival_at: nullableDateTime,
   start_odometer: nullableNumber,
   end_odometer: nullableNumber,
-  quoted_amount: z.number().finite().min(0),
+  quoted_amount: nullableNumber,
+  pricing_mode: z.enum(COURSE_PRICING_MODES).nullable(),
+  unit_rate: nullableNumber,
+  actual_transport_amount: nullableNumber,
   reference: z.string().trim().max(255).nullable(),
   notes: nullableText,
   overlap_exception_reason: nullableText,
 }).strict();
 export const courseValuesSchema = courseValuesBaseSchema.superRefine((value, context) => {
+  if (!value.cargo_description) context.addIssue({ code: z.ZodIssueCode.custom, path: ["cargo_description"], message: "La marchandise est obligatoire." });
+  if (!value.departure_location) context.addIssue({ code: z.ZodIssueCode.custom, path: ["departure_location"], message: "Le lieu de chargement est obligatoire." });
   if (value.planned_departure_at && value.planned_arrival_at && value.planned_arrival_at <= value.planned_departure_at) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["planned_arrival_at"], message: "L'arrivée doit être postérieure au départ." });
   }
@@ -95,9 +102,17 @@ const deliveryValuesSchema = z.object({
   }
 });
 const deliveryCorrectionSchema = z.object({ missionId: idSchema, reason: z.string().trim().min(3).max(2_000) }).strict();
+const courseActualsSchema = z.object({
+  missionId: idSchema,
+  actuals: z.object({
+    destination_location: nullableText.optional(), cargo_description: nullableText.optional(), cargo_weight_kg: nullableNumber.optional(),
+    pricing_mode: z.enum(COURSE_PRICING_MODES).nullable().optional(), unit_rate: nullableNumber.optional(), actual_transport_amount: nullableNumber.optional(),
+    start_odometer: nullableNumber.optional(), end_odometer: nullableNumber.optional(), reason: nullableText.optional(),
+  }).strict(),
+}).strict();
 
 export type CourseFinancialSummary = {
-  quoted_amount: number; budget_amount: number; actual_expenses: number; invoiced_amount: number; received_amount: number; amount_due: number; gross_result: number; cash_result: number; cost_per_km: number | null;
+  quoted_amount: number | null; budget_amount: number | null; actual_expenses: number | null; invoiced_amount: number; received_amount: number; amount_due: number; gross_result: number | null; cash_result: number | null; cost_per_km: number | null;
 };
 export type CourseHistoryEntry = { id: string; source_type: string; source_id: string; action: string; created_at: string; performed_by: string | null; before_value: Json | null; after_value: Json | null };
 export type CourseListItem = Course & { clientName: string | null; vehicleLabel: string | null; vehicleStatus: string | null; driverName: string | null; driverStatus: string | null; actualExpenses: number | null; amountDue: number | null; grossResult: number | null; invoiceStatus: string | null };
@@ -105,7 +120,7 @@ export type CourseDetail = { course: Course; clientName: string | null; vehicle:
 
 function valuesPayload(values: Partial<CourseValues>): Json {
   return {
-    ...(values.client_id !== undefined ? { client_id: values.client_id } : {}), ...(values.vehicle_id !== undefined ? { vehicle_id: values.vehicle_id } : {}), ...(values.driver_id !== undefined ? { driver_id: values.driver_id } : {}), ...(values.departure_location !== undefined ? { departure_location: values.departure_location } : {}), ...(values.destination_location !== undefined ? { destination_location: values.destination_location } : {}), ...(values.cargo_description !== undefined ? { cargo_description: values.cargo_description } : {}), ...(values.cargo_quantity !== undefined ? { cargo_quantity: values.cargo_quantity } : {}), ...(values.cargo_unit !== undefined ? { cargo_unit: values.cargo_unit } : {}), ...(values.cargo_weight_kg !== undefined ? { cargo_weight_kg: values.cargo_weight_kg } : {}), ...(values.cargo_volume_m3 !== undefined ? { cargo_volume_m3: values.cargo_volume_m3 } : {}), ...(values.distance_km !== undefined ? { distance_km: values.distance_km } : {}), ...(values.planned_departure_at !== undefined ? { planned_departure_at: values.planned_departure_at } : {}), ...(values.planned_arrival_at !== undefined ? { planned_arrival_at: values.planned_arrival_at } : {}), ...(values.actual_departure_at !== undefined ? { actual_departure_at: values.actual_departure_at } : {}), ...(values.actual_arrival_at !== undefined ? { actual_arrival_at: values.actual_arrival_at } : {}), ...(values.start_odometer !== undefined ? { start_odometer: values.start_odometer } : {}), ...(values.end_odometer !== undefined ? { end_odometer: values.end_odometer } : {}), ...(values.quoted_amount !== undefined ? { quoted_amount: values.quoted_amount } : {}), ...(values.reference !== undefined ? { reference: values.reference } : {}), ...(values.notes !== undefined ? { notes: values.notes } : {}), ...(values.overlap_exception_reason !== undefined ? { overlap_exception_reason: values.overlap_exception_reason } : {}),
+    ...(values.client_id !== undefined ? { client_id: values.client_id } : {}), ...(values.vehicle_id !== undefined ? { vehicle_id: values.vehicle_id } : {}), ...(values.driver_id !== undefined ? { driver_id: values.driver_id } : {}), ...(values.departure_location !== undefined ? { departure_location: values.departure_location } : {}), ...(values.destination_location !== undefined ? { destination_location: values.destination_location } : {}), ...(values.cargo_description !== undefined ? { cargo_description: values.cargo_description } : {}), ...(values.cargo_quantity !== undefined ? { cargo_quantity: values.cargo_quantity } : {}), ...(values.cargo_unit !== undefined ? { cargo_unit: values.cargo_unit } : {}), ...(values.cargo_weight_kg !== undefined ? { cargo_weight_kg: values.cargo_weight_kg } : {}), ...(values.cargo_volume_m3 !== undefined ? { cargo_volume_m3: values.cargo_volume_m3 } : {}), ...(values.distance_km !== undefined ? { distance_km: values.distance_km } : {}), ...(values.planned_departure_at !== undefined ? { planned_departure_at: values.planned_departure_at } : {}), ...(values.planned_arrival_at !== undefined ? { planned_arrival_at: values.planned_arrival_at } : {}), ...(values.actual_departure_at !== undefined ? { actual_departure_at: values.actual_departure_at } : {}), ...(values.actual_arrival_at !== undefined ? { actual_arrival_at: values.actual_arrival_at } : {}), ...(values.start_odometer !== undefined ? { start_odometer: values.start_odometer } : {}), ...(values.end_odometer !== undefined ? { end_odometer: values.end_odometer } : {}), ...(values.quoted_amount !== undefined ? { quoted_amount: values.quoted_amount } : {}), ...(values.pricing_mode !== undefined ? { pricing_mode: values.pricing_mode } : {}), ...(values.unit_rate !== undefined ? { unit_rate: values.unit_rate } : {}), ...(values.actual_transport_amount !== undefined ? { actual_transport_amount: values.actual_transport_amount } : {}), ...(values.reference !== undefined ? { reference: values.reference } : {}), ...(values.notes !== undefined ? { notes: values.notes } : {}), ...(values.overlap_exception_reason !== undefined ? { overlap_exception_reason: values.overlap_exception_reason } : {}),
   };
 }
 
@@ -148,13 +163,14 @@ export const getCourses = createServerFn({ method: "GET" }).middleware([requireS
   const drivers = new Map((driversResult.data ?? []).map((driver) => [driver.id, { name: [driver.employees?.nom, driver.employees?.prenom].filter(Boolean).join(" ") || null, status: driver.statut }]));
   const expenses = mapRows(expensesResult.data ?? [], ids); const invoices = mapRows(invoicesResult.data ?? [], ids); const payments = mapRows(paymentsResult.data ?? [], ids);
   return { courses: rows.map((course) => {
-    const expenseTotal = (expenses.get(course.id) ?? []).filter((row) => row.status === "PAID").reduce((sum, row) => sum + Number(row.amount), 0);
+    const paidExpenses = (expenses.get(course.id) ?? []).filter((row) => row.status === "PAID");
+    const expenseTotal = paidExpenses.length ? paidExpenses.reduce((sum, row) => sum + Number(row.amount), 0) : null;
     const invoiceRows = (invoices.get(course.id) ?? []).filter((row) => row.status !== "CANCELLED");
     const paid = (payments.get(course.id) ?? []).filter((row) => row.status === "CONFIRMED").reduce((sum, row) => sum + Number(row.amount), 0);
     const billed = invoiceRows.reduce((sum, row) => sum + Number(row.total_amount), 0);
     const vehicle = course.vehicle_id ? vehicles.get(course.vehicle_id) ?? null : null;
     const driver = course.driver_id ? drivers.get(course.driver_id) ?? null : null;
-    return { ...course, clientName: clients.get(course.client_id) ?? null, vehicleLabel: vehicle?.registration ?? null, vehicleStatus: vehicle?.status ?? null, driverName: driver?.name ?? null, driverStatus: driver?.status ?? null, actualExpenses: canReadFinance ? expenseTotal : null, amountDue: canReadFinance ? billed - paid : null, grossResult: canReadFinance ? Number(course.quoted_amount) - expenseTotal : null, invoiceStatus: invoiceRows[0]?.status ?? null };
+    return { ...course, clientName: clients.get(course.client_id) ?? null, vehicleLabel: vehicle?.registration ?? null, vehicleStatus: vehicle?.status ?? null, driverName: driver?.name ?? null, driverStatus: driver?.status ?? null, actualExpenses: canReadFinance ? expenseTotal : null, amountDue: canReadFinance ? billed - paid : null, grossResult: canReadFinance && course.actual_transport_amount !== null && expenseTotal !== null ? Number(course.actual_transport_amount) - expenseTotal : null, invoiceStatus: invoiceRows[0]?.status ?? null };
   }), total: count ?? 0 };
 });
 
@@ -213,6 +229,12 @@ export const correctCourseDelivery = createServerFn({ method: "POST" }).middlewa
   const { data: course, error } = await context.supabase.rpc("correct_transport_delivery", { p_mission_id: data.missionId, p_correction: { reason: data.reason } });
   if (error) throw error;
   if (!course) throw new Error("La correction de livraison a échoué.");
+  return course;
+});
+export const updateCourseActuals = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).validator(courseActualsSchema).handler(async ({ context, data }) => {
+  const { data: course, error } = await context.supabase.rpc("update_transport_mission_actuals", { p_mission_id: data.missionId, p_actuals: data.actuals });
+  if (error) throw error;
+  if (!course) throw new Error("Les données réelles de la Course n’ont pas été enregistrées.");
   return course;
 });
 export const getCourseDepartureReadiness = createServerFn({ method: "GET" }).middleware([requireSupabaseAuth]).validator(idSchema).handler(async ({ context, data }) => {

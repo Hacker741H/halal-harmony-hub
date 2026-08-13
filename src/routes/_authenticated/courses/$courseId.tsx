@@ -5,12 +5,9 @@ import {
   BadgeDollarSign,
   Car,
   CircleDollarSign,
-  ClipboardList,
   Clock3,
-  Flag,
   Fuel,
   Landmark,
-  MapPinned,
   Package,
   Plus,
   ReceiptText,
@@ -22,11 +19,11 @@ import {
   WalletCards,
   type LucideIcon,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
-import { CourseDeliveryDialog, CourseDepartureDialog } from "@/components/courses/operational-course-workspace";
+import { AssignmentDialog, CourseDeliveryDialog, CourseDepartureDialog } from "@/components/courses/operational-course-workspace";
 import { JekoCourseCheckoutDialog } from "@/components/payments/jeko-course-checkout-dialog";
 import { WalletSelect } from "@/components/selects/entity-selects";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +45,8 @@ import {
   COURSE_EXPENSE_CATEGORIES,
   COURSE_EXPENSE_CATEGORY_LABELS,
   COURSE_PAYMENT_KINDS,
+  COURSE_PRICING_MODES,
+  COURSE_PRICING_MODE_LABELS,
   COURSE_STATUS_LABELS,
   COURSE_STATUSES,
   createCourseExpense,
@@ -59,8 +58,8 @@ import {
   issueCourseInvoice,
   setCourseStatus,
   updateCourse,
+  updateCourseActuals,
   type Course,
-  type CourseBudgetLine,
   type CourseExpense,
   type CourseFinancialSummary,
   type CourseHistoryEntry,
@@ -73,7 +72,7 @@ export const Route = createFileRoute("/_authenticated/courses/$courseId")({ comp
 type CourseStatus = (typeof COURSE_STATUSES)[number];
 
 function formatAmount(value: number | null | undefined) {
-  return value === null || value === undefined ? "—" : `${Number(value).toLocaleString("fr-FR")} FCFA`;
+  return value === null || value === undefined ? "Non renseigné" : `${Number(value).toLocaleString("fr-FR")} FCFA`;
 }
 
 function formatDate(value: string | null) {
@@ -123,6 +122,8 @@ function CourseDetailsPage() {
   const [plannedArrival, setPlannedArrival] = useState("");
   const [departureOpen, setDepartureOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const [assignmentOpen, setAssignmentOpen] = useState(false);
+  const [actualsOpen, setActualsOpen] = useState(false);
   const [cancellationTarget, setCancellationTarget] = useState<{ kind: "expense" | "payment"; id: string } | null>(null);
   const [cancellationReason, setCancellationReason] = useState("");
 
@@ -139,7 +140,7 @@ function CourseDetailsPage() {
       setCourseStatus({ data: { id: courseId, status, reason: reason ?? null } }),
     onSuccess: (updatedCourse) => {
       if (updatedCourse.status === "CANCELLED") {
-        toast.success("Course annulée et archivée. Son montant prévu reste visible uniquement dans l’historique.");
+        toast.success("Course annulée et archivée. Son historique reste conservé.");
       } else if (updatedCourse.status === "CLOSED") {
         toast.success("Course clôturée.");
       } else {
@@ -254,10 +255,13 @@ function CourseDetailsPage() {
         <p className="mt-2 text-body-sm text-muted-foreground">{detail.clientName ?? "Client non accessible"} · {[course.departure_location, course.destination_location].filter(Boolean).join(" → ") || "Itinéraire à préciser"}</p>
       </div>
       <div className="flex flex-wrap gap-2">
+        {["DRAFT", "PLANNED"].includes(course.status) && can("assignments.manage") ? <Button variant="outline" onClick={() => setAssignmentOpen(true)}>Affecter</Button> : null}
         {course.status === "DRAFT" && can("missions.dispatch") ? <Button onClick={openPlanning}>Planifier</Button> : null}
         {course.status === "PLANNED" && can("missions.dispatch") ? <Button variant="outline" onClick={openPlanning}>Replanifier</Button> : null}
-        {course.status === "PLANNED" && can("departures.confirm") ? <Button onClick={() => setDepartureOpen(true)}>Confirmer le départ</Button> : null}
-        {course.status === "IN_PROGRESS" && can("deliveries.confirm") ? <Button onClick={() => setDeliveryOpen(true)}>Confirmer la livraison</Button> : null}
+        {course.status === "PLANNED" && can("departures.confirm") ? <Button onClick={() => setDepartureOpen(true)}>Démarrer</Button> : null}
+        {course.status !== "CLOSED" && course.status !== "CANCELLED" && can("missions.expenses.manage") ? <Button variant="outline" onClick={() => setExpenseOpen(true)}>Ajouter une dépense</Button> : null}
+        {course.status === "IN_PROGRESS" && can("deliveries.confirm") ? <Button onClick={() => setDeliveryOpen(true)}>Finaliser / livrer</Button> : null}
+        {course.status !== "CANCELLED" && (can("missions.update") || can("deliveries.correct")) ? <Button variant="outline" onClick={() => setActualsOpen(true)}>Corriger les données</Button> : null}
         {course.status === "COMPLETED" && can("missions.close") ? <Button onClick={closeCourse}>Clôturer</Button> : null}
         {["DRAFT", "PLANNED"].includes(course.status) && can("missions.delete") ? <Button variant="outline" onClick={() => setDeleteOpen(true)}><Trash2 className="mr-2 size-4" />Supprimer</Button> : null}
         {course.status !== "CLOSED" && course.status !== "CANCELLED" && can("missions.cancel") ? <Button variant="outline" onClick={() => setArchiveOpen(true)}>Annuler / archiver</Button> : null}
@@ -265,9 +269,9 @@ function CourseDetailsPage() {
     </header>
 
     <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <CockpitStat icon={BadgeDollarSign} label="Montant transport" value={formatAmount(course.quoted_amount)} detail="Montant prévu du transport" tone="info" />
+      <CockpitStat icon={BadgeDollarSign} label="Transport réel" value={formatAmount(course.actual_transport_amount)} detail="Montant confirmé ou calculé" tone="info" />
       <CockpitStat icon={Fuel} label="Dépenses réelles" value={canFinance ? formatAmount(financial?.actual_expenses) : "Accès limité"} detail={canFinance ? "Dépenses validées" : "Accès financier requis"} tone="warning" />
-      <CockpitStat icon={financial?.gross_result !== null && financial?.gross_result !== undefined && financial.gross_result < 0 ? TrendingDown : TrendingUp} label="Résultat brut" value={canFinance ? formatAmount(financial?.gross_result) : "Accès limité"} detail={canFinance ? "Transport moins dépenses" : "Accès financier requis"} tone={financial?.gross_result !== null && financial?.gross_result !== undefined && financial.gross_result < 0 ? "danger" : "success"} />
+      <CockpitStat icon={financial?.gross_result !== null && financial?.gross_result !== undefined && financial.gross_result < 0 ? TrendingDown : TrendingUp} label="Résultat Course" value={canFinance ? (financial?.gross_result === null || financial?.gross_result === undefined ? "Non disponible" : formatAmount(financial.gross_result)) : "Accès limité"} detail={canFinance ? "Transport réel moins dépenses réelles" : "Accès financier requis"} tone={financial?.gross_result !== null && financial?.gross_result !== undefined && financial.gross_result < 0 ? "danger" : "success"} />
       <CockpitStat icon={WalletCards} label="Reste à encaisser" value={canFinance ? formatAmount(financial?.amount_due) : "Accès limité"} detail={canFinance ? "Solde client actuel" : "Accès financier requis"} tone="warning" />
     </div>
     <p className="mt-4 text-caption text-muted-foreground">Les montants proviennent du résumé financier calculé de cette Course.</p>
@@ -278,62 +282,37 @@ function CourseDetailsPage() {
       <CockpitIdentity icon={Clock3} label="Départ prévu" value={formatDate(course.planned_departure_at)} />
     </div>
 
-    <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
-      <Metric icon={BadgeDollarSign} label="Montant transport" value={formatAmount(course.quoted_amount)} />
-      <Metric icon={ClipboardList} label="Budget prévu" value={canFinance ? formatAmount(financial?.budget_amount) : "Accès limité"} />
-      <Metric icon={Fuel} label="Dépenses validées" value={canFinance ? formatAmount(financial?.actual_expenses) : "Accès limité"} />
-      <Metric icon={ReceiptText} label="Facturé" value={canFinance ? formatAmount(financial?.invoiced_amount) : "Accès limité"} />
-      <Metric icon={WalletCards} label="Encaissé" value={canFinance ? formatAmount(financial?.received_amount) : "Accès limité"} />
-      <Metric icon={ReceiptText} label="Résultat brut" value={canFinance ? formatAmount(financial?.gross_result) : "Accès limité"} />
-      <Metric icon={Landmark} label="Reste à encaisser" value={canFinance ? formatAmount(financial?.amount_due) : "Accès limité"} />
-      <Metric icon={WalletCards} label="Résultat de trésorerie" value={canFinance ? formatAmount(financial?.cash_result) : "Accès limité"} />
-      <Metric icon={Flag} label="Progression" value={course.status === "CLOSED" ? "Soldée" : course.status === "COMPLETED" ? "À clôturer" : COURSE_STATUS_LABELS[course.status as CourseStatus]} />
-    </div>
       </div>
     </section>
 
     <Tabs defaultValue="overview" className="space-y-5">
       <TabsList className="h-auto max-w-full justify-start gap-1 overflow-x-auto rounded-xl border border-border/80 bg-surface-elevated/80 p-1.5">
-        <TabsTrigger value="overview">Vue générale</TabsTrigger><TabsTrigger value="transport">Transport</TabsTrigger><TabsTrigger value="vehicle">Véhicule</TabsTrigger><TabsTrigger value="driver">Chauffeur</TabsTrigger><TabsTrigger value="budget">Budget</TabsTrigger>
-        {canFinance ? <><TabsTrigger value="expenses">Dépenses</TabsTrigger><TabsTrigger value="invoice">Facture</TabsTrigger><TabsTrigger value="payments">Paiements</TabsTrigger><TabsTrigger value="profitability">Rentabilité</TabsTrigger></> : null}
+        <TabsTrigger value="overview">Fiche Course</TabsTrigger><TabsTrigger value="transport">Transport réel</TabsTrigger>
+        {canFinance ? <><TabsTrigger value="expenses">Dépenses réelles</TabsTrigger><TabsTrigger value="finance">Finance</TabsTrigger></> : null}
         <TabsTrigger value="documents">Documents</TabsTrigger><TabsTrigger value="history">Historique</TabsTrigger>
       </TabsList>
 
       <TabsContent value="overview"><div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(20rem,0.75fr)]">
         <Card variant="section"><CardHeader><CardTitle>Situation de la Course</CardTitle></CardHeader><CardContent className="grid gap-5 sm:grid-cols-2">
-          <Info label="Client" value={detail.clientName ?? "Non accessible"} /><Info label="Wallets concernés" value={canFinance ? "Les wallets sont tracés dans les dépenses et paiements." : "Accès limité"} />
+          <Info label="Client" value={detail.clientName ?? "Non accessible"} /><Info label="Marchandise" value={course.cargo_description ?? "À renseigner"} />
           <Info label="Départ prévu" value={formatDate(course.planned_departure_at)} /><Info label="Arrivée prévue" value={formatDate(course.planned_arrival_at)} />
+          <Info label="Véhicule" value={detail.vehicle?.registration ?? "À affecter"} /><Info label="Chauffeur" value={detail.driver?.name ?? "À affecter"} />
           <Info label="Factures" value={invoiceSummary} /><Info label="Solde client" value={canFinance ? formatAmount(financial?.amount_due) : "Accès limité"} />
         </CardContent></Card>
         <Card variant="information"><CardHeader><CardTitle>Règle de clôture</CardTitle></CardHeader><CardContent className="space-y-3 text-sm text-muted-foreground"><p>Une Course est clôturée lorsque toutes ses dépenses sont validées ou annulées, toutes ses factures actives sont réglées et le solde client est nul.</p><p>Les dérogations administrateur sont justifiées et conservées dans l’historique.</p></CardContent></Card>
       </div></TabsContent>
 
       <TabsContent value="transport"><Card><CardHeader><CardTitle>Informations de transport</CardTitle></CardHeader><CardContent className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        <Info label="Départ" value={course.departure_location ?? "Non renseigné"} /><Info label="Destination" value={course.destination_location ?? "Non renseignée"} /><Info label="Distance prévue" value={course.distance_km === null ? "Non renseignée" : `${course.distance_km.toLocaleString("fr-FR")} km`} />
-        <Info label="Marchandise" value={course.cargo_description ?? "Non renseignée"} /><Info label="Quantité" value={course.cargo_quantity === null ? "Non renseignée" : `${course.cargo_quantity} ${course.cargo_unit ?? ""}`.trim()} /><Info label="Poids / volume" value={[course.cargo_weight_kg ? `${course.cargo_weight_kg} kg` : null, course.cargo_volume_m3 ? `${course.cargo_volume_m3} m³` : null].filter(Boolean).join(" · ") || "Non renseigné"} />
+        <Info label="Chargement" value={course.departure_location ?? "Non renseigné"} /><Info label="Destination" value={course.destination_location ?? "Non renseignée"} /><Info label="Marchandise" value={course.cargo_description ?? "Non renseignée"} />
+        <Info label="Poids réel" value={course.cargo_weight_kg === null ? "Non renseigné" : `${course.cargo_weight_kg.toLocaleString("fr-FR")} kg`} /><Info label="Tarification" value={course.pricing_mode ? COURSE_PRICING_MODE_LABELS[course.pricing_mode as keyof typeof COURSE_PRICING_MODE_LABELS] ?? course.pricing_mode : "Non renseignée"} /><Info label="Tarif" value={course.unit_rate === null ? "Non renseigné" : `${course.unit_rate.toLocaleString("fr-FR")} FCFA${course.pricing_mode === "PER_KG" ? "/kg" : course.pricing_mode === "PER_TONNE" ? "/tonne" : ""}`} />
+        <Info label="Transport réel" value={formatAmount(course.actual_transport_amount)} />
         <Info label="Départ réel" value={formatDate(course.actual_departure_at)} /><Info label="Arrivée réelle" value={formatDate(course.actual_arrival_at)} /><Info label="Kilométrage départ" value={course.start_odometer === null ? "Non renseigné" : `${course.start_odometer.toLocaleString("fr-FR")} km`} />
         <Info label="Kilométrage arrivée" value={course.end_odometer === null ? "Non renseigné" : `${course.end_odometer.toLocaleString("fr-FR")} km`} /><Info label="Distance réelle" value={course.start_odometer !== null && course.end_odometer !== null ? `${(course.end_odometer - course.start_odometer).toLocaleString("fr-FR")} km` : "Non calculable"} />
       </CardContent></Card></TabsContent>
 
-      <TabsContent value="vehicle"><Card><CardHeader><CardTitle>Véhicule affecté</CardTitle></CardHeader><CardContent>{detail.vehicle ? <div className="grid gap-5 sm:grid-cols-2">
-        <Info label="Véhicule" value={`${detail.vehicle.registration}${detail.vehicle.brand ? ` · ${detail.vehicle.brand}` : ""}${detail.vehicle.model ? ` ${detail.vehicle.model}` : ""}`} /><Info label="Statut" value={detail.vehicle.status ?? "Non renseigné"} /><Info label="Kilométrage enregistré" value={detail.vehicle.kilometrage === null ? "Non renseigné" : `${detail.vehicle.kilometrage.toLocaleString("fr-FR")} km`} />
-        <div><p className="text-sm font-medium">Documents réglementaires</p><p className="mt-1 text-sm text-muted-foreground">Assurance et visite technique se consultent depuis la fiche du véhicule.</p><Button asChild className="mt-3" variant="outline" size="sm"><Link to="/vehicles/$vehicleId" params={{ vehicleId: detail.vehicle.id }}>Ouvrir le véhicule</Link></Button></div>
-      </div> : <Empty message="Aucun véhicule n’est affecté à cette Course." />}</CardContent></Card></TabsContent>
-
-      <TabsContent value="driver"><Card><CardHeader><CardTitle>Chauffeur affecté</CardTitle></CardHeader><CardContent>{detail.driver ? <div className="grid gap-5 sm:grid-cols-2">
-        <Info label="Chauffeur" value={detail.driver.name} /><Info label="Téléphone" value={detail.driver.telephone ?? "Non renseigné"} /><Info label="Permis" value={detail.driver.licenseExpiry ? `Expire le ${formatDate(detail.driver.licenseExpiry)}` : "Non renseigné"} />
-        <div><p className="text-sm font-medium">Historique et documents</p><p className="mt-1 text-sm text-muted-foreground">Les informations du chauffeur restent centralisées dans sa fiche.</p><Button asChild className="mt-3" variant="outline" size="sm"><Link to="/drivers/$driverId" params={{ driverId: detail.driver.id }}>Ouvrir le chauffeur</Link></Button></div>
-      </div> : <Empty message="Aucun chauffeur n’est affecté à cette Course." />}</CardContent></Card></TabsContent>
-
-      <TabsContent value="budget"><BudgetPerformance budgets={detail.budgets} expenses={detail.expenses} canReadFinance={canFinance} /></TabsContent>
-
       {canFinance ? <TabsContent value="expenses"><div className="space-y-4"><div className="flex justify-end">{can("missions.expenses.manage") && course.status !== "CLOSED" && course.status !== "CANCELLED" ? <Button onClick={() => setExpenseOpen(true)}><Plus className="mr-2 size-4" />Ajouter une dépense</Button> : null}</div><ExpensesPanel expenses={detail.expenses} canConfirm={can("missions.expenses.confirm")} confirmPending={confirmExpense.isPending} cancelPending={cancelExpense.isPending} onConfirm={(id) => confirmExpense.mutate(id)} onCancel={(id) => setCancellationTarget({ kind: "expense", id })} /></div></TabsContent> : null}
 
-      {canFinance ? <TabsContent value="invoice"><div className="space-y-4"><div className="flex justify-end">{can("missions.invoice") && !hasActiveInvoice && course.status !== "CLOSED" && course.status !== "CANCELLED" ? <Button onClick={() => setInvoiceOpen(true)}><Plus className="mr-2 size-4" />Créer la facture</Button> : null}</div><InvoicePanel invoices={detail.invoices} payments={detail.payments} course={course} clientName={detail.clientName} canIssue={can("missions.invoice")} canReceivePayments={can("missions.payments")} issuing={issueInvoice.isPending} onIssue={(id) => issueInvoice.mutate(id)} onRecordPayment={setPaymentInvoiceId} /></div></TabsContent> : null}
-
-      {canFinance ? <TabsContent value="payments" className="space-y-4"><PaymentSummary invoices={detail.invoices} payments={detail.payments} financial={financial} /><PaymentsPanel invoices={detail.invoices} payments={detail.payments} canConfirm={can("missions.payments")} confirmPending={confirmPayment.isPending} cancelPending={cancelPayment.isPending} onConfirm={(id) => confirmPayment.mutate(id)} onCancel={(id) => setCancellationTarget({ kind: "payment", id })} /></TabsContent> : null}
-
-      {canFinance ? <TabsContent value="profitability"><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric icon={BadgeDollarSign} label="Transport" value={formatAmount(financial?.quoted_amount)} /><Metric icon={ClipboardList} label="Budget prévu" value={formatAmount(financial?.budget_amount)} /><Metric icon={Fuel} label="Dépenses réelles" value={formatAmount(financial?.actual_expenses)} /><Metric icon={ReceiptText} label="Facturé" value={formatAmount(financial?.invoiced_amount)} /><Metric icon={WalletCards} label="Montant encaissé" value={formatAmount(financial?.received_amount)} /><Metric icon={Landmark} label="Reste à encaisser" value={formatAmount(financial?.amount_due)} /><Metric icon={Landmark} label="Résultat brut" value={formatAmount(financial?.gross_result)} /><Metric icon={WalletCards} label="Résultat de trésorerie" value={formatAmount(financial?.cash_result)} /><Metric icon={RouteIcon} label="Coût / km" value={financial?.cost_per_km === null || financial?.cost_per_km === undefined ? "Disponible lorsque les deux kilométrages sont valides" : formatAmount(financial.cost_per_km)} /><Metric icon={Flag} label="Écart prévu / réel" value={financial ? formatAmount(financial.budget_amount - financial.actual_expenses) : "—"} /></div></TabsContent> : null}
+      {canFinance ? <TabsContent value="finance" className="space-y-5"><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric icon={BadgeDollarSign} label="Transport réel" value={formatAmount(financial?.quoted_amount)} /><Metric icon={Fuel} label="Dépenses réelles" value={formatAmount(financial?.actual_expenses)} /><Metric icon={Landmark} label="Résultat Course" value={financial?.gross_result === null || financial?.gross_result === undefined ? "Non disponible" : formatAmount(financial.gross_result)} /><Metric icon={ReceiptText} label="Facturé" value={formatAmount(financial?.invoiced_amount)} /><Metric icon={WalletCards} label="Encaissé" value={formatAmount(financial?.received_amount)} /><Metric icon={Landmark} label="Reste à encaisser" value={formatAmount(financial?.amount_due)} /><Metric icon={WalletCards} label="Résultat de trésorerie" value={formatAmount(financial?.cash_result)} /><Metric icon={RouteIcon} label="Coût / km" value={financial?.cost_per_km === null || financial?.cost_per_km === undefined ? "Non calculable" : formatAmount(financial.cost_per_km)} /></div><div className="flex justify-end">{can("missions.invoice") && !hasActiveInvoice && course.actual_transport_amount !== null && course.status !== "CLOSED" && course.status !== "CANCELLED" ? <Button onClick={() => setInvoiceOpen(true)}><Plus className="mr-2 size-4" />Créer la facture</Button> : null}</div><InvoicePanel invoices={detail.invoices} payments={detail.payments} course={course} clientName={detail.clientName} canIssue={can("missions.invoice")} canReceivePayments={can("missions.payments")} issuing={issueInvoice.isPending} onIssue={(id) => issueInvoice.mutate(id)} onRecordPayment={setPaymentInvoiceId} /><PaymentSummary invoices={detail.invoices} payments={detail.payments} financial={financial} /><PaymentsPanel invoices={detail.invoices} payments={detail.payments} canConfirm={can("missions.payments")} confirmPending={confirmPayment.isPending} cancelPending={cancelPayment.isPending} onConfirm={(id) => confirmPayment.mutate(id)} onCancel={(id) => setCancellationTarget({ kind: "payment", id })} /></TabsContent> : null}
 
       <TabsContent value="documents" className="space-y-4"><Card variant="information" className="border-primary/15"><CardContent className="flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-label text-primary">Documents de transport</p><p className="mt-1 text-sm text-muted-foreground">Facture, bons de mission, de sortie ou de livraison et reçus restent liés à cette Course.</p></div><ReceiptText className="size-5 text-primary" aria-hidden="true" /></CardContent></Card><EntityDocumentsTab entityId={courseId} relation="mission" /></TabsContent>
       <TabsContent value="history"><Card variant="section"><CardHeader><CardTitle>Historique audité</CardTitle><p className="text-sm text-muted-foreground">Chaque action importante reste consultable avec sa date et son contexte.</p></CardHeader><CardContent>{historyQuery.isPending ? <HistoryTimelineSkeleton /> : historyQuery.isError ? <p className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">Impossible de charger l’historique.</p> : historyQuery.data?.length ? <ol className="relative space-y-5 border-l border-primary/20 pl-5">{historyQuery.data.map((entry) => <li key={entry.id} className="relative"><span className="absolute -left-[1.65rem] top-1.5 grid size-3 place-items-center rounded-full border-2 border-surface-elevated bg-primary" aria-hidden="true" /><div className="rounded-xl border border-border/80 bg-surface/60 p-4"><p className="font-medium text-foreground">{historyLabel(entry.source_type, entry.action)}</p><p className="mt-1 text-caption">{formatDate(entry.created_at)} · {entry.performed_by ? `Utilisateur ${entry.performed_by.slice(0, 8)}` : "Utilisateur système"}</p><HistorySnapshot label="Avant" value={entry.before_value} /><HistorySnapshot label="Après" value={entry.after_value} /></div></li>)}</ol> : <Empty message="Aucun événement visible pour cette Course." />}</CardContent></Card></TabsContent>
@@ -342,10 +321,12 @@ function CourseDetailsPage() {
     <Dialog open={planningOpen} onOpenChange={setPlanningOpen}><DialogContent><DialogHeader><DialogTitle>{course.status === "DRAFT" ? "Planifier la Course" : "Replanifier la Course"}</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-muted-foreground">Ces informations sont des prévisions. Elles restent modifiables tant que le départ réel n’a pas été confirmé. Le véhicule et le chauffeur restent disponibles seulement si ce créneau ne chevauche aucune autre Course active.</p><div className="grid gap-4 sm:grid-cols-2"><Field label="Départ prévu"><Input type="datetime-local" value={plannedDeparture} onChange={(event) => setPlannedDeparture(event.target.value)} /></Field><Field label="Arrivée prévue"><Input type="datetime-local" value={plannedArrival} onChange={(event) => setPlannedArrival(event.target.value)} /></Field></div><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setPlanningOpen(false)}>Annuler</Button><Button disabled={!plannedDeparture || !plannedArrival || planningMutation.isPending} onClick={() => planningMutation.mutate({ departure: plannedDeparture, arrival: plannedArrival })}>{planningMutation.isPending ? "Enregistrement…" : course.status === "DRAFT" ? "Enregistrer et planifier" : "Enregistrer la nouvelle prévision"}</Button></div></div></DialogContent></Dialog>
     <CourseDepartureDialog course={course} open={departureOpen} onOpenChange={setDepartureOpen} />
     <CourseDeliveryDialog course={course} open={deliveryOpen} onOpenChange={setDeliveryOpen} />
+    <AssignmentDialog course={course} open={assignmentOpen} onOpenChange={setAssignmentOpen} />
+    <CourseActualsDialog course={course} open={actualsOpen} onOpenChange={setActualsOpen} onSuccess={refresh} />
     <Dialog open={expenseOpen} onOpenChange={setExpenseOpen}><DialogContent><DialogHeader><DialogTitle>Ajouter une dépense</DialogTitle></DialogHeader><ExpenseForm missionId={courseId} onSuccess={() => { setExpenseOpen(false); refresh(); }} /></DialogContent></Dialog>
-    <Dialog open={invoiceOpen} onOpenChange={setInvoiceOpen}><DialogContent><DialogHeader><DialogTitle>Créer une facture</DialogTitle></DialogHeader><InvoiceForm missionId={courseId} defaultAmount={course.quoted_amount} onSuccess={() => { setInvoiceOpen(false); refresh(); }} /></DialogContent></Dialog>
+    <Dialog open={invoiceOpen} onOpenChange={setInvoiceOpen}><DialogContent><DialogHeader><DialogTitle>Créer une facture</DialogTitle></DialogHeader><InvoiceForm missionId={courseId} defaultAmount={course.actual_transport_amount} onSuccess={() => { setInvoiceOpen(false); refresh(); }} /></DialogContent></Dialog>
     <Dialog open={paymentInvoiceId !== null} onOpenChange={(open) => { if (!open) setPaymentInvoiceId(null); }}><DialogContent><DialogHeader><DialogTitle>Enregistrer un paiement</DialogTitle></DialogHeader>{paymentInvoice ? <PaymentForm invoiceId={paymentInvoice.id} due={invoiceDue(paymentInvoice, detail.payments)} onSuccess={() => { setPaymentInvoiceId(null); refresh(); }} /> : null}</DialogContent></Dialog>
-    <Dialog open={archiveOpen} onOpenChange={(open) => { setArchiveOpen(open); if (!open) setArchiveReason(""); }}><DialogContent><DialogHeader><DialogTitle>Annuler et archiver la Course</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-muted-foreground">La Course ne sera plus active. Son montant prévu, par exemple 90 000 FCFA, reste conservé dans l’historique mais ne crée ni recette ni mouvement de wallet à lui seul.</p><p className="text-sm text-muted-foreground">Les dépenses ou paiements déjà confirmés ne sont jamais effacés : annulez-les depuis leurs onglets afin de créer la contre-écriture nécessaire.</p><Field label="Justification"><Textarea value={archiveReason} onChange={(event) => setArchiveReason(event.target.value)} placeholder="Expliquez la raison de l’annulation" /></Field><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setArchiveOpen(false)}>Retour</Button><Button variant="destructive" disabled={archiveReason.trim().length < 3 || statusMutation.isPending} onClick={() => statusMutation.mutate({ status: "CANCELLED", reason: archiveReason.trim() }, { onSuccess: () => { setArchiveOpen(false); setArchiveReason(""); } })}>{statusMutation.isPending ? "Annulation…" : "Confirmer l’annulation"}</Button></div></div></DialogContent></Dialog>
+    <Dialog open={archiveOpen} onOpenChange={(open) => { setArchiveOpen(open); if (!open) setArchiveReason(""); }}><DialogContent><DialogHeader><DialogTitle>Annuler et archiver la Course</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-muted-foreground">La Course ne sera plus active. L’annulation ne crée ni recette ni mouvement de wallet.</p><p className="text-sm text-muted-foreground">Les dépenses ou paiements déjà confirmés ne sont jamais effacés : annulez-les depuis leurs onglets afin de créer la contre-écriture nécessaire.</p><Field label="Justification"><Textarea value={archiveReason} onChange={(event) => setArchiveReason(event.target.value)} placeholder="Expliquez la raison de l’annulation" /></Field><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setArchiveOpen(false)}>Retour</Button><Button variant="destructive" disabled={archiveReason.trim().length < 3 || statusMutation.isPending} onClick={() => statusMutation.mutate({ status: "CANCELLED", reason: archiveReason.trim() }, { onSuccess: () => { setArchiveOpen(false); setArchiveReason(""); } })}>{statusMutation.isPending ? "Annulation…" : "Confirmer l’annulation"}</Button></div></div></DialogContent></Dialog>
     <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}><DialogContent><DialogHeader><DialogTitle>Supprimer la Course</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-muted-foreground">Cette action est réservée aux brouillons et aux Courses planifiées sans dépense, facture, paiement ou document lié. Les autres Courses doivent être archivées.</p><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setDeleteOpen(false)}>Annuler</Button><Button variant="destructive" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate()}>{deleteMutation.isPending ? "Suppression…" : "Supprimer définitivement"}</Button></div></div></DialogContent></Dialog>
     <Dialog open={cancellationTarget !== null} onOpenChange={(open) => { if (!open) { setCancellationTarget(null); setCancellationReason(""); } }}><DialogContent><DialogHeader><DialogTitle>{cancellationTarget?.kind === "expense" ? "Annuler la dépense" : "Annuler le paiement"}</DialogTitle></DialogHeader><div className="space-y-4"><p className="text-sm text-muted-foreground">{cancellationTarget?.kind === "expense" ? "Une dépense validée est conservée et compensée par une contre-écriture dans le journal financier." : "Un paiement confirmé est conservé et compensé par une contre-écriture dans le journal financier."}</p><Field label="Justification"><Textarea value={cancellationReason} onChange={(event) => setCancellationReason(event.target.value)} placeholder="Expliquez la correction" /></Field><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => { setCancellationTarget(null); setCancellationReason(""); }}>Retour</Button><Button variant="destructive" disabled={cancellationReason.trim().length < 3 || cancelExpense.isPending || cancelPayment.isPending} onClick={() => { if (!cancellationTarget) return; const onSuccess = () => { setCancellationTarget(null); setCancellationReason(""); }; if (cancellationTarget.kind === "expense") cancelExpense.mutate({ id: cancellationTarget.id, reason: cancellationReason.trim() }, { onSuccess }); else cancelPayment.mutate({ id: cancellationTarget.id, reason: cancellationReason.trim() }, { onSuccess }); }}>{cancelExpense.isPending || cancelPayment.isPending ? "Annulation…" : "Confirmer l’annulation"}</Button></div></div></DialogContent></Dialog>
   </div>;
@@ -415,22 +396,54 @@ function PaymentSummary({ invoices, payments, financial }: { invoices: CourseInv
   return <Card variant="information" className="border-primary/15"><CardContent className="grid gap-5 p-5 sm:grid-cols-[minmax(0,1fr)_minmax(15rem,0.8fr)] sm:items-center"><div><div className="flex items-center gap-2"><CircleDollarSign className="size-4 text-primary" aria-hidden="true" /><p className="text-label text-primary">Situation des paiements</p></div><p className="mt-2 text-body-sm text-muted-foreground">{confirmedPayments} paiement{confirmedPayments > 1 ? "s" : ""} confirmé{confirmedPayments > 1 ? "s" : ""} · {invoices.length} facture{invoices.length > 1 ? "s" : ""} liée{invoices.length > 1 ? "s" : ""}</p></div><div><div className="flex items-baseline justify-between gap-4"><p className="text-caption">Encaissement</p><p className="text-body-sm font-semibold tabular-nums text-foreground">{formatAmount(received)} / {formatAmount(invoiced)}</p></div><Progress className="mt-2 h-2.5 bg-primary/15" value={percentage} aria-label={`${Math.round(percentage)} % facturé encaissé`} /><p className="mt-2 text-caption">Reste à encaisser : <span className="font-medium text-foreground">{formatAmount(Number(financial?.amount_due ?? 0))}</span></p></div></CardContent></Card>;
 }
 
-function BudgetPerformance({ budgets, expenses, canReadFinance }: { budgets: CourseBudgetLine[]; expenses: CourseExpense[]; canReadFinance: boolean }) {
-  const categories = new Map<string, { planned: number; actual: number }>();
-  budgets.forEach((line) => categories.set(line.category, { planned: Number(line.planned_amount), actual: 0 }));
-  expenses.filter((expense) => expense.status === "PAID").forEach((expense) => {
-    const current = categories.get(expense.category) ?? { planned: 0, actual: 0 };
-    categories.set(expense.category, { ...current, actual: current.actual + Number(expense.amount) });
+function CourseActualsDialog({ course, open, onOpenChange, onSuccess }: { course: Course; open: boolean; onOpenChange: (open: boolean) => void; onSuccess: () => void }) {
+  const [destination, setDestination] = useState(course.destination_location ?? "");
+  const [cargo, setCargo] = useState(course.cargo_description ?? "");
+  const [weight, setWeight] = useState(course.cargo_weight_kg === null ? "" : String(course.cargo_weight_kg));
+  const [pricingMode, setPricingMode] = useState<(typeof COURSE_PRICING_MODES)[number] | "">((course.pricing_mode as (typeof COURSE_PRICING_MODES)[number] | null) ?? "");
+  const [rate, setRate] = useState(course.unit_rate === null ? "" : String(course.unit_rate));
+  const [flatAmount, setFlatAmount] = useState(course.pricing_mode === "FLAT" && course.actual_transport_amount !== null ? String(course.actual_transport_amount) : "");
+  const [startOdometer, setStartOdometer] = useState(course.start_odometer === null ? "" : String(course.start_odometer));
+  const [endOdometer, setEndOdometer] = useState(course.end_odometer === null ? "" : String(course.end_odometer));
+  const [reason, setReason] = useState("");
+  const isFinal = course.status === "COMPLETED" || course.status === "CLOSED";
+
+  useEffect(() => {
+    if (!open) return;
+    setDestination(course.destination_location ?? ""); setCargo(course.cargo_description ?? "");
+    setWeight(course.cargo_weight_kg === null ? "" : String(course.cargo_weight_kg));
+    setPricingMode((course.pricing_mode as (typeof COURSE_PRICING_MODES)[number] | null) ?? "");
+    setRate(course.unit_rate === null ? "" : String(course.unit_rate));
+    setFlatAmount(course.pricing_mode === "FLAT" && course.actual_transport_amount !== null ? String(course.actual_transport_amount) : "");
+    setStartOdometer(course.start_odometer === null ? "" : String(course.start_odometer));
+    setEndOdometer(course.end_odometer === null ? "" : String(course.end_odometer)); setReason("");
+  }, [course, open]);
+
+  const actualAmount = pricingMode === "FLAT"
+    ? (flatAmount === "" ? null : Number(flatAmount))
+    : weight !== "" && rate !== ""
+      ? pricingMode === "PER_KG" ? Number(weight) * Number(rate) : pricingMode === "PER_TONNE" ? Number(weight) / 1000 * Number(rate) : null
+      : null;
+  const invalidOdometers = startOdometer !== "" && endOdometer !== "" && Number(endOdometer) < Number(startOdometer);
+  const mutation = useMutation({
+    mutationFn: () => updateCourseActuals({ data: { missionId: course.id, actuals: {
+      destination_location: destination.trim() || null, cargo_description: cargo.trim() || null,
+      cargo_weight_kg: weight === "" ? null : Number(weight), pricing_mode: pricingMode || null,
+      unit_rate: pricingMode === "FLAT" || rate === "" ? null : Number(rate),
+      actual_transport_amount: pricingMode === "FLAT" && flatAmount !== "" ? Number(flatAmount) : null,
+      start_odometer: startOdometer === "" ? null : Number(startOdometer), end_odometer: endOdometer === "" ? null : Number(endOdometer),
+      reason: reason.trim() || null,
+    } } }),
+    onSuccess: () => { toast.success(isFinal ? "Correction enregistrée et auditée." : "Données réelles enregistrées."); onOpenChange(false); onSuccess(); },
+    onError: notificationError,
   });
 
-  if (!categories.size) return <Card><CardHeader><CardTitle>Budget prévisionnel</CardTitle></CardHeader><CardContent><Empty message="Aucun budget prévisionnel ni aucune dépense validée n’est disponible pour cette Course." /></CardContent></Card>;
-
-  return <Card variant="section"><CardHeader><CardTitle>Budget et dépenses par catégorie</CardTitle><p className="text-sm text-muted-foreground">Le réel reprend uniquement les dépenses déjà validées.</p></CardHeader><CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{Array.from(categories.entries()).map(([category, values]) => {
-    const difference = values.planned - values.actual;
-    const progress = values.planned > 0 ? Math.min(100, (values.actual / values.planned) * 100) : 0;
-    const isOverBudget = values.planned > 0 && values.actual > values.planned;
-    return <div key={category} className="rounded-xl border border-border/80 bg-surface/50 p-4"><div className="flex items-start justify-between gap-3"><p className="text-body-sm font-semibold text-foreground">{COURSE_EXPENSE_CATEGORY_LABELS[category as keyof typeof COURSE_EXPENSE_CATEGORY_LABELS] ?? category}</p><Badge variant={isOverBudget ? "danger" : "info"} appearance="soft">{isOverBudget ? "À surveiller" : "Suivi"}</Badge></div><dl className="mt-4 space-y-2"><Summary label="Budget" value={formatAmount(values.planned)} /><Summary label="Réel" value={canReadFinance ? formatAmount(values.actual) : "Accès limité"} /><Summary label="Écart" value={canReadFinance ? formatAmount(difference) : "Accès limité"} /></dl>{canReadFinance ? <Progress className="mt-4 h-2 bg-muted" value={progress} aria-label={`${Math.round(progress)} % du budget consommé`} /> : null}</div>;
-  })}</CardContent></Card>;
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><DialogHeader><DialogTitle>{isFinal ? "Corriger les données réelles" : "Renseigner le transport réel"}</DialogTitle></DialogHeader><div className="space-y-4">
+    <div className="grid gap-4 sm:grid-cols-2"><Field label="Destination"><Input value={destination} onChange={(event) => setDestination(event.target.value)} /></Field><Field label="Marchandise"><Input value={cargo} onChange={(event) => setCargo(event.target.value)} /></Field><Field label="Poids réel (kg)"><Input type="number" min="0" value={weight} onChange={(event) => setWeight(event.target.value)} placeholder="Inconnu accepté" /></Field><Field label="Tarification"><Select value={pricingMode || "NONE"} onValueChange={(value) => setPricingMode(value === "NONE" ? "" : value as (typeof COURSE_PRICING_MODES)[number])}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="NONE">Non renseignée</SelectItem>{COURSE_PRICING_MODES.map((mode) => <SelectItem key={mode} value={mode}>{COURSE_PRICING_MODE_LABELS[mode]}</SelectItem>)}</SelectContent></Select></Field>{pricingMode === "FLAT" ? <Field label="Forfait réel (FCFA)"><Input type="number" min="0" value={flatAmount} onChange={(event) => setFlatAmount(event.target.value)} /></Field> : pricingMode ? <Field label={pricingMode === "PER_KG" ? "Tarif par kg (FCFA)" : "Tarif par tonne (FCFA)"}><Input type="number" min="0" value={rate} onChange={(event) => setRate(event.target.value)} /></Field> : null}<Field label="Montant de transport réel"><Input readOnly value={actualAmount === null || !Number.isFinite(actualAmount) ? "Non calculable" : formatAmount(actualAmount)} /></Field><Field label="Kilométrage départ"><Input type="number" min="0" value={startOdometer} onChange={(event) => setStartOdometer(event.target.value)} /></Field><Field label="Kilométrage arrivée"><Input type="number" min="0" value={endOdometer} onChange={(event) => setEndOdometer(event.target.value)} /></Field></div>
+    {isFinal ? <Field label="Justification obligatoire"><Textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Motif de la correction après finalisation" /></Field> : null}
+    <p className="text-caption">Une donnée inconnue reste vide. Si une facture active existe, son historique financier n’est jamais modifié silencieusement.</p>
+    <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button><Button disabled={invalidOdometers || (isFinal && reason.trim().length < 3) || mutation.isPending} onClick={() => mutation.mutate()}>{mutation.isPending ? "Enregistrement…" : "Enregistrer"}</Button></div>
+  </div></DialogContent></Dialog>;
 }
 
 function HistoryTimelineSkeleton() { return <div className="space-y-4" aria-label="Chargement de l’historique">{Array.from({ length: 4 }, (_, index) => <div key={index} className="flex gap-3"><div className="mt-1 size-3 rounded-full bg-primary/15" /><div className="flex-1 space-y-2 rounded-xl border p-4"><div className="h-4 w-2/5 animate-pulse rounded bg-muted" /><div className="h-3 w-3/5 animate-pulse rounded bg-muted" /></div></div>)}</div>; }
@@ -438,7 +451,7 @@ function Info({ label, value }: { label: string; value: string }) { return <div>
 function Empty({ message }: { message: string }) { return <p className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">{message}</p>; }
 function historyLabel(source: string, action: string) { const names: Record<string, string> = { COURSE: "Course", COURSE_EXPENSE: "Dépense", COURSE_INVOICE: "Facture", COURSE_PAYMENT: "Paiement" }; const actions: Record<string, string> = { CREATE: "créé", UPDATE: "mis à jour", CLOSE: "clôturé", CANCEL: source === "COURSE" ? "archivé" : "annulé", DELIVERY: "livraison confirmée", CORRECT: "livraison remise en cours", DELIVERY_CORRECTION: "livraison remise en cours", DELETE: "supprimé", ARCHIVE: "archivé", RESTORE: "restauré", REPLACE: "remplacé" }; return `${names[source] ?? source} ${actions[action] ?? action}`; }
 function HistorySnapshot({ label, value }: { label: string; value: CourseHistoryEntry["before_value"] }) { const summary = historyValueSummary(value); return summary ? <p className="mt-2 text-sm text-muted-foreground"><span className="font-medium text-foreground">{label} :</span> {summary}</p> : null; }
-function historyValueSummary(value: CourseHistoryEntry["before_value"]): string | null { if (!value || typeof value !== "object" || Array.isArray(value)) return null; const labels: Record<string, string> = { status: "Statut", amount: "Montant", total_amount: "Total", planned_amount: "Budget", mission_number: "Course", invoice_number: "Facture", category: "Catégorie" }; const details = Object.entries(value).flatMap(([key, raw]) => { if (!(key in labels) || (typeof raw !== "string" && typeof raw !== "number")) return []; return [`${labels[key]} : ${typeof raw === "number" ? formatAmount(raw) : raw}`]; }); return details.length ? details.join(" · ") : "Modification enregistrée dans l’audit"; }
+function historyValueSummary(value: CourseHistoryEntry["before_value"]): string | null { if (!value || typeof value !== "object" || Array.isArray(value)) return null; const labels: Record<string, string> = { status: "Statut", amount: "Montant", total_amount: "Total", mission_number: "Course", invoice_number: "Facture", category: "Catégorie" }; const details = Object.entries(value).flatMap(([key, raw]) => { if (!(key in labels) || (typeof raw !== "string" && typeof raw !== "number")) return []; return [`${labels[key]} : ${typeof raw === "number" ? formatAmount(raw) : raw}`]; }); return details.length ? details.join(" · ") : "Modification enregistrée dans l’audit"; }
 
 function ExpensesPanel({ expenses, canConfirm, confirmPending, cancelPending, onConfirm, onCancel }: { expenses: CourseExpense[]; canConfirm: boolean; confirmPending: boolean; cancelPending: boolean; onConfirm: (id: string) => void; onCancel: (id: string) => void }) {
   if (!expenses.length) return <Empty message="Aucune dépense n’est enregistrée. Une dépense n’impacte le wallet qu’après validation." />;
@@ -515,10 +528,10 @@ function ExpenseForm({ missionId, onSuccess }: { missionId: string; onSuccess: (
   return <div className="space-y-4"><div className="space-y-2"><Label>Wallet</Label><WalletSelect value={walletId} onValueChange={setWalletId} /></div><div className="grid gap-4 sm:grid-cols-2"><Field label="Catégorie"><Select value={category} onValueChange={(value) => setCategory(value as (typeof COURSE_EXPENSE_CATEGORIES)[number])}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{COURSE_EXPENSE_CATEGORIES.map((item) => <SelectItem key={item} value={item}>{COURSE_EXPENSE_CATEGORY_LABELS[item]}</SelectItem>)}</SelectContent></Select></Field><Field label="Montant (FCFA)"><Input type="number" min="1" value={amount} onChange={(event) => setAmount(event.target.value)} /></Field><Field label="Date"><Input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></Field></div><Field label="Description"><Textarea value={description} onChange={(event) => setDescription(event.target.value)} /></Field><Button className="w-full" disabled={!walletId || Number(amount) <= 0 || mutation.isPending} onClick={() => mutation.mutate()}>{mutation.isPending ? "Ajout…" : "Ajouter la dépense"}</Button></div>;
 }
 
-function InvoiceForm({ missionId, defaultAmount, onSuccess }: { missionId: string; defaultAmount: number; onSuccess: () => void }) {
-  const [amount, setAmount] = useState(String(defaultAmount)); const [rate, setRate] = useState(""); const [dueDate, setDueDate] = useState(""); const [notes, setNotes] = useState("");
+function InvoiceForm({ missionId, defaultAmount, onSuccess }: { missionId: string; defaultAmount: number | null; onSuccess: () => void }) {
+  const [amount, setAmount] = useState(defaultAmount === null ? "" : String(defaultAmount)); const [rate, setRate] = useState(""); const [dueDate, setDueDate] = useState(""); const [notes, setNotes] = useState("");
   const mutation = useMutation({ mutationFn: () => createCourseInvoice({ data: { missionId, invoice: { subtotal_amount: amount ? Number(amount) : null, tax_rate: rate ? Number(rate) : null, due_date: dueDate || null, notes: notes.trim() || null } } }), onSuccess: () => { toast.success("Facture créée en brouillon."); onSuccess(); }, onError: notificationError });
-  return <div className="space-y-4"><p className="text-sm text-muted-foreground">La TVA est proposée uniquement si elle est activée dans les paramètres de l’entreprise. Une facture créée reste en brouillon jusqu’à son émission.</p><div className="grid gap-4 sm:grid-cols-2"><Field label="Montant HT (FCFA)"><Input type="number" min="0" value={amount} onChange={(event) => setAmount(event.target.value)} /></Field><Field label="TVA (%)"><Input type="number" min="0" max="100" value={rate} onChange={(event) => setRate(event.target.value)} placeholder="Paramètre par défaut" /></Field><Field label="Échéance"><Input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></Field></div><Field label="Notes"><Textarea value={notes} onChange={(event) => setNotes(event.target.value)} /></Field><Button className="w-full" disabled={Number(amount) < 0 || mutation.isPending} onClick={() => mutation.mutate()}>{mutation.isPending ? "Création…" : "Créer la facture"}</Button></div>;
+  return <div className="space-y-4"><p className="text-sm text-muted-foreground">La facture reprend le montant de transport réel confirmé. La TVA est appliquée uniquement si elle est activée dans les paramètres de l’entreprise.</p><div className="grid gap-4 sm:grid-cols-2"><Field label="Montant HT (FCFA)"><Input type="number" min="0" value={amount} readOnly /></Field><Field label="TVA (%)"><Input type="number" min="0" max="100" value={rate} onChange={(event) => setRate(event.target.value)} placeholder="Paramètre par défaut" /></Field><Field label="Échéance"><Input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></Field></div><Field label="Notes"><Textarea value={notes} onChange={(event) => setNotes(event.target.value)} /></Field><Button className="w-full" disabled={amount === "" || Number(amount) < 0 || mutation.isPending} onClick={() => mutation.mutate()}>{mutation.isPending ? "Création…" : "Créer la facture"}</Button></div>;
 }
 
 function PaymentForm({ invoiceId, due, onSuccess }: { invoiceId: string; due: number; onSuccess: () => void }) {

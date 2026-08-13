@@ -69,8 +69,10 @@ function CoursesPage() {
   const overview = {
     active: courses.filter((course) => ["PLANNED", "IN_PROGRESS"].includes(course.status)).length,
     completedToday: courses.filter(isCompletedToday).length,
-    receivable: courses.reduce((sum, course) => sum + (course.amountDue ?? 0), 0),
-    result: courses.reduce((sum, course) => sum + (course.grossResult ?? 0), 0),
+    receivable: courses.filter((course) => course.invoiceStatus !== null).reduce((sum, course) => sum + (course.amountDue ?? 0), 0),
+    receivableKnown: courses.some((course) => course.invoiceStatus !== null && course.amountDue !== null),
+    result: courses.filter((course) => course.grossResult !== null).reduce((sum, course) => sum + (course.grossResult ?? 0), 0),
+    resultKnown: courses.some((course) => course.grossResult !== null),
   };
 
   function resetFilters() {
@@ -104,8 +106,8 @@ function CoursesPage() {
           <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <HeroKpi icon={Clock3} label="Courses actives" value={summaryUnavailable ? null : String(overview.active)} detail="Planifiées ou en cours" tone="info" />
             <HeroKpi icon={CalendarDays} label="Terminées aujourd’hui" value={summaryUnavailable ? null : String(overview.completedToday)} detail="Parmi les Courses affichées" tone="success" />
-            <HeroKpi icon={WalletCards} label="Reste à encaisser" value={summaryUnavailable || !canReadFinance ? null : formatAmount(overview.receivable)} detail={canReadFinance ? "Sur les Courses affichées" : "Accès financier requis"} tone="warning" />
-            <HeroKpi icon={CircleDollarSign} label="Résultat visible" value={summaryUnavailable || !canReadFinance ? null : formatAmount(overview.result)} detail={canReadFinance ? "Résultat brut des Courses affichées" : "Accès financier requis"} tone={overview.result < 0 ? "danger" : "success"} />
+            <HeroKpi icon={WalletCards} label="Reste à encaisser" value={summaryUnavailable || !canReadFinance ? null : overview.receivableKnown ? formatAmount(overview.receivable) : "Non disponible"} detail={canReadFinance ? "Factures des Courses affichées" : "Accès financier requis"} tone="warning" />
+            <HeroKpi icon={CircleDollarSign} label="Résultat visible" value={summaryUnavailable || !canReadFinance ? null : overview.resultKnown ? formatAmount(overview.result) : "Non disponible"} detail={canReadFinance ? "Transport réel moins dépenses réelles" : "Accès financier requis"} tone={overview.resultKnown && overview.result < 0 ? "danger" : "success"} />
           </div>
           <p className="mt-4 text-caption text-muted-foreground"><TrendingUp className="mr-1 inline size-3.5 text-primary" aria-hidden="true" />Les indicateurs reflètent uniquement les Courses de la page courante et les filtres actifs.</p>
         </div>

@@ -155,7 +155,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         .in("status", ["UNREAD", "READ", "SNOOZED"]),
       supabase
         .from("transport_missions")
-        .select("id, status, client_id, vehicle_id, driver_id, planned_arrival_at, quoted_amount"),
+        .select("id, status, client_id, vehicle_id, driver_id, planned_arrival_at, actual_transport_amount"),
     ]);
 
     const sum = (rows: { amount: number | string | null }[] | null | undefined) =>
@@ -206,7 +206,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     const totalCourseReceived = coursePaymentRows.filter((row) => row.status === "CONFIRMED").reduce((total, row) => total + Number(row.amount), 0);
     const totalCourseBilled = courseInvoiceRows.filter((row) => row.status !== "CANCELLED").reduce((total, row) => total + Number(row.total_amount), 0);
     const aggregate = (key: "client_id" | "vehicle_id" | "driver_id", labels: Map<string, string>) => Array.from(courses.reduce((acc, course) => {
-      const id = course[key]; if (!id) return acc; acc.set(id, (acc.get(id) ?? 0) + Number(course.quoted_amount)); return acc;
+      const id = course[key]; if (!id || course.actual_transport_amount === null) return acc; acc.set(id, (acc.get(id) ?? 0) + Number(course.actual_transport_amount)); return acc;
     }, new Map<string, number>())).sort((left, right) => right[1] - left[1]).slice(0, 3).map(([id, value]) => ({ id, label: labels.get(id) ?? "Entité non accessible", value }));
     const clientLabels = new Map((courseClients?.data ?? []).map((client) => [client.id, client.display_name]));
     const vehicleLabels = new Map((courseVehicles?.data ?? []).map((vehicle) => [vehicle.id, vehicle.registration]));

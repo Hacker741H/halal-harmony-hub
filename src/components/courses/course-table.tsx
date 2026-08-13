@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { COURSE_STATUS_LABELS, type CourseListItem } from "@/lib/courses.functions";
 
 function formatAmount(value: number | null) {
-  return value === null ? "Accès limité" : `${value.toLocaleString("fr-FR")} FCFA`;
+  return value === null ? "Non renseigné" : `${value.toLocaleString("fr-FR")} FCFA`;
 }
 
 function statusVariant(status: CourseListItem["status"]): "outline" | "info" | "warning" | "success" | "danger" {
@@ -37,10 +37,10 @@ function initials(name: string | null) {
 }
 
 function paymentProgress(course: CourseListItem) {
-  if (course.amountDue === null) return null;
-  const quotedAmount = Number(course.quoted_amount);
-  if (quotedAmount <= 0) return 0;
-  return Math.min(100, Math.max(0, ((quotedAmount - course.amountDue) / quotedAmount) * 100));
+  if (course.amountDue === null || course.actual_transport_amount === null || course.invoiceStatus === null) return null;
+  const actualAmount = Number(course.actual_transport_amount);
+  if (actualAmount <= 0) return 0;
+  return Math.min(100, Math.max(0, ((actualAmount - course.amountDue) / actualAmount) * 100));
 }
 
 export function CourseTable({
@@ -146,9 +146,9 @@ export function CourseTable({
 
                 {canReadFinance ? (
                   <div className="grid gap-3 border-t border-border/70 pt-4 sm:grid-cols-3 xl:border-t-0 xl:border-l xl:pl-5 xl:pt-0">
-                    <FinanceValue label="Recette" value={formatAmount(Number(course.quoted_amount))} />
+                    <FinanceValue label="Transport réel" value={formatAmount(course.actual_transport_amount)} />
                     <FinanceValue label="Dépenses" value={formatAmount(course.actualExpenses)} tone={course.actualExpenses !== null && course.actualExpenses > 0 ? "warning" : "neutral"} />
-                    <FinanceValue label="Résultat" value={formatAmount(course.grossResult)} tone={course.grossResult !== null && course.grossResult < 0 ? "danger" : "success"} />
+                    <FinanceValue label="Résultat" value={course.grossResult === null ? "Non disponible" : formatAmount(course.grossResult)} tone={course.grossResult === null ? "neutral" : course.grossResult < 0 ? "danger" : "success"} />
                     <div className="sm:col-span-3 xl:col-span-3">
                       <div className="flex items-center justify-between gap-3 text-caption"><span>Encaissement</span><span className="font-medium tabular-nums text-foreground">Reste {formatAmount(course.amountDue)}</span></div>
                       {progress === null ? <div className="mt-2 h-2 rounded-full bg-muted" aria-label="Informations financières non accessibles" /> : <Progress className="mt-2 h-2 bg-primary/10" value={progress} aria-label={`${Math.round(progress)} % de la recette est encaissée`} />}
