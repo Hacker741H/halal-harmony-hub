@@ -33,6 +33,7 @@ import {
 } from "@/lib/commerce-pos.functions";
 import { getWallets } from "@/lib/wallet.functions";
 import { useCommercePosSession } from "@/hooks/use-commerce-pos-session";
+import { useCurrentUserAccess } from "@/hooks/use-current-user-access";
 import { usePermissions } from "@/hooks/use-permissions";
 import { supabase } from "@/integrations/supabase/client";
 import { cachePosOfflineLocations, findPosOfflineDraftLocation, getCachedPosOfflineLocations } from "@/lib/commerce-pos-offline";
@@ -296,7 +297,11 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
   const canManageStock = can("commerce.stock.receive");
   const canManageLocations = can("locations.manage") && can("locations.wallets.manage") && can("locations.assign");
   const locationsQuery = useQuery({ queryKey: ["commerce-pos-locations"], queryFn: () => getCommercePosLocations() });
+  const currentUserQuery = useCurrentUserAccess();
   const currentUserId = useCommerceCashierUserId();
+  const cashierName = currentUserQuery.data?.fullName?.trim()
+    || currentUserQuery.data?.username
+    || (currentUserQuery.isLoading ? "Chargement…" : "Caissier non identifié");
   const [locationId, setLocationId] = useState("");
   const [cachedLocations, setCachedLocations] = useState<CommercePosLocation[]>([]);
   const availableLocations = locationsQuery.data?.length ? locationsQuery.data : cachedLocations;
@@ -688,7 +693,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
           <div className="grid gap-x-5 gap-y-2 sm:grid-cols-2 xl:grid-cols-4">
             <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Ticket en cours</p><p className="mt-1 font-mono text-sm font-bold tracking-wide text-primary">{ticketReference}</p></div>
             <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Point de vente</p><p className="mt-1 truncate text-sm font-semibold" title={currentLocationName}>{currentLocationName}</p></div>
-            <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Caissier</p><p className="mt-1 text-sm font-medium">Session caisse active</p></div>
+            <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Caissier</p><p className="mt-1 truncate text-sm font-medium" title={cashierName}>{cashierName}</p></div>
             <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Client · date</p><p className="mt-1 truncate text-sm font-medium">{clientId ? "Ticket nominatif" : "Client comptoir"} · {ticketDate}</p></div>
           </div>
           <div className="rounded-xl bg-foreground px-5 py-3 text-right text-background shadow-sm">
