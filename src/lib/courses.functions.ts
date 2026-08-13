@@ -79,11 +79,12 @@ const expenseValuesSchema = z.object({ wallet_id: idSchema, category: z.enum(COU
 const invoiceValuesSchema = z.object({ subtotal_amount: z.number().finite().min(0).nullable(), tax_rate: z.number().finite().min(0).max(100).nullable(), due_date: nullableDate, notes: nullableText }).strict();
 const paymentValuesSchema = z.object({ wallet_id: idSchema, amount: z.number().finite().positive(), payment_date: z.string().date(), payment_kind: z.enum(COURSE_PAYMENT_KINDS), reference: z.string().trim().max(255).nullable(), notes: nullableText }).strict();
 const assignmentValuesSchema = z.object({ vehicle_id: idSchema, driver_id: idSchema, override_reason: nullableText }).strict();
-const departureValuesSchema = z.object({ actual_departure_at: nullableDateTime.nullable(), start_odometer: z.number().finite().min(0) }).strict();
+const departureValuesSchema = z.object({ actual_departure_at: nullableDateTime.nullable(), start_odometer: nullableNumber }).strict();
 const deliveryValuesSchema = z.object({
   delivery_status: z.enum(COURSE_DELIVERY_STATUSES),
   actual_arrival_at: nullableDateTime.nullable(),
   end_odometer: nullableNumber,
+  start_odometer: nullableNumber.optional(),
   recipient_name: z.string().trim().max(255).nullable(),
   notes: nullableText,
   reservations: nullableText,
@@ -91,9 +92,6 @@ const deliveryValuesSchema = z.object({
 }).strict().superRefine((value, context) => {
   if (["DELIVERED", "PARTIAL"].includes(value.delivery_status) && !value.actual_arrival_at) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["actual_arrival_at"], message: "L’arrivée réelle est obligatoire." });
-  }
-  if (["DELIVERED", "PARTIAL"].includes(value.delivery_status) && value.end_odometer === null) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ["end_odometer"], message: "Le kilométrage d’arrivée est obligatoire." });
   }
 });
 const deliveryCorrectionSchema = z.object({ missionId: idSchema, reason: z.string().trim().min(3).max(2_000) }).strict();
