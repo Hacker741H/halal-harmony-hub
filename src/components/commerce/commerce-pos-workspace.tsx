@@ -696,6 +696,22 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     && checkoutState === "READY"
     && posSession.isCashSessionOpen
     && (posSession.networkStatus === "ONLINE" ? Boolean(primaryCashDrawerWallet) : posSession.canCompleteOfflineCashSale && method === "CASH");
+  const syncedOutboxCount = posSession.outboxEvents.filter((event) => event.status === "SYNCED").length;
+  const conflictOutboxCount = posSession.outboxEvents.filter((event) => event.status === "CONFLICT").length;
+  const lastSuccessfulSyncAt = posSession.outboxEvents
+    .map((event) => event.syncedAt)
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .at(-1) ?? null;
+  const syncStatusLabel = posSession.networkStatus !== "ONLINE"
+    ? "HORS LIGNE"
+    : posSession.syncProgress
+      ? `SYNCHRONISATION… ${syncedOutboxCount} / ${posSession.outboxEvents.length}`
+      : conflictOutboxCount > 0
+        ? "CONFLIT À CONTRÔLER"
+        : posSession.pendingOutboxCount > 0
+          ? `${posSession.pendingOutboxCount} EN ATTENTE`
+          : `SYNCHRONISÉ ${syncedOutboxCount} / ${posSession.outboxEvents.length}`;
 
   if (locationsQuery.isPending && !availableLocations.length) return <div className="grid gap-4 lg:grid-cols-3"><Skeleton className="h-72 lg:col-span-2" /><Skeleton className="h-72" /></div>;
   if (locationsQuery.isError && !availableLocations.length) return <Card variant="information"><CardContent className="p-6">Impossible de charger vos points de vente autorisés. Ouvrez d’abord la caisse une fois avec Internet pour la rendre disponible hors connexion.</CardContent></Card>;
@@ -729,19 +745,13 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
         </CardContent>
       </Card>
 
-      <details className={`group shrink-0 rounded-xl border px-4 py-2.5 text-sm ${posSession.networkStatus !== "ONLINE" ? "border-warning/30 bg-warning/[0.08] text-warning" : "border-success/25 bg-success/[0.07] text-success"}`}>
+      <details className={`group shrink-0 rounded-xl border px-4 py-2.5 text-sm ${conflictOutboxCount > 0 ? "border-destructive/30 bg-destructive/[0.07] text-destructive" : posSession.networkStatus !== "ONLINE" || posSession.pendingOutboxCount > 0 ? "border-warning/30 bg-warning/[0.08] text-warning" : "border-success/25 bg-success/[0.07] text-success"}`}>
         <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
           <span className="flex items-center gap-2 font-semibold">
             {posSession.networkStatus !== "ONLINE" ? <CloudOff className="size-4" aria-hidden="true" /> : <CloudUpload className="size-4" aria-hidden="true" />}
-            {posSession.networkStatus !== "ONLINE"
-              ? "Hors connexion — la caisse continue localement."
-              : posSession.syncProgress
-                ? `Synchronisation ${posSession.syncProgress.completed}/${posSession.syncProgress.total}`
-                : "En ligne — caisse prête"}
+            {syncStatusLabel}
           </span>
-          <span>{posSession.pendingOutboxCount
-            ? `${posSession.pendingOutboxCount} opération${posSession.pendingOutboxCount > 1 ? "s" : ""} locale${posSession.pendingOutboxCount > 1 ? "s" : ""} à synchroniser`
-            : "Aucune vente locale en attente"}</span>
+          <span>{lastSuccessfulSyncAt ? `Dernière synchronisation : ${new Date(lastSuccessfulSyncAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}` : posSession.pendingOutboxCount ? "Conservé dans l’outbox locale" : "Aucune opération locale en attente"}</span>
         </summary>
         {posSession.outboxEvents.length ? <div className="mt-3 grid gap-1 border-t border-current/15 pt-2 text-xs">
           {posSession.outboxEvents.slice(0, 4).map((event) => <div key={event.eventId} className="flex items-center justify-between gap-3"><span className="truncate font-mono">{event.eventId.slice(-8).toUpperCase()}</span><span className="shrink-0 font-medium">{event.status === "SYNCED" ? "Synchronisé" : event.status === "CONFLICT" ? "À contrôler" : event.status === "SYNCING" ? "Synchronisation" : event.status === "FAILED" ? "Nouvel essai programmé" : "En attente"}</span></div>)}

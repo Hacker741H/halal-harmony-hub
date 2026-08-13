@@ -6,6 +6,7 @@ import { AlertCircle, ArrowRight, Banknote, CalendarDays, CircleDollarSign, Hist
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { CashRemittanceWorkspace } from "@/components/commerce/cash-remittance-workspace";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -163,6 +164,7 @@ export function StoreManagementCockpit({
         <ExpensesSection cockpit={cockpit} locationId={locationId} mainWalletName={mainWallet?.name} pending={mutate.isPending} onMutate={(action) => mutate.mutate(action)} onCancel={cancelWithReason} onSaved={invalidate} />
         <SalesSection cockpit={cockpit} />
         <CashAndSyncSection cockpit={cockpit} />
+        <CashRemittanceWorkspace locationId={locationId} />
         <FinanceSection cockpit={cockpit} />
         <TimelineSection cockpit={cockpit} />
       </> : null}

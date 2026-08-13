@@ -149,8 +149,14 @@ BEGIN
     1, 600, 1000, 1600, 0, -100, false, '{}'::jsonb
   );
   INSERT INTO public.commerce_cash_remittances(
-    business_location_id, source_wallet_id, destination_wallet_id, amount, remittance_date, status, reference, declared_by
-  ) VALUES (v_location, v_wallet, v_destination_wallet, 100, current_date, 'DECLARED', 'ST03-REM-' || v_token, v_actor);
+    remittance_event_id, business_location_id, source_wallet_id, destination_wallet_id,
+    expected_amount, amount, cashier_difference, remittance_date, status,
+    reference, declared_by, declared_at, payload_hash
+  ) VALUES (
+    'st03-remittance-' || v_token, v_location, v_wallet, v_destination_wallet,
+    100, 100, 0, current_date, 'DECLARED', 'ST03-REM-' || v_token,
+    v_actor, now(), md5('st03-remittance-' || v_token)
+  );
 
   v_cockpit := public.get_commerce_store_cockpit(v_location, current_date, current_date);
   IF (v_cockpit #>> '{cash,reviewRequiredCount}')::integer <> 1

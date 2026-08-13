@@ -31,6 +31,11 @@ export type CommercePosSyncResult = CommercePosSyncProgress & {
 export type CommercePosOfflineSyncTransport = (event: PosOfflineOutboxEvent) => Promise<PosOfflineServerReceipt>;
 export type CommercePosOfflineCashSessionCloseSyncTransport = (event: PosOfflineCashSessionCloseOutboxEvent) => Promise<PosOfflineCashSessionCloseServerReceipt>;
 
+export type CommercePosOfflineOutboxTransports = {
+  sale?: CommercePosOfflineSyncTransport;
+  close?: CommercePosOfflineCashSessionCloseSyncTransport;
+};
+
 function toOfflineSaleRequest(event: Extract<PosOfflineOutboxEvent, { operation: "CREATE_CASH_SALE" }>) {
   const total = Number.isFinite(event.payload.total)
     ? event.payload.total
@@ -116,8 +121,10 @@ export async function synchronizeCommercePosOfflineSales(
 
   const candidates = (await getPosOfflineOutboxEvents(scope))
     .filter((event): event is Extract<PosOfflineOutboxEvent, { operation: "CREATE_CASH_SALE" }> => event.operation === "CREATE_CASH_SALE" && canRetryPosOfflineOutboxEvent(event));
-  const order = new Set(getPosOfflineOutboxRetryOrder(candidates));
-  const events = candidates.filter((event) => order.has(event.eventId));
+  const candidatesById = new Map(candidates.map((event) => [event.eventId, event]));
+  const events = getPosOfflineOutboxRetryOrder(candidates)
+    .map((eventId) => candidatesById.get(eventId))
+    .filter((event): event is Extract<PosOfflineOutboxEvent, { operation: "CREATE_CASH_SALE" }> => Boolean(event));
   const progress: CommercePosSyncProgress = { total: events.length, completed: 0, synced: 0, failed: 0, conflicts: 0 };
   onProgress?.(progress);
 
@@ -156,7 +163,9 @@ export async function synchronizeCommercePosOfflineCashSessionClosures(
   onProgress?: (progress: CommercePosSyncProgress) => void,
 ): Promise<CommercePosSyncResult> {
   const events = await getPosOfflineOutboxEvents(scope);
-  const candidates = events.filter((event): event is PosOfflineCashSessionCloseOutboxEvent => event.operation === "CASH_SESSION_CLOSE" && canRetryPosOfflineOutboxEvent(event));
+  const candidates = events
+    .filter((event): event is PosOfflineCashSessionCloseOutboxEvent => event.operation === "CASH_SESSION_CLOSE" && canRetryPosOfflineOutboxEvent(event))
+    .sort((left, right) => left.createdAtDevice.localeCompare(right.createdAtDevice) || left.eventId.localeCompare(right.eventId));
   const progress: CommercePosSyncProgress = { total: candidates.length, completed: 0, synced: 0, failed: 0, conflicts: 0 };
   onProgress?.(progress);
 
@@ -185,4 +194,48 @@ export async function synchronizeCommercePosOfflineCashSessionClosures(
     onProgress?.({ ...progress });
   }
   return { ...progress, attempted: progress.completed };
+}
+
+/**
+ * One resumable automatic pass over the durable outbox. Sales are always
+ * attempted before closures; a closure still performs its own session-level
+ * guard and therefore cannot overtake a failed or conflicting ticket.
+ */
+export async function synchronizeCommercePosOfflineOutbox(
+  scope: PosOfflineScope,
+  transports: CommercePosOfflineOutboxTransports = {},
+  onProgress?: (progress: CommercePosSyncProgress) => void,
+): Promise<CommercePosSyncResult> {
+  const initial = await getPosOfflineOutboxEvents(scope);
+  const unresolvedTotal = initial.filter((event) => event.status !== "SYNCED").length;
+  let salesCompleted = 0;
+  let salesTotal = 0;
+  let salesResult: CommercePosSyncResult | null = null;
+  const report = (progress: CommercePosSyncProgress) => onProgress?.({
+    total: unresolvedTotal,
+    completed: Math.min(unresolvedTotal, salesCompleted + progress.completed),
+    synced: (salesResult?.synced ?? 0) + progress.synced,
+    failed: (salesResult?.failed ?? 0) + progress.failed,
+    conflicts: (salesResult?.conflicts ?? 0) + progress.conflicts,
+  });
+
+  const sales = await synchronizeCommercePosOfflineSales(scope, transports.sale, (progress) => {
+    salesTotal = progress.total;
+    onProgress?.({ ...progress, total: unresolvedTotal });
+  });
+  salesResult = sales;
+  salesCompleted = sales.completed;
+  const closures = await synchronizeCommercePosOfflineCashSessionClosures(scope, transports.close, report);
+  const result: CommercePosSyncResult = {
+    total: unresolvedTotal,
+    completed: Math.min(unresolvedTotal, sales.completed + closures.completed),
+    synced: sales.synced + closures.synced,
+    failed: sales.failed + closures.failed,
+    conflicts: sales.conflicts + closures.conflicts,
+    attempted: sales.attempted + closures.attempted,
+  };
+  // Keep the otherwise useful batch total visible even when no sale was
+  // retryable yet because it is in backoff after a short network interruption.
+  if (salesTotal === 0 && closures.total === 0) onProgress?.(result);
+  return result;
 }

@@ -19,7 +19,7 @@ import {
   type PosOfflineOutboxEvent,
   type PosOfflineScope,
 } from "@/lib/commerce-pos-offline";
-import { synchronizeCommercePosOfflineCashSessionClosures, synchronizeCommercePosOfflineSales, type CommercePosSyncProgress } from "@/lib/commerce-pos-sync";
+import { synchronizeCommercePosOfflineOutbox, type CommercePosSyncProgress } from "@/lib/commerce-pos-sync";
 import {
   commercePosDraftHasContent,
   commercePosDraftStorageKey,
@@ -93,10 +93,9 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
     if (!scope || storageMode !== "INDEXEDDB" || synchronizationInFlightRef.current || getInitialNetworkStatus() !== "ONLINE") return;
     synchronizationInFlightRef.current = true;
     try {
-      const sales = await synchronizeCommercePosOfflineSales(scope, undefined, (progress) => setSyncProgress(progress));
-      const closures = await synchronizeCommercePosOfflineCashSessionClosures(scope, undefined, (progress) => setSyncProgress(progress));
+      const result = await synchronizeCommercePosOfflineOutbox(scope, undefined, (progress) => setSyncProgress(progress));
       await refreshOfflineState(scope);
-      if (sales.synced > 0 || closures.synced > 0) setSyncRevision((revision) => revision + 1);
+      if (result.synced > 0) setSyncRevision((revision) => revision + 1);
     } catch (error) {
       // A failed auto-sync must leave the durable outbox untouched. Individual
       // retryable entries are recorded by the sync engine.

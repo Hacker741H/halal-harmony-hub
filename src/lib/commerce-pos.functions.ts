@@ -125,6 +125,33 @@ const commerceStoreCockpitSchema = z.object({
   timeline: z.array(z.object({ type: z.string(), id: z.string(), occurredAt: z.string(), title: z.string(), status: z.string().nullable(), detail: z.string().nullable() })),
 });
 
+const commerceCashRemittanceWorkspaceSchema = z.object({
+  access: z.object({ declare: z.boolean(), confirm: z.boolean() }),
+  summary: z.object({
+    closedTheoretical: z.number(), closedCounted: z.number(), awaitingConfirmation: z.number(),
+    confirmedReceived: z.number(), remainingToRemit: z.number(), cashDifference: z.number(), remittanceDifference: z.number(),
+  }),
+  closures: z.array(z.object({
+    id: z.string().uuid(), cashSessionId: z.string(), closedAt: z.string(), cashierId: z.string().uuid(), cashier: z.string(),
+    theoreticalCash: z.number(), countedCash: z.number(), cashDifference: z.number(), status: z.enum(["SYNCED", "REVIEW_REQUIRED"]), remainingAmount: z.number(),
+  })),
+  destinationWallets: z.array(z.object({ id: z.string().uuid(), name: z.string(), purpose: z.enum(["COLLECTION", "OPERATING"]) })),
+  remittances: z.array(z.object({
+    id: z.string().uuid(), eventId: z.string(), status: z.enum(["DECLARED", "CONFIRMED", "CANCELLED"]),
+    declaredAt: z.string(), confirmedAt: z.string().nullable(), expectedAmount: z.number(), declaredAmount: z.number(),
+    receivedAmount: z.number().nullable(), cashDifference: z.number(), remittanceDifference: z.number().nullable(),
+    note: z.string().nullable(), confirmationNote: z.string().nullable(), cashierId: z.string().uuid().nullable(), cashier: z.string(),
+    confirmer: z.string().nullable(), sourceWallet: z.string(), destinationWallet: z.string().nullable(),
+    closures: z.array(z.object({ id: z.string().uuid(), cashSessionId: z.string(), closedAt: z.string(), allocatedAmount: z.number() })),
+  })),
+});
+
+const cashRemittanceResultSchema = z.object({
+  id: z.string().uuid(), status: z.enum(["DECLARED", "CONFIRMED", "CANCELLED"]),
+  expectedAmount: z.number().optional(), declaredAmount: z.number().optional(), receivedAmount: z.number().nullable().optional(),
+  operationId: z.string().uuid().optional(),
+});
+
 const storeExpenseInputSchema = z.object({
   businessLocationId: z.string().uuid(), category: storeExpenseCategorySchema, amount: z.number().finite().positive(), expenseDate: z.string().date(),
   reference: z.string().trim().max(160).nullable(), description: z.string().trim().min(1).max(1000),
@@ -225,6 +252,7 @@ const offlineCashSessionCloseReceiptSchema = z.object({
 export type CommercePosWorkspace = z.infer<typeof workspaceSchema>;
 export type CommerceManagementDashboard = z.infer<typeof commerceManagementDashboardSchema>;
 export type CommerceStoreCockpit = z.infer<typeof commerceStoreCockpitSchema>;
+export type CommerceCashRemittanceWorkspace = z.infer<typeof commerceCashRemittanceWorkspaceSchema>;
 export type StoreExpenseCategory = z.infer<typeof storeExpenseCategorySchema>;
 export type CommercePosLocation = z.infer<typeof locationSchema>;
 export type CommerceCashSaleInput = z.infer<typeof saleInputSchema>;
@@ -315,6 +343,49 @@ export const getCommerceStoreCockpit = createServerFn({ method: "GET" })
     });
     if (error) throw error;
     return commerceStoreCockpitSchema.parse(result);
+  });
+
+export const getCommerceCashRemittanceWorkspace = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator(z.object({ locationId: z.string().uuid() }).strict())
+  .handler(async ({ context, data }): Promise<CommerceCashRemittanceWorkspace> => {
+    const { data: result, error } = await callUntypedRpc(context.supabase, "get_commerce_cash_remittance_workspace", { p_location_id: data.locationId });
+    if (error) throw error;
+    return commerceCashRemittanceWorkspaceSchema.parse(result);
+  });
+
+export const declareCommerceCashRemittance = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(z.object({
+    remittanceEventId: z.string().regex(/^[A-Za-z0-9_-]{8,160}$/), businessLocationId: z.string().uuid(),
+    reference: z.string().trim().max(160).nullable(), note: z.string().trim().max(1000).nullable(),
+    closures: z.array(z.object({ closureId: z.string().uuid(), amount: z.number().finite().positive() }).strict()).min(1),
+  }).strict())
+  .handler(async ({ context, data }) => {
+    const { data: result, error } = await callUntypedRpc(context.supabase, "declare_commerce_cash_remittance", { p_declaration: {
+      remittance_event_id: data.remittanceEventId,
+      business_location_id: data.businessLocationId,
+      reference: data.reference,
+      note: data.note,
+      closures: data.closures.map((closure) => ({ closure_id: closure.closureId, amount: closure.amount })),
+    } });
+    if (error) throw error;
+    return cashRemittanceResultSchema.parse(result);
+  });
+
+export const confirmCommerceCashRemittance = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(z.object({
+    remittanceId: z.string().uuid(), receivedAmount: z.number().finite().positive(), destinationWalletId: z.string().uuid(),
+    note: z.string().trim().max(1000).nullable(),
+  }).strict())
+  .handler(async ({ context, data }) => {
+    const { data: result, error } = await callUntypedRpc(context.supabase, "confirm_commerce_cash_remittance", {
+      p_remittance_id: data.remittanceId, p_received_amount: data.receivedAmount,
+      p_destination_wallet_id: data.destinationWalletId, p_note: data.note,
+    });
+    if (error) throw error;
+    return cashRemittanceResultSchema.parse(result);
   });
 
 export const createCommerceStoreExpense = createServerFn({ method: "POST" })

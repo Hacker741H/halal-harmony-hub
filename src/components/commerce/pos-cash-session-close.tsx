@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { CheckCircle2, CircleDollarSign, PlusCircle, ReceiptText } from "lucide-react";
 
+import { CashRemittanceWorkspace } from "@/components/commerce/cash-remittance-workspace";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -62,12 +63,15 @@ export function PosCashSessionClose({ session, summary, disabled = false, onClos
     return (
       <div className="flex flex-wrap items-center justify-end gap-2">
         <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${needsReview ? "border-warning/30 bg-warning/[0.08] text-warning" : "border-success/25 bg-success/[0.08] text-success"}`}><CheckCircle2 className="size-3.5" />{label}</span>
+        <CashRemittanceWorkspace locationId={session.locationId} mode="cashier-trigger" online={typeof navigator === "undefined" || navigator.onLine} />
         <Button type="button" size="sm" variant="outline" onClick={() => void onStartNew()}><PlusCircle />Nouvelle session</Button>
       </div>
     );
   }
 
   return (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+    <CashRemittanceWorkspace locationId={session.locationId} mode="cashier-trigger" online={typeof navigator === "undefined" || navigator.onLine} />
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button type="button" size="sm" variant="outline" disabled={disabled}><CircleDollarSign />Clôture caisse</Button>
@@ -90,5 +94,6 @@ export function PosCashSessionClose({ session, summary, disabled = false, onClos
         <DialogFooter><Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>Annuler</Button><Button type="button" loading={isSubmitting} loadingLabel="Clôture" disabled={!countIsValid} onClick={() => void submit()}><ReceiptText />Clôturer la session</Button></DialogFooter>
       </DialogContent>
     </Dialog>
+    </div>
   );
 }
