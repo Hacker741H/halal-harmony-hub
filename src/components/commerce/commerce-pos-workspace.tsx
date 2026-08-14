@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { ArrowRight, Banknote, BarChart3, Check, CheckCircle2, CircleDollarSign, CloudOff, CloudUpload, CreditCard, ListTodo, LogOut, Minus, Package, PackagePlus, Pencil, Plus, ReceiptText, Search, ShoppingCart, Smartphone, Store, TrendingUp, TriangleAlert, Trash2, UserPlus, UserRoundX, WalletCards, Warehouse, Wrench, X } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ArrowRight, Banknote, BarChart3, Check, CheckCircle2, CircleDollarSign, CloudOff, CloudUpload, CreditCard, DoorOpen, ListTodo, LogOut, Minus, Package, PackagePlus, Pencil, Plus, ReceiptText, Search, ShoppingCart, Smartphone, Store, TrendingUp, TriangleAlert, Trash2, UserPlus, UserRoundX, WalletCards, Warehouse, Wrench, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { PosCashSessionClose } from "@/components/commerce/pos-cash-session-close";
@@ -38,6 +38,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { supabase } from "@/integrations/supabase/client";
 import { cachePosOfflineLocations, findPosOfflineDraftLocation, getCachedPosOfflineLocations } from "@/lib/commerce-pos-offline";
 import { createCommercePosId, findCommercePosDraftLocation, getCommercePosStockConflicts, type CommercePosDraftLine, type CommercePosPaymentMethod, type CommercePosSuspendedTicket } from "@/lib/commerce-pos-session";
+import { cn } from "@/lib/utils";
 
 type CartLine = CommercePosDraftLine;
 type PaymentMethod = CommercePosPaymentMethod;
@@ -316,9 +317,19 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
   const canManageLocations = can("locations.manage") && can("locations.wallets.manage") && can("locations.assign");
   const canSeeTodayRevenue = can("store.financial.read");
   const [cashierTab, setCashierTab] = useState<"CAISSE" | "VENTES" | "SESSION">("CAISSE");
+  const navigate = useNavigate();
   const locationsQuery = useQuery({ queryKey: ["commerce-pos-locations"], queryFn: () => getCommercePosLocations() });
   const currentUserQuery = useCurrentUserAccess();
   const currentUserId = useCommerceCashierUserId();
+  // A cashier-only account has no ERP product header, so this workspace's own
+  // app bar is the only place sign-out can live. A manager who opens this
+  // same workspace from the management cockpit still has the product header,
+  // so the extra control would just be redundant clutter for them.
+  const isCashierOnlyShell = currentUserQuery.isCashierOnly;
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut();
+    navigate({ to: "/auth", replace: true });
+  }, [navigate]);
   const cashierName = currentUserQuery.data?.fullName?.trim()
     || currentUserQuery.data?.username
     || (currentUserQuery.isLoading ? "Chargement…" : "Caissier non identifié");
@@ -742,7 +753,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
       : "bg-success/20 text-success-foreground";
 
   return (
-    <div className="flex min-h-0 flex-col gap-3 lg:h-[calc(100dvh-6.4rem)]">
+    <div className={cn("flex min-h-0 flex-col gap-3", isCashierOnlyShell ? "lg:h-[calc(100dvh-1.5rem)]" : "lg:h-[calc(100dvh-6.4rem)]")}>
       {/* Distinct cashier shell identity: a dedicated app bar, not the admin cockpit's card grid. */}
       <header className="shrink-0 overflow-hidden rounded-2xl bg-foreground text-background shadow-md">
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
@@ -761,6 +772,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
           </div>
           <div className="flex items-center gap-2">
             {onBackToManagement ? <Button type="button" size="sm" variant="ghost" className="text-background hover:bg-background/10 hover:text-background" onClick={onBackToManagement}><LogOut />Gestion</Button> : null}
+            {isCashierOnlyShell ? <Button type="button" size="icon" variant="ghost" className="text-background hover:bg-background/10 hover:text-background" onClick={() => { void signOut(); }} aria-label="Déconnexion"><DoorOpen className="size-4" /></Button> : null}
             <PosCashSessionClose
               session={posSession.cashSession}
               summary={posSession.cashSessionSummary}

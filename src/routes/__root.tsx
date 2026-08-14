@@ -23,7 +23,6 @@ import { ShellPreferencesProvider, useShellPreferences } from "@/components/shel
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { PwaRegistration } from "@/components/pwa/pwa-registration";
 import { useCurrentUserAccess } from "@/hooks/use-current-user-access";
-import { cn } from "@/lib/utils";
 
 function NotFoundComponent() {
   return (
@@ -144,6 +143,19 @@ function AuthenticatedShell() {
     navigate({ to: "/auth", replace: true });
   };
 
+  // A cashier-only account must feel like it is running dedicated register
+  // software, never a sub-page of the ERP cockpit -- so this branch skips the
+  // sidebar and product header entirely instead of merely trimming them.
+  // CommerceCashierWorkspace (rendered by the /commerce route below) owns its
+  // own app bar, including sign-out, so nothing here can replace it.
+  if (access.isCashierOnly) {
+    return (
+      <div key={pathname} className="min-h-screen w-full bg-canvas lg:h-dvh lg:overflow-hidden">
+        <Outlet />
+      </div>
+    );
+  }
+
   return (
     <SidebarProvider
       style={
@@ -152,12 +164,12 @@ function AuthenticatedShell() {
         } as CSSProperties
       }
     >
-      <div className={cn("flex min-h-screen w-full bg-canvas", access.isCashierOnly && "lg:h-dvh lg:min-h-0 lg:overflow-hidden")} data-density={density}>
-        <AppSidebar cashierMode={access.isCashierOnly} />
-        <div className={cn("flex min-w-0 flex-1 flex-col pb-3 md:pb-4", access.isCashierOnly && "lg:min-h-0")}>
-          <ProductHeader user={session} onSignOut={signOut} cashierMode={access.isCashierOnly} />
-          <main className={cn("flex-1 overflow-x-hidden pt-3 md:pt-4", access.isCashierOnly && "lg:min-h-0 lg:overflow-hidden")}>
-            <div key={pathname} className={cn("animate-fade-in", access.isCashierOnly && "lg:h-full lg:min-h-0")}>
+      <div className="flex min-h-screen w-full bg-canvas" data-density={density}>
+        <AppSidebar />
+        <div className="flex min-w-0 flex-1 flex-col pb-3 md:pb-4">
+          <ProductHeader user={session} onSignOut={signOut} />
+          <main className="flex-1 overflow-x-hidden pt-3 md:pt-4">
+            <div key={pathname} className="animate-fade-in">
               <Outlet />
             </div>
           </main>

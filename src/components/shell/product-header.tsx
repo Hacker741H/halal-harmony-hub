@@ -52,7 +52,6 @@ interface ProductHeaderProps {
     fullName?: string;
   } | null;
   onSignOut: () => void | Promise<void>;
-  cashierMode?: boolean;
 }
 
 function initialsFor(user: ProductHeaderProps["user"]): string {
@@ -224,7 +223,7 @@ function ShellPreferencesMenu() {
   );
 }
 
-function ProfileMenu({ user, onSignOut, cashierMode = false }: ProductHeaderProps) {
+function ProfileMenu({ user, onSignOut }: ProductHeaderProps) {
   const initials = initialsFor(user);
 
   return (
@@ -236,7 +235,7 @@ function ProfileMenu({ user, onSignOut, cashierMode = false }: ProductHeaderProp
           </Avatar>
           <span className="hidden max-w-32 text-left sm:block">
             <span className="block truncate text-xs font-semibold text-foreground">{user?.fullName ?? "Utilisateur"}</span>
-            <span className="block truncate text-[11px] font-normal text-muted-foreground">{cashierMode ? "Poste de caisse" : "Accès utilisateur"}</span>
+            <span className="block truncate text-[11px] font-normal text-muted-foreground">Accès utilisateur</span>
           </span>
           <ChevronDown className="hidden size-3.5 text-muted-foreground sm:block" aria-hidden="true" />
         </Button>
@@ -250,22 +249,18 @@ function ProfileMenu({ user, onSignOut, cashierMode = false }: ProductHeaderProp
             <span className="min-w-0">
               <span className="block truncate text-sm font-semibold">{user?.fullName ?? "Utilisateur"}</span>
               <span className="block truncate text-caption">{user?.email ?? "Session authentifiée"}</span>
-              <span className="mt-1 inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{cashierMode ? "Poste de caisse" : "Accès utilisateur"}</span>
+              <span className="mt-1 inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">Accès utilisateur</span>
             </span>
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {!cashierMode ? (
-          <>
-            <DropdownMenuGroup>
-              <DropdownMenuItem asChild>
-                <Link to="/settings"><Settings2 aria-hidden="true" />Paramètres ERP</Link>
-              </DropdownMenuItem>
-              <ShellPreferencesMenu />
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-          </>
-        ) : null}
+        <DropdownMenuGroup>
+          <DropdownMenuItem asChild>
+            <Link to="/settings"><Settings2 aria-hidden="true" />Paramètres ERP</Link>
+          </DropdownMenuItem>
+          <ShellPreferencesMenu />
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => { void onSignOut(); }} className="text-destructive focus:text-destructive">
           <UserRound aria-hidden="true" />
           Déconnexion
@@ -275,7 +270,7 @@ function ProfileMenu({ user, onSignOut, cashierMode = false }: ProductHeaderProp
   );
 }
 
-function ProductHeader({ user, onSignOut, cashierMode = false }: ProductHeaderProps) {
+function ProductHeader({ user, onSignOut }: ProductHeaderProps) {
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   const { density } = useShellPreferences();
   const densityClass = {
@@ -291,15 +286,16 @@ function ProductHeader({ user, onSignOut, cashierMode = false }: ProductHeaderPr
           <SidebarTrigger className="shrink-0" />
           <div className="min-w-0 flex-1"><ShellBreadcrumbs /></div>
         </div>
-        {!cashierMode ? <UniversalSearch onOpen={() => setPaletteOpen(true)} /> : null}
+        <UniversalSearch onOpen={() => setPaletteOpen(true)} />
         <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
-          {!cashierMode ? <><QuickActionsMenu /><ActivityCenter /></> : null}
-          <ProfileMenu user={user} onSignOut={onSignOut} cashierMode={cashierMode} />
+          <QuickActionsMenu />
+          <ActivityCenter />
+          <ProfileMenu user={user} onSignOut={onSignOut} />
         </div>
       </header>
-      {!cashierMode ? <React.Suspense fallback={null}>
+      <React.Suspense fallback={null}>
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
-      </React.Suspense> : null}
+      </React.Suspense>
     </>
   );
 }
