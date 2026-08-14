@@ -9096,6 +9096,30 @@ export type Database = {
       sync_notification_daily_schedule: { Args: never; Returns: boolean }
       sync_commerce_pos_offline_sale: { Args: { p_event: Json }; Returns: Json }
       sync_commerce_pos_cash_session_close: { Args: { p_event: Json }; Returns: Json }
+      close_commerce_pos_cash_session: { Args: { p_event: Json }; Returns: Json }
+      confirm_commerce_pos_cash_reception: {
+        Args: {
+          p_report_id: string
+          p_reception_event_id: string
+          p_received_amount: number
+          p_destination_wallet_id: string
+          p_is_final: boolean
+          p_note?: string | null
+        }
+        Returns: Json
+      }
+      flag_commerce_pos_control_report: { Args: { p_report_id: string; p_reason: string }; Returns: Json }
+      get_commerce_pos_control_reports: {
+        Args: {
+          p_location_id: string
+          p_from: string
+          p_to: string
+          p_status?: string | null
+          p_cashier_id?: string | null
+        }
+        Returns: Json
+      }
+      get_commerce_pos_control_report_detail: { Args: { p_report_id: string }; Returns: Json }
       update_client: {
         Args: { p_client_id: string; p_values: Json }
         Returns: {

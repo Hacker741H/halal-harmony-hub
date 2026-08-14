@@ -544,6 +544,157 @@ export const syncCommercePosOfflineCashSessionClose = createServerFn({ method: "
     return offlineCashSessionCloseReceiptSchema.parse(result);
   });
 
+// --- Mission caisse : cloture automatique, receptions, centre de controle ---
+
+const closeCommercePosCashSessionSchema = z.object({
+  cashSessionId: z.string().trim().regex(/^[A-Za-z0-9_-]{8,160}$/),
+  terminalId: z.string().trim().regex(/^[A-Za-z0-9_-]{8,160}$/),
+  businessLocationId: z.string().uuid(),
+  cashierUserId: z.string().uuid(),
+  eventId: z.string().trim().regex(/^[A-Za-z0-9_-]{8,160}$/),
+  openedAtDevice: z.string().datetime({ offset: true }),
+  closedAtDevice: z.string().datetime({ offset: true }),
+}).strict();
+
+const closeCommercePosCashSessionReceiptSchema = z.object({
+  closureId: z.string().uuid().nullable(),
+  reportId: z.string().uuid().nullable(),
+  status: z.enum(["SYNCED", "PENDING_SALES"]),
+  errorCode: z.string().nullable().optional(),
+  errorMessage: z.string().nullable().optional(),
+});
+export type CommercePosCloseReceipt = z.infer<typeof closeCommercePosCashSessionReceiptSchema>;
+
+/** New cashier flow (mission caisse): no declared data at all. The server
+ * computes the theoretical amounts from actual sales and generates the
+ * control report atomically. Never sends counted_cash -- that concept no
+ * longer exists on this path. */
+export const closeCommercePosCashSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(closeCommercePosCashSessionSchema)
+  .handler(async ({ context, data }): Promise<CommercePosCloseReceipt> => {
+    const { data: result, error } = await context.supabase.rpc("close_commerce_pos_cash_session", {
+      p_event: {
+        cash_session_id: data.cashSessionId,
+        terminal_id: data.terminalId,
+        business_location_id: data.businessLocationId,
+        cashier_user_id: data.cashierUserId,
+        event_id: data.eventId,
+        opened_at_device: data.openedAtDevice,
+        closed_at_device: data.closedAtDevice,
+      },
+    });
+    if (error) throw error;
+    return closeCommercePosCashSessionReceiptSchema.parse(result);
+  });
+
+const confirmCommercePosCashReceptionSchema = z.object({
+  reportId: z.string().uuid(),
+  receptionEventId: z.string().trim().regex(/^[A-Za-z0-9_-]{8,160}$/),
+  receivedAmount: z.number().finite().positive(),
+  destinationWalletId: z.string().uuid(),
+  isFinal: z.boolean(),
+  note: z.string().trim().max(1000).nullable(),
+}).strict();
+
+const confirmCommercePosCashReceptionReceiptSchema = z.object({
+  remittanceId: z.string().uuid(),
+  operationId: z.string().uuid().nullable(),
+  receivedAmount: z.number(),
+  outstandingBefore: z.number().optional(),
+  isFinal: z.boolean().nullable(),
+  difference: z.number().optional(),
+});
+export type CommercePosCashReceptionReceipt = z.infer<typeof confirmCommercePosCashReceptionReceiptSchema>;
+
+/** Manager-only. Never touched by the cashier. Reuses the POS-05 Finance
+ * transfer engine -- one movement per reception, idempotent by event id. */
+export const confirmCommercePosCashReception = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(confirmCommercePosCashReceptionSchema)
+  .handler(async ({ context, data }): Promise<CommercePosCashReceptionReceipt> => {
+    const { data: result, error } = await context.supabase.rpc("confirm_commerce_pos_cash_reception", {
+      p_report_id: data.reportId,
+      p_reception_event_id: data.receptionEventId,
+      p_received_amount: data.receivedAmount,
+      p_destination_wallet_id: data.destinationWalletId,
+      p_is_final: data.isFinal,
+      p_note: data.note,
+    });
+    if (error) throw error;
+    return confirmCommercePosCashReceptionReceiptSchema.parse(result);
+  });
+
+const flagCommercePosControlReportSchema = z.object({
+  reportId: z.string().uuid(),
+  reason: z.string().trim().min(1).max(1000),
+}).strict();
+
+export const flagCommercePosControlReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(flagCommercePosControlReportSchema)
+  .handler(async ({ context, data }) => {
+    const { data: result, error } = await context.supabase.rpc("flag_commerce_pos_control_report", {
+      p_report_id: data.reportId, p_reason: data.reason,
+    });
+    if (error) throw error;
+    return result;
+  });
+
+const controlReportSummarySchema = z.object({
+  id: z.string().uuid(), closureId: z.string().uuid(), cashSessionId: z.string(), terminalId: z.string(),
+  cashier: z.string(), cashierId: z.string().uuid(), openedAt: z.string(), closedAt: z.string(),
+  ticketCount: z.number(), articleRevenue: z.number(), serviceRevenue: z.number(), totalRevenue: z.number(),
+  articleQuantityTotal: z.number(), cashExpected: z.number(), mobileMoneyTotal: z.number(), otherPaymentTotal: z.number(),
+  receivedTotal: z.number(), remainingAmount: z.number(), isFinalized: z.boolean(), lastReceivedAt: z.string().nullable(),
+  syncStatus: z.string(), controlStatus: z.enum(["PENDING_CONTROL", "PARTIALLY_RECEIVED", "RECEIVED", "REVIEW_REQUIRED"]),
+  flaggedForReview: z.boolean(), flaggedReason: z.string().nullable(), generatedAt: z.string(),
+});
+export type CommercePosControlReportSummary = z.infer<typeof controlReportSummarySchema>;
+
+const controlReportsWorkspaceSchema = z.object({
+  counts: z.object({ pendingControl: z.number(), partiallyReceived: z.number(), received: z.number(), reviewRequired: z.number() }),
+  reports: z.array(controlReportSummarySchema),
+});
+export type CommercePosControlReportsWorkspace = z.infer<typeof controlReportsWorkspaceSchema>;
+
+export const getCommercePosControlReports = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator(z.object({
+    locationId: z.string().uuid(), from: z.string(), to: z.string(),
+    status: z.enum(["PENDING_CONTROL", "PARTIALLY_RECEIVED", "RECEIVED", "REVIEW_REQUIRED"]).nullable(),
+    cashierId: z.string().uuid().nullable(),
+  }))
+  .handler(async ({ context, data }): Promise<CommercePosControlReportsWorkspace> => {
+    const { data: result, error } = await context.supabase.rpc("get_commerce_pos_control_reports", {
+      p_location_id: data.locationId, p_from: data.from, p_to: data.to, p_status: data.status, p_cashier_id: data.cashierId,
+    });
+    if (error) throw error;
+    return controlReportsWorkspaceSchema.parse(result);
+  });
+
+const controlReportDetailSchema = z.object({
+  report: controlReportSummarySchema.omit({ cashierId: true, controlStatus: true, receivedTotal: true, remainingAmount: true, isFinalized: true, lastReceivedAt: true }).extend({
+    businessLocationId: z.string().uuid(), receivedTotal: z.number(), isFinalized: z.boolean(), remainingAmount: z.number(),
+  }),
+  sales: z.array(z.object({ id: z.string().uuid(), saleNumber: z.string(), createdAt: z.string(), total: z.number() })),
+  receptions: z.array(z.object({
+    id: z.string().uuid(), receivedAmount: z.number(), expectedAmount: z.number(), difference: z.number(),
+    isFinal: z.boolean().nullable(), destinationWallet: z.string().nullable(), confirmedBy: z.string(),
+    confirmedAt: z.string(), note: z.string().nullable(), operationId: z.string().uuid().nullable(),
+  })),
+});
+export type CommercePosControlReportDetail = z.infer<typeof controlReportDetailSchema>;
+
+export const getCommercePosControlReportDetail = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator(z.object({ reportId: z.string().uuid() }))
+  .handler(async ({ context, data }): Promise<CommercePosControlReportDetail> => {
+    const { data: result, error } = await context.supabase.rpc("get_commerce_pos_control_report_detail", { p_report_id: data.reportId });
+    if (error) throw error;
+    return controlReportDetailSchema.parse(result);
+  });
+
 export const getCommerceSetupOptions = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<CommerceSetupOptions> => {
