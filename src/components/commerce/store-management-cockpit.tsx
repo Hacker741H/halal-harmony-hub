@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { endOfMonth, format, startOfMonth, startOfYear, subDays, subMonths } from "date-fns";
 import { fr } from "date-fns/locale";
-import { AlertCircle, ArrowRight, Banknote, CalendarDays, CircleDollarSign, History, Package, ReceiptText, RefreshCw, ShieldAlert, Store, TriangleAlert, WalletCards } from "lucide-react";
+import { AlertCircle, ArrowRight, Banknote, CalendarDays, CheckCircle2, CircleDollarSign, ClipboardCheck, Flag, History, Package, ReceiptText, RefreshCw, ShieldAlert, Store, TriangleAlert, WalletCards } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -13,15 +13,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { createCommercePosId } from "@/lib/commerce-pos-session";
 import {
   cancelCommerceStoreExpense,
   cancelCommerceStorePlannedExpense,
   confirmCommerceStoreExpense,
+  confirmCommercePosCashReception,
   createCommerceStoreExpense,
   createCommerceStorePlannedExpense,
+  flagCommercePosControlReport,
+  getCommerceCashRemittanceWorkspace,
+  getCommercePosControlReportDetail,
+  getCommercePosControlReports,
   getCommerceStoreCockpit,
   getCommercePosLocations,
   payCommerceStorePlannedExpense,
+  type CommercePosControlReportSummary,
   type CommercePosLocation,
   type CommerceStoreCockpit,
   type StoreExpenseCategory,
@@ -164,6 +171,7 @@ export function StoreManagementCockpit({
         <ExpensesSection cockpit={cockpit} locationId={locationId} mainWalletName={mainWallet?.name} pending={mutate.isPending} onMutate={(action) => mutate.mutate(action)} onCancel={cancelWithReason} onSaved={invalidate} />
         <SalesSection cockpit={cockpit} />
         <CashAndSyncSection cockpit={cockpit} />
+        <ControlReportsSection locationId={locationId} from={period.from} to={period.to} />
         <CashRemittanceWorkspace locationId={locationId} />
         <FinanceSection cockpit={cockpit} />
         <TimelineSection cockpit={cockpit} />
@@ -173,7 +181,7 @@ export function StoreManagementCockpit({
 }
 
 function CockpitSkeleton() { return <div className="space-y-4"><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">{Array.from({ length: 6 }).map((_, index) => <Skeleton key={index} className="h-28" />)}</div><div className="grid gap-4 xl:grid-cols-2"><Skeleton className="h-72" /><Skeleton className="h-72" /></div></div>; }
-function Status({ value }: { value: string }) { return <span className={`rounded-full px-2 py-1 text-xs font-semibold ${value === "ACTIVE" || value === "CONFIRMED" || value === "SYNCED" || value === "PROCESSED" || value === "PAID" ? "bg-success/10 text-success" : value === "CANCELLED" ? "bg-muted text-muted-foreground" : value === "REVIEW_REQUIRED" || value === "CONFLICT" || value === "OVERDUE" ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"}`}>{value.replaceAll("_", " ")}</span>; }
+function Status({ value }: { value: string }) { return <span className={`rounded-full px-2 py-1 text-xs font-semibold ${value === "ACTIVE" || value === "CONFIRMED" || value === "SYNCED" || value === "PROCESSED" || value === "PAID" || value === "RECEIVED" ? "bg-success/10 text-success" : value === "CANCELLED" ? "bg-muted text-muted-foreground" : value === "REVIEW_REQUIRED" || value === "CONFLICT" || value === "OVERDUE" ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"}`}>{value.replaceAll("_", " ")}</span>; }
 function Empty({ label }: { label: string }) { return <div className="flex min-h-24 items-center justify-center text-center text-sm text-muted-foreground">{label}</div>; }
 function DataRow({ label, value }: { label: string; value: string }) { return <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">{label}</span><span className="text-right font-medium tabular-nums">{value}</span></div>; }
 function Kpi({ label, value, detail, icon: Icon, onClick }: { label: string; value: string; detail: string; icon: typeof Store; onClick: () => void }) { return <button type="button" onClick={onClick} className="rounded-xl border border-border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><div className="flex items-start justify-between gap-2"><span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</span><Icon className="size-4 text-primary" /></div><span className="mt-3 block text-xl font-semibold tabular-nums">{value}</span><span className="mt-1 block truncate text-xs text-muted-foreground" title={detail}>{detail}</span></button>; }
@@ -207,6 +215,153 @@ function ExpenseCreateDialog({ locationId, planned, onSaved }: { locationId: str
 function SalesSection({ cockpit }: { cockpit: CommerceStoreCockpit }) { return <Card variant="section" id="store-sales"><CardHeader className="pb-3"><CardTitle className="text-lg">Ventes & services</CardTitle></CardHeader><CardContent>{!cockpit.sales ? <Restricted label="Les montants commerciaux sont réservés aux permissions financières." /> : <div className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,.6fr)]"><div><div className="mb-3 grid gap-3 sm:grid-cols-3"><DataRow label="Tickets" value={String(cockpit.sales.ticketCount)} /><DataRow label="Panier moyen" value={money(cockpit.sales.averageBasket)} /><DataRow label="Annulations" value={String(cockpit.sales.cancelledCount)} /></div>{cockpit.sales.recent.length ? <div className="overflow-x-auto rounded-lg border border-border"><table className="w-full min-w-[700px] text-sm"><thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><Th>Ticket</Th><Th>Date</Th><Th>Contenu</Th><Th right>Total</Th><Th>Statut</Th></tr></thead><tbody className="divide-y divide-border/60">{cockpit.sales.recent.map((sale) => <tr key={sale.id}><Td strong>{sale.saleNumber}</Td><Td>{day(sale.saleDate)}</Td><Td>{sale.articleLines} article(s) · {sale.serviceLines} service(s)</Td><Td right strong>{money(sale.total)}</Td><Td><Status value={sale.status} /></Td></tr>)}</tbody></table></div> : <Empty label="Aucune vente sur cette période." />}</div><div className="space-y-4"><CompactRanking title="Meilleures ventes" rows={cockpit.sales.topItems.map((item) => ({ name: item.name, detail: `${number(item.quantity)} · ${money(item.revenue)}` }))} /><CompactRanking title="Services réalisés" rows={cockpit.sales.services.map((item) => ({ name: item.name, detail: `${number(item.quantity)} · ${money(item.revenue)}` }))} /></div></div>}</CardContent></Card>; }
 
 function CashAndSyncSection({ cockpit }: { cockpit: CommerceStoreCockpit }) { return <div className="grid gap-4 xl:grid-cols-2"><Card variant="section" id="store-cash"><CardHeader className="pb-3"><CardTitle className="text-lg">Caisses</CardTitle></CardHeader><CardContent>{!cockpit.cash ? <Restricted label="Les clôtures sont réservées aux permissions caisse." /> : <><div className="mb-3 grid gap-3 sm:grid-cols-2"><DataRow label="À vérifier" value={String(cockpit.cash.reviewRequiredCount)} /><DataRow label="Sessions sans clôture serveur" value={String(cockpit.cash.unclosedSessionCount)} /></div>{cockpit.cash.closures.length ? <div className="overflow-x-auto rounded-lg border border-border"><table className="w-full min-w-[860px] text-sm"><thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><Th>Session / terminal</Th><Th>Caissier</Th><Th>Clôture</Th><Th right>Théorique</Th><Th right>Compté</Th><Th right>Écart</Th><Th>Contrôle caisse</Th><Th>Statut</Th></tr></thead><tbody className="divide-y divide-border/60">{cockpit.cash.closures.map((closure) => <tr key={closure.id}><Td><strong>{closure.cashSessionId}</strong><span className="block text-xs text-muted-foreground">{closure.terminalId}</span></Td><Td>{closure.cashier}</Td><Td>{dateTime(closure.closedAt)}</Td><Td right>{money(closure.theoreticalCash)}</Td><Td right>{money(closure.countedCash)}</Td><Td right strong>{money(closure.difference)}</Td><Td><span className={`rounded-full px-2 py-1 text-xs font-semibold ${closure.requiresCashReview ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success"}`}>{closure.requiresCashReview ? "À vérifier" : "OK"}</span></Td><Td><Status value={closure.status} /></Td></tr>)}</tbody></table></div> : <Empty label="Aucune clôture sur cette période." />}</>}</CardContent></Card><Card variant="section" id="store-sync"><CardHeader className="pb-3"><CardTitle className="text-lg">Synchronisation POS</CardTitle></CardHeader><CardContent>{!cockpit.sync ? <Restricted label="Les reçus de synchronisation sont réservés aux permissions caisse." /> : <><p className="mb-3 text-xs text-muted-foreground">Ne couvre que les tickets créés hors connexion puis synchronisés. Les ventes en ligne apparaissent dans « Ventes & services », pas ici.</p><div className="mb-3 grid gap-3 sm:grid-cols-3"><DataRow label="Tickets hors ligne synchronisés" value={String(cockpit.sync.processedCount)} /><DataRow label="Conflits hors ligne" value={String(cockpit.sync.conflictCount)} /><DataRow label="En attente" value={cockpit.sync.pendingCount === null ? "Local uniquement" : String(cockpit.sync.pendingCount)} /></div>{cockpit.sync.receipts.length ? <div className="divide-y divide-border/60 rounded-lg border border-border">{cockpit.sync.receipts.slice(0, 12).map((receipt) => <div key={receipt.id} className="flex flex-wrap items-center gap-3 p-3 text-sm"><div className="min-w-0 flex-1"><p className="truncate font-medium">{receipt.offlineSaleId}</p><p className="truncate text-xs text-muted-foreground">{receipt.terminalId} · {receipt.cashier} · {dateTime(receipt.receivedAtServer)}</p>{receipt.errorMessage ? <p className="mt-1 text-xs text-destructive">{receipt.errorMessage}</p> : null}</div><Status value={receipt.status} /></div>)}</div> : <Empty label="Aucune synchronisation reçue sur cette période." />}</>}</CardContent></Card></div>; }
+
+const controlStatusLabels: Record<"PENDING_CONTROL" | "PARTIALLY_RECEIVED" | "RECEIVED" | "REVIEW_REQUIRED", string> = {
+  PENDING_CONTROL: "À contrôler",
+  PARTIALLY_RECEIVED: "Partiellement reçu",
+  RECEIVED: "Reçu conforme",
+  REVIEW_REQUIRED: "Écart à vérifier",
+};
+
+function ControlReportsSection({ locationId, from, to }: { locationId: string; from: string; to: string }) {
+  const [status, setStatus] = useState<"" | keyof typeof controlStatusLabels>("");
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: ["commerce-pos-control-reports", locationId, from, to, status],
+    queryFn: () => getCommercePosControlReports({ data: { locationId, from, to, status: status === "" ? null : status, cashierId: null } }),
+    enabled: Boolean(locationId),
+  });
+  const workspace = query.data;
+  const toggleStatus = (value: keyof typeof controlStatusLabels) => setStatus((current) => current === value ? "" : value);
+
+  return <Card variant="section" id="store-control-reports">
+    <CardHeader className="pb-3">
+      <CardTitle className="flex items-center gap-2 text-lg"><ClipboardCheck className="size-5 text-primary" /> Clôtures & contrôle de caisse</CardTitle>
+      <p className="mt-1 text-sm text-muted-foreground">Un rapport est généré automatiquement à chaque clôture. La réception physique des espèces est une action distincte du gestionnaire, plus tardive.</p>
+    </CardHeader>
+    <CardContent>
+      {query.isError ? <Restricted label="Le centre de contrôle est réservé aux permissions de contrôle caisse." /> : query.isPending ? <Skeleton className="h-40" /> : workspace ? <>
+        <div className="mb-3 grid gap-2 sm:grid-cols-4">
+          <StatusFilterChip label="À contrôler" count={workspace.counts.pendingControl} active={status === "PENDING_CONTROL"} onClick={() => toggleStatus("PENDING_CONTROL")} />
+          <StatusFilterChip label="Partiellement reçu" count={workspace.counts.partiallyReceived} active={status === "PARTIALLY_RECEIVED"} onClick={() => toggleStatus("PARTIALLY_RECEIVED")} />
+          <StatusFilterChip label="Reçu conforme" count={workspace.counts.received} active={status === "RECEIVED"} onClick={() => toggleStatus("RECEIVED")} tone="success" />
+          <StatusFilterChip label="Écart à vérifier" count={workspace.counts.reviewRequired} active={status === "REVIEW_REQUIRED"} onClick={() => toggleStatus("REVIEW_REQUIRED")} tone="destructive" />
+        </div>
+        {workspace.reports.length ? <div className="overflow-x-auto rounded-lg border border-border"><table className="w-full min-w-[980px] text-sm"><thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><Th>Session / terminal</Th><Th>Caissier</Th><Th>Clôture</Th><Th right>CA total</Th><Th right>Espèces attendues</Th><Th right>Reçu</Th><Th right>Restant</Th><Th>Statut</Th></tr></thead><tbody className="divide-y divide-border/60">{workspace.reports.map((report) => <tr key={report.id} className="cursor-pointer hover:bg-muted/20" onClick={() => setSelectedReportId(report.id)}><Td><strong>{report.cashSessionId}</strong><span className="block text-xs text-muted-foreground">{report.terminalId}</span></Td><Td>{report.cashier}</Td><Td>{dateTime(report.closedAt)}</Td><Td right strong>{money(report.totalRevenue)}</Td><Td right>{money(report.cashExpected)}</Td><Td right>{money(report.receivedTotal)}</Td><Td right>{money(report.remainingAmount)}</Td><Td><ControlStatusBadge value={report.controlStatus} /></Td></tr>)}</tbody></table></div> : <Empty label="Aucun rapport de clôture sur cette période." />}
+      </> : null}
+    </CardContent>
+    {selectedReportId ? <ControlReportDetailDialog reportId={selectedReportId} locationId={locationId} onClose={() => setSelectedReportId(null)} /> : null}
+  </Card>;
+}
+
+function ControlStatusBadge({ value }: { value: keyof typeof controlStatusLabels }) {
+  const className = value === "RECEIVED" ? "bg-success/10 text-success" : value === "REVIEW_REQUIRED" ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning";
+  return <span className={`rounded-full px-2 py-1 text-xs font-semibold ${className}`}>{controlStatusLabels[value]}</span>;
+}
+
+function StatusFilterChip({ label, count, active, onClick, tone }: { label: string; count: number; active: boolean; onClick: () => void; tone?: "success" | "destructive" }) {
+  const activeClass = tone === "destructive" ? "border-destructive/50 bg-destructive/10" : tone === "success" ? "border-success/50 bg-success/10" : "border-primary/50 bg-primary/10";
+  return <button type="button" onClick={onClick} className={`rounded-xl border p-3 text-left transition-colors ${active ? activeClass : "border-border bg-card hover:border-primary/30"}`}>
+    <span className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
+    <span className="mt-1 block text-xl font-semibold tabular-nums">{count}</span>
+  </button>;
+}
+
+function ControlReportDetailDialog({ reportId, locationId, onClose }: { reportId: string; locationId: string; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const detailQuery = useQuery({
+    queryKey: ["commerce-pos-control-report-detail", reportId],
+    queryFn: () => getCommercePosControlReportDetail({ data: { reportId } }),
+  });
+  const walletsQuery = useQuery({
+    queryKey: ["commerce-cash-remittances", locationId],
+    queryFn: () => getCommerceCashRemittanceWorkspace({ data: { locationId } }),
+    enabled: Boolean(locationId),
+  });
+  const [eventId, setEventId] = useState(() => createCommercePosId("cash-reception"));
+  const [receivedAmount, setReceivedAmount] = useState("");
+  const [destinationWalletId, setDestinationWalletId] = useState("");
+  const [isFinal, setIsFinal] = useState(false);
+  const [note, setNote] = useState("");
+
+  const refresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["commerce-pos-control-report-detail", reportId] }),
+      queryClient.invalidateQueries({ queryKey: ["commerce-pos-control-reports", locationId] }),
+      queryClient.invalidateQueries({ queryKey: ["commerce-store-cockpit", locationId] }),
+    ]);
+  };
+  const receiveMutation = useMutation({
+    mutationFn: () => confirmCommercePosCashReception({ data: {
+      reportId, receptionEventId: eventId, receivedAmount: Number(receivedAmount),
+      destinationWalletId, isFinal, note: note.trim() || null,
+    } }),
+    onSuccess: async () => {
+      toast.success(isFinal ? "Réception finale confirmée. Le rapport est soldé." : "Réception partielle confirmée. Le solde restant reste ouvert.");
+      setReceivedAmount(""); setDestinationWalletId(""); setIsFinal(false); setNote(""); setEventId(createCommercePosId("cash-reception"));
+      await refresh();
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "La réception n’a pas pu être confirmée."),
+  });
+  const flagMutation = useMutation({
+    mutationFn: (reason: string) => flagCommercePosControlReport({ data: { reportId, reason } }),
+    onSuccess: async () => { toast.success("Rapport signalé à vérifier."); await refresh(); },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Le signalement a échoué."),
+  });
+  const flag = () => {
+    const reason = window.prompt("Motif du signalement (obligatoire)")?.trim();
+    if (reason) flagMutation.mutate(reason);
+  };
+
+  const detail = detailQuery.data;
+  const report = detail?.report;
+  const canReceive = Boolean(report && !report.isFinalized && report.cashExpected > 0);
+
+  return <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+    <DialogContent className="max-h-[90dvh] max-w-3xl overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>Rapport de contrôle</DialogTitle>
+        <DialogDescription>{report ? `${report.cashier} · session ${report.cashSessionId} · clôturée ${dateTime(report.closedAt)}` : "Chargement…"}</DialogDescription>
+      </DialogHeader>
+      {detailQuery.isPending ? <p className="py-8 text-center text-sm text-muted-foreground">Chargement du rapport…</p>
+        : !detail || !report ? <p className="py-8 text-center text-sm text-destructive">Ce rapport ne peut pas être chargé.</p>
+        : <div className="space-y-5">
+          {report.flaggedForReview ? <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/[0.06] p-3 text-sm"><Flag className="mt-0.5 size-4 shrink-0 text-destructive" /><p><strong>Signalé à vérifier.</strong> {report.flaggedReason}</p></div> : null}
+
+          <div className="grid gap-2 sm:grid-cols-3">
+            <DataRow label="Tickets" value={String(report.ticketCount)} />
+            <DataRow label="Articles" value={money(report.articleRevenue)} />
+            <DataRow label="Services" value={money(report.serviceRevenue)} />
+            <DataRow label="CA total" value={money(report.totalRevenue)} />
+            <DataRow label="Espèces attendues" value={money(report.cashExpected)} />
+            <DataRow label="Mobile Money" value={money(report.mobileMoneyTotal)} />
+            <DataRow label="Reçu à ce jour" value={money(report.receivedTotal)} />
+            <DataRow label="Restant" value={money(report.remainingAmount)} />
+            <DataRow label="Réception finale" value={report.isFinalized ? "Oui" : "Non"} />
+          </div>
+
+          <details className="rounded-lg border border-border"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold">Ventes de la session ({detail.sales.length})</summary><div className="border-t border-border">{detail.sales.length ? <table className="w-full text-sm"><thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><Th>Ticket</Th><Th>Date</Th><Th right>Total</Th></tr></thead><tbody className="divide-y divide-border/60">{detail.sales.map((sale) => <tr key={sale.id}><Td strong>{sale.saleNumber}</Td><Td>{dateTime(sale.createdAt)}</Td><Td right>{money(sale.total)}</Td></tr>)}</tbody></table> : <Empty label="Aucune vente rattachée." />}</div></details>
+
+          <div><h3 className="mb-2 text-sm font-semibold">Réceptions</h3>{detail.receptions.length ? <div className="overflow-x-auto rounded-lg border border-border"><table className="w-full min-w-[640px] text-sm"><thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><Th>Date</Th><Th right>Reçu</Th><Th right>Écart</Th><Th>Wallet</Th><Th>Confirmé par</Th><Th>Final</Th></tr></thead><tbody className="divide-y divide-border/60">{detail.receptions.map((reception) => <tr key={reception.id}><Td>{dateTime(reception.confirmedAt)}</Td><Td right strong>{money(reception.receivedAmount)}</Td><Td right>{money(reception.difference)}</Td><Td>{reception.destinationWallet ?? "—"}</Td><Td>{reception.confirmedBy}</Td><Td>{reception.isFinal ? "Oui" : "Non"}</Td></tr>)}</tbody></table></div> : <Empty label="Aucune réception enregistrée pour l’instant." />}</div>
+
+          {canReceive ? <div className="space-y-3 rounded-xl border border-border p-4">
+            <h3 className="font-semibold">Enregistrer une réception physique</h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div><Label>Montant reçu</Label><Input type="number" min="1" step="1" value={receivedAmount} onChange={(event) => setReceivedAmount(event.target.value)} placeholder={`Restant : ${report.remainingAmount}`} /></div>
+              <div><Label>Wallet destination</Label><Select value={destinationWalletId} onValueChange={setDestinationWalletId}><SelectTrigger><SelectValue placeholder="Wallet de collecte / exploitation" /></SelectTrigger><SelectContent>{(walletsQuery.data?.destinationWallets ?? []).map((wallet) => <SelectItem key={wallet.id} value={wallet.id}>{wallet.name} · {wallet.purpose}</SelectItem>)}</SelectContent></Select></div>
+            </div>
+            <div><Label>Note (optionnelle)</Label><Input value={note} maxLength={1000} onChange={(event) => setNote(event.target.value)} /></div>
+            <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-0.5" checked={isFinal} onChange={(event) => setIsFinal(event.target.checked)} /><span>Réception finale — solde ce rapport. Un écart restant devient une réception « à vérifier », jamais une recette ou une dépense automatique.</span></label>
+          </div> : !report.flaggedForReview ? <div className="flex items-center gap-2 rounded-xl border border-success/25 bg-success/[0.08] p-3 text-sm text-success"><CheckCircle2 className="size-4" />{report.isFinalized ? "Rapport soldé — aucune action supplémentaire nécessaire." : "Aucune espèce attendue sur ce rapport."}</div> : null}
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-4">
+            <Button type="button" variant="ghost" size="sm" onClick={flag} disabled={flagMutation.isPending}><Flag className="size-4" />{report.flaggedForReview ? "Mettre à jour le signalement" : "Signaler à vérifier"}</Button>
+            {canReceive ? <Button disabled={!destinationWalletId || !(Number(receivedAmount) > 0) || receiveMutation.isPending} onClick={() => receiveMutation.mutate()}>{receiveMutation.isPending ? "Confirmation…" : "Confirmer la réception"}</Button> : null}
+          </div>
+        </div>}
+    </DialogContent>
+  </Dialog>;
+}
 
 function FinanceSection({ cockpit }: { cockpit: CommerceStoreCockpit }) { const walletTotal = useMemo(() => cockpit.wallets.reduce((sum, wallet) => sum + wallet.balance, 0), [cockpit.wallets]); return <Card variant="section" id="store-finance"><CardHeader className="pb-3"><CardTitle className="text-lg">Versements & trésorerie</CardTitle></CardHeader><CardContent>{!cockpit.finance ? <Restricted label="Le journal financier et les soldes sont réservés aux permissions STORE-02." /> : <><div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><DataRow label="Solde wallets" value={money(walletTotal)} /><DataRow label="Entrées période" value={money(cockpit.finance.inflows)} /><DataRow label="Sorties période" value={money(cockpit.finance.outflows)} /><DataRow label="Versements" value={String(cockpit.remittances.length)} /></div>{cockpit.finance.operations.length ? <div className="overflow-x-auto rounded-lg border border-border"><table className="w-full min-w-[820px] text-sm"><thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><Th>Date</Th><Th>Type</Th><Th>Catégorie / description</Th><Th>Wallet</Th><Th>Référence</Th><Th right>Montant</Th><Th>Statut</Th></tr></thead><tbody className="divide-y divide-border/60">{cockpit.finance.operations.map((operation) => <tr key={operation.id}><Td>{day(operation.date)}</Td><Td>{operation.type}</Td><Td><strong>{operation.category ?? "Opération"}</strong><span className="block text-xs text-muted-foreground">{operation.description ?? "—"}</span></Td><Td>{operation.walletName ?? "—"}</Td><Td>{operation.reference ?? "—"}</Td><Td right strong>{money(operation.amount)}</Td><Td><Status value={operation.status ?? "VALIDE"} /></Td></tr>)}</tbody></table></div> : <Empty label="Aucune opération financière sur cette période." />}</>}</CardContent></Card>; }
 
