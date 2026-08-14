@@ -446,6 +446,9 @@ BEGIN
     v_remittance.id, v_report.closure_id, round(p_received_amount, 2), v_outstanding_before
   );
 
+  INSERT INTO public.finance_commerce_cash_remittance_links (remittance_id, operation_id)
+  VALUES (v_remittance.id, v_operation.id);
+
   PERFORM public.update_wallet_balance(v_source_wallet_id);
   PERFORM public.update_wallet_balance(p_destination_wallet_id);
   PERFORM public.business_finance_audit_event(
