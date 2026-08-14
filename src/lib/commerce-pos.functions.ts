@@ -8,7 +8,7 @@ const callUntypedRpc = (client: { rpc: unknown }, name: string, args: Record<str
 
 const locationSchema = z.object({ id: z.string().uuid(), name: z.string(), code: z.string() });
 const walletSchema = z.object({ id: z.string().uuid(), name: z.string(), purpose: z.string(), isPrimary: z.boolean() });
-const itemSchema = z.object({ id: z.string().uuid(), name: z.string(), sku: z.string().nullable(), unit: z.string().nullable(), quantity: z.number(), salePrice: z.number().nullable(), reorderLevel: z.number().nullable() });
+const itemSchema = z.object({ id: z.string().uuid(), name: z.string(), sku: z.string().nullable(), unit: z.string().nullable(), category: z.string().nullable(), quantity: z.number(), salePrice: z.number().nullable(), reorderLevel: z.number().nullable() });
 
 const workspaceSchema = z.object({
   location: locationSchema,

@@ -42,6 +42,7 @@ export type PosOfflineCatalogueInput = {
   name: string;
   sku: string | null;
   unit: string | null;
+  category: string | null;
   quantity: number;
   salePrice: number | null;
 };
@@ -80,6 +81,7 @@ export type PosOfflineCashSession = {
 export type PosOfflineCashSessionSummary = {
   ticketCount: number;
   articleTotal: number;
+  articleQuantityTotal: number;
   serviceTotal: number;
   cashTotal: number;
   otherPaymentTotal: number;
@@ -481,6 +483,7 @@ export async function cachePosOfflineCatalogue(scope: PosOfflineScope, items: re
         name: item.name,
         sku: item.sku,
         unit: item.unit,
+        category: item.category,
         salePrice: item.salePrice,
         syncedAtDevice: timestamp,
       }));
@@ -533,6 +536,7 @@ export async function cachePosOfflineCatalogue(scope: PosOfflineScope, items: re
         name: item.name,
         sku: item.sku,
         unit: item.unit,
+        category: item.category,
         quantity: source.quantity,
         salePrice: item.salePrice,
         scopeKey: item.scopeKey,
@@ -552,6 +556,7 @@ export async function getPosOfflineCatalogue(scope: PosOfflineScope): Promise<Po
       name: string;
       sku: string | null;
       unit: string | null;
+      category: string | null;
       salePrice: number | null;
       syncedAtDevice: string;
     }>(stores[POS_OFFLINE_STORES.catalog], "scopeKey", currentScopeKey);
@@ -562,6 +567,7 @@ export async function getPosOfflineCatalogue(scope: PosOfflineScope): Promise<Po
       name: item.name,
       sku: item.sku,
       unit: item.unit,
+      category: item.category,
       quantity: stockByItem.get(item.itemId) ?? 0,
       salePrice: item.salePrice,
       scopeKey: item.scopeKey,
@@ -588,19 +594,21 @@ async function getPosOfflineCashSessionSummary(
 ): Promise<PosOfflineCashSessionSummary> {
   const paidTickets = tickets.filter((ticket) => ticket.cashSessionId === cashSessionId && ticket.status === "PAID_LOCAL");
   let articleTotal = 0;
+  let articleQuantityTotal = 0;
   let serviceTotal = 0;
   for (const ticket of paidTickets) {
     const lines = await getAllByIndex<PosOfflineTicketLineRecord>(ticketLines, "ticketId", ticket.id);
     for (const { line } of lines) {
       const amount = line.quantity * line.unitPrice;
       if (line.lineType === "SERVICE") serviceTotal += amount;
-      else articleTotal += amount;
+      else { articleTotal += amount; articleQuantityTotal += line.quantity; }
     }
   }
   const cashTotal = articleTotal + serviceTotal;
   return {
     ticketCount: paidTickets.length,
     articleTotal,
+    articleQuantityTotal,
     serviceTotal,
     cashTotal,
     otherPaymentTotal: 0,
@@ -662,6 +670,7 @@ async function getPosOfflineCatalogueInTransaction(stores: Record<string, IDBObj
     name: string;
     sku: string | null;
     unit: string | null;
+    category: string | null;
     salePrice: number | null;
     syncedAtDevice: string;
   }>(stores[POS_OFFLINE_STORES.catalog], "scopeKey", currentScopeKey);
@@ -672,6 +681,7 @@ async function getPosOfflineCatalogueInTransaction(stores: Record<string, IDBObj
     name: item.name,
     sku: item.sku,
     unit: item.unit,
+    category: item.category,
     quantity: stockByItem.get(item.itemId) ?? 0,
     salePrice: item.salePrice,
     scopeKey: item.scopeKey,
