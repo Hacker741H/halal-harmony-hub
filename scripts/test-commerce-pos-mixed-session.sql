@@ -51,8 +51,11 @@ BEGIN
   INSERT INTO public.inventory_items(sku, nom, categorie, unite, stock_actuel, seuil_alerte)
   VALUES ('MIXED-' || v_token, 'Article test mixte', 'TEST', 'PIECE', 50, 0)
   RETURNING id INTO v_item_id;
+  -- Catalog floor stays at or below every line price used below (40000 /
+  -- 25000 / 15000) -- this test is about online/offline/payment-method
+  -- unification, not the price floor (see test-commerce-pos-pricing.sql).
   INSERT INTO public.business_location_inventory_items(business_location_id, inventory_item_id, quantity, sale_price)
-  VALUES (v_location_id, v_item_id, 50, 40000);
+  VALUES (v_location_id, v_item_id, 50, 10000);
   INSERT INTO public.commerce_inventory_cost_states(business_location_id, inventory_item_id, quantity_on_hand, current_unit_cost, inventory_value, initialized_from)
   VALUES (v_location_id, v_item_id, 50, 28000, 1400000, 'OPENING');
 
