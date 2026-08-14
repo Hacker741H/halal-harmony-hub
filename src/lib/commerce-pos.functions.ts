@@ -111,8 +111,13 @@ const commerceStoreCockpitSchema = z.object({
       // POS-06B: status describes offline-sync completeness only. A session
       // made of online sales can be SYNCED and still have a real cash gap --
       // this is that independent signal.
-      requiresCashReview: z.boolean(),
-    })),
+      // Optional + derived here: the RPC only started returning this key
+      // once migration 20260814110000 lands (cash_discrepancy generated
+      // column, defined as `server_difference <> 0`). Until then, replicate
+      // that exact formula from `difference`, which the RPC always returns,
+      // instead of requiring a key that may not exist yet.
+      requiresCashReview: z.boolean().optional(),
+    })).transform((closures) => closures.map((closure) => ({ ...closure, requiresCashReview: closure.requiresCashReview ?? closure.difference !== 0 }))),
   }).nullable(),
   remittances: z.array(z.object({
     id: z.string().uuid(), date: z.string(), amount: z.number(), status: z.string(), reference: z.string().nullable(), sourceWallet: z.string(), destinationWallet: z.string(),
