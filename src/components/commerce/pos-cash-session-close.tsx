@@ -25,12 +25,18 @@ export function PosCashSessionClose({ session, summary, disabled = false, onClos
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isOpen = session?.status === "OPEN";
+  const openedAtLabel = session?.openedAtDevice ? new Date(session.openedAtDevice).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "—";
+  const closingAtLabel = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  const sessionDayLabel = session?.openedAtDevice ? new Date(session.openedAtDevice).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "";
   const recap = useMemo(() => [
+    ["Heure d’ouverture", openedAtLabel],
+    ["Heure de clôture", closingAtLabel],
     ["Tickets encaissés", String(summary?.ticketCount ?? 0)],
-    ["Articles", money(summary?.articleTotal ?? 0)],
-    ["Services", money(summary?.serviceTotal ?? 0)],
-    ["Caisse théorique", money(summary?.theoreticalCash ?? 0)],
-  ], [summary?.articleTotal, summary?.serviceTotal, summary?.ticketCount, summary?.theoreticalCash]);
+    ["Articles vendus", String(summary?.articleQuantityTotal ?? 0)],
+    ["CA articles", money(summary?.articleTotal ?? 0)],
+    ["CA services", money(summary?.serviceTotal ?? 0)],
+    ["Espèces (théorique)", money(summary?.theoreticalCash ?? 0)],
+  ], [openedAtLabel, closingAtLabel, summary?.articleTotal, summary?.articleQuantityTotal, summary?.serviceTotal, summary?.ticketCount, summary?.theoreticalCash]);
 
   const submit = async () => {
     setError(null);
