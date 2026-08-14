@@ -8,7 +8,12 @@ const callUntypedRpc = (client: { rpc: unknown }, name: string, args: Record<str
 
 const locationSchema = z.object({ id: z.string().uuid(), name: z.string(), code: z.string() });
 const walletSchema = z.object({ id: z.string().uuid(), name: z.string(), purpose: z.string(), isPrimary: z.boolean() });
-const itemSchema = z.object({ id: z.string().uuid(), name: z.string(), sku: z.string().nullable(), unit: z.string().nullable(), category: z.string().nullable(), quantity: z.number(), salePrice: z.number().nullable(), reorderLevel: z.number().nullable() });
+// `category` is nullable AND defaulted (not just nullable): the RPC only
+// started returning this key once migration 20260814150000 lands on the
+// database this server function talks to. Until that migration is applied,
+// the key is simply absent from the RPC's jsonb result, and a `.parse()`
+// against a required field would throw and take the whole register down.
+const itemSchema = z.object({ id: z.string().uuid(), name: z.string(), sku: z.string().nullable(), unit: z.string().nullable(), category: z.string().nullable().default(null), quantity: z.number(), salePrice: z.number().nullable(), reorderLevel: z.number().nullable() });
 
 const workspaceSchema = z.object({
   location: locationSchema,
