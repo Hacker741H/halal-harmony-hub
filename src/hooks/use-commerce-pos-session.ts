@@ -338,9 +338,9 @@ export function useCommercePosSession({ locationId, userId, catalogue, catalogue
     return result.eventId;
   }, [cashSession?.status, draft, refreshOfflineState, scope, storageMode, synchronizeOutbox]);
 
-  const closeCashSession = useCallback(async (input: { countedCash: number; note?: string | null }) => {
+  const closeCashSession = useCallback(async () => {
     if (!scope || storageMode !== "INDEXEDDB") throw new Error("La clôture hors connexion requiert le stockage local de caisse.");
-    const result = await closePosOfflineCashSession(scope, input);
+    const result = await closePosOfflineCashSession(scope, {});
     setDraft(null);
     setIsRestored(true);
     await refreshOfflineState(scope);

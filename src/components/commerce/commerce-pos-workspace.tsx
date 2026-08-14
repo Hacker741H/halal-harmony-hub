@@ -457,10 +457,10 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     if (action.type === "CHANGE_LOCATION") setLocationId(action.locationId);
     if (action.type === "RETURN_TO_MANAGEMENT") onBackToManagement?.();
   }, [onBackToManagement, pendingDraftAction, posSession]);
-  const closeCashSession = async (input: { countedCash: number; note: string | null }) => {
-    const result = await posSession.closeCashSession(input);
+  const closeCashSession = async () => {
+    const result = await posSession.closeCashSession();
     setMobileCartOpen(false);
-    toast.success(`Cl\u00f4ture locale enregistr\u00e9e : ${money(result.summary.countedCash)} compt\u00e9s. La synchronisation suivra les ventes de cette session.`);
+    toast.success(`Session cl\u00f4tur\u00e9e : ${money(result.summary.theoreticalCash)} th\u00e9orique. Le contr\u00f4le et la r\u00e9ception se font maintenant c\u00f4t\u00e9 gestion.`);
   };
 
   const startNewCashSession = async () => {

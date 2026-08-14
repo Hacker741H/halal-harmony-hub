@@ -14,7 +14,7 @@ import {
   type PosOfflineCashSessionCloseOutboxEvent,
   type PosOfflineCashSessionCloseServerReceipt,
 } from "@/lib/commerce-pos-offline";
-import { syncCommercePosOfflineCashSessionClose, syncCommercePosOfflineSale } from "@/lib/commerce-pos.functions";
+import { closeCommercePosCashSession, syncCommercePosOfflineSale } from "@/lib/commerce-pos.functions";
 
 export type CommercePosSyncProgress = {
   total: number;
@@ -66,6 +66,14 @@ export async function sendCommercePosOfflineSale(event: PosOfflineOutboxEvent): 
   return syncCommercePosOfflineSale({ data: toOfflineSaleRequest(event) });
 }
 
+/**
+ * Mission caisse: the cashier no longer declares anything at close time, so
+ * only identity/timing crosses the wire -- close_commerce_pos_cash_session
+ * computes the real totals itself from already-synced server sales. The
+ * local payload still carries the declared totals (used for the cashier's
+ * immediate local summary/report, per the offline continuity requirement)
+ * but they are deliberately never sent here.
+ */
 function toOfflineCashSessionCloseRequest(event: PosOfflineCashSessionCloseOutboxEvent) {
   return {
     cashSessionId: event.cashSessionId,
@@ -73,24 +81,14 @@ function toOfflineCashSessionCloseRequest(event: PosOfflineCashSessionCloseOutbo
     businessLocationId: event.locationId,
     cashierUserId: event.userId,
     eventId: event.eventId,
-    payload: {
-      openedAtDevice: event.payload.openedAtDevice,
-      closedAtDevice: event.payload.closedAtDevice,
-      ticketCount: event.payload.ticketCount,
-      articleTotal: event.payload.articleTotal,
-      serviceTotal: event.payload.serviceTotal,
-      cashTotal: event.payload.cashTotal,
-      otherPaymentTotal: event.payload.otherPaymentTotal,
-      theoreticalCash: event.payload.theoreticalCash,
-      countedCash: event.payload.countedCash,
-      difference: event.payload.difference,
-      note: event.payload.note,
-    },
+    openedAtDevice: event.payload.openedAtDevice,
+    closedAtDevice: event.payload.closedAtDevice,
   };
 }
 
 export async function sendCommercePosOfflineCashSessionClose(event: PosOfflineCashSessionCloseOutboxEvent): Promise<PosOfflineCashSessionCloseServerReceipt> {
-  return syncCommercePosOfflineCashSessionClose({ data: toOfflineCashSessionCloseRequest(event) });
+  const receipt = await closeCommercePosCashSession({ data: toOfflineCashSessionCloseRequest(event) });
+  return { closureId: receipt.closureId, reportId: receipt.reportId, status: receipt.status, errorCode: receipt.errorCode ?? null, errorMessage: receipt.errorMessage ?? null };
 }
 
 function getErrorDetails(error: unknown): { message: string; permanent: boolean } {

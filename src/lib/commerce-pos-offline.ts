@@ -90,8 +90,10 @@ export type PosOfflineCashSessionSummary = {
 export type PosOfflineCashSessionClosePayload = PosOfflineCashSessionSummary & {
   openedAtDevice: string;
   closedAtDevice: string;
-  countedCash: number;
-  difference: number;
+  /** NULL = not counted by the cashier (mission caisse: this is now normal
+   * and permanent, not a missing-data bug). Never coerced to 0. */
+  countedCash: number | null;
+  difference: number | null;
   note: string | null;
 };
 
@@ -830,7 +832,11 @@ export async function recordPosOfflineCashSale(scope: PosOfflineScope, draft: Co
 }
 
 export type ClosePosOfflineCashSessionInput = {
-  countedCash: number;
+  /** Mission caisse: the cashier no longer counts cash at close time. NULL
+   * (or omitted) means "not counted here" -- never coerced to a fake 0. The
+   * server computes the real expected amount from actual sales, and the
+   * manager records what was physically received later, independently. */
+  countedCash?: number | null;
   note?: string | null;
 };
 
@@ -838,7 +844,8 @@ export async function closePosOfflineCashSession(
   scope: PosOfflineScope,
   input: ClosePosOfflineCashSessionInput,
 ): Promise<{ session: PosOfflineCashSession; summary: PosOfflineCashSessionClosePayload; eventId: string }> {
-  if (!Number.isFinite(input.countedCash) || input.countedCash < 0) {
+  const hasCountedCash = input.countedCash !== null && input.countedCash !== undefined;
+  if (hasCountedCash && (!Number.isFinite(input.countedCash as number) || (input.countedCash as number) < 0)) {
     throw new Error("Le montant d'espèces comptées est invalide.");
   }
   const note = input.note?.trim() || null;
@@ -883,8 +890,8 @@ export async function closePosOfflineCashSession(
       ...totals,
       openedAtDevice: current.openedAtDevice,
       closedAtDevice,
-      countedCash: input.countedCash,
-      difference: input.countedCash - totals.theoreticalCash,
+      countedCash: hasCountedCash ? (input.countedCash as number) : null,
+      difference: hasCountedCash ? (input.countedCash as number) - totals.theoreticalCash : null,
       note,
     };
     const eventId = createCommercePosId("cash-close");
@@ -1071,6 +1078,8 @@ export async function markPosOfflineOutboxSynced(
 
 export type PosOfflineCashSessionCloseServerReceipt = {
   closureId: string | null;
+  /** Mission caisse: the automatic report generated 1:1 with the closure. */
+  reportId?: string | null;
   status: "SYNCED" | "REVIEW_REQUIRED" | "PENDING_SALES";
   errorCode: string | null;
   errorMessage: string | null;
