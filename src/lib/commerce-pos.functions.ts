@@ -103,6 +103,10 @@ const commerceStoreCockpitSchema = z.object({
     closures: z.array(z.object({
       id: z.string().uuid(), cashSessionId: z.string(), terminalId: z.string(), cashier: z.string(), openedAt: z.string(), closedAt: z.string(),
       theoreticalCash: z.number(), countedCash: z.number(), difference: z.number(), status: z.enum(["SYNCED", "REVIEW_REQUIRED"]), totalsMatch: z.boolean(),
+      // POS-06B: status describes offline-sync completeness only. A session
+      // made of online sales can be SYNCED and still have a real cash gap --
+      // this is that independent signal.
+      requiresCashReview: z.boolean(),
     })),
   }).nullable(),
   remittances: z.array(z.object({
