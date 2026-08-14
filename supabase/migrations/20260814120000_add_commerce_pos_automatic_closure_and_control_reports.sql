@@ -5,23 +5,21 @@
 -- SESSION -> VENTES -> CLOTURE -> FIN. close_commerce_pos_cash_session
 -- calcule le theorique unifie POS-06/06B, ventile par mode de paiement, cree
 -- la cloture et genere automatiquement un rapport de controle 1:1 -- rien
--- d'autre. Aucune remise n'est attribuee au caissier : le rapport porte
--- seulement le montant espece attendu (cash_expected), une donnee calculee,
--- jamais une declaration.
+-- d'autre, aucune ecriture Finance (les ventes l'ont deja fait).
 --
--- La reception physique est une action GESTIONNAIRE distincte, plus tard,
--- via confirm_commerce_pos_cash_reception (nouvelle RPC), qui supporte
--- plusieurs receptions successives contre le meme rapport (reliquat) et cree
--- exactement un mouvement Finance TRANSFER par reception -- jamais un
--- deuxieme CA, jamais une deuxieme marge. Les tables POS-05
--- (commerce_cash_remittances) restent totalement intactes et continuent de
--- servir leur usage actuel (remise manuelle a partir d'une cloture
--- ancien-style avec counted_cash) ; ce nouveau parcours ne les utilise pas,
--- pour ne jamais laisser croire qu'un caissier a "declare" quoi que ce soit.
---
--- L'ancienne RPC sync_commerce_pos_cash_session_close (POS-04C, counted_cash
--- declare par l'appareil) reste intacte pour ne pas casser un client hors
--- ligne deja en vol avec l'ancien format.
+-- La reception physique est une action GESTIONNAIRE distincte, plus tard.
+-- Elle reutilise directement commerce_cash_remittances/
+-- commerce_cash_remittance_closures (POS-05) plutot que de dupliquer un
+-- second moteur de remise : ces tables savent deja rattacher plusieurs
+-- remises a une meme cloture (commerce_cash_remittance_closures est deja une
+-- table d'association many-to-many). confirm_commerce_pos_cash_reception
+-- insere chaque reception directement au statut CONFIRMED (declared_by NULL
+-- -- jamais attribuee au caissier, qui n'a rien declare), permet un montant
+-- recu different de l'attendu dans un sens ou l'autre, et distingue
+-- explicitement une reception partielle d'une reception finale via
+-- is_final. sync_commerce_pos_cash_session_close (POS-04C) et le parcours
+-- manuel declare/confirm existant restent totalement intacts pour toute
+-- cloture ancien-style (closure_kind='DECLARED').
 
 -- ---------------------------------------------------------------------------
 -- 1) La cloture peut desormais exister sans aucune donnee declaree.
@@ -42,15 +40,16 @@ ALTER TABLE public.commerce_pos_cash_session_closures
   ADD COLUMN IF NOT EXISTS closure_kind text NOT NULL DEFAULT 'DECLARED' CHECK (closure_kind IN ('DECLARED', 'AUTOMATIC'));
 
 COMMENT ON COLUMN public.commerce_pos_cash_session_closures.counted_cash IS
-  'NULL = pas de comptage caissier a la cloture (parcours automatique, closure_kind=AUTOMATIC). Le montant physiquement recu est saisi plus tard par le gestionnaire via commerce_pos_control_report_receptions -- ne jamais confondre NULL (inconnu a ce stade) et 0 (compte a zero).';
+  'NULL = pas de comptage caissier a la cloture (parcours automatique, closure_kind=AUTOMATIC). Le montant physiquement recu est saisi plus tard par le gestionnaire via confirm_commerce_pos_cash_reception (commerce_cash_remittances) -- ne jamais confondre NULL (inconnu a ce stade) et 0 (compte a zero).';
 COMMENT ON COLUMN public.commerce_pos_cash_session_closures.closure_kind IS
-  'DECLARED = ancien parcours POS-04C (appareil declare counted_cash, remise POS-05 manuelle possible). AUTOMATIC = nouveau parcours : aucune saisie caissier, theorique et rapport generes uniquement depuis les ventes serveur, reception geree par commerce_pos_control_report_receptions.';
+  'DECLARED = ancien parcours POS-04C (appareil declare counted_cash, remise POS-05 manuelle possible). AUTOMATIC = nouveau parcours : aucune saisie caissier, theorique et rapport generes uniquement depuis les ventes serveur.';
 
 -- ---------------------------------------------------------------------------
 -- 2) Rapport de controle : 1 cloture = 1 rapport, jamais deux. Aucune
---    colonne de statut mutable ici -- le statut (en attente / partiellement
---    recu / recu / a verifier) se calcule de maniere fiable a la lecture a
---    partir de cash_expected, de la somme des receptions et du flag manuel
+--    colonne de statut mutable ici -- le statut (a controler / partiellement
+--    recu / recu conforme / recu avec ecart) se calcule de maniere fiable a
+--    la lecture depuis cash_expected, les remises CONFIRMED qui lui sont
+--    liees via commerce_cash_remittance_closures, et le flag manuel
 --    ci-dessous, plutot que d'etre stocke et risquer de derailler.
 -- ---------------------------------------------------------------------------
 
@@ -90,7 +89,7 @@ CREATE INDEX commerce_pos_control_reports_cashier_idx
   ON public.commerce_pos_control_reports (cashier_user_id, closed_at_device DESC);
 
 COMMENT ON TABLE public.commerce_pos_control_reports IS
-  'Rapport de controle genere automatiquement (jamais par le caissier), 1:1 avec sa cloture via la contrainte UNIQUE sur closure_id -- un retry de close_commerce_pos_cash_session ne peut jamais en produire un second.';
+  'Rapport de controle genere automatiquement (jamais par le caissier), 1:1 avec sa cloture via la contrainte UNIQUE sur closure_id -- un retry de close_commerce_pos_cash_session ne peut jamais en produire un second. Le rapprochement espece se lit via commerce_cash_remittances/commerce_cash_remittance_closures (link.closure_id = closure_id), jamais stocke ici.';
 
 ALTER TABLE public.commerce_pos_control_reports ENABLE ROW LEVEL SECURITY;
 CREATE POLICY commerce_pos_control_reports_read ON public.commerce_pos_control_reports
@@ -101,50 +100,7 @@ REVOKE ALL ON TABLE public.commerce_pos_control_reports FROM PUBLIC, anon, authe
 GRANT SELECT ON TABLE public.commerce_pos_control_reports TO authenticated;
 
 -- ---------------------------------------------------------------------------
--- 3) Receptions physiques : une ligne par versement effectif au gestionnaire.
---    Plusieurs receptions successives peuvent viser le meme rapport tant que
---    leur somme ne depasse pas cash_expected -- c'est le mecanisme de
---    reliquat (section 6/14 de la mission). Chaque reception cree exactement
---    un mouvement finance_operations TRANSFER, jamais un second CA.
--- ---------------------------------------------------------------------------
-
-CREATE TABLE public.commerce_pos_control_report_receptions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  report_id uuid NOT NULL REFERENCES public.commerce_pos_control_reports(id) ON DELETE RESTRICT,
-  reception_event_id text NOT NULL UNIQUE CHECK (length(reception_event_id) BETWEEN 8 AND 160),
-  outstanding_before numeric(14, 2) NOT NULL CHECK (outstanding_before >= 0),
-  received_amount numeric(14, 2) NOT NULL CHECK (received_amount > 0),
-  source_wallet_id uuid NOT NULL REFERENCES public.wallets(id) ON DELETE RESTRICT,
-  destination_wallet_id uuid NOT NULL REFERENCES public.wallets(id) ON DELETE RESTRICT,
-  operation_id uuid NOT NULL UNIQUE REFERENCES public.finance_operations(id) ON DELETE RESTRICT,
-  note text,
-  confirmed_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
-  confirmed_at timestamptz NOT NULL DEFAULT now(),
-  CHECK (received_amount <= outstanding_before)
-);
-
-CREATE INDEX commerce_pos_control_report_receptions_report_idx
-  ON public.commerce_pos_control_report_receptions (report_id, confirmed_at);
-
-COMMENT ON TABLE public.commerce_pos_control_report_receptions IS
-  'Une ligne = un versement physique reellement recu par le gestionnaire pour un rapport donne. Le reliquat encore du se calcule toujours comme report.cash_expected - somme(received_amount) pour ce report_id -- jamais stocke, toujours recalcule pour eviter toute derive.';
-
-ALTER TABLE public.commerce_pos_control_report_receptions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY commerce_pos_control_report_receptions_read ON public.commerce_pos_control_report_receptions
-  FOR SELECT TO authenticated
-  USING (
-    public.user_has_permission('commerce.cash.reports.control')
-    AND EXISTS (
-      SELECT 1 FROM public.commerce_pos_control_reports report_row
-      WHERE report_row.id = report_id AND public.commerce_location_access_allowed(report_row.business_location_id)
-    )
-  );
-
-REVOKE ALL ON TABLE public.commerce_pos_control_report_receptions FROM PUBLIC, anon, authenticated;
-GRANT SELECT ON TABLE public.commerce_pos_control_report_receptions TO authenticated;
-
--- ---------------------------------------------------------------------------
--- 4) Cloture automatique : theorique unifie POS-06/06B, ventile par mode de
+-- 3) Cloture automatique : theorique unifie POS-06/06B, ventile par mode de
 --    paiement, plus generation atomique du rapport. Aucune remise, aucune
 --    ecriture Finance ici -- les ventes ont deja produit tout le CA/Finance
 --    necessaire via create_commerce_cash_sale.
@@ -200,10 +156,11 @@ BEGIN
 
   PERFORM pg_advisory_xact_lock(hashtextextended(v_location_id::text || ':cash-close:' || v_cash_session_id, 0));
 
-  -- Idempotence forte : un retry (rechargement navigateur, reconnexion apres
-  -- coupure) retombe toujours sur la meme cloture et le meme rapport, jamais
-  -- un doublon -- la contrainte UNIQUE sur cash_session_id et sur
-  -- commerce_pos_control_reports.closure_id le garantit au niveau base.
+  -- Idempotence forte : un retry (rechargement navigateur, reprise apres
+  -- coupure reseau au milieu de la synchronisation) retombe toujours sur la
+  -- meme cloture et le meme rapport, jamais un doublon -- la contrainte
+  -- UNIQUE sur cash_session_id et sur commerce_pos_control_reports.closure_id
+  -- le garantit au niveau base, pas seulement au niveau applicatif.
   SELECT * INTO v_existing
   FROM public.commerce_pos_cash_session_closures
   WHERE cash_session_id = v_cash_session_id;
@@ -220,7 +177,7 @@ BEGIN
 
   -- Meme garde que POS-04C : tous les tickets hors ligne de cette session
   -- doivent avoir fini de synchroniser avant de pouvoir clore -- jamais de
-  -- cloture avant les ventes dont elle depend (risque a) de la mission).
+  -- cloture avant les ventes dont elle depend.
   SELECT count(*) INTO v_pending_sales
   FROM public.commerce_pos_offline_receipts
   WHERE cash_session_id = v_cash_session_id
@@ -324,16 +281,29 @@ COMMENT ON FUNCTION public.close_commerce_pos_cash_session(jsonb) IS
   'Nouveau parcours caissier : aucune donnee declaree en entree, aucune remise, aucune ecriture Finance. Calcule le theorique unifie POS-06/06B par mode de paiement, cree la cloture (counted_cash reste NULL) et genere le rapport de controle 1:1. Idempotent par cash_session_id.';
 
 -- ---------------------------------------------------------------------------
--- 5) Reception physique gestionnaire : plusieurs receptions successives
---    possibles contre le meme rapport, jamais au-dela du reliquat, chacune
---    idempotente et creant exactement un mouvement Finance TRANSFER.
+-- 4) Reception physique gestionnaire -- reutilise commerce_cash_remittances
+--    directement (POS-05), pas de table parallele. Chaque reception est
+--    inseree DIRECTEMENT au statut CONFIRMED (declared_by NULL : personne
+--    n'a "declare", c'est un montant attendu calcule par le systeme, jamais
+--    attribue au caissier), avec is_final pour distinguer explicitement une
+--    reception partielle d'une reception qui solde le rapport (avec ou sans
+--    ecart). Le montant recu peut etre inferieur OU superieur a l'attendu :
+--    aucune borne superieure n'est imposee, seul un ecart eventuel est
+--    signale (jamais transforme en depense ou en recette automatique).
 -- ---------------------------------------------------------------------------
+
+ALTER TABLE public.commerce_cash_remittances
+  ADD COLUMN IF NOT EXISTS is_final boolean;
+
+COMMENT ON COLUMN public.commerce_cash_remittances.is_final IS
+  'Uniquement pour les remises issues de confirm_commerce_pos_cash_reception (declared_by IS NULL). true = cette reception solde le rapport (ecart eventuel fige et auditable) ; false/absent = reception partielle, le reliquat reste ouvert a une reception ulterieure. Sans objet pour une remise POS-05 classique declaree par un utilisateur.';
 
 CREATE OR REPLACE FUNCTION public.confirm_commerce_pos_cash_reception(
   p_report_id uuid,
   p_reception_event_id text,
   p_received_amount numeric,
   p_destination_wallet_id uuid,
+  p_is_final boolean,
   p_note text DEFAULT NULL
 )
 RETURNS jsonb
@@ -342,15 +312,17 @@ SECURITY DEFINER
 SET search_path = public, auth, pg_temp
 AS $function$
 DECLARE
-  v_report public.commerce_pos_control_reports;
-  v_already_received numeric(14, 2);
-  v_outstanding numeric(14, 2);
-  v_source_wallet_id uuid;
-  v_existing public.commerce_pos_control_report_receptions;
-  v_operation public.finance_operations;
-  v_reception public.commerce_pos_control_report_receptions;
-  v_note text := NULLIF(btrim(p_note), '');
   v_event_id text := NULLIF(btrim(p_reception_event_id), '');
+  v_note text := NULLIF(btrim(p_note), '');
+  v_report public.commerce_pos_control_reports;
+  v_existing public.commerce_cash_remittances;
+  v_already_received numeric(14, 2);
+  v_already_finalized boolean;
+  v_outstanding_before numeric(14, 2);
+  v_source_wallet_id uuid;
+  v_remittance public.commerce_cash_remittances;
+  v_operation public.finance_operations;
+  v_difference numeric(14, 2);
 BEGIN
   PERFORM public.permission_require('commerce.cash.reports.confirm');
   IF auth.uid() IS NULL THEN
@@ -359,6 +331,7 @@ BEGIN
   IF v_event_id IS NULL OR length(v_event_id) NOT BETWEEN 8 AND 160
     OR p_received_amount IS NULL OR p_received_amount <= 0
     OR p_destination_wallet_id IS NULL
+    OR p_is_final IS NULL
     OR (v_note IS NOT NULL AND length(v_note) > 1000) THEN
     RAISE EXCEPTION 'Reception invalide.' USING ERRCODE = '22023';
   END IF;
@@ -374,33 +347,41 @@ BEGIN
   PERFORM pg_advisory_xact_lock(hashtextextended('pos-reception:' || p_report_id::text, 0));
 
   -- Retry idempotent : le meme evenement renvoie le meme resultat, jamais un
-  -- second mouvement Finance (risque c) de la mission).
-  SELECT * INTO v_existing FROM public.commerce_pos_control_report_receptions WHERE reception_event_id = v_event_id;
+  -- second mouvement Finance.
+  SELECT * INTO v_existing FROM public.commerce_cash_remittances WHERE remittance_event_id = v_event_id;
   IF FOUND THEN
-    IF v_existing.report_id <> p_report_id THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.commerce_cash_remittance_closures link
+      WHERE link.remittance_id = v_existing.id AND link.closure_id = v_report.closure_id
+    ) THEN
       RAISE EXCEPTION 'Identifiant de reception deja utilise pour un autre rapport.' USING ERRCODE = '22023';
     END IF;
     RETURN jsonb_build_object(
-      'receptionId', v_existing.id, 'operationId', v_existing.operation_id,
-      'receivedAmount', v_existing.received_amount, 'outstandingBefore', v_existing.outstanding_before,
-      'remainingAfter', round(v_existing.outstanding_before - v_existing.received_amount, 2)
+      'remittanceId', v_existing.id, 'operationId', NULL, 'receivedAmount', v_existing.received_amount,
+      'isFinal', v_existing.is_final
     );
   END IF;
 
-  -- Le reliquat n'est jamais stocke : toujours recalcule depuis les
-  -- receptions deja confirmees pour ce rapport, sous le verrou ci-dessus.
-  SELECT coalesce(sum(received_amount), 0) INTO v_already_received
-  FROM public.commerce_pos_control_report_receptions
-  WHERE report_id = p_report_id;
+  -- Reliquat toujours recalcule depuis les remises CONFIRMED deja liees a
+  -- cette cloture (jamais stocke), sous le verrou ci-dessus. Une fois une
+  -- reception marquee finale, plus aucune reception n'est acceptee -- le
+  -- rapport est solde, avec ou sans ecart.
+  SELECT
+    coalesce(sum(r.received_amount), 0),
+    coalesce(bool_or(coalesce(r.is_final, false)), false)
+  INTO v_already_received, v_already_finalized
+  FROM public.commerce_cash_remittances AS r
+  JOIN public.commerce_cash_remittance_closures AS link ON link.remittance_id = r.id
+  WHERE link.closure_id = v_report.closure_id AND r.status = 'CONFIRMED';
 
-  v_outstanding := round(v_report.cash_expected - v_already_received, 2);
-  IF v_outstanding <= 0 THEN
-    RAISE EXCEPTION 'Ce rapport est deja solde -- aucun montant restant a recevoir.' USING ERRCODE = '22023';
+  IF v_already_finalized THEN
+    RAISE EXCEPTION 'Ce rapport est deja solde -- aucune nouvelle reception possible.' USING ERRCODE = '22023';
   END IF;
-  IF round(p_received_amount, 2) > v_outstanding THEN
-    RAISE EXCEPTION 'Le montant recu (%) depasse le reliquat encore du (%).', round(p_received_amount, 2), v_outstanding
-      USING ERRCODE = '22023';
+  IF v_report.cash_expected <= 0 THEN
+    RAISE EXCEPTION 'Ce rapport n''attend aucune espece -- rien a recevoir.' USING ERRCODE = '22023';
   END IF;
+
+  v_outstanding_before := round(v_report.cash_expected - v_already_received, 2);
 
   SELECT mapping.wallet_id
   INTO v_source_wallet_id
@@ -426,9 +407,13 @@ BEGIN
 
   PERFORM 1 FROM public.wallets WHERE id IN (v_source_wallet_id, p_destination_wallet_id) ORDER BY id FOR UPDATE;
 
-  -- Reutilise exactement le meme moteur Finance que POS-05
-  -- (confirm_commerce_cash_remittance) : un TRANSFER, jamais un REVENUE --
-  -- le CA existe deja, cette ecriture ne fait que deplacer de la tresorerie.
+  v_difference := round(p_received_amount - v_outstanding_before, 2);
+
+  -- Un seul mouvement de tresorerie, du wallet caisse vers le wallet de
+  -- reception -- exactement le meme moteur Finance que POS-05
+  -- (confirm_commerce_cash_remittance) : un TRANSFER, jamais un REVENUE. Le
+  -- CA existe deja depuis les ventes ; ceci ne fait que deplacer la
+  -- tresorerie deja comptabilisee.
   INSERT INTO public.finance_operations (
     wallet_id, destination_wallet_id, type, amount, operation_date, category,
     description, reference, status, origin, module, module_id, notes, created_by
@@ -439,37 +424,51 @@ BEGIN
     'COMMERCE_POS_CONTROL_REPORT', 'COMMERCE_POS_CONTROL_REPORT', v_report.id, v_note, auth.uid()
   ) RETURNING * INTO v_operation;
 
-  INSERT INTO public.commerce_pos_control_report_receptions (
-    report_id, reception_event_id, outstanding_before, received_amount,
-    source_wallet_id, destination_wallet_id, operation_id, note, confirmed_by
+  -- Insere directement CONFIRMED : il n'y a plus de declarant distinct du
+  -- confirmant dans ce parcours (declared_by NULL), donc plus de phase
+  -- DECLARED intermediaire a franchir.
+  INSERT INTO public.commerce_cash_remittances (
+    remittance_event_id, business_location_id, source_wallet_id, destination_wallet_id,
+    expected_amount, amount, cashier_difference, remittance_date, status,
+    reference, notes, declared_by, declared_at, payload_hash,
+    received_amount, remittance_difference, confirmed_by, confirmed_at, confirmation_note, is_final
   ) VALUES (
-    p_report_id, v_event_id, v_outstanding, round(p_received_amount, 2),
-    v_source_wallet_id, p_destination_wallet_id, v_operation.id, v_note, auth.uid()
-  ) RETURNING * INTO v_reception;
+    v_event_id, v_report.business_location_id, v_source_wallet_id, p_destination_wallet_id,
+    v_outstanding_before, round(p_received_amount, 2), v_difference, current_date, 'CONFIRMED',
+    'Cloture ' || v_report.cash_session_id, v_note, NULL, now(),
+    md5(v_report.id::text || ':' || v_event_id),
+    round(p_received_amount, 2), v_difference, auth.uid(), now(), v_note, p_is_final
+  ) RETURNING * INTO v_remittance;
+
+  INSERT INTO public.commerce_cash_remittance_closures (
+    remittance_id, closure_id, allocated_counted_amount, allocated_expected_amount
+  ) VALUES (
+    v_remittance.id, v_report.closure_id, round(p_received_amount, 2), v_outstanding_before
+  );
 
   PERFORM public.update_wallet_balance(v_source_wallet_id);
   PERFORM public.update_wallet_balance(p_destination_wallet_id);
   PERFORM public.business_finance_audit_event(
     'COMMERCE_POS_CONTROL_REPORT', v_report.id, v_operation.id, 'CONFIRM', NULL,
     jsonb_build_object(
-      'reception_id', v_reception.id, 'received_amount', v_reception.received_amount,
-      'outstanding_before', v_outstanding, 'remaining_after', round(v_outstanding - p_received_amount, 2)
+      'remittance_id', v_remittance.id, 'received_amount', v_remittance.received_amount,
+      'outstanding_before', v_outstanding_before, 'is_final', p_is_final, 'difference', v_difference
     )
   );
 
   RETURN jsonb_build_object(
-    'receptionId', v_reception.id, 'operationId', v_operation.id,
-    'receivedAmount', v_reception.received_amount, 'outstandingBefore', v_outstanding,
-    'remainingAfter', round(v_outstanding - p_received_amount, 2)
+    'remittanceId', v_remittance.id, 'operationId', v_operation.id,
+    'receivedAmount', v_remittance.received_amount, 'outstandingBefore', v_outstanding_before,
+    'isFinal', p_is_final, 'difference', v_difference
   );
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.confirm_commerce_pos_cash_reception(uuid, text, numeric, uuid, text) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.confirm_commerce_pos_cash_reception(uuid, text, numeric, uuid, text) TO authenticated;
+REVOKE ALL ON FUNCTION public.confirm_commerce_pos_cash_reception(uuid, text, numeric, uuid, boolean, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.confirm_commerce_pos_cash_reception(uuid, text, numeric, uuid, boolean, text) TO authenticated;
 
-COMMENT ON FUNCTION public.confirm_commerce_pos_cash_reception(uuid, text, numeric, uuid, text) IS
-  'Action gestionnaire uniquement. Une ligne par versement physique reel ; plusieurs receptions successives peuvent solder le meme rapport tant que leur somme ne depasse jamais cash_expected. Ne cree jamais de CA/marge -- uniquement un TRANSFER de tresorerie, idempotent par reception_event_id.';
+COMMENT ON FUNCTION public.confirm_commerce_pos_cash_reception(uuid, text, numeric, uuid, boolean, text) IS
+  'Action gestionnaire uniquement. Reutilise commerce_cash_remittances/commerce_cash_remittance_closures (POS-05) -- une ligne CONFIRMED par versement physique reel, declared_by NULL (jamais attribue au caissier). Le montant recu peut etre inferieur ou superieur au reliquat ; p_is_final distingue une reception partielle (le reliquat reste ouvert) d''une reception qui solde definitivement le rapport, ecart eventuel inclus. Ne cree jamais de CA/marge -- uniquement un TRANSFER de tresorerie, idempotent par reception_event_id.';
 
 CREATE OR REPLACE FUNCTION public.flag_commerce_pos_control_report(p_report_id uuid, p_reason text)
 RETURNS public.commerce_pos_control_reports
@@ -509,7 +508,7 @@ REVOKE ALL ON FUNCTION public.flag_commerce_pos_control_report(uuid, text) FROM 
 GRANT EXECUTE ON FUNCTION public.flag_commerce_pos_control_report(uuid, text) TO authenticated;
 
 -- ---------------------------------------------------------------------------
--- 6) Permissions : le caissier ne declare, ne valide et ne confirme plus
+-- 5) Permissions : le caissier ne declare, ne valide et ne confirme plus
 --    aucune remise (section 1 de la mission). commerce.cash.close reste au
 --    caissier -- il declenche close_commerce_pos_cash_session, une action
 --    differente (clore sa propre session) d'une decision financiere.
