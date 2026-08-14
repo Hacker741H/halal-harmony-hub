@@ -185,6 +185,11 @@ const saleInputSchema = z.object({
   idempotencyKey: z.string().trim().regex(/^[A-Za-z0-9_-]{8,80}$/),
   reference: z.string().trim().max(120).nullable(),
   notes: z.string().trim().max(1000).nullable(),
+  // POS-06: the active till session/terminal, when the local POS storage is
+  // available. Null together when IndexedDB is blocked -- online checkout
+  // must keep working without a session rather than fabricate one.
+  cashSessionId: z.string().trim().regex(/^[A-Za-z0-9_-]{8,160}$/).nullable(),
+  terminalId: z.string().trim().regex(/^[A-Za-z0-9_-]{8,160}$/).nullable(),
   lines: z.array(z.discriminatedUnion("lineType", [articleSaleLineSchema, serviceSaleLineSchema])).min(1).max(100),
 }).strict();
 
@@ -460,6 +465,8 @@ export const createCommerceCashSale = createServerFn({ method: "POST" })
         idempotency_key: data.idempotencyKey,
         reference: data.reference,
         notes: data.notes,
+        cash_session_id: data.cashSessionId,
+        terminal_id: data.terminalId,
         lines: data.lines.map((line) => line.lineType === "ARTICLE"
           ? { line_type: "ARTICLE", inventory_item_id: line.inventoryItemId, quantity: line.quantity, unit_price: line.unitPrice }
           : { line_type: "SERVICE", service_name: line.serviceName, service_note: line.serviceNote, quantity: line.quantity, unit_price: line.unitPrice }),

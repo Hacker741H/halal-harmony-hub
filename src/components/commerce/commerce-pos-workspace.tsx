@@ -654,6 +654,8 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
         idempotencyKey: draft.sessionId,
         reference: `POS:${draft.sessionId}`,
         notes: null,
+        cashSessionId: posSession.cashSession?.id ?? null,
+        terminalId: posSession.cashSession?.terminalId ?? null,
         lines: cart.map((line) => line.lineType === "ARTICLE"
           ? { lineType: "ARTICLE" as const, inventoryItemId: line.itemId, quantity: line.quantity, unitPrice: line.unitPrice }
           : { lineType: "SERVICE" as const, serviceName: line.label, serviceNote: line.serviceNote, quantity: line.quantity, unitPrice: line.unitPrice }),
