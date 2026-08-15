@@ -11,6 +11,12 @@
 -- les finance_operations deja creees par des ventes passees (categorie
 -- 'VENTE MAGASIN') restent intactes ; une strategie de regularisation sera
 -- traitee separement, avec autorisation explicite.
+--
+-- Transition sans interruption : confirm_commerce_pos_cash_reception garde
+-- temporairement son ancienne signature a 6 arguments (wrapper de
+-- compatibilite, section 4bis) en plus de la nouvelle a 5 arguments, pour que
+-- le frontend deja en production au moment de l'application de cette
+-- migration continue de fonctionner jusqu'a son propre deploiement.
 
 -- ---------------------------------------------------------------------------
 -- 1) payment_method devient disponible sans dependre de finance_operations.
@@ -563,13 +569,18 @@ $function$;
 
 -- ---------------------------------------------------------------------------
 -- 4) confirm_commerce_pos_cash_reception credite directement le wallet
---    CASH_DRAWER du magasin -- plus de choix de wallet destination. La
---    signature change (perte de p_destination_wallet_id) : l'ancien overload
---    est retire explicitement avant de recreer la fonction, pour ne jamais
---    laisser deux versions coexister.
+--    CASH_DRAWER du magasin -- plus de choix de wallet destination.
+--    Transition compatible sans interruption : le frontend deploye appelle
+--    encore l'ancien overload a 6 arguments (p_destination_wallet_id) tant
+--    que le nouveau frontend (5 arguments) n'est pas lui-meme deploye.
+--    L'overload a 6 arguments N'EST PAS supprime ici -- il est redefini plus
+--    bas comme un wrapper mince qui valide puis delegue integralement au
+--    nouveau comportement DEPOSIT (plus jamais de TRANSFER), pour qu'un
+--    appel du vieux frontend reste fonctionnel pendant la fenetre de
+--    transition. Une migration ulterieure retirera cet overload une fois
+--    qu'aucun client ancien ne peut plus l'appeler (cf. commentaire sur la
+--    fonction plus bas).
 -- ---------------------------------------------------------------------------
-
-DROP FUNCTION IF EXISTS public.confirm_commerce_pos_cash_reception(uuid, text, numeric, uuid, boolean, text);
 
 CREATE OR REPLACE FUNCTION public.confirm_commerce_pos_cash_reception(
   p_report_id uuid,
@@ -735,6 +746,52 @@ GRANT EXECUTE ON FUNCTION public.confirm_commerce_pos_cash_reception(uuid, text,
 
 COMMENT ON FUNCTION public.confirm_commerce_pos_cash_reception(uuid, text, numeric, boolean, text) IS
   'Action gestionnaire uniquement. Credite directement le wallet CASH_DRAWER principal du magasin du montant reellement recu (type=DEPOSIT, destination_wallet_id NULL -- pas de second wallet). Reutilise commerce_cash_remittances/commerce_cash_remittance_closures (POS-05) pour la tracabilite -- une ligne CONFIRMED par versement physique reel, declared_by NULL (jamais attribue au caissier). Le montant recu peut etre inferieur ou superieur au reliquat ; p_is_final distingue une reception partielle (le reliquat reste ouvert) d''une reception qui solde definitivement le rapport, ecart eventuel inclus. Idempotent par reception_event_id.';
+
+-- ---------------------------------------------------------------------------
+-- 4bis) Wrapper de compatibilite temporaire, ancienne signature a 6
+--    arguments. Existe uniquement pour que le frontend deja en production
+--    (pas encore mis a jour) continue de fonctionner pendant la fenetre de
+--    transition. Ne fait plus AUCUN TRANSFER : valide p_destination_wallet_id
+--    (non nul, wallet existant reellement -- purement une verification de
+--    forme, plus aucune contrainte COLLECTION/OPERATING/distinct-de-la-source,
+--    puisque cette regle metier est precisement celle qu'on retire) puis
+--    delegue integralement au nouvel overload a 5 arguments, qui execute le
+--    seul comportement reel : DEPOSIT direct sur le CASH_DRAWER du magasin.
+--    A SUPPRIMER par une migration ulterieure une fois le frontend a 5
+--    arguments confirme deploye et plus aucun ancien client en circulation.
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public.confirm_commerce_pos_cash_reception(
+  p_report_id uuid,
+  p_reception_event_id text,
+  p_received_amount numeric,
+  p_destination_wallet_id uuid,
+  p_is_final boolean,
+  p_note text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $function$
+BEGIN
+  IF p_destination_wallet_id IS NULL THEN
+    RAISE EXCEPTION 'Reception invalide.' USING ERRCODE = '22023';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.wallets WHERE id = p_destination_wallet_id) THEN
+    RAISE EXCEPTION 'Wallet destination introuvable.' USING ERRCODE = '23503';
+  END IF;
+  RETURN public.confirm_commerce_pos_cash_reception(
+    p_report_id, p_reception_event_id, p_received_amount, p_is_final, p_note
+  );
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.confirm_commerce_pos_cash_reception(uuid, text, numeric, uuid, boolean, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.confirm_commerce_pos_cash_reception(uuid, text, numeric, uuid, boolean, text) TO authenticated;
+
+COMMENT ON FUNCTION public.confirm_commerce_pos_cash_reception(uuid, text, numeric, uuid, boolean, text) IS
+  'COMPATIBILITE TEMPORAIRE (a retirer). Ancienne signature a 6 arguments conservee uniquement pour le frontend deja deploye au moment de cette migration. Ne fait plus de TRANSFER : valide p_destination_wallet_id (non nul, wallet existant) puis delegue entierement a confirm_commerce_pos_cash_reception(uuid, text, numeric, boolean, text), qui credite directement le CASH_DRAWER du magasin en DEPOSIT. Supprimer cet overload par une migration dediee des que le frontend a 5 arguments est confirme deploye en production.';
 
 -- ---------------------------------------------------------------------------
 -- 5) sync_commerce_pos_cash_session_close (POS-04C/POS-06, parcours manuel
