@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getRouteApi } from "@tanstack/react-router";
 import { endOfMonth, format, startOfMonth, startOfYear, subDays, subMonths } from "date-fns";
 import { fr } from "date-fns/locale";
 import { AlertCircle, ArrowRight, Banknote, CalendarDays, CheckCircle2, CircleDollarSign, ClipboardCheck, Flag, History, Package, ReceiptText, RefreshCw, ShieldAlert, Store, TriangleAlert, WalletCards } from "lucide-react";
@@ -32,6 +33,12 @@ import {
   type CommerceStoreCockpit,
   type StoreExpenseCategory,
 } from "@/lib/commerce-pos.functions";
+
+// Bug global (retour de focus, point 3) : getRouteApi plutot que useSearch/
+// useNavigate importes nus -- ce composant n'est pas lui-meme le fichier de
+// la route, et c'est le pattern documente pour garder l'inference de type
+// (from) fiable depuis un composant enfant.
+const commerceRouteApi = getRouteApi("/_authenticated/commerce/");
 
 const money = (amount: number | null | undefined) => amount === null || amount === undefined ? "Non certifiable" : `${amount.toLocaleString("fr-FR")} FCFA`;
 const number = (value: number) => value.toLocaleString("fr-FR", { maximumFractionDigits: 3 });
@@ -224,7 +231,14 @@ const controlStatusLabels: Record<"PENDING_CONTROL" | "PARTIALLY_RECEIVED" | "RE
 
 function ControlReportsSection({ locationId, from, to }: { locationId: string; from: string; to: string }) {
   const [status, setStatus] = useState<"" | keyof typeof controlStatusLabels>("");
-  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  // Bug global (retour de focus, point 3) : le rapport ouvert vit dans l'URL
+  // -- un remount de l'app ne le ferme plus silencieusement.
+  const search = commerceRouteApi.useSearch();
+  const navigate = commerceRouteApi.useNavigate();
+  const selectedReportId = search.report ?? null;
+  const setSelectedReportId = (reportId: string | null) => {
+    void navigate({ search: (prev) => ({ ...prev, report: reportId ?? undefined }) });
+  };
   const query = useQuery({
     queryKey: ["commerce-pos-control-reports", locationId, from, to, status],
     queryFn: () => getCommercePosControlReports({ data: { locationId, from, to, status: status === "" ? null : status, cashierId: null } }),

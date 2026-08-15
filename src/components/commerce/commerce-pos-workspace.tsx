@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, getRouteApi, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Banknote, BarChart3, Check, CheckCircle2, CircleDollarSign, CloudOff, CloudUpload, CreditCard, DoorOpen, ListTodo, LogOut, Minus, Package, PackagePlus, Pencil, Plus, ReceiptText, Search, ShoppingCart, Smartphone, Store, TrendingUp, TriangleAlert, Trash2, UserPlus, UserRoundX, WalletCards, Warehouse, Wrench, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -44,6 +44,12 @@ import { cn } from "@/lib/utils";
 type CartLine = CommercePosDraftLine;
 type PaymentMethod = CommercePosPaymentMethod;
 
+// Bug global (retour de focus, point 3) : getRouteApi plutot que useSearch/
+// useNavigate importes nus -- ce composant n'est pas lui-meme le fichier de
+// la route, et c'est le pattern documente pour garder l'inference de type
+// (from) fiable depuis un composant enfant.
+const commerceRouteApi = getRouteApi("/_authenticated/commerce/");
+
 const money = (amount: number) => `${amount.toLocaleString("fr-FR")} FCFA`;
 
 const paymentMethods: Array<{ value: PaymentMethod; label: string; icon: typeof Banknote }> = [
@@ -56,11 +62,20 @@ const paymentMethods: Array<{ value: PaymentMethod; label: string; icon: typeof 
 
 export function CommercePosWorkspace() {
   const { canAny, isPending } = usePermissions();
-  const [workspaceMode, setWorkspaceMode] = useState<"management" | "cashier">("management");
+  // Bug global (retour de focus, point 3) : caisse vs gestion vit dans l'URL
+  // -- un remount de l'app (queryClient.clear() sur un vrai changement
+  // d'identite, un reload volontaire) retrouve le meme onglet au lieu de
+  // revenir silencieusement a "management" par defaut.
+  const search = commerceRouteApi.useSearch();
+  const navigate = commerceRouteApi.useNavigate();
   const canUseManagementWorkspace = canAny(["locations.manage", "commerce.stock.receive", "sales.finance.read", "store.financial.read", "store.stock_valuation.read", "store.expenses.read"]);
+  const workspaceMode: "management" | "cashier" = canUseManagementWorkspace && search.view !== "caisse" ? "management" : "cashier";
+  const setWorkspaceMode = (mode: "management" | "cashier") => {
+    void navigate({ search: (prev) => ({ ...prev, view: mode === "cashier" ? "caisse" : undefined }) });
+  };
 
   if (isPending) return <div className="grid gap-4 lg:grid-cols-3"><Skeleton className="h-48 lg:col-span-2" /><Skeleton className="h-48" /></div>;
-  if (canUseManagementWorkspace && workspaceMode === "management") {
+  if (workspaceMode === "management") {
     return <CommerceManagementWorkspace onOpenCashier={() => setWorkspaceMode("cashier")} />;
   }
   return <CommerceCashierWorkspace onBackToManagement={canUseManagementWorkspace ? () => setWorkspaceMode("management") : undefined} />;
@@ -1037,7 +1052,11 @@ function CashierSessionTab({ locationName, cashierName, sessionOpenedLabel, sess
           <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Tickets</p><p className="mt-1 text-lg font-bold tabular-nums">{summary.ticketCount}</p></div>
           <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Articles</p><p className="mt-1 text-lg font-bold tabular-nums">{money(summary.articleTotal)}</p></div>
           <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Services</p><p className="mt-1 text-lg font-bold tabular-nums">{money(summary.serviceTotal)}</p></div>
-          <div className="rounded-xl border border-primary/25 bg-primary/[0.06] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Total</p><p className="mt-1 text-lg font-bold tabular-nums text-primary">{money(summary.theoreticalCash)}</p></div>
+          <div className="rounded-xl border border-primary/25 bg-primary/[0.06] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Espèces (théorique)</p><p className="mt-1 text-lg font-bold tabular-nums text-primary">{money(summary.theoreticalCash)}</p></div>
+          {/* Toujours affiches, meme a 0 : un montant Mobile Money ou Autres
+              ne doit jamais disparaitre silencieusement de ce recap. */}
+          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Mobile Money</p><p className="mt-1 text-lg font-bold tabular-nums">{money(summary.mobileMoneyTotal)}</p></div>
+          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Autres moyens</p><p className="mt-1 text-lg font-bold tabular-nums">{money(summary.otherPaymentTotal)}</p></div>
         </CardContent>
       </Card> : null}
       <Card variant="section">
