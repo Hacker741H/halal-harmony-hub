@@ -487,7 +487,7 @@ export const createCommerceCashSale = createServerFn({ method: "POST" })
       },
     });
     if (error) throw error;
-    return z.object({ saleId: z.string().uuid(), saleNumber: z.string(), invoiceNumber: z.string(), paymentId: z.string().uuid(), operationId: z.string().uuid(), amount: z.number() }).parse(result);
+    return z.object({ saleId: z.string().uuid(), saleNumber: z.string(), invoiceNumber: z.string(), paymentId: z.string().uuid(), operationId: z.string().uuid().nullable(), amount: z.number() }).parse(result);
   });
 
 /**
