@@ -23,6 +23,7 @@ import {
   getCommerceInventoryCatalogue,
   getCommerceLocationAssignments,
   getCommerceManagementDashboard,
+  getCommercePosCashSessionPreview,
   getCommercePosLocations,
   getCommercePosWorkspace,
   getCommerceSetupOptions,
@@ -36,7 +37,7 @@ import { useCommercePosSession } from "@/hooks/use-commerce-pos-session";
 import { useCurrentUserAccess } from "@/hooks/use-current-user-access";
 import { usePermissions } from "@/hooks/use-permissions";
 import { supabase } from "@/integrations/supabase/client";
-import { cachePosOfflineLocations, findPosOfflineDraftLocation, getCachedPosOfflineLocations } from "@/lib/commerce-pos-offline";
+import { cachePosOfflineLocations, findPosOfflineDraftLocation, getCachedPosOfflineLocations, mergeCommercePosCashSessionSummaries } from "@/lib/commerce-pos-offline";
 import { createCommercePosId, findCommercePosDraftLocation, getCommercePosStockConflicts, type CommercePosDraftLine, type CommercePosPaymentMethod, type CommercePosSuspendedTicket } from "@/lib/commerce-pos-session";
 import { cn } from "@/lib/utils";
 
@@ -349,6 +350,24 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     catalogue: workspace?.items,
     catalogueRevision: workspaceQuery.dataUpdatedAt,
   });
+  // Server-authoritative half of the pre-closure summary: every confirmed
+  // sale already in commercial_sales, online or offline-then-synced. The
+  // local half (posSession.cashSessionSummary) now only ever carries sales
+  // NOT yet known to be synced -- merging the two never double-counts, and
+  // an online-only session (the common case) is no longer stuck at zero.
+  const sessionPreviewQuery = useQuery({
+    queryKey: ["commerce-pos-session-preview", posSession.cashSession?.id],
+    queryFn: () => getCommercePosCashSessionPreview({ data: {
+      cashSessionId: posSession.cashSession!.id,
+      terminalId: posSession.cashSession!.terminalId,
+      businessLocationId: selectedLocationId,
+    } }),
+    enabled: Boolean(posSession.cashSession?.id) && Boolean(selectedLocationId),
+  });
+  const cashSessionSummary = useMemo(
+    () => mergeCommercePosCashSessionSummaries(posSession.cashSessionSummary, sessionPreviewQuery.data ?? null),
+    [posSession.cashSessionSummary, sessionPreviewQuery.data],
+  );
   const [search, setSearch] = useState("");
   const [quickQuantity, setQuickQuantity] = useState("1");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -378,8 +397,13 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     void Promise.all([
       queryClient.invalidateQueries({ queryKey: ["commerce-pos-workspace", selectedLocationId] }),
       queryClient.invalidateQueries({ queryKey: ["commerce-management-dashboard", selectedLocationId] }),
+      // A sale just finished syncing: it now counts on the server side of the
+      // preview, and getPosOfflineCashSessionSummary will stop counting it
+      // locally on its next read (its outbox event is now SYNCED) -- refetch
+      // so the merged total reflects that handover instead of a stale split.
+      queryClient.invalidateQueries({ queryKey: ["commerce-pos-session-preview", posSession.cashSession?.id] }),
     ]);
-  }, [posSession.syncRevision, queryClient, selectedLocationId]);
+  }, [posSession.cashSession?.id, posSession.syncRevision, queryClient, selectedLocationId]);
   useEffect(() => {
     if (!currentUserId) return;
     let active = true;
@@ -504,7 +528,14 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
       toast.success(`Vente ${receipt.saleNumber} comptabilisée : ${money(receipt.amount)}.`);
       posSession.clearDraft();
       setShowClient(false);
-      await refreshWorkspace();
+      await Promise.all([
+        refreshWorkspace(),
+        // The sale just landed in commercial_sales -- the server half of the
+        // pre-closure summary must reflect it right away, since this online
+        // path never writes a local ticket for getPosOfflineCashSessionSummary
+        // to pick up (that gap was the root cause of the modal reading zero).
+        queryClient.invalidateQueries({ queryKey: ["commerce-pos-session-preview", posSession.cashSession?.id] }),
+      ]);
     },
     onError: (error) => {
       const requiresReconciliation = isIndeterminateCheckoutError(error);
@@ -775,7 +806,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
             {isCashierOnlyShell ? <Button type="button" size="icon" variant="ghost" className="text-background hover:bg-background/10 hover:text-background" onClick={() => { void signOut(); }} aria-label="Déconnexion"><DoorOpen className="size-4" /></Button> : null}
             <PosCashSessionClose
               session={posSession.cashSession}
-              summary={posSession.cashSessionSummary}
+              summary={cashSessionSummary}
               disabled={hasDraftInProgress || posSession.suspendedTickets.length > 0}
               onClose={closeCashSession}
               onStartNew={startNewCashSession}
@@ -799,7 +830,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
           cashierName={cashierName}
           sessionOpenedLabel={sessionOpenedLabel}
           session={posSession.cashSession}
-          summary={posSession.cashSessionSummary}
+          summary={cashSessionSummary}
           syncStatusLabel={syncStatusLabel}
           lastSuccessfulSyncAt={lastSuccessfulSyncAt}
           disabled={hasDraftInProgress || posSession.suspendedTickets.length > 0}

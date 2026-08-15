@@ -89,6 +89,48 @@ export type PosOfflineCashSessionSummary = {
   cancelledTicketCount: number;
 };
 
+/** Structural shape of the server-side preview (get_commerce_pos_cash_session_preview).
+ * Declared locally rather than imported from commerce-pos.functions.ts to keep this
+ * module's layering (pure client storage, no server dependency) intact. */
+export type CommercePosCashSessionServerTotals = {
+  ticketCount: number;
+  articleTotal: number;
+  articleQuantityTotal: number;
+  serviceTotal: number;
+  cashTotal: number;
+  otherPaymentTotal: number;
+  theoreticalCash: number;
+};
+
+/**
+ * The pre-closure summary is server totals (every sale already confirmed
+ * server-side, online or offline-then-synced) plus the local-only
+ * contribution (offline sales not yet known to be synced -- see
+ * getPosOfflineCashSessionSummary, which already excludes anything synced).
+ * The two are disjoint by construction: a ticket's outbox event is either
+ * SYNCED (counted server-side only) or not (counted locally only), never
+ * both -- so straight addition never double-counts. No network yet (server
+ * is null) falls back to the local contribution alone, which is already the
+ * whole truth when nothing has synced.
+ */
+export function mergeCommercePosCashSessionSummaries(
+  local: PosOfflineCashSessionSummary | null,
+  server: CommercePosCashSessionServerTotals | null,
+): PosOfflineCashSessionSummary | null {
+  if (!local && !server) return null;
+  if (!server) return local;
+  return {
+    ticketCount: server.ticketCount + (local?.ticketCount ?? 0),
+    articleTotal: server.articleTotal + (local?.articleTotal ?? 0),
+    articleQuantityTotal: server.articleQuantityTotal + (local?.articleQuantityTotal ?? 0),
+    serviceTotal: server.serviceTotal + (local?.serviceTotal ?? 0),
+    cashTotal: server.cashTotal + (local?.cashTotal ?? 0),
+    otherPaymentTotal: server.otherPaymentTotal + (local?.otherPaymentTotal ?? 0),
+    theoreticalCash: server.theoreticalCash + (local?.theoreticalCash ?? 0),
+    cancelledTicketCount: local?.cancelledTicketCount ?? 0,
+  };
+}
+
 export type PosOfflineCashSessionClosePayload = PosOfflineCashSessionSummary & {
   openedAtDevice: string;
   closedAtDevice: string;
@@ -587,12 +629,26 @@ function normalizePosOfflineCashSession(session: PosOfflineCashSession, scope: P
   };
 }
 
+/**
+ * Local-only contribution to the pre-closure summary: cash sales collected
+ * on this device that are NOT yet known to be reflected server-side. A
+ * ticket's own offlineSaleEventId is the stable identity key -- the same one
+ * the server treats as the sale's idempotency key (see
+ * sync_commerce_pos_offline_sale) -- so this never depends on amount/time
+ * heuristics. Anything already SYNCED is excluded here on purpose: the
+ * server-side preview (get_commerce_pos_cash_session_preview) already counts
+ * it, via commercial_sales itself, and summing it again here would double it.
+ */
 async function getPosOfflineCashSessionSummary(
   tickets: readonly PosOfflineTicketRecord[],
   ticketLines: IDBObjectStore,
   cashSessionId: string,
+  syncedSaleEventIds: ReadonlySet<string>,
 ): Promise<PosOfflineCashSessionSummary> {
-  const paidTickets = tickets.filter((ticket) => ticket.cashSessionId === cashSessionId && ticket.status === "PAID_LOCAL");
+  const paidTickets = tickets.filter((ticket) =>
+    ticket.cashSessionId === cashSessionId
+    && ticket.status === "PAID_LOCAL"
+    && !syncedSaleEventIds.has(ticket.offlineSaleEventId));
   let articleTotal = 0;
   let articleQuantityTotal = 0;
   let serviceTotal = 0;
@@ -655,8 +711,11 @@ export async function getPosOfflineState(scope: PosOfflineScope): Promise<PosOff
       .map((session) => normalizePosOfflineCashSession(session, scope))
       .sort((left, right) => right.openedAtDevice.localeCompare(left.openedAtDevice));
     const cashSession = sessions.find((session) => session.status === "OPEN") ?? sessions[0] ?? null;
+    const syncedSaleEventIds = new Set(
+      outboxEvents.filter((event) => event.operation === "CREATE_CASH_SALE" && event.status === "SYNCED").map((event) => event.eventId),
+    );
     const cashSessionSummary = cashSession?.closeSummary ?? (cashSession
-      ? await getPosOfflineCashSessionSummary(scopedTickets, stores[POS_OFFLINE_STORES.ticketLines], cashSession.id)
+      ? await getPosOfflineCashSessionSummary(scopedTickets, stores[POS_OFFLINE_STORES.ticketLines], cashSession.id, syncedSaleEventIds)
       : null);
     return { terminal: actualTerminal, activeDraft, suspendedTickets, catalogue, pendingOutboxCount, outboxEvents, cashSession, cashSessionSummary };
   });
@@ -894,7 +953,11 @@ export async function closePosOfflineCashSession(
       if (ticket.suspendedTicketId) await requestResult(stores[POS_OFFLINE_STORES.suspendedTickets].delete(ticket.suspendedTicketId));
     }
 
-    const totals = await getPosOfflineCashSessionSummary(tickets, stores[POS_OFFLINE_STORES.ticketLines], current.id);
+    const outboxAtClose = await requestResult<PosOfflineOutboxEvent[]>(stores[POS_OFFLINE_STORES.outbox].getAll());
+    const syncedSaleEventIdsAtClose = new Set(
+      outboxAtClose.filter((event) => event.operation === "CREATE_CASH_SALE" && event.status === "SYNCED").map((event) => event.eventId),
+    );
+    const totals = await getPosOfflineCashSessionSummary(tickets, stores[POS_OFFLINE_STORES.ticketLines], current.id, syncedSaleEventIdsAtClose);
     const closedAtDevice = now();
     const summary: PosOfflineCashSessionClosePayload = {
       ...totals,

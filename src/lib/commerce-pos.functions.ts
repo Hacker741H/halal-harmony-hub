@@ -598,6 +598,40 @@ export const closeCommercePosCashSession = createServerFn({ method: "POST" })
     return closeCommercePosCashSessionReceiptSchema.parse(result);
   });
 
+const commercePosCashSessionPreviewSchema = z.object({
+  ticketCount: z.number(),
+  articleTotal: z.number(),
+  articleQuantityTotal: z.number(),
+  serviceTotal: z.number(),
+  cashTotal: z.number(),
+  mobileMoneyTotal: z.number(),
+  otherPaymentTotal: z.number(),
+  theoreticalCash: z.number(),
+});
+export type CommercePosCashSessionPreview = z.infer<typeof commercePosCashSessionPreviewSchema>;
+
+/** Server-side source of truth for the pre-closure summary: every confirmed
+ * sale/payment already reflects here the instant it lands, online or
+ * offline-then-synced, since it reads commercial_sales directly -- the same
+ * definition close_commerce_pos_cash_session itself uses. Read-only, safe to
+ * call as often as needed (each sale, on mount, after every sync). */
+export const getCommercePosCashSessionPreview = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator(z.object({
+    cashSessionId: z.string().trim().regex(/^[A-Za-z0-9_-]{8,160}$/),
+    terminalId: z.string().trim().regex(/^[A-Za-z0-9_-]{8,160}$/),
+    businessLocationId: z.string().uuid(),
+  }))
+  .handler(async ({ context, data }) => {
+    const { data: result, error } = await context.supabase.rpc("get_commerce_pos_cash_session_preview", {
+      p_cash_session_id: data.cashSessionId,
+      p_terminal_id: data.terminalId,
+      p_business_location_id: data.businessLocationId,
+    });
+    if (error) throw error;
+    return commercePosCashSessionPreviewSchema.parse(result);
+  });
+
 const confirmCommercePosCashReceptionSchema = z.object({
   reportId: z.string().uuid(),
   receptionEventId: z.string().trim().regex(/^[A-Za-z0-9_-]{8,160}$/),
