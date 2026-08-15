@@ -14,7 +14,7 @@ import { mergeCommercePosCashSessionSummaries, type PosOfflineCashSessionSummary
 function summary(overrides: Partial<PosOfflineCashSessionSummary>): PosOfflineCashSessionSummary {
   return {
     ticketCount: 0, articleTotal: 0, articleQuantityTotal: 0, serviceTotal: 0,
-    cashTotal: 0, otherPaymentTotal: 0, theoreticalCash: 0, cancelledTicketCount: 0,
+    cashTotal: 0, mobileMoneyTotal: 0, otherPaymentTotal: 0, theoreticalCash: 0, cancelledTicketCount: 0,
     ...overrides,
   };
 }
@@ -32,14 +32,14 @@ function run() {
 
   // Server has data, nothing pending locally (e.g. an online-only session,
   // the exact case that used to read zero): server totals pass through.
-  const serverOnly = { ticketCount: 4, articleTotal: 10000, articleQuantityTotal: 20, serviceTotal: 0, cashTotal: 10000, otherPaymentTotal: 0, theoreticalCash: 10000 };
+  const serverOnly = { ticketCount: 4, articleTotal: 10000, articleQuantityTotal: 20, serviceTotal: 0, cashTotal: 10000, mobileMoneyTotal: 0, otherPaymentTotal: 0, theoreticalCash: 10000 };
   assert.deepEqual(mergeCommercePosCashSessionSummaries(null, serverOnly), {
     ...serverOnly, cancelledTicketCount: 0,
   });
 
   // TEST C: 2 online (server) + 2 offline not yet synced (local) = 4, never
   // 2 (server ignored) and never 6 (either side double-applied).
-  const server2 = { ticketCount: 2, articleTotal: 5000, articleQuantityTotal: 10, serviceTotal: 0, cashTotal: 5000, otherPaymentTotal: 0, theoreticalCash: 5000 };
+  const server2 = { ticketCount: 2, articleTotal: 5000, articleQuantityTotal: 10, serviceTotal: 0, cashTotal: 5000, mobileMoneyTotal: 0, otherPaymentTotal: 0, theoreticalCash: 5000 };
   const local2 = summary({ ticketCount: 2, articleTotal: 5000, articleQuantityTotal: 10, cashTotal: 5000, theoreticalCash: 5000 });
   const merged = mergeCommercePosCashSessionSummaries(local2, server2);
   assert.equal(merged?.ticketCount, 4, "mixed session must total 4 tickets, not 2 or 6");
@@ -52,16 +52,24 @@ function run() {
   // grows by exactly what local shrinks by.
   const beforeSync = mergeCommercePosCashSessionSummaries(
     summary({ ticketCount: 1, articleTotal: 3000, theoreticalCash: 3000 }),
-    { ticketCount: 3, articleTotal: 7000, articleQuantityTotal: 14, serviceTotal: 0, cashTotal: 7000, otherPaymentTotal: 0, theoreticalCash: 7000 },
+    { ticketCount: 3, articleTotal: 7000, articleQuantityTotal: 14, serviceTotal: 0, cashTotal: 7000, mobileMoneyTotal: 0, otherPaymentTotal: 0, theoreticalCash: 7000 },
   );
   const afterSync = mergeCommercePosCashSessionSummaries(
     summary({ ticketCount: 0, articleTotal: 0, theoreticalCash: 0 }),
-    { ticketCount: 4, articleTotal: 10000, articleQuantityTotal: 20, serviceTotal: 0, cashTotal: 10000, otherPaymentTotal: 0, theoreticalCash: 10000 },
+    { ticketCount: 4, articleTotal: 10000, articleQuantityTotal: 20, serviceTotal: 0, cashTotal: 10000, mobileMoneyTotal: 0, otherPaymentTotal: 0, theoreticalCash: 10000 },
   );
   assert.equal(beforeSync?.theoreticalCash, afterSync?.theoreticalCash, "a sale converging from local to server must not change the visible total");
   assert.equal(beforeSync?.ticketCount, afterSync?.ticketCount);
 
-  console.log(JSON.stringify({ passed: "SESSION_SUMMARY_MERGE_TEST_PASSED", cases: 5 }));
+  // Mission caisse (anomalie 1/point 3) : mobileMoneyTotal ne doit plus
+  // jamais etre abandonne silencieusement pendant la fusion. Le cote local
+  // est toujours 0 (caisse hors-ligne = especes uniquement) ; seul le cote
+  // serveur peut etre non nul, et il doit ressortir intact.
+  const serverWithMobileMoney = { ticketCount: 1, articleTotal: 2000, articleQuantityTotal: 4, serviceTotal: 0, cashTotal: 0, mobileMoneyTotal: 2000, otherPaymentTotal: 0, theoreticalCash: 0 };
+  const mergedWithMobileMoney = mergeCommercePosCashSessionSummaries(summary({}), serverWithMobileMoney);
+  assert.equal(mergedWithMobileMoney?.mobileMoneyTotal, 2000, "a real mobile money total from the server must survive the merge, never silently dropped");
+
+  console.log(JSON.stringify({ passed: "SESSION_SUMMARY_MERGE_TEST_PASSED", cases: 6 }));
 }
 
 run();

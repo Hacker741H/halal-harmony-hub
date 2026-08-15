@@ -36,7 +36,12 @@ export function PosCashSessionClose({ session, summary, disabled = false, onClos
     ["CA articles", money(summary?.articleTotal ?? 0)],
     ["CA services", money(summary?.serviceTotal ?? 0)],
     ["Espèces (théorique)", money(summary?.theoreticalCash ?? 0)],
-  ], [openedAtLabel, closingAtLabel, summary?.articleTotal, summary?.articleQuantityTotal, summary?.serviceTotal, summary?.ticketCount, summary?.theoreticalCash]);
+    // Toujours affichés, même à 0 : un montant Mobile Money ou Autres ne
+    // doit jamais disparaître silencieusement d'un écran qui prétend
+    // résumer l'intégralité de la session.
+    ["Mobile Money", money(summary?.mobileMoneyTotal ?? 0)],
+    ["Autres moyens", money(summary?.otherPaymentTotal ?? 0)],
+  ], [openedAtLabel, closingAtLabel, summary?.articleTotal, summary?.articleQuantityTotal, summary?.serviceTotal, summary?.ticketCount, summary?.theoreticalCash, summary?.mobileMoneyTotal, summary?.otherPaymentTotal]);
 
   const submit = async () => {
     setError(null);

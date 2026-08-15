@@ -84,6 +84,10 @@ export type PosOfflineCashSessionSummary = {
   articleQuantityTotal: number;
   serviceTotal: number;
   cashTotal: number;
+  /** Always 0 for the local contribution: the offline POS only ever accepts
+   * cash (see recordPosOfflineCashSale) -- never fabricated for a payment
+   * method this device cannot actually take. */
+  mobileMoneyTotal: number;
   otherPaymentTotal: number;
   theoreticalCash: number;
   cancelledTicketCount: number;
@@ -98,6 +102,7 @@ export type CommercePosCashSessionServerTotals = {
   articleQuantityTotal: number;
   serviceTotal: number;
   cashTotal: number;
+  mobileMoneyTotal: number;
   otherPaymentTotal: number;
   theoreticalCash: number;
 };
@@ -125,6 +130,7 @@ export function mergeCommercePosCashSessionSummaries(
     articleQuantityTotal: server.articleQuantityTotal + (local?.articleQuantityTotal ?? 0),
     serviceTotal: server.serviceTotal + (local?.serviceTotal ?? 0),
     cashTotal: server.cashTotal + (local?.cashTotal ?? 0),
+    mobileMoneyTotal: server.mobileMoneyTotal + (local?.mobileMoneyTotal ?? 0),
     otherPaymentTotal: server.otherPaymentTotal + (local?.otherPaymentTotal ?? 0),
     theoreticalCash: server.theoreticalCash + (local?.theoreticalCash ?? 0),
     cancelledTicketCount: local?.cancelledTicketCount ?? 0,
@@ -667,6 +673,7 @@ async function getPosOfflineCashSessionSummary(
     articleQuantityTotal,
     serviceTotal,
     cashTotal,
+    mobileMoneyTotal: 0,
     otherPaymentTotal: 0,
     theoreticalCash: cashTotal,
     cancelledTicketCount: 0,
