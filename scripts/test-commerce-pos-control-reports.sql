@@ -44,15 +44,16 @@ DECLARE
   v_cashier_id uuid;
   v_manager_id uuid;
   v_terminal text := 'terminal-control-' || v_token;
-  v_close1 jsonb; v_close2 jsonb; v_close3 jsonb; v_close4 jsonb;
-  v_report1_id uuid; v_report2_id uuid; v_report3_id uuid; v_report4_id uuid;
+  v_close1 jsonb; v_close2 jsonb; v_close3 jsonb; v_close4 jsonb; v_close4_retry jsonb; v_close5 jsonb;
+  v_report1_id uuid; v_report2_id uuid; v_report3_id uuid; v_report4_id uuid; v_report5_id uuid;
   v_recv1a jsonb; v_recv1a_retry jsonb; v_recv1b jsonb; v_recv1c jsonb;
   v_recv1c_failed boolean := false;
   v_recv2 jsonb;
   v_recv3 jsonb; v_recv3_failed boolean := false;
+  v_recv5 jsonb;
   v_finance_op_count_before integer; v_finance_op_count_after integer;
   v_sale_count_before integer; v_sale_count_after integer;
-  v_status1_before_final text; v_status1_after_final text; v_status2 text; v_status3 text; v_status4 text;
+  v_status1_before_final text; v_status1_after_final text; v_status2 text; v_status3 text; v_status4 text; v_status5 text;
   v_list jsonb; v_detail1 jsonb;
 BEGIN
   SELECT id INTO v_commerce_unit_id FROM public.business_units WHERE code = 'COMMERCE' AND status = 'ACTIVE';
@@ -204,25 +205,68 @@ BEGIN
   v_report4_id := (v_close4 ->> 'reportId')::uuid;
   v_status4 := pg_temp.compute_status(v_report4_id);
 
+  -- Retrying the close (same cash_session_id, a different event_id --
+  -- simulating a dropped-connection retry) must never create a second
+  -- closure or report for session 4.
+  v_close4_retry := public.close_commerce_pos_cash_session(jsonb_build_object(
+    'cash_session_id', 'ctrl-session-4-' || v_token, 'event_id', 'ctrl-close-4-retry-' || v_token, 'terminal_id', v_terminal,
+    'business_location_id', v_location_id, 'cashier_user_id', v_cashier_id,
+    'opened_at_device', now() - interval '30 minutes', 'closed_at_device', now() - interval '25 minutes'
+  ));
+  IF (v_close4_retry ->> 'closureId')::uuid <> (v_close4 ->> 'closureId')::uuid
+    OR (v_close4_retry ->> 'reportId')::uuid <> v_report4_id THEN
+    RAISE EXCEPTION 'CONTROL_TEST_FAILED: retrying close_commerce_pos_cash_session produced a different closure/report.';
+  END IF;
+
+  ------------------------------------------------------------------
+  -- SESSION 5: 150 000 CASH expected -- exact final reception with a
+  -- POSITIVE variance (160000 received of 150000 expected -> +10000).
+  ------------------------------------------------------------------
+  PERFORM set_config('request.jwt.claim.sub', v_cashier_id::text, true);
+  PERFORM public.create_commerce_cash_sale(jsonb_build_object(
+    'business_location_id', v_location_id, 'client_id', NULL, 'payment_method', 'CASH',
+    'reference', 'POS:ctrl-s5-t1', 'notes', NULL,
+    'cash_session_id', 'ctrl-session-5-' || v_token, 'terminal_id', v_terminal,
+    'lines', jsonb_build_array(jsonb_build_object('line_type', 'ARTICLE', 'inventory_item_id', v_item_id, 'quantity', 1, 'unit_price', 150000))
+  ));
+  v_close5 := public.close_commerce_pos_cash_session(jsonb_build_object(
+    'cash_session_id', 'ctrl-session-5-' || v_token, 'event_id', 'ctrl-close-5-' || v_token, 'terminal_id', v_terminal,
+    'business_location_id', v_location_id, 'cashier_user_id', v_cashier_id,
+    'opened_at_device', now() - interval '15 minutes', 'closed_at_device', now() - interval '10 minutes'
+  ));
+  v_report5_id := (v_close5 ->> 'reportId')::uuid;
+
+  PERFORM set_config('request.jwt.claim.sub', v_manager_id::text, true);
+  v_recv5 := public.confirm_commerce_pos_cash_reception(v_report5_id, 'ctrl-recv-5a-' || v_token, 160000, v_dest_wallet_id, true, 'Reception finale, surplus assume.');
+  v_status5 := pg_temp.compute_status(v_report5_id);
+  IF (v_recv5 ->> 'difference')::numeric <> 10000 THEN
+    RAISE EXCEPTION 'CONTROL_TEST_FAILED: expected positive reception difference +10000, got %', v_recv5 ->> 'difference';
+  END IF;
+  IF v_status5 <> 'REVIEW_REQUIRED' THEN
+    RAISE EXCEPTION 'CONTROL_TEST_FAILED: a finalized reception with a positive variance must be REVIEW_REQUIRED, got %', v_status5;
+  END IF;
+
   ------------------------------------------------------------------
   -- GLOBAL CHECKS
   ------------------------------------------------------------------
   SELECT count(*) INTO v_sale_count_after FROM public.commercial_sales WHERE business_location_id = v_location_id AND status = 'CONFIRMED';
   SELECT count(*) INTO v_finance_op_count_after FROM public.finance_operations WHERE wallet_id IN (v_cash_wallet_id, v_dest_wallet_id) OR destination_wallet_id IN (v_cash_wallet_id, v_dest_wallet_id);
-  -- sales: 5(s1) + 1(s2 qty2=200000) + 1(s3) + 1(s4) = 8 sales -> 8 REVENUE finance_operations.
-  -- real receptions: 1a + 1b (s1) + 2a (s2) = 3 TRANSFER. Retries and rejections do not count.
+  -- sales: 5(s1) + 1(s2 qty2=200000) + 1(s3) + 1(s4) + 1(s5) = 9 sales -> 9 REVENUE finance_operations.
+  -- real receptions: 1a + 1b (s1) + 2a (s2) + 5a (s5) = 4 TRANSFER. Retries, rejections and the
+  -- close_commerce_pos_cash_session retry on session 4 do not count.
   IF v_status1_before_final <> 'PENDING_CONTROL'
     OR v_status1_after_final <> 'REVIEW_REQUIRED'
     OR v_status2 <> 'RECEIVED'
     OR v_status3 <> 'RECEIVED'
-    OR v_status4 <> 'PENDING_CONTROL' THEN
-    RAISE EXCEPTION 'CONTROL_TEST_FAILED: unexpected status sequence: % / % / % / % / %', v_status1_before_final, v_status1_after_final, v_status2, v_status3, v_status4;
+    OR v_status4 <> 'PENDING_CONTROL'
+    OR v_status5 <> 'REVIEW_REQUIRED' THEN
+    RAISE EXCEPTION 'CONTROL_TEST_FAILED: unexpected status sequence: % / % / % / % / % / %', v_status1_before_final, v_status1_after_final, v_status2, v_status3, v_status4, v_status5;
   END IF;
-  IF (v_finance_op_count_after - v_finance_op_count_before) <> 11 THEN
-    RAISE EXCEPTION 'CONTROL_TEST_FAILED: expected 11 finance operations (8 revenue + 3 transfer), got %', v_finance_op_count_after - v_finance_op_count_before;
+  IF (v_finance_op_count_after - v_finance_op_count_before) <> 13 THEN
+    RAISE EXCEPTION 'CONTROL_TEST_FAILED: expected 13 finance operations (9 revenue + 4 transfer), got %', v_finance_op_count_after - v_finance_op_count_before;
   END IF;
-  IF v_sale_count_after <> v_sale_count_before + 3 THEN
-    RAISE EXCEPTION 'CONTROL_TEST_FAILED: closures and receptions must never create a phantom sale, expected % got %', v_sale_count_before + 3, v_sale_count_after;
+  IF v_sale_count_after <> v_sale_count_before + 4 THEN
+    RAISE EXCEPTION 'CONTROL_TEST_FAILED: closures and receptions must never create a phantom sale, expected % got %', v_sale_count_before + 4, v_sale_count_after;
   END IF;
   IF (v_recv1b ->> 'difference')::numeric <> -2000 THEN
     RAISE EXCEPTION 'CONTROL_TEST_FAILED: expected final reception difference -2000, got %', v_recv1b ->> 'difference';
@@ -235,7 +279,7 @@ BEGIN
   -- just the local status mirror above.
   v_list := public.get_commerce_pos_control_reports(v_location_id, (current_date - 1)::text::date, (current_date + 1)::text::date, NULL, NULL);
   v_detail1 := public.get_commerce_pos_control_report_detail(v_report1_id);
-  IF (v_list -> 'counts' ->> 'reviewRequired')::int <> 1
+  IF (v_list -> 'counts' ->> 'reviewRequired')::int <> 2
     OR (v_list -> 'counts' ->> 'partiallyReceived')::int <> 0
     OR (v_list -> 'counts' ->> 'received')::int <> 2
     OR (v_list -> 'counts' ->> 'pendingControl')::int <> 1 THEN
@@ -251,7 +295,7 @@ BEGIN
     RAISE EXCEPTION 'CONTROL_TEST_FAILED: report should not be flagged by default';
   END IF;
 
-  RAISE NOTICE 'Mission caisse control center validated: PENDING_CONTROL -> REVIEW_REQUIRED (negative variance) / RECEIVED (exact) / RECEIVED (zero cash expected) / PENDING_CONTROL, idempotent retry, rejected reception after finalization and on zero cash expected, 11 finance operations, list/detail RPCs consistent.';
+  RAISE NOTICE 'Mission caisse control center validated: PENDING_CONTROL -> REVIEW_REQUIRED (negative variance) / RECEIVED (exact) / RECEIVED (zero cash expected) / PENDING_CONTROL / REVIEW_REQUIRED (positive variance), idempotent close and reception retries, rejected reception after finalization and on zero cash expected, 13 finance operations, list/detail RPCs consistent.';
 END;
 $test$;
 
