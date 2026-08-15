@@ -9,10 +9,11 @@ import {
   Scripts,
   useNavigate,
 } from "@tanstack/react-router";
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { shouldSkipFullSessionResync } from "../lib/auth-session-resync";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
@@ -105,9 +106,11 @@ function useSession() {
   const [session, setSession] = useState<{ email?: string; fullName?: string } | null>(null);
   const router = useRouter();
   const queryClient = useQueryClient();
+  const currentUserIdRef = useRef<string | null>(null);
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       const user = data.user;
+      currentUserIdRef.current = user?.id ?? null;
       // A different user must never inherit cached permissions or data from the
       // previously connected account.
       queryClient.clear();
@@ -116,12 +119,22 @@ function useSession() {
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
-      queryClient.clear();
+      const nextUserId = nextSession?.user?.id ?? null;
+      // supabase-js commonly re-emits SIGNED_IN for the SAME already-connected
+      // user when the tab regains visibility (its own token-refresh logic,
+      // not a real login). Purging the whole query cache and invalidating
+      // the router for that case unmounts the entire authenticated shell and
+      // loses every open view (cashier/gestion tab, open control report,
+      // wallet detail) -- only a genuine identity change deserves that.
+      const skipFullResync = shouldSkipFullSessionResync(event, currentUserIdRef.current, nextUserId);
+      currentUserIdRef.current = nextUserId;
       if (nextSession?.user) {
         setSession({ email: nextSession.user.email ?? undefined, fullName: (nextSession.user.user_metadata as { full_name?: string } | null)?.full_name });
       } else {
         setSession(null);
       }
+      if (skipFullResync) return;
+      queryClient.clear();
       router.invalidate();
     });
     return () => sub.subscription.unsubscribe();
