@@ -22,7 +22,6 @@ import {
   createCommerceStoreExpense,
   createCommerceStorePlannedExpense,
   flagCommercePosControlReport,
-  getCommerceCashRemittanceWorkspace,
   getCommercePosControlReportDetail,
   getCommercePosControlReports,
   getCommerceStoreCockpit,
@@ -273,14 +272,8 @@ function ControlReportDetailDialog({ reportId, locationId, onClose }: { reportId
     queryKey: ["commerce-pos-control-report-detail", reportId],
     queryFn: () => getCommercePosControlReportDetail({ data: { reportId } }),
   });
-  const walletsQuery = useQuery({
-    queryKey: ["commerce-cash-remittances", locationId],
-    queryFn: () => getCommerceCashRemittanceWorkspace({ data: { locationId } }),
-    enabled: Boolean(locationId),
-  });
   const [eventId, setEventId] = useState(() => createCommercePosId("cash-reception"));
   const [receivedAmount, setReceivedAmount] = useState("");
-  const [destinationWalletId, setDestinationWalletId] = useState("");
   const [isFinal, setIsFinal] = useState(false);
   const [note, setNote] = useState("");
 
@@ -294,11 +287,11 @@ function ControlReportDetailDialog({ reportId, locationId, onClose }: { reportId
   const receiveMutation = useMutation({
     mutationFn: () => confirmCommercePosCashReception({ data: {
       reportId, receptionEventId: eventId, receivedAmount: Number(receivedAmount),
-      destinationWalletId, isFinal, note: note.trim() || null,
+      isFinal, note: note.trim() || null,
     } }),
     onSuccess: async () => {
       toast.success(isFinal ? "Réception finale confirmée. Le rapport est soldé." : "Réception partielle confirmée. Le solde restant reste ouvert.");
-      setReceivedAmount(""); setDestinationWalletId(""); setIsFinal(false); setNote(""); setEventId(createCommercePosId("cash-reception"));
+      setReceivedAmount(""); setIsFinal(false); setNote(""); setEventId(createCommercePosId("cash-reception"));
       await refresh();
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "La réception n’a pas pu être confirmée."),
@@ -342,21 +335,18 @@ function ControlReportDetailDialog({ reportId, locationId, onClose }: { reportId
 
           <details className="rounded-lg border border-border"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold">Ventes de la session ({detail.sales.length})</summary><div className="border-t border-border">{detail.sales.length ? <table className="w-full text-sm"><thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><Th>Ticket</Th><Th>Date</Th><Th right>Total</Th></tr></thead><tbody className="divide-y divide-border/60">{detail.sales.map((sale) => <tr key={sale.id}><Td strong>{sale.saleNumber}</Td><Td>{dateTime(sale.createdAt)}</Td><Td right>{money(sale.total)}</Td></tr>)}</tbody></table> : <Empty label="Aucune vente rattachée." />}</div></details>
 
-          <div><h3 className="mb-2 text-sm font-semibold">Réceptions</h3>{detail.receptions.length ? <div className="overflow-x-auto rounded-lg border border-border"><table className="w-full min-w-[640px] text-sm"><thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><Th>Date</Th><Th right>Reçu</Th><Th right>Écart</Th><Th>Wallet</Th><Th>Confirmé par</Th><Th>Final</Th></tr></thead><tbody className="divide-y divide-border/60">{detail.receptions.map((reception) => <tr key={reception.id}><Td>{dateTime(reception.confirmedAt)}</Td><Td right strong>{money(reception.receivedAmount)}</Td><Td right>{money(reception.difference)}</Td><Td>{reception.destinationWallet ?? "—"}</Td><Td>{reception.confirmedBy}</Td><Td>{reception.isFinal ? "Oui" : "Non"}</Td></tr>)}</tbody></table></div> : <Empty label="Aucune réception enregistrée pour l’instant." />}</div>
+          <div><h3 className="mb-2 text-sm font-semibold">Réceptions</h3>{detail.receptions.length ? <div className="overflow-x-auto rounded-lg border border-border"><table className="w-full min-w-[560px] text-sm"><thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><Th>Date</Th><Th right>Reçu</Th><Th right>Écart</Th><Th>Confirmé par</Th><Th>Final</Th></tr></thead><tbody className="divide-y divide-border/60">{detail.receptions.map((reception) => <tr key={reception.id}><Td>{dateTime(reception.confirmedAt)}</Td><Td right strong>{money(reception.receivedAmount)}</Td><Td right>{money(reception.difference)}</Td><Td>{reception.confirmedBy}</Td><Td>{reception.isFinal ? "Oui" : "Non"}</Td></tr>)}</tbody></table></div> : <Empty label="Aucune réception enregistrée pour l’instant." />}</div>
 
           {canReceive ? <div className="space-y-3 rounded-xl border border-border p-4">
             <h3 className="font-semibold">Enregistrer une réception physique</h3>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div><Label>Montant reçu</Label><Input type="number" min="1" step="1" value={receivedAmount} onChange={(event) => setReceivedAmount(event.target.value)} placeholder={`Restant : ${report.remainingAmount}`} /></div>
-              <div><Label>Wallet destination</Label><Select value={destinationWalletId} onValueChange={setDestinationWalletId}><SelectTrigger><SelectValue placeholder="Wallet de collecte / exploitation" /></SelectTrigger><SelectContent>{(walletsQuery.data?.destinationWallets ?? []).map((wallet) => <SelectItem key={wallet.id} value={wallet.id}>{wallet.name} · {wallet.purpose}</SelectItem>)}</SelectContent></Select></div>
-            </div>
+            <div><Label>Montant reçu</Label><Input type="number" min="1" step="1" value={receivedAmount} onChange={(event) => setReceivedAmount(event.target.value)} placeholder={`Restant : ${report.remainingAmount}`} /><p className="mt-1 text-xs text-muted-foreground">Crédite directement la caisse (CASH_DRAWER) de ce magasin.</p></div>
             <div><Label>Note (optionnelle)</Label><Input value={note} maxLength={1000} onChange={(event) => setNote(event.target.value)} /></div>
             <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-0.5" checked={isFinal} onChange={(event) => setIsFinal(event.target.checked)} /><span>Réception finale — solde ce rapport. Un écart restant devient une réception « à vérifier », jamais une recette ou une dépense automatique.</span></label>
           </div> : !report.flaggedForReview ? <div className="flex items-center gap-2 rounded-xl border border-success/25 bg-success/[0.08] p-3 text-sm text-success"><CheckCircle2 className="size-4" />{report.isFinalized ? "Rapport soldé — aucune action supplémentaire nécessaire." : "Aucune espèce attendue sur ce rapport."}</div> : null}
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-4">
             <Button type="button" variant="ghost" size="sm" onClick={flag} disabled={flagMutation.isPending}><Flag className="size-4" />{report.flaggedForReview ? "Mettre à jour le signalement" : "Signaler à vérifier"}</Button>
-            {canReceive ? <Button disabled={!destinationWalletId || !(Number(receivedAmount) > 0) || receiveMutation.isPending} onClick={() => receiveMutation.mutate()}>{receiveMutation.isPending ? "Confirmation…" : "Confirmer la réception"}</Button> : null}
+            {canReceive ? <Button disabled={!(Number(receivedAmount) > 0) || receiveMutation.isPending} onClick={() => receiveMutation.mutate()}>{receiveMutation.isPending ? "Confirmation…" : "Confirmer la réception"}</Button> : null}
           </div>
         </div>}
     </DialogContent>

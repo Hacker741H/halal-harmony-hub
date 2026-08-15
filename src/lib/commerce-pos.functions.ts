@@ -602,7 +602,6 @@ const confirmCommercePosCashReceptionSchema = z.object({
   reportId: z.string().uuid(),
   receptionEventId: z.string().trim().regex(/^[A-Za-z0-9_-]{8,160}$/),
   receivedAmount: z.number().finite().positive(),
-  destinationWalletId: z.string().uuid(),
   isFinal: z.boolean(),
   note: z.string().trim().max(1000).nullable(),
 }).strict();
@@ -617,8 +616,13 @@ const confirmCommercePosCashReceptionReceiptSchema = z.object({
 });
 export type CommercePosCashReceptionReceipt = z.infer<typeof confirmCommercePosCashReceptionReceiptSchema>;
 
-/** Manager-only. Never touched by the cashier. Reuses the POS-05 Finance
- * transfer engine -- one movement per reception, idempotent by event id. */
+/** Manager-only. Never touched by the cashier. Credits the store's own
+ * CASH_DRAWER wallet directly -- one DEPOSIT per reception, idempotent by
+ * event id. There is no destination wallet to choose: a POS reception is
+ * money physically confirmed present in the store's own drawer, not a
+ * transfer to a second wallet. Requires the backend's 5-argument overload
+ * (deployed with a temporary 6-argument compatibility wrapper first, then
+ * this call ships once that wrapper is confirmed live). */
 export const confirmCommercePosCashReception = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator(confirmCommercePosCashReceptionSchema)
@@ -627,7 +631,6 @@ export const confirmCommercePosCashReception = createServerFn({ method: "POST" }
       p_report_id: data.reportId,
       p_reception_event_id: data.receptionEventId,
       p_received_amount: data.receivedAmount,
-      p_destination_wallet_id: data.destinationWalletId,
       p_is_final: data.isFinal,
       p_note: data.note,
     });
