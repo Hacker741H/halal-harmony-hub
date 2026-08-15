@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -129,6 +129,45 @@ export type Database = {
             columns: ["business_location_id"]
             isOneToOne: false
             referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_location_inventory_item_price_history: {
+        Row: {
+          business_location_id: string
+          effective_from: string
+          id: string
+          inventory_item_id: string
+          sale_price: number | null
+        }
+        Insert: {
+          business_location_id: string
+          effective_from?: string
+          id?: string
+          inventory_item_id: string
+          sale_price?: number | null
+        }
+        Update: {
+          business_location_id?: string
+          effective_from?: string
+          id?: string
+          inventory_item_id?: string
+          sale_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_location_inventory_item_pric_business_location_id_fkey"
+            columns: ["business_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_location_inventory_item_price_h_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
             referencedColumns: ["id"]
           },
         ]
@@ -373,20 +412,68 @@ export type Database = {
         }
         Relationships: []
       }
+      commerce_cash_remittance_closures: {
+        Row: {
+          allocated_counted_amount: number
+          allocated_expected_amount: number
+          closure_id: string
+          created_at: string
+          remittance_id: string
+        }
+        Insert: {
+          allocated_counted_amount: number
+          allocated_expected_amount: number
+          closure_id: string
+          created_at?: string
+          remittance_id: string
+        }
+        Update: {
+          allocated_counted_amount?: number
+          allocated_expected_amount?: number
+          closure_id?: string
+          created_at?: string
+          remittance_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_cash_remittance_closures_closure_id_fkey"
+            columns: ["closure_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_pos_cash_session_closures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_cash_remittance_closures_remittance_id_fkey"
+            columns: ["remittance_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_cash_remittances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commerce_cash_remittances: {
         Row: {
           amount: number
           business_location_id: string
           cancelled_at: string | null
+          cashier_difference: number
+          confirmation_note: string | null
           confirmed_at: string | null
           confirmed_by: string | null
           created_at: string
+          declared_at: string
           declared_by: string | null
-          destination_wallet_id: string
+          destination_wallet_id: string | null
+          expected_amount: number
           id: string
+          is_final: boolean | null
           notes: string | null
+          payload_hash: string
+          received_amount: number | null
           reference: string | null
           remittance_date: string
+          remittance_difference: number | null
+          remittance_event_id: string
           source_wallet_id: string
           status: string
           updated_at: string
@@ -395,15 +482,24 @@ export type Database = {
           amount: number
           business_location_id: string
           cancelled_at?: string | null
+          cashier_difference: number
+          confirmation_note?: string | null
           confirmed_at?: string | null
           confirmed_by?: string | null
           created_at?: string
+          declared_at: string
           declared_by?: string | null
-          destination_wallet_id: string
+          destination_wallet_id?: string | null
+          expected_amount: number
           id?: string
+          is_final?: boolean | null
           notes?: string | null
+          payload_hash: string
+          received_amount?: number | null
           reference?: string | null
           remittance_date?: string
+          remittance_difference?: number | null
+          remittance_event_id: string
           source_wallet_id: string
           status?: string
           updated_at?: string
@@ -412,15 +508,24 @@ export type Database = {
           amount?: number
           business_location_id?: string
           cancelled_at?: string | null
+          cashier_difference?: number
+          confirmation_note?: string | null
           confirmed_at?: string | null
           confirmed_by?: string | null
           created_at?: string
+          declared_at?: string
           declared_by?: string | null
-          destination_wallet_id?: string
+          destination_wallet_id?: string | null
+          expected_amount?: number
           id?: string
+          is_final?: boolean | null
           notes?: string | null
+          payload_hash?: string
+          received_amount?: number | null
           reference?: string | null
           remittance_date?: string
+          remittance_difference?: number | null
+          remittance_event_id?: string
           source_wallet_id?: string
           status?: string
           updated_at?: string
@@ -463,6 +568,608 @@ export type Database = {
           },
         ]
       }
+      commerce_inventory_cost_events: {
+        Row: {
+          approval_actor: string | null
+          business_location_id: string
+          created_at: string
+          created_by: string | null
+          event_type: string
+          id: string
+          inventory_item_id: string
+          justification: string | null
+          quantity: number
+          quantity_after: number
+          quantity_before: number
+          sale_line_id: string | null
+          stock_movement_id: string | null
+          total_cost: number
+          unit_cost: number
+          unit_cost_after: number
+          unit_cost_before: number | null
+        }
+        Insert: {
+          approval_actor?: string | null
+          business_location_id: string
+          created_at?: string
+          created_by?: string | null
+          event_type: string
+          id?: string
+          inventory_item_id: string
+          justification?: string | null
+          quantity: number
+          quantity_after: number
+          quantity_before: number
+          sale_line_id?: string | null
+          stock_movement_id?: string | null
+          total_cost: number
+          unit_cost: number
+          unit_cost_after: number
+          unit_cost_before?: number | null
+        }
+        Update: {
+          approval_actor?: string | null
+          business_location_id?: string
+          created_at?: string
+          created_by?: string | null
+          event_type?: string
+          id?: string
+          inventory_item_id?: string
+          justification?: string | null
+          quantity?: number
+          quantity_after?: number
+          quantity_before?: number
+          sale_line_id?: string | null
+          stock_movement_id?: string | null
+          total_cost?: number
+          unit_cost?: number
+          unit_cost_after?: number
+          unit_cost_before?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_inventory_cost_events_business_location_id_fkey"
+            columns: ["business_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_inventory_cost_events_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_inventory_cost_events_sale_line_id_fkey"
+            columns: ["sale_line_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_sale_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_inventory_cost_events_stock_movement_id_fkey"
+            columns: ["stock_movement_id"]
+            isOneToOne: false
+            referencedRelation: "stock_movements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_inventory_cost_states: {
+        Row: {
+          business_location_id: string
+          current_unit_cost: number
+          initialized_at: string
+          initialized_from: string
+          inventory_item_id: string
+          inventory_value: number
+          quantity_on_hand: number
+          updated_at: string
+        }
+        Insert: {
+          business_location_id: string
+          current_unit_cost: number
+          initialized_at?: string
+          initialized_from: string
+          inventory_item_id: string
+          inventory_value: number
+          quantity_on_hand: number
+          updated_at?: string
+        }
+        Update: {
+          business_location_id?: string
+          current_unit_cost?: number
+          initialized_at?: string
+          initialized_from?: string
+          inventory_item_id?: string
+          inventory_value?: number
+          quantity_on_hand?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_inventory_cost_states_business_location_id_fkey"
+            columns: ["business_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_inventory_cost_states_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_pos_cash_session_closures: {
+        Row: {
+          business_location_id: string
+          cash_discrepancy: boolean | null
+          cash_session_id: string
+          cashier_user_id: string
+          closed_at_device: string
+          closure_event_id: string
+          closure_kind: string
+          counted_cash: number | null
+          declared_article_total: number | null
+          declared_cash_total: number | null
+          declared_difference: number | null
+          declared_other_payment_total: number | null
+          declared_service_total: number | null
+          declared_theoretical_cash: number | null
+          declared_ticket_count: number | null
+          discrepancy_note: string | null
+          id: string
+          opened_at_device: string
+          payload: Json
+          payload_hash: string
+          received_at_server: string
+          server_article_total: number
+          server_cash_total: number
+          server_difference: number | null
+          server_mobile_money_total: number | null
+          server_other_payment_total: number
+          server_service_total: number
+          server_ticket_count: number
+          status: string
+          terminal_id: string
+          totals_match: boolean | null
+        }
+        Insert: {
+          business_location_id: string
+          cash_discrepancy?: boolean | null
+          cash_session_id: string
+          cashier_user_id: string
+          closed_at_device: string
+          closure_event_id: string
+          closure_kind?: string
+          counted_cash?: number | null
+          declared_article_total?: number | null
+          declared_cash_total?: number | null
+          declared_difference?: number | null
+          declared_other_payment_total?: number | null
+          declared_service_total?: number | null
+          declared_theoretical_cash?: number | null
+          declared_ticket_count?: number | null
+          discrepancy_note?: string | null
+          id?: string
+          opened_at_device: string
+          payload: Json
+          payload_hash: string
+          received_at_server?: string
+          server_article_total: number
+          server_cash_total: number
+          server_difference?: number | null
+          server_mobile_money_total?: number | null
+          server_other_payment_total: number
+          server_service_total: number
+          server_ticket_count: number
+          status: string
+          terminal_id: string
+          totals_match?: boolean | null
+        }
+        Update: {
+          business_location_id?: string
+          cash_discrepancy?: boolean | null
+          cash_session_id?: string
+          cashier_user_id?: string
+          closed_at_device?: string
+          closure_event_id?: string
+          closure_kind?: string
+          counted_cash?: number | null
+          declared_article_total?: number | null
+          declared_cash_total?: number | null
+          declared_difference?: number | null
+          declared_other_payment_total?: number | null
+          declared_service_total?: number | null
+          declared_theoretical_cash?: number | null
+          declared_ticket_count?: number | null
+          discrepancy_note?: string | null
+          id?: string
+          opened_at_device?: string
+          payload?: Json
+          payload_hash?: string
+          received_at_server?: string
+          server_article_total?: number
+          server_cash_total?: number
+          server_difference?: number | null
+          server_mobile_money_total?: number | null
+          server_other_payment_total?: number
+          server_service_total?: number
+          server_ticket_count?: number
+          status?: string
+          terminal_id?: string
+          totals_match?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_pos_cash_session_closures_business_location_id_fkey"
+            columns: ["business_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_pos_control_reports: {
+        Row: {
+          article_quantity_total: number
+          article_revenue: number
+          business_location_id: string
+          cash_expected: number
+          cash_session_id: string
+          cashier_user_id: string
+          closed_at_device: string
+          closure_id: string
+          flagged_at: string | null
+          flagged_by: string | null
+          flagged_for_review: boolean
+          flagged_reason: string | null
+          generated_at: string
+          id: string
+          mobile_money_total: number
+          opened_at_device: string
+          other_payment_total: number
+          service_revenue: number
+          sync_status: string
+          terminal_id: string
+          ticket_count: number
+          total_revenue: number
+          updated_at: string
+        }
+        Insert: {
+          article_quantity_total: number
+          article_revenue: number
+          business_location_id: string
+          cash_expected: number
+          cash_session_id: string
+          cashier_user_id: string
+          closed_at_device: string
+          closure_id: string
+          flagged_at?: string | null
+          flagged_by?: string | null
+          flagged_for_review?: boolean
+          flagged_reason?: string | null
+          generated_at?: string
+          id?: string
+          mobile_money_total: number
+          opened_at_device: string
+          other_payment_total: number
+          service_revenue: number
+          sync_status: string
+          terminal_id: string
+          ticket_count: number
+          total_revenue: number
+          updated_at?: string
+        }
+        Update: {
+          article_quantity_total?: number
+          article_revenue?: number
+          business_location_id?: string
+          cash_expected?: number
+          cash_session_id?: string
+          cashier_user_id?: string
+          closed_at_device?: string
+          closure_id?: string
+          flagged_at?: string | null
+          flagged_by?: string | null
+          flagged_for_review?: boolean
+          flagged_reason?: string | null
+          generated_at?: string
+          id?: string
+          mobile_money_total?: number
+          opened_at_device?: string
+          other_payment_total?: number
+          service_revenue?: number
+          sync_status?: string
+          terminal_id?: string
+          ticket_count?: number
+          total_revenue?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_pos_control_reports_business_location_id_fkey"
+            columns: ["business_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_pos_control_reports_closure_id_fkey"
+            columns: ["closure_id"]
+            isOneToOne: true
+            referencedRelation: "commerce_pos_cash_session_closures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_pos_offline_receipts: {
+        Row: {
+          amount: number | null
+          business_location_id: string
+          cash_session_id: string
+          cashier_user_id: string
+          created_at_device: string
+          error_code: string | null
+          error_message: string | null
+          id: string
+          offline_sale_id: string
+          payload: Json
+          payload_hash: string
+          price_divergence: Json
+          processed_at: string | null
+          received_at_server: string
+          server_invoice_id: string | null
+          server_operation_id: string | null
+          server_payment_id: string | null
+          server_sale_id: string | null
+          status: string
+          terminal_id: string
+        }
+        Insert: {
+          amount?: number | null
+          business_location_id: string
+          cash_session_id: string
+          cashier_user_id: string
+          created_at_device: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          offline_sale_id: string
+          payload: Json
+          payload_hash: string
+          price_divergence?: Json
+          processed_at?: string | null
+          received_at_server?: string
+          server_invoice_id?: string | null
+          server_operation_id?: string | null
+          server_payment_id?: string | null
+          server_sale_id?: string | null
+          status: string
+          terminal_id: string
+        }
+        Update: {
+          amount?: number | null
+          business_location_id?: string
+          cash_session_id?: string
+          cashier_user_id?: string
+          created_at_device?: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          offline_sale_id?: string
+          payload?: Json
+          payload_hash?: string
+          price_divergence?: Json
+          processed_at?: string | null
+          received_at_server?: string
+          server_invoice_id?: string | null
+          server_operation_id?: string | null
+          server_payment_id?: string | null
+          server_sale_id?: string | null
+          status?: string
+          terminal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_pos_offline_receipts_business_location_id_fkey"
+            columns: ["business_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_pos_offline_receipts_server_invoice_id_fkey"
+            columns: ["server_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_pos_offline_receipts_server_operation_id_fkey"
+            columns: ["server_operation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_pos_offline_receipts_server_payment_id_fkey"
+            columns: ["server_payment_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_invoice_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_pos_offline_receipts_server_sale_id_fkey"
+            columns: ["server_sale_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_store_expenses: {
+        Row: {
+          amount: number
+          business_location_id: string
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          category: string
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          created_by: string | null
+          description: string
+          expense_date: string
+          id: string
+          reference: string | null
+          status: string
+          updated_at: string
+          wallet_id: string | null
+        }
+        Insert: {
+          amount: number
+          business_location_id: string
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          category: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          description: string
+          expense_date?: string
+          id?: string
+          reference?: string | null
+          status?: string
+          updated_at?: string
+          wallet_id?: string | null
+        }
+        Update: {
+          amount?: number
+          business_location_id?: string
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          category?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          expense_date?: string
+          id?: string
+          reference?: string | null
+          status?: string
+          updated_at?: string
+          wallet_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_store_expenses_business_location_id_fkey"
+            columns: ["business_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_store_expenses_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "finance_wallet_reconciliation"
+            referencedColumns: ["wallet_id"]
+          },
+          {
+            foreignKeyName: "commerce_store_expenses_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_store_planned_expenses: {
+        Row: {
+          business_location_id: string
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string
+          due_date: string
+          expected_amount: number
+          id: string
+          paid_at: string | null
+          paid_by: string | null
+          paid_expense_id: string | null
+          reference: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          business_location_id: string
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          category: string
+          created_at?: string
+          created_by?: string | null
+          description: string
+          due_date: string
+          expected_amount: number
+          id?: string
+          paid_at?: string | null
+          paid_by?: string | null
+          paid_expense_id?: string | null
+          reference?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          business_location_id?: string
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          due_date?: string
+          expected_amount?: number
+          id?: string
+          paid_at?: string | null
+          paid_by?: string | null
+          paid_expense_id?: string | null
+          reference?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_store_planned_expenses_business_location_id_fkey"
+            columns: ["business_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_store_planned_expenses_paid_expense_id_fkey"
+            columns: ["paid_expense_id"]
+            isOneToOne: true
+            referencedRelation: "commerce_store_expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commercial_invoice_payments: {
         Row: {
           amount: number
@@ -475,6 +1182,7 @@ export type Database = {
           notes: string | null
           payment_date: string
           payment_kind: string
+          payment_method: string | null
           reference: string | null
           sale_id: string
           status: string
@@ -493,6 +1201,7 @@ export type Database = {
           notes?: string | null
           payment_date?: string
           payment_kind?: string
+          payment_method?: string | null
           reference?: string | null
           sale_id: string
           status?: string
@@ -511,6 +1220,7 @@ export type Database = {
           notes?: string | null
           payment_date?: string
           payment_kind?: string
+          payment_method?: string | null
           reference?: string | null
           sale_id?: string
           status?: string
@@ -630,8 +1340,41 @@ export type Database = {
           },
         ]
       }
+      commercial_sale_line_costs: {
+        Row: {
+          gross_margin: number
+          recorded_at: string
+          sale_line_id: string
+          total_cost: number
+          unit_cost: number
+        }
+        Insert: {
+          gross_margin: number
+          recorded_at?: string
+          sale_line_id: string
+          total_cost: number
+          unit_cost: number
+        }
+        Update: {
+          gross_margin?: number
+          recorded_at?: string
+          sale_line_id?: string
+          total_cost?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commercial_sale_line_costs_sale_line_id_fkey"
+            columns: ["sale_line_id"]
+            isOneToOne: true
+            referencedRelation: "commercial_sale_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commercial_sale_lines: {
         Row: {
+          catalog_price_at_sale: number | null
           created_at: string
           description: string
           farm_id: string | null
@@ -639,13 +1382,16 @@ export type Database = {
           id: string
           inventory_item_id: string | null
           line_total: number
+          line_type: string
           quantity: number
           sale_id: string
+          service_note: string | null
           unit: string
           unit_price: number
           updated_at: string
         }
         Insert: {
+          catalog_price_at_sale?: number | null
           created_at?: string
           description: string
           farm_id?: string | null
@@ -653,13 +1399,16 @@ export type Database = {
           id?: string
           inventory_item_id?: string | null
           line_total: number
+          line_type?: string
           quantity: number
           sale_id: string
+          service_note?: string | null
           unit?: string
           unit_price: number
           updated_at?: string
         }
         Update: {
+          catalog_price_at_sale?: number | null
           created_at?: string
           description?: string
           farm_id?: string | null
@@ -667,8 +1416,10 @@ export type Database = {
           id?: string
           inventory_item_id?: string | null
           line_total?: number
+          line_type?: string
           quantity?: number
           sale_id?: string
+          service_note?: string | null
           unit?: string
           unit_price?: number
           updated_at?: string
@@ -743,6 +1494,7 @@ export type Database = {
           business_location_id: string | null
           business_unit_id: string | null
           cancelled_at: string | null
+          cash_session_id: string | null
           client_id: string | null
           confirmed_at: string | null
           created_at: string
@@ -754,6 +1506,7 @@ export type Database = {
           sale_date: string
           sale_number: string
           status: string
+          terminal_id: string | null
           updated_at: string
           updated_by: string | null
         }
@@ -762,6 +1515,7 @@ export type Database = {
           business_location_id?: string | null
           business_unit_id?: string | null
           cancelled_at?: string | null
+          cash_session_id?: string | null
           client_id?: string | null
           confirmed_at?: string | null
           created_at?: string
@@ -773,6 +1527,7 @@ export type Database = {
           sale_date?: string
           sale_number: string
           status?: string
+          terminal_id?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -781,6 +1536,7 @@ export type Database = {
           business_location_id?: string | null
           business_unit_id?: string | null
           cancelled_at?: string | null
+          cash_session_id?: string | null
           client_id?: string | null
           confirmed_at?: string | null
           created_at?: string
@@ -792,6 +1548,7 @@ export type Database = {
           sale_date?: string
           sale_number?: string
           status?: string
+          terminal_id?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -2153,6 +2910,39 @@ export type Database = {
             columns: ["remittance_id"]
             isOneToOne: true
             referencedRelation: "commerce_cash_remittances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_commerce_store_expense_links: {
+        Row: {
+          created_at: string
+          operation_id: string
+          store_expense_id: string
+        }
+        Insert: {
+          created_at?: string
+          operation_id: string
+          store_expense_id: string
+        }
+        Update: {
+          created_at?: string
+          operation_id?: string
+          store_expense_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_commerce_store_expense_links_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: true
+            referencedRelation: "finance_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_commerce_store_expense_links_store_expense_id_fkey"
+            columns: ["store_expense_id"]
+            isOneToOne: true
+            referencedRelation: "commerce_store_expenses"
             referencedColumns: ["id"]
           },
         ]
@@ -5788,6 +6578,23 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      _internal_commerce_pos_session_commercial_totals: {
+        Args: {
+          p_business_location_id: string
+          p_cash_session_id: string
+          p_cashier_user_id: string
+          p_terminal_id: string
+        }
+        Returns: {
+          article_quantity_total: number
+          article_total: number
+          cash_total: number
+          mobile_money_total: number
+          other_payment_total: number
+          service_total: number
+          ticket_count: number
+        }[]
+      }
       _internal_confirm_commercial_invoice_payment: {
         Args: { p_actor_id?: string; p_payment_id: string }
         Returns: {
@@ -5801,6 +6608,7 @@ export type Database = {
           notes: string | null
           payment_date: string
           payment_kind: string
+          payment_method: string | null
           reference: string | null
           sale_id: string
           status: string
@@ -5896,6 +6704,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      _internal_create_commerce_cash_sale_at: {
+        Args: { p_effective_at: string; p_sale: Json }
+        Returns: Json
+      }
       _internal_create_commercial_invoice_payment: {
         Args: { p_actor_id?: string; p_invoice_id: string; p_payment: Json }
         Returns: {
@@ -5909,6 +6721,7 @@ export type Database = {
           notes: string | null
           payment_date: string
           payment_kind: string
+          payment_method: string | null
           reference: string | null
           sale_id: string
           status: string
@@ -6598,6 +7411,9 @@ export type Database = {
         Returns: {
           actual_arrival_at: string | null
           actual_departure_at: string | null
+          actual_transport_amount: number | null
+          actual_transport_confirmed_at: string | null
+          actual_transport_confirmed_by: string | null
           cancellation_reason: string | null
           cancelled_at: string | null
           cargo_description: string | null
@@ -6631,10 +7447,12 @@ export type Database = {
           overlap_exception_reason: string | null
           planned_arrival_at: string | null
           planned_departure_at: string | null
-          quoted_amount: number
+          pricing_mode: string | null
+          quoted_amount: number | null
           reference: string | null
           start_odometer: number | null
           status: string
+          unit_rate: number | null
           updated_at: string
           updated_by: string | null
           vehicle_id: string | null
@@ -6851,6 +7669,62 @@ export type Database = {
               isSetofReturn: false
             }
           }
+      cancel_commerce_store_expense: {
+        Args: { p_expense_id: string; p_reason: string }
+        Returns: {
+          amount: number
+          business_location_id: string
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          category: string
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          created_by: string | null
+          description: string
+          expense_date: string
+          id: string
+          reference: string | null
+          status: string
+          updated_at: string
+          wallet_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_store_expenses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      cancel_commerce_store_planned_expense: {
+        Args: { p_charge_id: string; p_reason: string }
+        Returns: {
+          business_location_id: string
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string
+          due_date: string
+          expected_amount: number
+          id: string
+          paid_at: string | null
+          paid_by: string | null
+          paid_expense_id: string | null
+          reference: string | null
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_store_planned_expenses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       cancel_commercial_invoice: {
         Args: { p_invoice_id: string; p_reason: string }
         Returns: {
@@ -6894,6 +7768,7 @@ export type Database = {
           notes: string | null
           payment_date: string
           payment_kind: string
+          payment_method: string | null
           reference: string | null
           sale_id: string
           status: string
@@ -6915,6 +7790,7 @@ export type Database = {
           business_location_id: string | null
           business_unit_id: string | null
           cancelled_at: string | null
+          cash_session_id: string | null
           client_id: string | null
           confirmed_at: string | null
           created_at: string
@@ -6926,6 +7802,7 @@ export type Database = {
           sale_date: string
           sale_number: string
           status: string
+          terminal_id: string | null
           updated_at: string
           updated_by: string | null
         }
@@ -7022,6 +7899,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      close_commerce_pos_cash_session: {
+        Args: { p_event: Json }
+        Returns: Json
+      }
       close_driver_motorcycle_assignment: {
         Args: { p_assignment_id: string; p_end_date?: string; p_notes?: string }
         Returns: {
@@ -7070,9 +7951,64 @@ export type Database = {
         Args: { p_item: Json }
         Returns: Json
       }
-      receive_commerce_inventory_item: {
-        Args: { p_receipt: Json }
+      confirm_commerce_cash_remittance: {
+        Args: {
+          p_destination_wallet_id: string
+          p_note?: string
+          p_received_amount: number
+          p_remittance_id: string
+        }
         Returns: Json
+      }
+      confirm_commerce_pos_cash_reception:
+        | {
+            Args: {
+              p_destination_wallet_id: string
+              p_is_final: boolean
+              p_note?: string
+              p_received_amount: number
+              p_reception_event_id: string
+              p_report_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_is_final: boolean
+              p_note?: string
+              p_received_amount: number
+              p_reception_event_id: string
+              p_report_id: string
+            }
+            Returns: Json
+          }
+      confirm_commerce_store_expense: {
+        Args: { p_expense_id: string; p_wallet_id: string }
+        Returns: {
+          amount: number
+          business_location_id: string
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          category: string
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          created_by: string | null
+          description: string
+          expense_date: string
+          id: string
+          reference: string | null
+          status: string
+          updated_at: string
+          wallet_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_store_expenses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       confirm_commercial_invoice_payment: {
         Args: { p_payment_id: string }
@@ -7087,6 +8023,7 @@ export type Database = {
           notes: string | null
           payment_date: string
           payment_kind: string
+          payment_method: string | null
           reference: string | null
           sale_id: string
           status: string
@@ -7108,6 +8045,7 @@ export type Database = {
           business_location_id: string | null
           business_unit_id: string | null
           cancelled_at: string | null
+          cash_session_id: string | null
           client_id: string | null
           confirmed_at: string | null
           created_at: string
@@ -7119,6 +8057,7 @@ export type Database = {
           sale_date: string
           sale_number: string
           status: string
+          terminal_id: string | null
           updated_at: string
           updated_by: string | null
         }
@@ -7170,6 +8109,9 @@ export type Database = {
         Returns: {
           actual_arrival_at: string | null
           actual_departure_at: string | null
+          actual_transport_amount: number | null
+          actual_transport_confirmed_at: string | null
+          actual_transport_confirmed_by: string | null
           cancellation_reason: string | null
           cancelled_at: string | null
           cargo_description: string | null
@@ -7203,10 +8145,12 @@ export type Database = {
           overlap_exception_reason: string | null
           planned_arrival_at: string | null
           planned_departure_at: string | null
-          quoted_amount: number
+          pricing_mode: string | null
+          quoted_amount: number | null
           reference: string | null
           start_odometer: number | null
           status: string
+          unit_rate: number | null
           updated_at: string
           updated_by: string | null
           vehicle_id: string | null
@@ -7223,6 +8167,9 @@ export type Database = {
         Returns: {
           actual_arrival_at: string | null
           actual_departure_at: string | null
+          actual_transport_amount: number | null
+          actual_transport_confirmed_at: string | null
+          actual_transport_confirmed_by: string | null
           cancellation_reason: string | null
           cancelled_at: string | null
           cargo_description: string | null
@@ -7256,10 +8203,12 @@ export type Database = {
           overlap_exception_reason: string | null
           planned_arrival_at: string | null
           planned_departure_at: string | null
-          quoted_amount: number
+          pricing_mode: string | null
+          quoted_amount: number | null
           reference: string | null
           start_odometer: number | null
           status: string
+          unit_rate: number | null
           updated_at: string
           updated_by: string | null
           vehicle_id: string | null
@@ -7329,6 +8278,9 @@ export type Database = {
         Returns: {
           actual_arrival_at: string | null
           actual_departure_at: string | null
+          actual_transport_amount: number | null
+          actual_transport_confirmed_at: string | null
+          actual_transport_confirmed_by: string | null
           cancellation_reason: string | null
           cancelled_at: string | null
           cargo_description: string | null
@@ -7362,10 +8314,12 @@ export type Database = {
           overlap_exception_reason: string | null
           planned_arrival_at: string | null
           planned_departure_at: string | null
-          quoted_amount: number
+          pricing_mode: string | null
+          quoted_amount: number | null
           reference: string | null
           start_odometer: number | null
           status: string
+          unit_rate: number | null
           updated_at: string
           updated_by: string | null
           vehicle_id: string | null
@@ -7458,6 +8412,62 @@ export type Database = {
         }
       }
       create_commerce_cash_sale: { Args: { p_sale: Json }; Returns: Json }
+      create_commerce_store_expense: {
+        Args: { p_expense: Json }
+        Returns: {
+          amount: number
+          business_location_id: string
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          category: string
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          created_by: string | null
+          description: string
+          expense_date: string
+          id: string
+          reference: string | null
+          status: string
+          updated_at: string
+          wallet_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_store_expenses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_commerce_store_planned_expense: {
+        Args: { p_charge: Json }
+        Returns: {
+          business_location_id: string
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string
+          due_date: string
+          expected_amount: number
+          id: string
+          paid_at: string | null
+          paid_by: string | null
+          paid_expense_id: string | null
+          reference: string | null
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_store_planned_expenses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_commercial_invoice: {
         Args: { p_invoice?: Json; p_sale_id: string }
         Returns: {
@@ -7501,6 +8511,7 @@ export type Database = {
           notes: string | null
           payment_date: string
           payment_kind: string
+          payment_method: string | null
           reference: string | null
           sale_id: string
           status: string
@@ -7522,6 +8533,7 @@ export type Database = {
           business_location_id: string | null
           business_unit_id: string | null
           cancelled_at: string | null
+          cash_session_id: string | null
           client_id: string | null
           confirmed_at: string | null
           created_at: string
@@ -7533,6 +8545,7 @@ export type Database = {
           sale_date: string
           sale_number: string
           status: string
+          terminal_id: string | null
           updated_at: string
           updated_by: string | null
         }
@@ -7915,6 +8928,9 @@ export type Database = {
         Returns: {
           actual_arrival_at: string | null
           actual_departure_at: string | null
+          actual_transport_amount: number | null
+          actual_transport_confirmed_at: string | null
+          actual_transport_confirmed_by: string | null
           cancellation_reason: string | null
           cancelled_at: string | null
           cargo_description: string | null
@@ -7948,10 +8964,12 @@ export type Database = {
           overlap_exception_reason: string | null
           planned_arrival_at: string | null
           planned_departure_at: string | null
-          quoted_amount: number
+          pricing_mode: string | null
+          quoted_amount: number | null
           reference: string | null
           start_odometer: number | null
           status: string
+          unit_rate: number | null
           updated_at: string
           updated_by: string | null
           vehicle_id: string | null
@@ -8089,6 +9107,10 @@ export type Database = {
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      declare_commerce_cash_remittance: {
+        Args: { p_declaration: Json }
+        Returns: Json
       }
       delete_document_metadata: {
         Args: { p_document_id: string }
@@ -8263,6 +9285,40 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      flag_commerce_pos_control_report: {
+        Args: { p_reason: string; p_report_id: string }
+        Returns: {
+          article_quantity_total: number
+          article_revenue: number
+          business_location_id: string
+          cash_expected: number
+          cash_session_id: string
+          cashier_user_id: string
+          closed_at_device: string
+          closure_id: string
+          flagged_at: string | null
+          flagged_by: string | null
+          flagged_for_review: boolean
+          flagged_reason: string | null
+          generated_at: string
+          id: string
+          mobile_money_total: number
+          opened_at_device: string
+          other_payment_total: number
+          service_revenue: number
+          sync_status: string
+          terminal_id: string
+          ticket_count: number
+          total_revenue: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_pos_control_reports"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       generate_configured_notifications: { Args: never; Returns: number }
       generate_notifications: { Args: never; Returns: number }
       generate_notifications_dashboard_fallback: {
@@ -8314,6 +9370,10 @@ export type Database = {
           total_received: number
         }[]
       }
+      get_commerce_cash_remittance_workspace: {
+        Args: { p_location_id: string }
+        Returns: Json
+      }
       get_commerce_inventory_catalogue: {
         Args: { p_location_id: string }
         Returns: Json
@@ -8326,12 +9386,46 @@ export type Database = {
         Args: { p_location_id: string }
         Returns: Json
       }
+      get_commerce_pos_cash_session_preview: {
+        Args: {
+          p_business_location_id: string
+          p_cash_session_id: string
+          p_terminal_id: string
+        }
+        Returns: Json
+      }
+      get_commerce_pos_control_report_detail: {
+        Args: { p_report_id: string }
+        Returns: Json
+      }
+      get_commerce_pos_control_reports: {
+        Args: {
+          p_cashier_id?: string
+          p_from: string
+          p_location_id: string
+          p_status?: string
+          p_to: string
+        }
+        Returns: Json
+      }
       get_commerce_pos_locations: { Args: never; Returns: Json }
       get_commerce_pos_workspace: {
         Args: { p_location_id: string }
         Returns: Json
       }
       get_commerce_setup_options: { Args: never; Returns: Json }
+      get_commerce_store_cockpit: {
+        Args: { p_from: string; p_location_id: string; p_to: string }
+        Returns: Json
+      }
+      get_commerce_store_profitability: {
+        Args: { p_from: string; p_location_id: string; p_to: string }
+        Returns: Json
+      }
+      get_commerce_store_stock_valuation: {
+        Args: { p_location_id: string }
+        Returns: Json
+      }
       get_commercial_sale_financial_summary: {
         Args: { p_sale_id: string }
         Returns: {
@@ -8411,20 +9505,16 @@ export type Database = {
       get_transport_mission_financial_summary: {
         Args: { p_mission_id: string }
         Returns: {
-          actual_expenses: number | null
+          actual_expenses: number
           amount_due: number
-          budget_amount: number | null
-          cash_result: number | null
-          cost_per_km: number | null
-          gross_result: number | null
+          budget_amount: number
+          cash_result: number
+          cost_per_km: number
+          gross_result: number
           invoiced_amount: number
-          quoted_amount: number | null
+          quoted_amount: number
           received_amount: number
         }[]
-      }
-      update_transport_mission_actuals: {
-        Args: { p_actuals: Json; p_mission_id: string }
-        Returns: Database["public"]["Tables"]["transport_missions"]["Row"]
       }
       get_transport_mission_history: {
         Args: { p_mission_id: string }
@@ -8456,6 +9546,16 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      initialize_commerce_inventory_opening_cost: {
+        Args: {
+          p_inventory_item_id: string
+          p_location_id: string
+          p_opening_quantity: number
+          p_reason: string
+          p_unit_cost: number
+        }
+        Returns: Json
       }
       internal_review_field_report_if_complete: {
         Args: { p_report_id: string; p_reviewer_id: string }
@@ -8595,6 +9695,34 @@ export type Database = {
           scheduler_configured: boolean
         }[]
       }
+      pay_commerce_store_planned_expense: {
+        Args: { p_charge_id: string; p_wallet_id: string }
+        Returns: {
+          business_location_id: string
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string
+          due_date: string
+          expected_amount: number
+          id: string
+          paid_at: string | null
+          paid_by: string | null
+          paid_expense_id: string | null
+          reference: string | null
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_store_planned_expenses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       permission_require: {
         Args: { p_permission_code: string }
         Returns: undefined
@@ -8633,6 +9761,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      receive_commerce_inventory_item: {
+        Args: { p_receipt: Json }
+        Returns: Json
       }
       record_document_storage_cleanup: {
         Args: { p_result: string; p_storage_path: string }
@@ -8983,6 +10115,9 @@ export type Database = {
         Returns: {
           actual_arrival_at: string | null
           actual_departure_at: string | null
+          actual_transport_amount: number | null
+          actual_transport_confirmed_at: string | null
+          actual_transport_confirmed_by: string | null
           cancellation_reason: string | null
           cancelled_at: string | null
           cargo_description: string | null
@@ -9016,10 +10151,12 @@ export type Database = {
           overlap_exception_reason: string | null
           planned_arrival_at: string | null
           planned_departure_at: string | null
-          quoted_amount: number
+          pricing_mode: string | null
+          quoted_amount: number | null
           reference: string | null
           start_odometer: number | null
           status: string
+          unit_rate: number | null
           updated_at: string
           updated_by: string | null
           vehicle_id: string | null
@@ -9093,33 +10230,12 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      sync_notification_daily_schedule: { Args: never; Returns: boolean }
+      sync_commerce_pos_cash_session_close: {
+        Args: { p_event: Json }
+        Returns: Json
+      }
       sync_commerce_pos_offline_sale: { Args: { p_event: Json }; Returns: Json }
-      sync_commerce_pos_cash_session_close: { Args: { p_event: Json }; Returns: Json }
-      close_commerce_pos_cash_session: { Args: { p_event: Json }; Returns: Json }
-      confirm_commerce_pos_cash_reception: {
-        Args: {
-          p_report_id: string
-          p_reception_event_id: string
-          p_received_amount: number
-          p_destination_wallet_id: string
-          p_is_final: boolean
-          p_note?: string | null
-        }
-        Returns: Json
-      }
-      flag_commerce_pos_control_report: { Args: { p_report_id: string; p_reason: string }; Returns: Json }
-      get_commerce_pos_control_reports: {
-        Args: {
-          p_location_id: string
-          p_from: string
-          p_to: string
-          p_status?: string | null
-          p_cashier_id?: string | null
-        }
-        Returns: Json
-      }
-      get_commerce_pos_control_report_detail: { Args: { p_report_id: string }; Returns: Json }
+      sync_notification_daily_schedule: { Args: never; Returns: boolean }
       update_client: {
         Args: { p_client_id: string; p_values: Json }
         Returns: {
@@ -9163,6 +10279,7 @@ export type Database = {
           business_location_id: string | null
           business_unit_id: string | null
           cancelled_at: string | null
+          cash_session_id: string | null
           client_id: string | null
           confirmed_at: string | null
           created_at: string
@@ -9174,6 +10291,7 @@ export type Database = {
           sale_date: string
           sale_number: string
           status: string
+          terminal_id: string | null
           updated_at: string
           updated_by: string | null
         }
@@ -9352,6 +10470,9 @@ export type Database = {
         Returns: {
           actual_arrival_at: string | null
           actual_departure_at: string | null
+          actual_transport_amount: number | null
+          actual_transport_confirmed_at: string | null
+          actual_transport_confirmed_by: string | null
           cancellation_reason: string | null
           cancelled_at: string | null
           cargo_description: string | null
@@ -9385,10 +10506,70 @@ export type Database = {
           overlap_exception_reason: string | null
           planned_arrival_at: string | null
           planned_departure_at: string | null
-          quoted_amount: number
+          pricing_mode: string | null
+          quoted_amount: number | null
           reference: string | null
           start_odometer: number | null
           status: string
+          unit_rate: number | null
+          updated_at: string
+          updated_by: string | null
+          vehicle_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "transport_missions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_transport_mission_actuals: {
+        Args: { p_actuals: Json; p_mission_id: string }
+        Returns: {
+          actual_arrival_at: string | null
+          actual_departure_at: string | null
+          actual_transport_amount: number | null
+          actual_transport_confirmed_at: string | null
+          actual_transport_confirmed_by: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cargo_description: string | null
+          cargo_quantity: number | null
+          cargo_unit: string | null
+          cargo_volume_m3: number | null
+          cargo_weight_kg: number | null
+          client_id: string
+          close_exception_reason: string | null
+          closed_at: string | null
+          created_at: string
+          created_by: string | null
+          currency_code: string
+          delivery_confirmed_at: string | null
+          delivery_confirmed_by: string | null
+          delivery_corrected_at: string | null
+          delivery_corrected_by: string | null
+          delivery_document_id: string | null
+          delivery_notes: string | null
+          delivery_recipient_name: string | null
+          delivery_reservations: string | null
+          delivery_status: string | null
+          departure_location: string | null
+          destination_location: string | null
+          distance_km: number | null
+          driver_id: string | null
+          end_odometer: number | null
+          id: string
+          mission_number: string
+          notes: string | null
+          overlap_exception_reason: string | null
+          planned_arrival_at: string | null
+          planned_departure_at: string | null
+          pricing_mode: string | null
+          quoted_amount: number | null
+          reference: string | null
+          start_odometer: number | null
+          status: string
+          unit_rate: number | null
           updated_at: string
           updated_by: string | null
           vehicle_id: string | null

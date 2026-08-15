@@ -666,7 +666,7 @@ export const confirmCommercePosCashReception = createServerFn({ method: "POST" }
       p_reception_event_id: data.receptionEventId,
       p_received_amount: data.receivedAmount,
       p_is_final: data.isFinal,
-      p_note: data.note,
+      p_note: data.note ?? undefined,
     });
     if (error) throw error;
     return confirmCommercePosCashReceptionReceiptSchema.parse(result);
@@ -714,7 +714,7 @@ export const getCommercePosControlReports = createServerFn({ method: "GET" })
   }))
   .handler(async ({ context, data }): Promise<CommercePosControlReportsWorkspace> => {
     const { data: result, error } = await context.supabase.rpc("get_commerce_pos_control_reports", {
-      p_location_id: data.locationId, p_from: data.from, p_to: data.to, p_status: data.status, p_cashier_id: data.cashierId,
+      p_location_id: data.locationId, p_from: data.from, p_to: data.to, p_status: data.status ?? undefined, p_cashier_id: data.cashierId ?? undefined,
     });
     if (error) throw error;
     return controlReportsWorkspaceSchema.parse(result);
