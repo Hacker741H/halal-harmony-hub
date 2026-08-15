@@ -425,6 +425,7 @@ DECLARE
   v_article_quantity_total numeric(14, 3) := 0;
   v_closure public.commerce_pos_cash_session_closures;
   v_report public.commerce_pos_control_reports;
+  v_totals record;
 BEGIN
   PERFORM public.permission_require('commerce.cash.close');
 
@@ -488,39 +489,21 @@ BEGIN
 
   -- Theorique unifie POS-06/06B : toute vente confirmee rattachee a cette
   -- session, online ou offline synchronisee, ventilee par mode de paiement.
-  -- Mobile Money (WAVE/JEKO) et autres modes ne sont jamais comptes comme
-  -- espece physique (section 17/18 de la mission). Calcule directement
-  -- depuis les ventes/paiements commerciaux confirmes -- plus aucune
-  -- dependance a finance_operations, qui ne recoit plus rien a la vente.
-  -- Seuls les statuts reellement CONFIRMED (vente et paiement) participent :
-  -- une vente ou un paiement annule ne gonfle jamais le theorique.
-  SELECT
-    count(*)::integer,
-    COALESCE(sum(article_line.total), 0),
-    COALESCE(sum(service_line.total), 0),
-    COALESCE(sum(article_line.qty), 0),
-    COALESCE(sum(payment.amount) FILTER (WHERE payment.payment_method = 'CASH'), 0),
-    COALESCE(sum(payment.amount) FILTER (WHERE payment.payment_method IN ('WAVE', 'JEKO')), 0),
-    COALESCE(sum(payment.amount) FILTER (WHERE payment.payment_method IN ('CARD', 'OTHER')), 0)
-  INTO v_server_ticket_count, v_server_article_total, v_server_service_total, v_article_quantity_total,
-    v_server_cash_total, v_server_mobile_money_total, v_server_other_payment_total
-  FROM public.commercial_sales AS sale
-  JOIN public.commercial_invoice_payments AS payment
-    ON payment.sale_id = sale.id AND payment.status = 'CONFIRMED'
-  LEFT JOIN LATERAL (
-    SELECT sum(line_row.line_total) AS total, sum(line_row.quantity) AS qty
-    FROM public.commercial_sale_lines AS line_row
-    WHERE line_row.sale_id = sale.id AND line_row.line_type = 'ARTICLE'
-  ) AS article_line ON true
-  LEFT JOIN LATERAL (
-    SELECT sum(line_row.line_total) AS total
-    FROM public.commercial_sale_lines AS line_row
-    WHERE line_row.sale_id = sale.id AND line_row.line_type = 'SERVICE'
-  ) AS service_line ON true
-  WHERE sale.cash_session_id = v_cash_session_id
-    AND sale.business_location_id = v_location_id
-    AND sale.created_by = auth.uid()
-    AND sale.status = 'CONFIRMED';
+  -- Factorise dans _internal_commerce_pos_session_commercial_totals (section
+  -- 6) -- meme fonction que get_commerce_pos_cash_session_preview, pour que
+  -- le resume affiche avant cloture et la cloture reelle ne puissent jamais
+  -- diverger en silence.
+  SELECT * INTO v_totals
+  FROM public._internal_commerce_pos_session_commercial_totals(
+    v_cash_session_id, v_terminal_id, v_location_id, auth.uid()
+  );
+  v_server_ticket_count := v_totals.ticket_count;
+  v_server_article_total := v_totals.article_total;
+  v_server_service_total := v_totals.service_total;
+  v_article_quantity_total := v_totals.article_quantity_total;
+  v_server_cash_total := v_totals.cash_total;
+  v_server_mobile_money_total := v_totals.mobile_money_total;
+  v_server_other_payment_total := v_totals.other_payment_total;
 
   -- Aucune ecriture Finance ici : les ventes n'en produisent plus, la
   -- cloture ne fait que constater et figer un theorique commercial.
@@ -1073,3 +1056,118 @@ BEGIN
   );
 END;
 $function$;
+
+-- ---------------------------------------------------------------------------
+-- 6) Resume pre-cloture. Le modal "Cloture de caisse" affichait 0 partout des
+--    qu'une vente passait par le circuit en ligne (create_commerce_cash_sale) :
+--    le seul calcul existant etait un agregat 100% IndexedDB (tickets locaux
+--    au statut PAID_LOCAL), jamais alimente par ce circuit, qui ecrit
+--    directement en base sans jamais toucher au stockage local. La source
+--    serveur qui manquait est ajoutee ici -- meme definition metier que
+--    close_commerce_pos_cash_session, factorisee pour ne jamais diverger.
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public._internal_commerce_pos_session_commercial_totals(
+  p_cash_session_id text,
+  p_terminal_id text,
+  p_business_location_id uuid,
+  p_cashier_user_id uuid
+)
+RETURNS TABLE (
+  ticket_count integer,
+  article_total numeric,
+  service_total numeric,
+  article_quantity_total numeric,
+  cash_total numeric,
+  mobile_money_total numeric,
+  other_payment_total numeric
+)
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT
+    count(*)::integer,
+    COALESCE(sum(article_line.total), 0),
+    COALESCE(sum(service_line.total), 0),
+    COALESCE(sum(article_line.qty), 0),
+    COALESCE(sum(payment.amount) FILTER (WHERE payment.payment_method = 'CASH'), 0),
+    COALESCE(sum(payment.amount) FILTER (WHERE payment.payment_method IN ('WAVE', 'JEKO')), 0),
+    COALESCE(sum(payment.amount) FILTER (WHERE payment.payment_method IN ('CARD', 'OTHER')), 0)
+  FROM public.commercial_sales AS sale
+  JOIN public.commercial_invoice_payments AS payment
+    ON payment.sale_id = sale.id AND payment.status = 'CONFIRMED'
+  LEFT JOIN LATERAL (
+    SELECT sum(line_row.line_total) AS total, sum(line_row.quantity) AS qty
+    FROM public.commercial_sale_lines AS line_row
+    WHERE line_row.sale_id = sale.id AND line_row.line_type = 'ARTICLE'
+  ) AS article_line ON true
+  LEFT JOIN LATERAL (
+    SELECT sum(line_row.line_total) AS total
+    FROM public.commercial_sale_lines AS line_row
+    WHERE line_row.sale_id = sale.id AND line_row.line_type = 'SERVICE'
+  ) AS service_line ON true
+  WHERE sale.cash_session_id = p_cash_session_id
+    AND sale.terminal_id = p_terminal_id
+    AND sale.business_location_id = p_business_location_id
+    AND sale.created_by = p_cashier_user_id
+    AND sale.status = 'CONFIRMED';
+$$;
+
+COMMENT ON FUNCTION public._internal_commerce_pos_session_commercial_totals(text, text, uuid, uuid) IS
+  'Definition metier unique du theorique commercial d''une session de caisse (ventes/paiements CONFIRMED, jamais finance_operations). Partagee par close_commerce_pos_cash_session et get_commerce_pos_cash_session_preview pour qu''elles ne puissent jamais diverger. Fonction interne -- aucun GRANT direct, appelee uniquement depuis des fonctions SECURITY DEFINER qui font deja leurs propres verifications de permission/acces.';
+
+CREATE OR REPLACE FUNCTION public.get_commerce_pos_cash_session_preview(
+  p_cash_session_id text,
+  p_terminal_id text,
+  p_business_location_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $function$
+DECLARE
+  v_totals record;
+BEGIN
+  PERFORM public.permission_require('commerce.pos.sell');
+
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Authentification requise.' USING ERRCODE = '42501';
+  END IF;
+
+  IF p_cash_session_id IS NULL OR p_cash_session_id !~ '^[A-Za-z0-9_-]{8,160}$'
+    OR p_terminal_id IS NULL OR p_terminal_id !~ '^[A-Za-z0-9_-]{8,160}$'
+    OR p_business_location_id IS NULL THEN
+    RAISE EXCEPTION 'Parametres de resume de caisse invalides.' USING ERRCODE = '22023';
+  END IF;
+
+  IF NOT public.commerce_location_access_allowed(p_business_location_id) THEN
+    RAISE EXCEPTION 'Point de vente non autorise.' USING ERRCODE = '42501';
+  END IF;
+
+  -- Lecture seule, aucun verrou, aucune ecriture : peut etre appelee autant
+  -- de fois que necessaire pendant que la session reste ouverte (a chaque
+  -- vente, au montage du composant, apres chaque synchronisation reussie).
+  SELECT * INTO v_totals
+  FROM public._internal_commerce_pos_session_commercial_totals(
+    p_cash_session_id, p_terminal_id, p_business_location_id, auth.uid()
+  );
+
+  RETURN jsonb_build_object(
+    'ticketCount', v_totals.ticket_count,
+    'articleTotal', v_totals.article_total,
+    'articleQuantityTotal', v_totals.article_quantity_total,
+    'serviceTotal', v_totals.service_total,
+    'cashTotal', v_totals.cash_total,
+    'mobileMoneyTotal', v_totals.mobile_money_total,
+    'otherPaymentTotal', v_totals.other_payment_total,
+    'theoreticalCash', v_totals.cash_total
+  );
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.get_commerce_pos_cash_session_preview(text, text, uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_commerce_pos_cash_session_preview(text, text, uuid) TO authenticated;
+
+COMMENT ON FUNCTION public.get_commerce_pos_cash_session_preview(text, text, uuid) IS
+  'Resume commercial en lecture seule de la session de caisse ouverte du caissier appelant, avant cloture. Meme definition metier que close_commerce_pos_cash_session (voir _internal_commerce_pos_session_commercial_totals) : uniquement ventes/paiements CONFIRMED de cette session/ce terminal/ce magasin rattaches au caissier appelant, jamais finance_operations. Source serveur du resume pre-cloture cote frontend -- a fusionner avec le complement local (ventes hors-ligne pas encore synchronisees) sans jamais recompter une vente deja presente ici.';
