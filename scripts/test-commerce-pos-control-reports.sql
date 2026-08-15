@@ -52,6 +52,8 @@ DECLARE
   v_recv3 jsonb; v_recv3_failed boolean := false;
   v_recv5 jsonb;
   v_finance_op_count_before integer; v_finance_op_count_after integer;
+  v_deposit_op_count integer; v_revenue_op_count integer;
+  v_cash_wallet_balance numeric; v_dest_wallet_balance numeric;
   v_sale_count_before integer; v_sale_count_after integer;
   v_status1_before_final text; v_status1_after_final text; v_status2 text; v_status3 text; v_status4 text; v_status5 text;
   v_list jsonb; v_detail1 jsonb;
@@ -120,17 +122,17 @@ BEGIN
 
   PERFORM set_config('request.jwt.claim.sub', v_manager_id::text, true);
 
-  v_recv1a := public.confirm_commerce_pos_cash_reception(v_report1_id, 'ctrl-recv-1a-' || v_token, 300000, v_dest_wallet_id, false, 'Premier versement, partiel.');
-  v_recv1a_retry := public.confirm_commerce_pos_cash_reception(v_report1_id, 'ctrl-recv-1a-' || v_token, 300000, v_dest_wallet_id, false, 'Premier versement, partiel.');
+  v_recv1a := public.confirm_commerce_pos_cash_reception(v_report1_id, 'ctrl-recv-1a-' || v_token, 300000, false, 'Premier versement, partiel.');
+  v_recv1a_retry := public.confirm_commerce_pos_cash_reception(v_report1_id, 'ctrl-recv-1a-' || v_token, 300000, false, 'Premier versement, partiel.');
   IF (v_recv1a_retry ->> 'remittanceId')::uuid <> (v_recv1a ->> 'remittanceId')::uuid THEN
     RAISE EXCEPTION 'CONTROL_TEST_FAILED: retrying a reception created a second remittance';
   END IF;
 
-  v_recv1b := public.confirm_commerce_pos_cash_reception(v_report1_id, 'ctrl-recv-1b-' || v_token, 198000, v_dest_wallet_id, true, 'Reception finale, ecart assume.');
+  v_recv1b := public.confirm_commerce_pos_cash_reception(v_report1_id, 'ctrl-recv-1b-' || v_token, 198000, true, 'Reception finale, ecart assume.');
   v_status1_after_final := pg_temp.compute_status(v_report1_id);
 
   BEGIN
-    v_recv1c := public.confirm_commerce_pos_cash_reception(v_report1_id, 'ctrl-recv-1c-' || v_token, 1, v_dest_wallet_id, false, 'Ne doit jamais passer.');
+    v_recv1c := public.confirm_commerce_pos_cash_reception(v_report1_id, 'ctrl-recv-1c-' || v_token, 1, false, 'Ne doit jamais passer.');
   EXCEPTION WHEN OTHERS THEN
     v_recv1c_failed := true;
   END;
@@ -156,7 +158,7 @@ BEGIN
   v_report2_id := (v_close2 ->> 'reportId')::uuid;
 
   PERFORM set_config('request.jwt.claim.sub', v_manager_id::text, true);
-  v_recv2 := public.confirm_commerce_pos_cash_reception(v_report2_id, 'ctrl-recv-2a-' || v_token, 200000, v_dest_wallet_id, true, 'Reception finale exacte.');
+  v_recv2 := public.confirm_commerce_pos_cash_reception(v_report2_id, 'ctrl-recv-2a-' || v_token, 200000, true, 'Reception finale exacte.');
   v_status2 := pg_temp.compute_status(v_report2_id);
 
   ------------------------------------------------------------------
@@ -178,7 +180,7 @@ BEGIN
 
   PERFORM set_config('request.jwt.claim.sub', v_manager_id::text, true);
   BEGIN
-    v_recv3 := public.confirm_commerce_pos_cash_reception(v_report3_id, 'ctrl-recv-3a-' || v_token, 1, v_dest_wallet_id, true, 'Ne doit jamais passer.');
+    v_recv3 := public.confirm_commerce_pos_cash_reception(v_report3_id, 'ctrl-recv-3a-' || v_token, 1, true, 'Ne doit jamais passer.');
   EXCEPTION WHEN OTHERS THEN
     v_recv3_failed := true;
   END;
@@ -237,7 +239,7 @@ BEGIN
   v_report5_id := (v_close5 ->> 'reportId')::uuid;
 
   PERFORM set_config('request.jwt.claim.sub', v_manager_id::text, true);
-  v_recv5 := public.confirm_commerce_pos_cash_reception(v_report5_id, 'ctrl-recv-5a-' || v_token, 160000, v_dest_wallet_id, true, 'Reception finale, surplus assume.');
+  v_recv5 := public.confirm_commerce_pos_cash_reception(v_report5_id, 'ctrl-recv-5a-' || v_token, 160000, true, 'Reception finale, surplus assume.');
   v_status5 := pg_temp.compute_status(v_report5_id);
   IF (v_recv5 ->> 'difference')::numeric <> 10000 THEN
     RAISE EXCEPTION 'CONTROL_TEST_FAILED: expected positive reception difference +10000, got %', v_recv5 ->> 'difference';
@@ -251,9 +253,15 @@ BEGIN
   ------------------------------------------------------------------
   SELECT count(*) INTO v_sale_count_after FROM public.commercial_sales WHERE business_location_id = v_location_id AND status = 'CONFIRMED';
   SELECT count(*) INTO v_finance_op_count_after FROM public.finance_operations WHERE wallet_id IN (v_cash_wallet_id, v_dest_wallet_id) OR destination_wallet_id IN (v_cash_wallet_id, v_dest_wallet_id);
-  -- sales: 5(s1) + 1(s2 qty2=200000) + 1(s3) + 1(s4) + 1(s5) = 9 sales -> 9 REVENUE finance_operations.
-  -- real receptions: 1a + 1b (s1) + 2a (s2) + 5a (s5) = 4 TRANSFER. Retries, rejections and the
-  -- close_commerce_pos_cash_session retry on session 4 do not count.
+  -- Correction du modele financier POS : les 9 ventes (5(s1) + 1(s2) + 1(s3)
+  -- + 1(s4) + 1(s5)) ne creent plus aucune finance_operation -- le CA vit
+  -- uniquement dans commercial_sales/commercial_sale_lines desormais. Seules
+  -- les 4 receptions reelles (1a + 1b (s1) + 2a (s2) + 5a (s5)) materialisent
+  -- une tresorerie, chacune un DEPOSIT unique credite directement au wallet
+  -- CASH_DRAWER du magasin -- jamais un TRANSFER vers v_dest_wallet_id, qui
+  -- n'est plus utilise par ce chemin et doit rester a zero (controle
+  -- negatif). Retries, rejets et le retry de close_commerce_pos_cash_session
+  -- ne comptent pour rien.
   IF v_status1_before_final <> 'PENDING_CONTROL'
     OR v_status1_after_final <> 'REVIEW_REQUIRED'
     OR v_status2 <> 'RECEIVED'
@@ -262,8 +270,25 @@ BEGIN
     OR v_status5 <> 'REVIEW_REQUIRED' THEN
     RAISE EXCEPTION 'CONTROL_TEST_FAILED: unexpected status sequence: % / % / % / % / % / %', v_status1_before_final, v_status1_after_final, v_status2, v_status3, v_status4, v_status5;
   END IF;
-  IF (v_finance_op_count_after - v_finance_op_count_before) <> 13 THEN
-    RAISE EXCEPTION 'CONTROL_TEST_FAILED: expected 13 finance operations (9 revenue + 4 transfer), got %', v_finance_op_count_after - v_finance_op_count_before;
+  IF (v_finance_op_count_after - v_finance_op_count_before) <> 4 THEN
+    RAISE EXCEPTION 'CONTROL_TEST_FAILED: expected exactly 4 finance operations (0 from 9 sales + 4 confirmed receptions), got %', v_finance_op_count_after - v_finance_op_count_before;
+  END IF;
+  SELECT count(*) INTO v_deposit_op_count FROM public.finance_operations
+  WHERE wallet_id = v_cash_wallet_id AND type = 'DEPOSIT' AND destination_wallet_id IS NULL AND module = 'COMMERCE_POS_CONTROL_REPORT';
+  IF v_deposit_op_count <> 4 THEN
+    RAISE EXCEPTION 'CONTROL_TEST_FAILED: expected exactly 4 DEPOSIT operations on the store wallet, got %', v_deposit_op_count;
+  END IF;
+  SELECT count(*) INTO v_revenue_op_count FROM public.finance_operations WHERE wallet_id IN (v_cash_wallet_id, v_dest_wallet_id) AND type = 'REVENUE';
+  IF v_revenue_op_count <> 0 THEN
+    RAISE EXCEPTION 'CONTROL_TEST_FAILED: a sale must never create a REVENUE operation any more, got %', v_revenue_op_count;
+  END IF;
+  SELECT balance INTO v_cash_wallet_balance FROM public.wallets WHERE id = v_cash_wallet_id;
+  SELECT balance INTO v_dest_wallet_balance FROM public.wallets WHERE id = v_dest_wallet_id;
+  IF v_cash_wallet_balance <> 300000 + 198000 + 200000 + 160000 THEN
+    RAISE EXCEPTION 'CONTROL_TEST_FAILED: store wallet must equal the sum of confirmed receptions only (858000), got %', v_cash_wallet_balance;
+  END IF;
+  IF v_dest_wallet_balance <> 0 THEN
+    RAISE EXCEPTION 'CONTROL_TEST_FAILED: the unused COLLECTION wallet must never move, got %', v_dest_wallet_balance;
   END IF;
   IF v_sale_count_after <> v_sale_count_before + 4 THEN
     RAISE EXCEPTION 'CONTROL_TEST_FAILED: closures and receptions must never create a phantom sale, expected % got %', v_sale_count_before + 4, v_sale_count_after;
@@ -295,7 +320,7 @@ BEGIN
     RAISE EXCEPTION 'CONTROL_TEST_FAILED: report should not be flagged by default';
   END IF;
 
-  RAISE NOTICE 'Mission caisse control center validated: PENDING_CONTROL -> REVIEW_REQUIRED (negative variance) / RECEIVED (exact) / RECEIVED (zero cash expected) / PENDING_CONTROL / REVIEW_REQUIRED (positive variance), idempotent close and reception retries, rejected reception after finalization and on zero cash expected, 13 finance operations, list/detail RPCs consistent.';
+  RAISE NOTICE 'Mission caisse control center validated: PENDING_CONTROL -> REVIEW_REQUIRED (negative variance) / RECEIVED (exact) / RECEIVED (zero cash expected) / PENDING_CONTROL / REVIEW_REQUIRED (positive variance), idempotent close and reception retries, rejected reception after finalization and on zero cash expected, 9 sales create 0 finance operations, 4 confirmed receptions create exactly 4 DEPOSIT operations (858000 total, store wallet only), 0 REVENUE, list/detail RPCs consistent.';
 END;
 $test$;
 

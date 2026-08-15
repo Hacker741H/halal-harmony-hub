@@ -113,6 +113,9 @@ BEGIN
     RAISE EXCEPTION 'The POS-04C setup tickets could not be synchronized.';
   END IF;
 
+  -- Correction du modele financier POS : une vente n'ecrit plus jamais dans
+  -- finance_operations ni dans le wallet -- les deux tickets doivent laisser
+  -- le wallet et le compteur Finance a zero, seul le stock bouge.
   SELECT balance INTO v_wallet_before_close FROM public.wallets WHERE id = v_wallet_id;
   SELECT count(*) INTO v_finance_before_close
   FROM public.finance_operations
@@ -121,8 +124,8 @@ BEGIN
   SELECT quantity INTO v_location_stock
   FROM public.business_location_inventory_items
   WHERE business_location_id = v_location_id AND inventory_item_id = v_item_id;
-  IF v_wallet_before_close <> 25000 OR v_finance_before_close <> 2 OR v_item_stock <> 5 OR v_location_stock <> 5 THEN
-    RAISE EXCEPTION 'The session setup must create exactly two receipts, two finance operations, 25 000 FCFA and two stock decrements.';
+  IF v_wallet_before_close <> 0 OR v_finance_before_close <> 0 OR v_item_stock <> 5 OR v_location_stock <> 5 THEN
+    RAISE EXCEPTION 'The session setup must create exactly two receipts, zero finance operations, an untouched wallet and two stock decrements.';
   END IF;
 
   -- A negative cash discrepancy is a fact to record, not a financial

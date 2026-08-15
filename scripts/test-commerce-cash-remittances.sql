@@ -152,6 +152,15 @@ BEGIN
     )
   ));
   v_manager_closure_id := (v_close_mgr ->> 'closureId')::uuid;
+  -- Correction du modele financier POS : la vente ci-dessus ne credite plus
+  -- CASH_DRAWER (plus de REVENUE automatique a la vente). La remise POS-05
+  -- deplace un solde deja present dans le wallet source -- elle ne le cree
+  -- pas -- donc ce test finance directement le wallet, exactement comme le
+  -- fait deja le scenario de remise partielle plus bas (meme fixture neutre
+  -- DEPOSIT/POS05_TEST_FIXTURE, invisible aux assertions REVENUE/TRANSFER).
+  INSERT INTO public.finance_operations(wallet_id, type, amount, operation_date, category, status, origin, created_by)
+  VALUES (v_source_wallet, 'DEPOSIT', 98500, current_date, 'TEST POS-05', 'VALIDE', 'POS05_TEST_FIXTURE', v_manager);
+  PERFORM public.update_wallet_balance(v_source_wallet);
   v_declaration := jsonb_build_object(
     'remittance_event_id', 'remittance-pos05-full-' || v_token,
     'business_location_id', v_location, 'reference', 'POS05-FULL-' || v_token,
@@ -188,11 +197,15 @@ BEGIN
   IF (v_confirmed ->> 'operationId') IS DISTINCT FROM (v_confirmed_retry ->> 'operationId') THEN
     RAISE EXCEPTION 'Double confirmation created another operation.';
   END IF;
+  -- Correction du modele financier POS : la vente qui alimente cette cloture
+  -- (via sync_commerce_pos_offline_sale, plus haut) ne cree plus de REVENUE.
+  -- Le parcours manuel POS-05 (declare/confirm_commerce_cash_remittance,
+  -- inchange par cette migration) cree toujours exactement un TRANSFER.
   SELECT count(*) INTO v_revenue_count FROM public.finance_operations
   WHERE wallet_id = v_source_wallet AND type = 'REVENUE' AND origin = 'COMMERCE_POS_PAYMENT';
   SELECT count(*) INTO v_transfer_count FROM public.finance_operations
   WHERE wallet_id = v_source_wallet AND type = 'TRANSFER' AND origin = 'COMMERCE_CASH_REMITTANCE';
-  IF v_revenue_count <> 1 OR v_transfer_count <> 1
+  IF v_revenue_count <> 0 OR v_transfer_count <> 1
     OR (SELECT balance FROM public.wallets WHERE id = v_source_wallet) <> v_source_before - 98500
     OR (SELECT balance FROM public.wallets WHERE id = v_destination_wallet) <> v_destination_before + 98500 THEN
     RAISE EXCEPTION 'Remittance must move treasury once without creating revenue.';

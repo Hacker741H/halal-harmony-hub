@@ -149,29 +149,34 @@ BEGIN
     RAISE EXCEPTION 'A service must be persisted once without a stock movement.';
   END IF;
 
+  -- Correction du modele financier POS : la vente cree toujours facture +
+  -- paiement CONFIRMED (avec son mode de paiement desormais trace), mais
+  -- plus aucune finance_operation ni credit de wallet -- le CA reste visible
+  -- via ces objets commerciaux, la tresorerie n'est plus engagee qu'a la
+  -- reception confirmee par un gestionnaire.
   IF NOT EXISTS (
     SELECT 1
     FROM public.commercial_invoices AS invoice_row
     JOIN public.commercial_invoice_payments AS payment_row ON payment_row.invoice_id = invoice_row.id
-    JOIN public.finance_commercial_invoice_payment_links AS finance_link ON finance_link.payment_id = payment_row.id
-    JOIN public.finance_operations AS operation_row ON operation_row.id = finance_link.operation_id
     WHERE invoice_row.sale_id = v_service_sale_id
       AND invoice_row.status = 'PAID'
       AND invoice_row.total_amount = 15000
       AND payment_row.id = v_service_payment_id
       AND payment_row.status = 'CONFIRMED'
       AND payment_row.amount = 15000
-      AND operation_row.wallet_id = v_wallet_id
-      AND operation_row.type = 'REVENUE'
-      AND operation_row.amount = 15000
-      AND operation_row.status <> 'CANCELLED'
+      AND payment_row.payment_method = 'CASH'
   ) THEN
-    RAISE EXCEPTION 'Service-only sale did not create the expected invoice, payment and revenue operation.';
+    RAISE EXCEPTION 'Service-only sale did not create the expected invoice and payment.';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.finance_commercial_invoice_payment_links WHERE payment_id = v_service_payment_id
+  ) THEN
+    RAISE EXCEPTION 'A sale must never link its payment to a finance operation any more.';
   END IF;
 
   SELECT balance INTO v_wallet_balance FROM public.wallets WHERE id = v_wallet_id;
-  IF v_wallet_balance <> 15000 THEN
-    RAISE EXCEPTION 'Service-only sale did not credit its wallet exactly once (%).', v_wallet_balance;
+  IF v_wallet_balance <> 0 THEN
+    RAISE EXCEPTION 'A sale must never credit its wallet any more (%).', v_wallet_balance;
   END IF;
 
   -- A mixed ticket proves that only the ARTICLE line decrements stock, while
@@ -259,20 +264,20 @@ BEGIN
     SELECT 1
     FROM public.commercial_invoices AS invoice_row
     JOIN public.commercial_invoice_payments AS payment_row ON payment_row.invoice_id = invoice_row.id
-    JOIN public.finance_commercial_invoice_payment_links AS finance_link ON finance_link.payment_id = payment_row.id
-    JOIN public.finance_operations AS operation_row ON operation_row.id = finance_link.operation_id
     WHERE invoice_row.sale_id = v_mixed_sale_id
       AND invoice_row.status = 'PAID'
       AND invoice_row.total_amount = 16000
       AND payment_row.id = v_mixed_payment_id
       AND payment_row.status = 'CONFIRMED'
       AND payment_row.amount = 16000
-      AND operation_row.wallet_id = v_wallet_id
-      AND operation_row.type = 'REVENUE'
-      AND operation_row.amount = 16000
-      AND operation_row.status <> 'CANCELLED'
+      AND payment_row.payment_method = 'CASH'
   ) THEN
-    RAISE EXCEPTION 'Mixed sale did not create the expected invoice, payment and revenue operation.';
+    RAISE EXCEPTION 'Mixed sale did not create the expected invoice and payment.';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.finance_commercial_invoice_payment_links WHERE payment_id = v_mixed_payment_id
+  ) THEN
+    RAISE EXCEPTION 'A sale must never link its payment to a finance operation any more.';
   END IF;
 
   SELECT count(*) INTO v_sale_count
@@ -293,13 +298,13 @@ BEGIN
     AND status <> 'CANCELLED';
   SELECT balance INTO v_wallet_balance FROM public.wallets WHERE id = v_wallet_id;
 
-  IF v_sale_count <> 2 OR v_invoice_count <> 2 OR v_payment_count <> 2 OR v_finance_count <> 2
-    OR v_wallet_balance <> 31000 THEN
+  IF v_sale_count <> 2 OR v_invoice_count <> 2 OR v_payment_count <> 2 OR v_finance_count <> 0
+    OR v_wallet_balance <> 0 THEN
     RAISE EXCEPTION 'POS service regression: sales %, invoices %, payments %, finance operations %, wallet %.',
       v_sale_count, v_invoice_count, v_payment_count, v_finance_count, v_wallet_balance;
   END IF;
 
-  RAISE NOTICE 'POS-03B validated: service-only and mixed tickets are idempotent; stock changes only for articles; wallet credited once per ticket.';
+  RAISE NOTICE 'POS-03B validated: service-only and mixed tickets are idempotent; stock changes only for articles; payment_method recorded on the payment; a sale never touches Finance or a wallet any more.';
 END;
 $test$;
 

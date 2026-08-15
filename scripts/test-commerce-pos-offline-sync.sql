@@ -106,14 +106,18 @@ BEGIN
   SELECT count(*) INTO v_finance_count
   FROM public.finance_operations
   WHERE wallet_id = v_wallet_id AND origin = 'COMMERCE_POS_PAYMENT' AND status <> 'CANCELLED';
+  -- Correction du modele financier POS : une vente hors ligne synchronisee ne
+  -- credite plus aucun wallet et ne cree plus de finance_operation -- le
+  -- 'wallet_id' du payload est d'ailleurs deja ignore par la fonction (jamais
+  -- lu), seule la reception gestionnaire materialisera la tresorerie.
   IF (v_simple_result ->> 'status') <> 'PROCESSED'
     OR (v_simple_result ->> 'amount')::numeric <> 5000
-    OR v_wallet_balance <> 5000
+    OR v_wallet_balance <> 0
     OR v_other_wallet_balance <> 0
     OR v_item_stock <> 6
     OR v_location_stock <> 6
-    OR v_finance_count <> 1 THEN
-    RAISE EXCEPTION 'Offline cash sale must credit only the configured wallet by 5000 after 1000 change.';
+    OR v_finance_count <> 0 THEN
+    RAISE EXCEPTION 'Offline cash sale must never credit a wallet or create a finance operation any more.';
   END IF;
 
   v_event := jsonb_build_object(
@@ -153,7 +157,7 @@ BEGIN
   FROM public.finance_operations
   WHERE wallet_id = v_wallet_id AND origin = 'COMMERCE_POS_PAYMENT' AND status <> 'CANCELLED';
 
-  IF v_wallet_balance <> 25000 OR v_item_stock <> 5 OR v_location_stock <> 5 OR v_finance_count <> 2 THEN
+  IF v_wallet_balance <> 0 OR v_item_stock <> 5 OR v_location_stock <> 5 OR v_finance_count <> 0 THEN
     RAISE EXCEPTION 'Offline mixed sale regression: wallet %, item %, location %, finance operations %.', v_wallet_balance, v_item_stock, v_location_stock, v_finance_count;
   END IF;
   IF (SELECT count(*) FROM public.commercial_sale_lines WHERE sale_id = (v_result ->> 'saleId')::uuid AND line_type = 'SERVICE' AND inventory_item_id IS NULL) <> 1 THEN
@@ -229,13 +233,13 @@ BEGIN
   WHERE business_location_id = v_location_id AND inventory_item_id = v_item_id AND movement_type = 'SALE';
 
   IF (v_conflict ->> 'status') <> 'CONFLICT'
-    OR v_wallet_balance <> 25000
+    OR v_wallet_balance <> 0
     OR v_item_stock <> 5
     OR v_location_stock <> 5
     OR v_sale_count <> 2
     OR v_invoice_count <> 2
     OR v_payment_count <> 2
-    OR v_finance_count <> 2
+    OR v_finance_count <> 0
     OR v_stock_movement_count <> 2 THEN
     RAISE EXCEPTION 'A stock conflict must retain the receipt without partial sale, invoice, payment, finance, wallet or stock writes.';
   END IF;
