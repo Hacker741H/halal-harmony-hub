@@ -705,6 +705,129 @@ export type Database = {
           },
         ]
       }
+      commerce_inventory_count_lines: {
+        Row: {
+          applied: boolean
+          count_id: string
+          counted_at: string | null
+          counted_by: string | null
+          counted_quantity: number | null
+          created_at: string
+          id: string
+          inventory_item_id: string
+          stock_movement_id: string | null
+          system_quantity: number
+          updated_at: string
+        }
+        Insert: {
+          applied?: boolean
+          count_id: string
+          counted_at?: string | null
+          counted_by?: string | null
+          counted_quantity?: number | null
+          created_at?: string
+          id?: string
+          inventory_item_id: string
+          stock_movement_id?: string | null
+          system_quantity: number
+          updated_at?: string
+        }
+        Update: {
+          applied?: boolean
+          count_id?: string
+          counted_at?: string | null
+          counted_by?: string | null
+          counted_quantity?: number | null
+          created_at?: string
+          id?: string
+          inventory_item_id?: string
+          stock_movement_id?: string | null
+          system_quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_inventory_count_lines_count_id_fkey"
+            columns: ["count_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_inventory_counts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_inventory_count_lines_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_inventory_count_lines_stock_movement_id_fkey"
+            columns: ["stock_movement_id"]
+            isOneToOne: false
+            referencedRelation: "stock_movements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_inventory_counts: {
+        Row: {
+          business_location_id: string
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          completed_at: string | null
+          completed_by: string | null
+          count_number: string
+          created_at: string
+          id: string
+          notes: string | null
+          opened_at: string
+          opened_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          business_location_id: string
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          count_number: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opened_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          business_location_id?: string
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          count_number?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opened_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_inventory_counts_business_location_id_fkey"
+            columns: ["business_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commerce_pos_cash_session_closures: {
         Row: {
           business_location_id: string
@@ -1130,6 +1253,146 @@ export type Database = {
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "commerce_suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_stock_transfer_lines: {
+        Row: {
+          created_at: string
+          dispatch_stock_movement_id: string | null
+          id: string
+          inventory_item_id: string
+          quantity_received: number | null
+          quantity_requested: number
+          receive_stock_movement_id: string | null
+          transfer_id: string
+          unit_cost: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dispatch_stock_movement_id?: string | null
+          id?: string
+          inventory_item_id: string
+          quantity_received?: number | null
+          quantity_requested: number
+          receive_stock_movement_id?: string | null
+          transfer_id: string
+          unit_cost?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dispatch_stock_movement_id?: string | null
+          id?: string
+          inventory_item_id?: string
+          quantity_received?: number | null
+          quantity_requested?: number
+          receive_stock_movement_id?: string | null
+          transfer_id?: string
+          unit_cost?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_stock_transfer_lines_dispatch_stock_movement_id_fkey"
+            columns: ["dispatch_stock_movement_id"]
+            isOneToOne: false
+            referencedRelation: "stock_movements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_stock_transfer_lines_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_stock_transfer_lines_receive_stock_movement_id_fkey"
+            columns: ["receive_stock_movement_id"]
+            isOneToOne: false
+            referencedRelation: "stock_movements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_stock_transfer_lines_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_stock_transfers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_stock_transfers: {
+        Row: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          created_at: string
+          created_by: string | null
+          destination_location_id: string
+          dispatched_at: string | null
+          dispatched_by: string | null
+          id: string
+          notes: string | null
+          received_at: string | null
+          received_by: string | null
+          source_location_id: string
+          status: string
+          transfer_number: string
+          updated_at: string
+        }
+        Insert: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          destination_location_id: string
+          dispatched_at?: string | null
+          dispatched_by?: string | null
+          id?: string
+          notes?: string | null
+          received_at?: string | null
+          received_by?: string | null
+          source_location_id: string
+          status?: string
+          transfer_number: string
+          updated_at?: string
+        }
+        Update: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          destination_location_id?: string
+          dispatched_at?: string | null
+          dispatched_by?: string | null
+          id?: string
+          notes?: string | null
+          received_at?: string | null
+          received_by?: string | null
+          source_location_id?: string
+          status?: string
+          transfer_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_stock_transfers_destination_location_id_fkey"
+            columns: ["destination_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_stock_transfers_source_location_id_fkey"
+            columns: ["source_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
             referencedColumns: ["id"]
           },
         ]
@@ -6753,6 +7016,19 @@ export type Database = {
       }
     }
     Functions: {
+      _internal_apply_commerce_inventory_valuation: {
+        Args: {
+          p_approval_actor?: string
+          p_business_location_id: string
+          p_delta_quantity: number
+          p_event_type: string
+          p_inventory_item_id: string
+          p_justification?: string
+          p_stock_movement_id: string
+          p_valuation_unit_cost: number
+        }
+        Returns: undefined
+      }
       _internal_archive_document: {
         Args: { p_document_id: string }
         Returns: {
@@ -7342,7 +7618,15 @@ export type Database = {
         Returns: boolean
       }
       _internal_next_client_number: { Args: never; Returns: string }
+      _internal_next_commerce_inventory_count_number: {
+        Args: never
+        Returns: string
+      }
       _internal_next_commerce_purchase_number: { Args: never; Returns: string }
+      _internal_next_commerce_stock_transfer_number: {
+        Args: never
+        Returns: string
+      }
       _internal_next_commerce_supplier_number: { Args: never; Returns: string }
       _internal_next_commercial_invoice_number: { Args: never; Returns: string }
       _internal_next_commercial_sale_number: { Args: never; Returns: string }
@@ -8003,6 +8287,58 @@ export type Database = {
               isSetofReturn: false
             }
           }
+      cancel_commerce_inventory_count: {
+        Args: { p_count_id: string; p_reason: string }
+        Returns: {
+          business_location_id: string
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          completed_at: string | null
+          completed_by: string | null
+          count_number: string
+          created_at: string
+          id: string
+          notes: string | null
+          opened_at: string
+          opened_by: string | null
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_inventory_counts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      cancel_commerce_stock_transfer: {
+        Args: { p_reason: string; p_transfer_id: string }
+        Returns: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          created_at: string
+          created_by: string | null
+          destination_location_id: string
+          dispatched_at: string | null
+          dispatched_by: string | null
+          id: string
+          notes: string | null
+          received_at: string | null
+          received_by: string | null
+          source_location_id: string
+          status: string
+          transfer_number: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_stock_transfers"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       cancel_commerce_store_expense: {
         Args: { p_expense_id: string; p_reason: string }
         Returns: {
@@ -8306,6 +8642,31 @@ export type Database = {
       commerce_location_access_allowed: {
         Args: { p_location_id: string }
         Returns: boolean
+      }
+      complete_commerce_inventory_count: {
+        Args: { p_count_id: string }
+        Returns: {
+          business_location_id: string
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          completed_at: string | null
+          completed_by: string | null
+          count_number: string
+          created_at: string
+          id: string
+          notes: string | null
+          opened_at: string
+          opened_by: string | null
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_inventory_counts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       configure_commerce_location_item: {
         Args: { p_item: Json }
@@ -8819,6 +9180,33 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "commerce_purchases"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_commerce_stock_transfer: {
+        Args: { p_transfer: Json }
+        Returns: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          created_at: string
+          created_by: string | null
+          destination_location_id: string
+          dispatched_at: string | null
+          dispatched_by: string | null
+          id: string
+          notes: string | null
+          received_at: string | null
+          received_by: string | null
+          source_location_id: string
+          status: string
+          transfer_number: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_stock_transfers"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -9656,6 +10044,33 @@ export type Database = {
           telephone: string
         }[]
       }
+      dispatch_commerce_stock_transfer: {
+        Args: { p_transfer_id: string }
+        Returns: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          created_at: string
+          created_by: string | null
+          destination_location_id: string
+          dispatched_at: string | null
+          dispatched_by: string | null
+          id: string
+          notes: string | null
+          received_at: string | null
+          received_by: string | null
+          source_location_id: string
+          status: string
+          transfer_number: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_stock_transfers"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       document_is_sensitive: {
         Args: { p_document_id: string }
         Returns: boolean
@@ -10212,6 +10627,31 @@ export type Database = {
           scheduler_configured: boolean
         }[]
       }
+      open_commerce_inventory_count: {
+        Args: { p_business_location_id: string; p_notes?: string }
+        Returns: {
+          business_location_id: string
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          completed_at: string | null
+          completed_by: string | null
+          count_number: string
+          created_at: string
+          id: string
+          notes: string | null
+          opened_at: string
+          opened_by: string | null
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_inventory_counts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       pay_commerce_store_planned_expense: {
         Args: { p_charge_id: string; p_wallet_id: string }
         Returns: {
@@ -10282,6 +10722,33 @@ export type Database = {
       receive_commerce_inventory_item: {
         Args: { p_receipt: Json }
         Returns: Json
+      }
+      receive_commerce_stock_transfer: {
+        Args: { p_lines: Json; p_transfer_id: string }
+        Returns: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          created_at: string
+          created_by: string | null
+          destination_location_id: string
+          dispatched_at: string | null
+          dispatched_by: string | null
+          id: string
+          notes: string | null
+          received_at: string | null
+          received_by: string | null
+          source_location_id: string
+          status: string
+          transfer_number: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_stock_transfers"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       record_document_storage_cleanup: {
         Args: { p_result: string; p_storage_path: string }
@@ -10866,6 +11333,32 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "harvests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_inventory_count_line: {
+        Args: {
+          p_count_id: string
+          p_counted_quantity: number
+          p_inventory_item_id: string
+        }
+        Returns: {
+          applied: boolean
+          count_id: string
+          counted_at: string | null
+          counted_by: string | null
+          counted_quantity: number | null
+          created_at: string
+          id: string
+          inventory_item_id: string
+          stock_movement_id: string | null
+          system_quantity: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_inventory_count_lines"
           isOneToOne: true
           isSetofReturn: false
         }
