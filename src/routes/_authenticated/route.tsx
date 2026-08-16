@@ -17,15 +17,32 @@ function AuthenticatedRoute() {
   useEffect(() => {
     let isCurrent = true;
 
-    void supabase.auth.getUser().then(({ data, error }) => {
+    // getSession() reads the client's own already-restored local state and,
+    // per supabase-js's contract, waits for that restoration (from storage)
+    // to finish before resolving -- unlike getUser(), it can't lose a race
+    // against it on a fresh hard load / deep-link / tab reopen. A locally
+    // present session is enough to unblock rendering immediately; genuine
+    // validity is still enforced on every real data call by the server
+    // (requireSupabaseAuth), and double-checked here via a non-blocking
+    // background getUser() call so a truly invalid/expired token still
+    // redirects -- just without holding up first paint on that slower,
+    // network-dependent verification.
+    void supabase.auth.getSession().then(({ data }) => {
       if (!isCurrent) return;
 
-      if (error || !data.user) {
+      if (!data.session) {
         void navigate({ to: "/auth", replace: true });
         return;
       }
 
       setIsCheckingSession(false);
+
+      void supabase.auth.getUser().then(({ data: userData, error }) => {
+        if (!isCurrent) return;
+        if (error || !userData.user) {
+          void navigate({ to: "/auth", replace: true });
+        }
+      });
     });
 
     return () => {
