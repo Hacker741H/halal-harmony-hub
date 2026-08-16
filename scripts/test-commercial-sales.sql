@@ -213,7 +213,7 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM public.business_finance_audit
-    WHERE source_type = 'COMMERCIAL_PAYMENT' AND source_id = v_final_payment.id AND action = 'UPDATE'
+    WHERE source_type = 'COMMERCIAL_PAYMENT' AND source_id = v_final_payment.id AND action = 'CONFIRM'
   ) THEN
     RAISE EXCEPTION 'Commercial payment confirmation must be audited';
   END IF;
