@@ -2,11 +2,13 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
+  ArrowLeftRight,
   BarChart3,
   Bell,
   Bike,
   Building2,
   Car,
+  ClipboardList,
   Contact,
   CreditCard,
   FileSignature,
@@ -68,6 +70,8 @@ type NavigationRoute =
   | "/sales"
   | "/suppliers"
   | "/purchases"
+  | "/inventory-counts"
+  | "/stock-transfers"
   | "/commerce"
   | "/wallets"
   | "/finance"
@@ -138,6 +142,8 @@ const navigationGroups: readonly NavigationGroup[] = [
       { title: "Ventes & créances", url: "/sales", icon: PackageCheck, permission: "sales.read" },
       { title: "Fournisseurs", url: "/suppliers", icon: Contact, permission: "suppliers.read" },
       { title: "Achats & dettes", url: "/purchases", icon: ShoppingCart, permission: "purchases.read" },
+      { title: "Inventaires", url: "/inventory-counts", icon: ClipboardList, permission: "inventory.counts.read" },
+      { title: "Transferts", url: "/stock-transfers", icon: ArrowLeftRight, permission: "transfers.read" },
       { title: "Stocks", url: "/stocks", icon: Package },
     ],
   },

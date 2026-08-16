@@ -56,11 +56,15 @@ import { Route as AuthenticatedEmployeesEmployeeIdRouteImport } from './routes/_
 import { Route as AuthenticatedFarmsFarmIdRouteImport } from './routes/_authenticated/farms/$farmId'
 import { Route as AuthenticatedFieldIndexRouteImport } from './routes/_authenticated/field/index'
 import { Route as AuthenticatedFieldReportIdRouteImport } from './routes/_authenticated/field/$reportId'
+import { Route as AuthenticatedInventoryCountsIndexRouteImport } from './routes/_authenticated/inventory-counts/index'
+import { Route as AuthenticatedInventoryCountsCountIdRouteImport } from './routes/_authenticated/inventory-counts/$countId'
 import { Route as AuthenticatedMotorcyclesMotorcycleIdRouteImport } from './routes/_authenticated/motorcycles/$motorcycleId'
 import { Route as AuthenticatedPurchasesIndexRouteImport } from './routes/_authenticated/purchases/index'
 import { Route as AuthenticatedPurchasesPurchaseIdRouteImport } from './routes/_authenticated/purchases/$purchaseId'
 import { Route as AuthenticatedSalesIndexRouteImport } from './routes/_authenticated/sales/index'
 import { Route as AuthenticatedSalesSaleIdRouteImport } from './routes/_authenticated/sales/$saleId'
+import { Route as AuthenticatedStockTransfersIndexRouteImport } from './routes/_authenticated/stock-transfers/index'
+import { Route as AuthenticatedStockTransfersTransferIdRouteImport } from './routes/_authenticated/stock-transfers/$transferId'
 import { Route as AuthenticatedSuppliersIndexRouteImport } from './routes/_authenticated/suppliers/index'
 import { Route as AuthenticatedSuppliersSupplierIdRouteImport } from './routes/_authenticated/suppliers/$supplierId'
 import { Route as AuthenticatedVehiclesIndexRouteImport } from './routes/_authenticated/vehicles/index'
@@ -322,6 +326,18 @@ const AuthenticatedFieldReportIdRoute =
     path: '/$reportId',
     getParentRoute: () => AuthenticatedFieldRoute,
   } as any)
+const AuthenticatedInventoryCountsIndexRoute =
+  AuthenticatedInventoryCountsIndexRouteImport.update({
+    id: '/inventory-counts/',
+    path: '/inventory-counts/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedInventoryCountsCountIdRoute =
+  AuthenticatedInventoryCountsCountIdRouteImport.update({
+    id: '/inventory-counts/$countId',
+    path: '/inventory-counts/$countId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedMotorcyclesMotorcycleIdRoute =
   AuthenticatedMotorcyclesMotorcycleIdRouteImport.update({
     id: '/$motorcycleId',
@@ -350,6 +366,18 @@ const AuthenticatedSalesSaleIdRoute =
     id: '/$saleId',
     path: '/$saleId',
     getParentRoute: () => AuthenticatedSalesRoute,
+  } as any)
+const AuthenticatedStockTransfersIndexRoute =
+  AuthenticatedStockTransfersIndexRouteImport.update({
+    id: '/stock-transfers/',
+    path: '/stock-transfers/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedStockTransfersTransferIdRoute =
+  AuthenticatedStockTransfersTransferIdRouteImport.update({
+    id: '/stock-transfers/$transferId',
+    path: '/stock-transfers/$transferId',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedSuppliersIndexRoute =
   AuthenticatedSuppliersIndexRouteImport.update({
@@ -434,9 +462,11 @@ export interface FileRoutesByFullPath {
   '/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
   '/farms/$farmId': typeof AuthenticatedFarmsFarmIdRoute
   '/field/$reportId': typeof AuthenticatedFieldReportIdRoute
+  '/inventory-counts/$countId': typeof AuthenticatedInventoryCountsCountIdRoute
   '/motorcycles/$motorcycleId': typeof AuthenticatedMotorcyclesMotorcycleIdRoute
   '/purchases/$purchaseId': typeof AuthenticatedPurchasesPurchaseIdRoute
   '/sales/$saleId': typeof AuthenticatedSalesSaleIdRoute
+  '/stock-transfers/$transferId': typeof AuthenticatedStockTransfersTransferIdRoute
   '/suppliers/$supplierId': typeof AuthenticatedSuppliersSupplierIdRoute
   '/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
   '/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
@@ -447,8 +477,10 @@ export interface FileRoutesByFullPath {
   '/drivers/': typeof AuthenticatedDriversIndexRoute
   '/employees/': typeof AuthenticatedEmployeesIndexRoute
   '/field/': typeof AuthenticatedFieldIndexRoute
+  '/inventory-counts/': typeof AuthenticatedInventoryCountsIndexRoute
   '/purchases/': typeof AuthenticatedPurchasesIndexRoute
   '/sales/': typeof AuthenticatedSalesIndexRoute
+  '/stock-transfers/': typeof AuthenticatedStockTransfersIndexRoute
   '/suppliers/': typeof AuthenticatedSuppliersIndexRoute
   '/vehicles/': typeof AuthenticatedVehiclesIndexRoute
   '/wallets/': typeof AuthenticatedWalletsIndexRoute
@@ -484,9 +516,11 @@ export interface FileRoutesByTo {
   '/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
   '/farms/$farmId': typeof AuthenticatedFarmsFarmIdRoute
   '/field/$reportId': typeof AuthenticatedFieldReportIdRoute
+  '/inventory-counts/$countId': typeof AuthenticatedInventoryCountsCountIdRoute
   '/motorcycles/$motorcycleId': typeof AuthenticatedMotorcyclesMotorcycleIdRoute
   '/purchases/$purchaseId': typeof AuthenticatedPurchasesPurchaseIdRoute
   '/sales/$saleId': typeof AuthenticatedSalesSaleIdRoute
+  '/stock-transfers/$transferId': typeof AuthenticatedStockTransfersTransferIdRoute
   '/suppliers/$supplierId': typeof AuthenticatedSuppliersSupplierIdRoute
   '/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
   '/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
@@ -497,8 +531,10 @@ export interface FileRoutesByTo {
   '/drivers': typeof AuthenticatedDriversIndexRoute
   '/employees': typeof AuthenticatedEmployeesIndexRoute
   '/field': typeof AuthenticatedFieldIndexRoute
+  '/inventory-counts': typeof AuthenticatedInventoryCountsIndexRoute
   '/purchases': typeof AuthenticatedPurchasesIndexRoute
   '/sales': typeof AuthenticatedSalesIndexRoute
+  '/stock-transfers': typeof AuthenticatedStockTransfersIndexRoute
   '/suppliers': typeof AuthenticatedSuppliersIndexRoute
   '/vehicles': typeof AuthenticatedVehiclesIndexRoute
   '/wallets': typeof AuthenticatedWalletsIndexRoute
@@ -546,9 +582,11 @@ export interface FileRoutesById {
   '/_authenticated/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
   '/_authenticated/farms/$farmId': typeof AuthenticatedFarmsFarmIdRoute
   '/_authenticated/field/$reportId': typeof AuthenticatedFieldReportIdRoute
+  '/_authenticated/inventory-counts/$countId': typeof AuthenticatedInventoryCountsCountIdRoute
   '/_authenticated/motorcycles/$motorcycleId': typeof AuthenticatedMotorcyclesMotorcycleIdRoute
   '/_authenticated/purchases/$purchaseId': typeof AuthenticatedPurchasesPurchaseIdRoute
   '/_authenticated/sales/$saleId': typeof AuthenticatedSalesSaleIdRoute
+  '/_authenticated/stock-transfers/$transferId': typeof AuthenticatedStockTransfersTransferIdRoute
   '/_authenticated/suppliers/$supplierId': typeof AuthenticatedSuppliersSupplierIdRoute
   '/_authenticated/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
   '/_authenticated/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
@@ -559,8 +597,10 @@ export interface FileRoutesById {
   '/_authenticated/drivers/': typeof AuthenticatedDriversIndexRoute
   '/_authenticated/employees/': typeof AuthenticatedEmployeesIndexRoute
   '/_authenticated/field/': typeof AuthenticatedFieldIndexRoute
+  '/_authenticated/inventory-counts/': typeof AuthenticatedInventoryCountsIndexRoute
   '/_authenticated/purchases/': typeof AuthenticatedPurchasesIndexRoute
   '/_authenticated/sales/': typeof AuthenticatedSalesIndexRoute
+  '/_authenticated/stock-transfers/': typeof AuthenticatedStockTransfersIndexRoute
   '/_authenticated/suppliers/': typeof AuthenticatedSuppliersIndexRoute
   '/_authenticated/vehicles/': typeof AuthenticatedVehiclesIndexRoute
   '/_authenticated/wallets/': typeof AuthenticatedWalletsIndexRoute
@@ -608,9 +648,11 @@ export interface FileRouteTypes {
     | '/employees/$employeeId'
     | '/farms/$farmId'
     | '/field/$reportId'
+    | '/inventory-counts/$countId'
     | '/motorcycles/$motorcycleId'
     | '/purchases/$purchaseId'
     | '/sales/$saleId'
+    | '/stock-transfers/$transferId'
     | '/suppliers/$supplierId'
     | '/vehicles/$vehicleId'
     | '/wallets/$walletId'
@@ -621,8 +663,10 @@ export interface FileRouteTypes {
     | '/drivers/'
     | '/employees/'
     | '/field/'
+    | '/inventory-counts/'
     | '/purchases/'
     | '/sales/'
+    | '/stock-transfers/'
     | '/suppliers/'
     | '/vehicles/'
     | '/wallets/'
@@ -658,9 +702,11 @@ export interface FileRouteTypes {
     | '/employees/$employeeId'
     | '/farms/$farmId'
     | '/field/$reportId'
+    | '/inventory-counts/$countId'
     | '/motorcycles/$motorcycleId'
     | '/purchases/$purchaseId'
     | '/sales/$saleId'
+    | '/stock-transfers/$transferId'
     | '/suppliers/$supplierId'
     | '/vehicles/$vehicleId'
     | '/wallets/$walletId'
@@ -671,8 +717,10 @@ export interface FileRouteTypes {
     | '/drivers'
     | '/employees'
     | '/field'
+    | '/inventory-counts'
     | '/purchases'
     | '/sales'
+    | '/stock-transfers'
     | '/suppliers'
     | '/vehicles'
     | '/wallets'
@@ -719,9 +767,11 @@ export interface FileRouteTypes {
     | '/_authenticated/employees/$employeeId'
     | '/_authenticated/farms/$farmId'
     | '/_authenticated/field/$reportId'
+    | '/_authenticated/inventory-counts/$countId'
     | '/_authenticated/motorcycles/$motorcycleId'
     | '/_authenticated/purchases/$purchaseId'
     | '/_authenticated/sales/$saleId'
+    | '/_authenticated/stock-transfers/$transferId'
     | '/_authenticated/suppliers/$supplierId'
     | '/_authenticated/vehicles/$vehicleId'
     | '/_authenticated/wallets/$walletId'
@@ -732,8 +782,10 @@ export interface FileRouteTypes {
     | '/_authenticated/drivers/'
     | '/_authenticated/employees/'
     | '/_authenticated/field/'
+    | '/_authenticated/inventory-counts/'
     | '/_authenticated/purchases/'
     | '/_authenticated/sales/'
+    | '/_authenticated/stock-transfers/'
     | '/_authenticated/suppliers/'
     | '/_authenticated/vehicles/'
     | '/_authenticated/wallets/'
@@ -1076,6 +1128,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFieldReportIdRouteImport
       parentRoute: typeof AuthenticatedFieldRoute
     }
+    '/_authenticated/inventory-counts/': {
+      id: '/_authenticated/inventory-counts/'
+      path: '/inventory-counts'
+      fullPath: '/inventory-counts/'
+      preLoaderRoute: typeof AuthenticatedInventoryCountsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/inventory-counts/$countId': {
+      id: '/_authenticated/inventory-counts/$countId'
+      path: '/inventory-counts/$countId'
+      fullPath: '/inventory-counts/$countId'
+      preLoaderRoute: typeof AuthenticatedInventoryCountsCountIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/motorcycles/$motorcycleId': {
       id: '/_authenticated/motorcycles/$motorcycleId'
       path: '/$motorcycleId'
@@ -1110,6 +1176,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/sales/$saleId'
       preLoaderRoute: typeof AuthenticatedSalesSaleIdRouteImport
       parentRoute: typeof AuthenticatedSalesRoute
+    }
+    '/_authenticated/stock-transfers/': {
+      id: '/_authenticated/stock-transfers/'
+      path: '/stock-transfers'
+      fullPath: '/stock-transfers/'
+      preLoaderRoute: typeof AuthenticatedStockTransfersIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/stock-transfers/$transferId': {
+      id: '/_authenticated/stock-transfers/$transferId'
+      path: '/stock-transfers/$transferId'
+      fullPath: '/stock-transfers/$transferId'
+      preLoaderRoute: typeof AuthenticatedStockTransfersTransferIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/suppliers/': {
       id: '/_authenticated/suppliers/'
@@ -1391,9 +1471,13 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedVehiclesRoute: typeof AuthenticatedVehiclesRouteWithChildren
   AuthenticatedWalletsRoute: typeof AuthenticatedWalletsRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedInventoryCountsCountIdRoute: typeof AuthenticatedInventoryCountsCountIdRoute
   AuthenticatedPurchasesPurchaseIdRoute: typeof AuthenticatedPurchasesPurchaseIdRoute
+  AuthenticatedStockTransfersTransferIdRoute: typeof AuthenticatedStockTransfersTransferIdRoute
   AuthenticatedSuppliersSupplierIdRoute: typeof AuthenticatedSuppliersSupplierIdRoute
+  AuthenticatedInventoryCountsIndexRoute: typeof AuthenticatedInventoryCountsIndexRoute
   AuthenticatedPurchasesIndexRoute: typeof AuthenticatedPurchasesIndexRoute
+  AuthenticatedStockTransfersIndexRoute: typeof AuthenticatedStockTransfersIndexRoute
   AuthenticatedSuppliersIndexRoute: typeof AuthenticatedSuppliersIndexRoute
 }
 
@@ -1428,9 +1512,16 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedVehiclesRoute: AuthenticatedVehiclesRouteWithChildren,
   AuthenticatedWalletsRoute: AuthenticatedWalletsRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedInventoryCountsCountIdRoute:
+    AuthenticatedInventoryCountsCountIdRoute,
   AuthenticatedPurchasesPurchaseIdRoute: AuthenticatedPurchasesPurchaseIdRoute,
+  AuthenticatedStockTransfersTransferIdRoute:
+    AuthenticatedStockTransfersTransferIdRoute,
   AuthenticatedSuppliersSupplierIdRoute: AuthenticatedSuppliersSupplierIdRoute,
+  AuthenticatedInventoryCountsIndexRoute:
+    AuthenticatedInventoryCountsIndexRoute,
   AuthenticatedPurchasesIndexRoute: AuthenticatedPurchasesIndexRoute,
+  AuthenticatedStockTransfersIndexRoute: AuthenticatedStockTransfersIndexRoute,
   AuthenticatedSuppliersIndexRoute: AuthenticatedSuppliersIndexRoute,
 }
 
