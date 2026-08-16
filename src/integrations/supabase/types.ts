@@ -1013,6 +1013,127 @@ export type Database = {
           },
         ]
       }
+      commerce_purchase_lines: {
+        Row: {
+          created_at: string
+          id: string
+          inventory_item_id: string
+          line_total: number
+          purchase_id: string
+          quantity: number
+          stock_movement_id: string
+          unit_cost: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inventory_item_id: string
+          line_total: number
+          purchase_id: string
+          quantity: number
+          stock_movement_id: string
+          unit_cost: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inventory_item_id?: string
+          line_total?: number
+          purchase_id?: string
+          quantity?: number
+          stock_movement_id?: string
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_purchase_lines_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_purchase_lines_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_purchase_lines_stock_movement_id_fkey"
+            columns: ["stock_movement_id"]
+            isOneToOne: false
+            referencedRelation: "stock_movements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_purchases: {
+        Row: {
+          business_location_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          purchase_date: string
+          purchase_number: string
+          reference: string | null
+          status: string
+          subtotal_amount: number
+          supplier_id: string
+          total_amount: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          business_location_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          purchase_date?: string
+          purchase_number: string
+          reference?: string | null
+          status?: string
+          subtotal_amount: number
+          supplier_id: string
+          total_amount: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          business_location_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          purchase_date?: string
+          purchase_number?: string
+          reference?: string | null
+          status?: string
+          subtotal_amount?: number
+          supplier_id?: string
+          total_amount?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_purchases_business_location_id_fkey"
+            columns: ["business_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_purchases_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commerce_store_expenses: {
         Row: {
           amount: number
@@ -1169,6 +1290,149 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      commerce_supplier_payments: {
+        Row: {
+          amount: number
+          cancelled_at: string | null
+          confirmed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          payment_date: string
+          purchase_id: string
+          reference: string | null
+          status: string
+          supplier_id: string
+          updated_at: string
+          updated_by: string | null
+          wallet_id: string
+        }
+        Insert: {
+          amount: number
+          cancelled_at?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          purchase_id: string
+          reference?: string | null
+          status?: string
+          supplier_id: string
+          updated_at?: string
+          updated_by?: string | null
+          wallet_id: string
+        }
+        Update: {
+          amount?: number
+          cancelled_at?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          purchase_id?: string
+          reference?: string | null
+          status?: string
+          supplier_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_supplier_payments_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_supplier_payments_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_supplier_payments_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "finance_wallet_reconciliation"
+            referencedColumns: ["wallet_id"]
+          },
+          {
+            foreignKeyName: "commerce_supplier_payments_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_suppliers: {
+        Row: {
+          address: string | null
+          archived_at: string | null
+          archived_by: string | null
+          city: string | null
+          country_code: string
+          created_at: string
+          created_by: string | null
+          display_name: string
+          email: string | null
+          id: string
+          legal_name: string | null
+          notes: string | null
+          status: string
+          supplier_number: string
+          telephone: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          address?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
+          city?: string | null
+          country_code?: string
+          created_at?: string
+          created_by?: string | null
+          display_name: string
+          email?: string | null
+          id?: string
+          legal_name?: string | null
+          notes?: string | null
+          status?: string
+          supplier_number: string
+          telephone?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          address?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
+          city?: string | null
+          country_code?: string
+          created_at?: string
+          created_by?: string | null
+          display_name?: string
+          email?: string | null
+          id?: string
+          legal_name?: string | null
+          notes?: string | null
+          status?: string
+          supplier_number?: string
+          telephone?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       commercial_invoice_payments: {
         Row: {
@@ -3823,6 +4087,42 @@ export type Database = {
             columns: ["stock_movement_id"]
             isOneToOne: true
             referencedRelation: "stock_movements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_supplier_payment_links: {
+        Row: {
+          created_at: string
+          link_type: string
+          operation_id: string
+          payment_id: string
+        }
+        Insert: {
+          created_at?: string
+          link_type: string
+          operation_id: string
+          payment_id: string
+        }
+        Update: {
+          created_at?: string
+          link_type?: string
+          operation_id?: string
+          payment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_supplier_payment_links_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_supplier_payment_links_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_supplier_payments"
             referencedColumns: ["id"]
           },
         ]
@@ -7042,6 +7342,8 @@ export type Database = {
         Returns: boolean
       }
       _internal_next_client_number: { Args: never; Returns: string }
+      _internal_next_commerce_purchase_number: { Args: never; Returns: string }
+      _internal_next_commerce_supplier_number: { Args: never; Returns: string }
       _internal_next_commercial_invoice_number: { Args: never; Returns: string }
       _internal_next_commercial_sale_number: { Args: never; Returns: string }
       _internal_next_transport_invoice_number: { Args: never; Returns: string }
@@ -7249,6 +7551,10 @@ export type Database = {
         Args: { p_client: Json }
         Returns: undefined
       }
+      _internal_validate_supplier_payload: {
+        Args: { p_supplier: Json }
+        Returns: undefined
+      }
       archive_client: {
         Args: { p_client_id: string }
         Returns: {
@@ -7307,6 +7613,34 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "documents"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      archive_supplier: {
+        Args: { p_supplier_id: string }
+        Returns: {
+          address: string | null
+          archived_at: string | null
+          archived_by: string | null
+          city: string | null
+          country_code: string
+          created_at: string
+          created_by: string | null
+          display_name: string
+          email: string | null
+          id: string
+          legal_name: string | null
+          notes: string | null
+          status: string
+          supplier_number: string
+          telephone: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_suppliers"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -7846,6 +8180,32 @@ export type Database = {
         Args: { p_movement_id: string }
         Returns: boolean
       }
+      cancel_supplier_payment: {
+        Args: { p_payment_id: string; p_reason: string }
+        Returns: {
+          amount: number
+          cancelled_at: string | null
+          confirmed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          payment_date: string
+          purchase_id: string
+          reference: string | null
+          status: string
+          supplier_id: string
+          updated_at: string
+          updated_by: string | null
+          wallet_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_supplier_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       cancel_transport_invoice_payment: {
         Args: { p_payment_id: string; p_reason: string }
         Returns: {
@@ -8100,6 +8460,32 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "field_declarations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      confirm_supplier_payment: {
+        Args: { p_payment_id: string }
+        Returns: {
+          amount: number
+          cancelled_at: string | null
+          confirmed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          payment_date: string
+          purchase_id: string
+          reference: string | null
+          status: string
+          supplier_id: string
+          updated_at: string
+          updated_by: string | null
+          wallet_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_supplier_payments"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -8412,6 +8798,31 @@ export type Database = {
         }
       }
       create_commerce_cash_sale: { Args: { p_sale: Json }; Returns: Json }
+      create_commerce_purchase: {
+        Args: { p_purchase: Json }
+        Returns: {
+          business_location_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          purchase_date: string
+          purchase_number: string
+          reference: string | null
+          status: string
+          subtotal_amount: number
+          supplier_id: string
+          total_amount: number
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_purchases"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_commerce_store_expense: {
         Args: { p_expense: Json }
         Returns: {
@@ -8866,6 +9277,60 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_supplier: {
+        Args: { p_supplier: Json }
+        Returns: {
+          address: string | null
+          archived_at: string | null
+          archived_by: string | null
+          city: string | null
+          country_code: string
+          created_at: string
+          created_by: string | null
+          display_name: string
+          email: string | null
+          id: string
+          legal_name: string | null
+          notes: string | null
+          status: string
+          supplier_number: string
+          telephone: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_suppliers"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_supplier_payment: {
+        Args: { p_payment: Json; p_purchase_id: string }
+        Returns: {
+          amount: number
+          cancelled_at: string | null
+          confirmed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          payment_date: string
+          purchase_id: string
+          reference: string | null
+          status: string
+          supplier_id: string
+          updated_at: string
+          updated_by: string | null
+          wallet_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_supplier_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_transport_invoice: {
         Args: { p_invoice: Json; p_mission_id: string }
         Returns: {
@@ -9178,6 +9643,19 @@ export type Database = {
           telephone: string
         }[]
       }
+      detect_supplier_duplicates: {
+        Args: { p_exclude_supplier_id?: string; p_supplier: Json }
+        Returns: {
+          display_name: string
+          email: string
+          id: string
+          legal_name: string
+          matched_fields: string[]
+          name_similarity: number
+          supplier_number: string
+          telephone: string
+        }[]
+      }
       document_is_sensitive: {
         Args: { p_document_id: string }
         Returns: boolean
@@ -9413,6 +9891,14 @@ export type Database = {
         Args: { p_location_id: string }
         Returns: Json
       }
+      get_commerce_purchase_financial_summary: {
+        Args: { p_purchase_id: string }
+        Returns: {
+          amount_due: number
+          total_amount: number
+          total_paid: number
+        }[]
+      }
       get_commerce_setup_options: { Args: never; Returns: Json }
       get_commerce_store_cockpit: {
         Args: { p_from: string; p_location_id: string; p_to: string }
@@ -9512,6 +9998,15 @@ export type Database = {
           employee_id: string
           nom: string
           prenom: string
+        }[]
+      }
+      get_supplier_financial_metrics: {
+        Args: { p_supplier_id: string }
+        Returns: {
+          amount_due: number
+          purchase_count: number
+          total_paid: number
+          total_purchased: number
         }[]
       }
       get_transport_departure_readiness: {
@@ -9953,6 +10448,34 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "documents"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      restore_supplier: {
+        Args: { p_supplier_id: string }
+        Returns: {
+          address: string | null
+          archived_at: string | null
+          archived_by: string | null
+          city: string | null
+          country_code: string
+          created_at: string
+          created_by: string | null
+          display_name: string
+          email: string | null
+          id: string
+          legal_name: string | null
+          notes: string | null
+          status: string
+          supplier_number: string
+          telephone: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_suppliers"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -10483,6 +11006,34 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "stock_movements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_supplier: {
+        Args: { p_supplier_id: string; p_values: Json }
+        Returns: {
+          address: string | null
+          archived_at: string | null
+          archived_by: string | null
+          city: string | null
+          country_code: string
+          created_at: string
+          created_by: string | null
+          display_name: string
+          email: string | null
+          id: string
+          legal_name: string | null
+          notes: string | null
+          status: string
+          supplier_number: string
+          telephone: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_suppliers"
           isOneToOne: true
           isSetofReturn: false
         }
