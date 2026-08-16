@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database, Json, Tables } from "@/integrations/supabase/types";
+import type { CommerceSaleRefund, CommerceSaleReturn, CommerceSaleReturnLine } from "@/lib/commerce-sale-returns.functions";
 import { getPermissionCodesForClient } from "@/lib/permissions.functions";
 
 export type CommercialSale = Tables<"commercial_sales">;
@@ -11,6 +12,10 @@ export type CommercialInvoice = Tables<"commercial_invoices">;
 export type CommercialInvoicePayment = Tables<"commercial_invoice_payments">;
 export type CommercialSaleFinancialSummary =
   Database["public"]["Functions"]["get_commercial_sale_financial_summary"]["Returns"][number];
+
+export type CommerceSaleReturnWithLines = CommerceSaleReturn & {
+  lines: (CommerceSaleReturnLine & { itemName: string | null })[];
+};
 
 export type CommercialSaleListItem = CommercialSale & {
   clientName: string | null;
@@ -34,6 +39,10 @@ export type CommercialSaleDetail = {
   payments: CommercialInvoicePaymentWithWallet[];
   financial: CommercialSaleFinancialSummary | null;
   canReadFinance: boolean;
+  returns: CommerceSaleReturnWithLines[];
+  refunds: CommerceSaleRefund[];
+  returnedByLine: Record<string, number>;
+  canReadReturns: boolean;
 };
 
 export const COMMERCIAL_SALE_STATUSES = ["DRAFT", "CONFIRMED", "CANCELLED", "ARCHIVED"] as const;
@@ -255,7 +264,8 @@ export const getCommercialSale = createServerFn({ method: "GET" })
 
     const permissionCodes = new Set(await getPermissionCodesForClient(context.supabase));
     const canReadFinance = permissionCodes.has("sales.finance.read");
-    const [clientResult, farmResult, linesResult, invoicesResult, paymentsResult, summaryResult] = await Promise.all([
+    const canReadReturns = permissionCodes.has("sales.returns.read");
+    const [clientResult, farmResult, linesResult, invoicesResult, paymentsResult, summaryResult, returnsResult, refundsResult] = await Promise.all([
       sale.client_id
         ? context.supabase.from("transport_clients").select("display_name").eq("id", sale.client_id).maybeSingle()
         : Promise.resolve({ data: null, error: null }),
@@ -272,8 +282,14 @@ export const getCommercialSale = createServerFn({ method: "GET" })
       canReadFinance
         ? context.supabase.rpc("get_commercial_sale_financial_summary", { p_sale_id: data })
         : Promise.resolve({ data: [], error: null }),
+      canReadReturns
+        ? context.supabase.from("commerce_sale_returns").select("*").eq("sale_id", data).order("created_at", { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
+      canReadReturns
+        ? context.supabase.from("commerce_sale_refunds").select("*").eq("sale_id", data).order("created_at", { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
     ]);
-    for (const result of [clientResult, farmResult, linesResult, invoicesResult, paymentsResult, summaryResult]) {
+    for (const result of [clientResult, farmResult, linesResult, invoicesResult, paymentsResult, summaryResult, returnsResult, refundsResult]) {
       if (result.error) throw result.error;
     }
     const walletIds = [...new Set((paymentsResult.data ?? []).map((payment) => payment.wallet_id))];
@@ -282,6 +298,31 @@ export const getCommercialSale = createServerFn({ method: "GET" })
       : { data: [], error: null };
     if (walletsResult.error) throw walletsResult.error;
     const walletNames = new Map((walletsResult.data ?? []).map((wallet) => [wallet.id, wallet.name]));
+
+    const returnIds = (returnsResult.data ?? []).map((r) => r.id);
+    const returnLinesResult = returnIds.length
+      ? await context.supabase.from("commerce_sale_return_lines").select("*").in("return_id", returnIds).order("created_at")
+      : { data: [], error: null };
+    if (returnLinesResult.error) throw returnLinesResult.error;
+    const returnLineRows = returnLinesResult.data ?? [];
+
+    const returnedItemIds = [...new Set(
+      returnLineRows.map((line) => (linesResult.data ?? []).find((sl) => sl.id === line.original_sale_line_id)?.inventory_item_id).filter((id): id is string => Boolean(id)),
+    )];
+    const returnedItemsResult = returnedItemIds.length
+      ? await context.supabase.from("inventory_items").select("id, nom").in("id", returnedItemIds)
+      : { data: [], error: null };
+    if (returnedItemsResult.error) throw returnedItemsResult.error;
+    const itemNames = new Map((returnedItemsResult.data ?? []).map((item) => [item.id, item.nom]));
+    const lineItemById = new Map((linesResult.data ?? []).map((line) => [line.id, line.inventory_item_id]));
+
+    const linesByReturn = new Map<string, (CommerceSaleReturnLine & { itemName: string | null })[]>();
+    const returnedByLine: Record<string, number> = {};
+    for (const line of returnLineRows) {
+      const itemId = lineItemById.get(line.original_sale_line_id) ?? null;
+      linesByReturn.set(line.return_id, [...(linesByReturn.get(line.return_id) ?? []), { ...line, itemName: itemId ? itemNames.get(itemId) ?? null : null }]);
+      returnedByLine[line.original_sale_line_id] = (returnedByLine[line.original_sale_line_id] ?? 0) + Number(line.quantity_returned);
+    }
 
     return {
       sale,
@@ -295,6 +336,10 @@ export const getCommercialSale = createServerFn({ method: "GET" })
       })),
       financial: summaryResult.data?.[0] ?? null,
       canReadFinance,
+      returns: (returnsResult.data ?? []).map((r) => ({ ...r, lines: linesByReturn.get(r.id) ?? [] })),
+      refunds: refundsResult.data ?? [],
+      returnedByLine,
+      canReadReturns,
     };
   });
 
