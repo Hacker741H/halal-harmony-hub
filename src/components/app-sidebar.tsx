@@ -7,6 +7,7 @@ import {
   Bike,
   Building2,
   Car,
+  Contact,
   CreditCard,
   FileSignature,
   FileText,
@@ -16,6 +17,7 @@ import {
   PackageCheck,
   Settings,
   ShieldCheck,
+  ShoppingCart,
   Smartphone,
   Store,
   Sprout,
@@ -64,6 +66,8 @@ type NavigationRoute =
   | "/contracts"
   | "/stocks"
   | "/sales"
+  | "/suppliers"
+  | "/purchases"
   | "/commerce"
   | "/wallets"
   | "/finance"
@@ -132,6 +136,8 @@ const navigationGroups: readonly NavigationGroup[] = [
     items: [
       { title: "Magasin & caisse", url: "/commerce", icon: Store, permission: "commerce.pos.read" },
       { title: "Ventes & créances", url: "/sales", icon: PackageCheck, permission: "sales.read" },
+      { title: "Fournisseurs", url: "/suppliers", icon: Contact, permission: "suppliers.read" },
+      { title: "Achats & dettes", url: "/purchases", icon: ShoppingCart, permission: "purchases.read" },
       { title: "Stocks", url: "/stocks", icon: Package },
     ],
   },

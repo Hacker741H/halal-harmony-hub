@@ -17,6 +17,7 @@ import { getDrivers } from "@/lib/drivers.functions";
 import { getEmployees } from "@/lib/employees.functions";
 import { getFarms } from "@/lib/farms.functions";
 import { getMotorcycles } from "@/lib/motorcycles.functions";
+import { getSuppliers } from "@/lib/suppliers.functions";
 import { getVehicles } from "@/lib/vehicles.functions";
 import { getWallets } from "@/lib/wallet.functions";
 
@@ -85,6 +86,19 @@ export function ClientSelect(props: EntitySelectProps) {
     id: client.id,
     label: client.display_name,
     detail: [client.telephone, client.status].filter(Boolean).join(" · "),
+  }))} onSearchChange={setSearch} />;
+}
+
+export function SupplierSelect(props: EntitySelectProps) {
+  const [search, setSearch] = useState("");
+  const { data } = useQuery({
+    queryKey: ["suppliers", "select", search],
+    queryFn: () => getSuppliers({ data: { page: 1, pageSize: 100, search, status: "ACTIVE" } }),
+  });
+  return <SearchableEntitySelect {...props} options={(data?.suppliers ?? []).map((supplier) => ({
+    id: supplier.id,
+    label: supplier.display_name,
+    detail: [supplier.telephone, supplier.city].filter(Boolean).join(" · "),
   }))} onSearchChange={setSearch} />;
 }
 
