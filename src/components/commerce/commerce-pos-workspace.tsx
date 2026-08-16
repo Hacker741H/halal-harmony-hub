@@ -37,7 +37,7 @@ import { useCommercePosSession } from "@/hooks/use-commerce-pos-session";
 import { useCurrentUserAccess } from "@/hooks/use-current-user-access";
 import { usePermissions } from "@/hooks/use-permissions";
 import { supabase } from "@/integrations/supabase/client";
-import { cachePosOfflineLocations, findPosOfflineDraftLocation, getCachedPosOfflineLocations, mergeCommercePosCashSessionSummaries } from "@/lib/commerce-pos-offline";
+import { cachePosOfflineLocations, findPosOfflineDraftLocation, getCachedPosOfflineLocations, mergeCommercePosCashSessionSummaries, mergeCommercePosSessionSaleRows, type CommercePosSessionSaleRow } from "@/lib/commerce-pos-offline";
 import { createCommercePosId, findCommercePosDraftLocation, getCommercePosStockConflicts, type CommercePosDraftLine, type CommercePosPaymentMethod, type CommercePosSuspendedTicket } from "@/lib/commerce-pos-session";
 import { cn } from "@/lib/utils";
 
@@ -382,6 +382,14 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
   const cashSessionSummary = useMemo(
     () => mergeCommercePosCashSessionSummaries(posSession.cashSessionSummary, sessionPreviewQuery.data ?? null),
     [posSession.cashSessionSummary, sessionPreviewQuery.data],
+  );
+  // Same server source as the summary above, row-level: the "Ventes" tab
+  // used to read posSession.outboxEvents only, so an online-direct sale
+  // (never written to that local outbox) never appeared there even though
+  // it was fully confirmed server-side.
+  const sessionSaleRows = useMemo(
+    () => mergeCommercePosSessionSaleRows(posSession.outboxEvents, sessionPreviewQuery.data?.sales ?? null),
+    [posSession.outboxEvents, sessionPreviewQuery.data?.sales],
   );
   const [search, setSearch] = useState("");
   const [quickQuantity, setQuickQuantity] = useState("1");
@@ -853,7 +861,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
           onStartNew={startNewCashSession}
         />
       ) : cashierTab === "VENTES" ? (
-        <CashierSalesTab events={posSession.outboxEvents} />
+        <CashierSalesTab sales={sessionSaleRows} />
       ) : (
       <>
       {posSession.isRestored ? <div className="shrink-0 rounded-xl border border-info/20 bg-info/[0.06] px-4 py-2 text-sm text-info">Brouillon restauré sur ce poste : aucune ligne n’a été perdue.</div> : null}
@@ -1067,16 +1075,18 @@ function CashierSessionTab({ locationName, cashierName, sessionOpenedLabel, sess
   );
 }
 
+const paymentMethodLabel = (method: string | null) => method === "CASH" ? "Espèces" : method === "WAVE" || method === "JEKO" ? "Mobile Money" : method === null ? "—" : "Autre";
+
 /** Mission caisse-UX: the cashier's own ticket history for this session --
  * time, ticket, content, amount, payment method, sync status. No net
  * result, no CMV, no Finance -- that belongs to the manager's control
- * center, not this screen. */
-function CashierSalesTab({ events }: { events: ReturnType<typeof useCommercePosSession>["outboxEvents"] }) {
-  const sales = useMemo(
-    () => events.filter((event): event is Extract<typeof events[number], { operation: "CREATE_CASH_SALE" }> => event.operation === "CREATE_CASH_SALE")
-      .sort((left, right) => right.createdAtDevice.localeCompare(left.createdAtDevice)),
-    [events],
-  );
+ * center, not this screen.
+ *
+ * Mission maitre, Blocker A: sales is the merge of confirmed server sales
+ * (online-direct or offline-then-synced -- see
+ * mergeCommercePosSessionSaleRows) and not-yet-synced local outbox events,
+ * never the local outbox alone. */
+function CashierSalesTab({ sales }: { sales: CommercePosSessionSaleRow[] }) {
   const syncLabel = (status: string) => status === "SYNCED" ? "Synchronisé" : status === "CONFLICT" ? "À contrôler" : status === "SYNCING" ? "Synchronisation…" : status === "FAILED" ? "Nouvel essai" : "En attente";
   return (
     <div className="flex-1 overflow-auto">
@@ -1085,16 +1095,14 @@ function CashierSalesTab({ events }: { events: ReturnType<typeof useCommercePosS
         <CardContent className="p-0">
           {sales.length ? <div className="divide-y divide-border/60">
             {sales.map((sale) => {
-              const articleCount = sale.payload.lines.filter((line) => line.lineType === "ARTICLE").length;
-              const serviceCount = sale.payload.lines.filter((line) => line.lineType === "SERVICE").length;
-              return <div key={sale.eventId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+              return <div key={sale.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <div className="min-w-0">
-                  <p className="font-semibold">{new Date(sale.createdAtDevice).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} · {sale.serverInvoiceNumber ?? `Ticket ${sale.eventId.slice(-8).toUpperCase()}`}</p>
-                  <p className="mt-0.5 text-sm text-muted-foreground">{articleCount ? `${articleCount} article${articleCount > 1 ? "s" : ""}` : ""}{articleCount && serviceCount ? " · " : ""}{serviceCount ? `${serviceCount} service${serviceCount > 1 ? "s" : ""}` : ""} · {sale.payload.paymentMethod === "CASH" ? "Espèces" : sale.payload.paymentMethod}</p>
+                  <p className="font-semibold">{new Date(sale.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} · {sale.label}</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">{sale.articleCount ? `${sale.articleCount} article${sale.articleCount > 1 ? "s" : ""}` : ""}{sale.articleCount && sale.serviceCount ? " · " : ""}{sale.serviceCount ? `${sale.serviceCount} service${sale.serviceCount > 1 ? "s" : ""}` : ""} · {paymentMethodLabel(sale.paymentMethod)}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <p className="font-bold tabular-nums">{money(sale.payload.total)}</p>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${sale.status === "SYNCED" ? "bg-success/10 text-success" : sale.status === "CONFLICT" ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"}`}>{syncLabel(sale.status)}</span>
+                  <p className="font-bold tabular-nums">{money(sale.total)}</p>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${sale.syncStatus === "SYNCED" ? "bg-success/10 text-success" : sale.syncStatus === "CONFLICT" ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"}`}>{syncLabel(sale.syncStatus)}</span>
                 </div>
               </div>;
             })}

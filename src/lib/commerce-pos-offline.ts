@@ -137,6 +137,72 @@ export function mergeCommercePosCashSessionSummaries(
   };
 }
 
+/** Structural shape of one row in get_commerce_pos_cash_session_preview's
+ * `sales` array. Declared locally for the same layering reason as
+ * CommercePosCashSessionServerTotals above. */
+export type CommercePosSessionServerSale = {
+  id: string;
+  saleNumber: string;
+  createdAt: string;
+  total: number;
+  articleCount: number;
+  serviceCount: number;
+  paymentMethod: string | null;
+};
+
+export type CommercePosSessionSaleRow = {
+  id: string;
+  createdAt: string;
+  total: number;
+  articleCount: number;
+  serviceCount: number;
+  paymentMethod: string | null;
+  label: string;
+  syncStatus: PosOfflineOutboxStatus;
+};
+
+/**
+ * Mission maitre, Blocker A: "Mes ventes" used to read only the local
+ * outbox, so an online-direct sale (create_commerce_cash_sale, which never
+ * writes an outbox event) never appeared even though it was fully
+ * confirmed server-side. Same merge principle as
+ * mergeCommercePosCashSessionSummaries: server sales are the source of
+ * truth for anything already confirmed (online or offline-then-synced);
+ * the local complement is exactly the outbox events not yet SYNCED, keyed
+ * by their own eventId, never by amount/time. A ticket never appears in
+ * both lists at once, so straight concatenation never double-counts, and a
+ * ticket crossing from local to server on sync changes which list it comes
+ * from without changing the total count on screen.
+ */
+export function mergeCommercePosSessionSaleRows(
+  localEvents: readonly PosOfflineOutboxEvent[],
+  serverSales: readonly CommercePosSessionServerSale[] | null,
+): CommercePosSessionSaleRow[] {
+  const fromServer: CommercePosSessionSaleRow[] = (serverSales ?? []).map((sale) => ({
+    id: sale.id,
+    createdAt: sale.createdAt,
+    total: sale.total,
+    articleCount: sale.articleCount,
+    serviceCount: sale.serviceCount,
+    paymentMethod: sale.paymentMethod,
+    label: sale.saleNumber,
+    syncStatus: "SYNCED",
+  }));
+  const fromLocal: CommercePosSessionSaleRow[] = localEvents
+    .filter((event): event is PosOfflineSaleOutboxEvent => event.operation === "CREATE_CASH_SALE" && event.status !== "SYNCED")
+    .map((event) => ({
+      id: event.eventId,
+      createdAt: event.createdAtDevice,
+      total: event.payload.total,
+      articleCount: event.payload.lines.filter((line) => line.lineType === "ARTICLE").length,
+      serviceCount: event.payload.lines.filter((line) => line.lineType === "SERVICE").length,
+      paymentMethod: event.payload.paymentMethod,
+      label: event.serverInvoiceNumber ?? `Ticket ${event.eventId.slice(-8).toUpperCase()}`,
+      syncStatus: event.status,
+    }));
+  return [...fromServer, ...fromLocal].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
 export type PosOfflineCashSessionClosePayload = PosOfflineCashSessionSummary & {
   openedAtDevice: string;
   closedAtDevice: string;

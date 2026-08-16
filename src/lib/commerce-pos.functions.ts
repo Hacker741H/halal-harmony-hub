@@ -612,6 +612,10 @@ const commercePosCashSessionPreviewSchema = z.object({
   mobileMoneyTotal: z.number(),
   otherPaymentTotal: z.number(),
   theoreticalCash: z.number(),
+  sales: z.array(z.object({
+    id: z.string().uuid(), saleNumber: z.string(), createdAt: z.string(), total: z.number(),
+    articleCount: z.number(), serviceCount: z.number(), paymentMethod: z.string().nullable(),
+  })),
 });
 export type CommercePosCashSessionPreview = z.infer<typeof commercePosCashSessionPreviewSchema>;
 
