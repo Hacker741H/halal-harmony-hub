@@ -32,6 +32,24 @@ export type ClientFinancialMetrics = {
   last_payment_at: string | null;
 };
 
+export type CommercialClientFinancialMetrics = {
+  metrics_available: boolean;
+  sale_count: number;
+  total_invoiced: number;
+  total_received: number;
+  amount_due: number;
+  last_sale_at: string | null;
+  last_payment_at: string | null;
+};
+
+export type CommercialClientFinancialMetricsBulkEntry = {
+  client_id: string;
+  sale_count: number;
+  total_invoiced: number;
+  total_received: number;
+  amount_due: number;
+};
+
 export type ClientAuditEntry = {
   id: string;
   action: string;
@@ -50,12 +68,14 @@ const nullableEmailSchema = z.string().trim().email().max(255).nullable();
 export const CLIENT_KINDS = ["ORGANIZATION", "INDIVIDUAL"] as const;
 export const CLIENT_STATUSES = ["ACTIVE", "ARCHIVED"] as const;
 export const CLIENT_IDENTIFIER_TYPES = ["NINEA", "RCCM"] as const;
+export const CLIENT_COUNTRY_CODES = ["CI", "SN"] as const;
 
 const clientValuesSchema = z
   .object({
     kind: z.enum(CLIENT_KINDS),
     display_name: z.string().trim().min(1).max(255),
     legal_name: nullableContactSchema,
+    country_code: z.enum(CLIENT_COUNTRY_CODES),
     city: nullableContactSchema,
     address: nullableTextSchema,
     telephone: nullablePhoneSchema,
@@ -105,7 +125,7 @@ function clientPayload(values: ClientValues): Json {
     kind: values.kind,
     display_name: values.display_name,
     legal_name: values.legal_name,
-    country_code: "CI",
+    country_code: values.country_code,
     city: values.city,
     address: values.address,
     telephone: values.telephone,
@@ -252,6 +272,33 @@ export const getClientFinancialMetrics = createServerFn({ method: "GET" })
       last_mission_at: null,
       last_payment_at: null,
     };
+  });
+
+export const getCommercialClientFinancialMetrics = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator(clientIdSchema)
+  .handler(async ({ context, data }): Promise<CommercialClientFinancialMetrics> => {
+    const { data: metrics, error } = await context.supabase.rpc("get_commercial_client_financial_metrics", { p_client_id: data });
+    if (error) throw error;
+    return metrics?.[0] ?? {
+      metrics_available: false,
+      sale_count: 0,
+      total_invoiced: 0,
+      total_received: 0,
+      amount_due: 0,
+      last_sale_at: null,
+      last_payment_at: null,
+    };
+  });
+
+export const getCommercialClientFinancialMetricsBulk = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator(z.array(clientIdSchema).max(200))
+  .handler(async ({ context, data }): Promise<CommercialClientFinancialMetricsBulkEntry[]> => {
+    if (data.length === 0) return [];
+    const { data: metrics, error } = await context.supabase.rpc("get_commercial_client_financial_metrics_bulk", { p_client_ids: data });
+    if (error) throw error;
+    return metrics ?? [];
   });
 
 export const getClientAuditHistory = createServerFn({ method: "GET" })

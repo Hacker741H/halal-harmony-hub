@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -14,7 +14,14 @@ import { Input } from "@/components/ui/input";
 import { ModuleHero } from "@/components/ui/module-hero";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePermissions } from "@/hooks/use-permissions";
-import { archiveClient, getClients, restoreClient, type Client } from "@/lib/clients.functions";
+import {
+  archiveClient,
+  getClients,
+  getCommercialClientFinancialMetricsBulk,
+  restoreClient,
+  type Client,
+  type CommercialClientFinancialMetricsBulkEntry,
+} from "@/lib/clients.functions";
 
 export const Route = createFileRoute("/_authenticated/clients/")({
   component: ClientsPage,
@@ -54,6 +61,18 @@ function ClientsPage() {
   const total = clientsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const clients = clientsQuery.data?.clients ?? [];
+  const canReadCommercialFinance = can("sales.finance.read");
+  const clientIds = useMemo(() => clients.map((client) => client.id), [clients]);
+  const commercialMetricsQuery = useQuery({
+    queryKey: ["clients-commercial-metrics", clientIds],
+    queryFn: () => getCommercialClientFinancialMetricsBulk({ data: clientIds }),
+    enabled: canReadCommercialFinance && clientIds.length > 0,
+  });
+  const commercialMetricsByClientId = useMemo(() => {
+    const map = new Map<string, CommercialClientFinancialMetricsBulkEntry>();
+    for (const entry of commercialMetricsQuery.data ?? []) map.set(entry.client_id, entry);
+    return map;
+  }, [commercialMetricsQuery.data]);
 
   function refresh() {
     setDialogOpen(false);
@@ -127,7 +146,9 @@ function ClientsPage() {
             error={clientsQuery.isError}
             canUpdate={can("clients.update")}
             canArchive={can("clients.archive")}
-            canReadFinancial={can("clients.financial.read")}
+            canReadFinancial={canReadCommercialFinance}
+            commercialMetricsByClientId={commercialMetricsByClientId}
+            commercialMetricsLoading={commercialMetricsQuery.isPending}
             onEdit={(client) => {
               setEditingClient(client);
               setDialogOpen(true);

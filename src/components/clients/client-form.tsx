@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  CLIENT_COUNTRY_CODES,
   createClient,
   detectClientDuplicates,
   type Client,
@@ -16,6 +17,11 @@ import {
   type ClientValues,
   updateClient,
 } from "@/lib/clients.functions";
+
+const COUNTRY_LABELS: Record<(typeof CLIENT_COUNTRY_CODES)[number], string> = {
+  CI: "Côte d’Ivoire",
+  SN: "Sénégal",
+};
 
 type Props = {
   client?: Client | null;
@@ -26,6 +32,7 @@ type ClientFormState = {
   kind: "ORGANIZATION" | "INDIVIDUAL";
   displayName: string;
   legalName: string;
+  countryCode: (typeof CLIENT_COUNTRY_CODES)[number];
   city: string;
   address: string;
   telephone: string;
@@ -43,6 +50,9 @@ function fromClient(client?: Client | null): ClientFormState {
     kind: client?.kind === "INDIVIDUAL" ? "INDIVIDUAL" : "ORGANIZATION",
     displayName: client?.display_name ?? "",
     legalName: client?.legal_name ?? "",
+    countryCode: (CLIENT_COUNTRY_CODES as readonly string[]).includes(client?.country_code ?? "")
+      ? (client!.country_code as (typeof CLIENT_COUNTRY_CODES)[number])
+      : "CI",
     city: client?.city ?? "",
     address: client?.address ?? "",
     telephone: client?.telephone ?? "",
@@ -68,6 +78,7 @@ function toValues(form: ClientFormState): ClientValues {
     kind: form.kind,
     display_name: form.displayName.trim(),
     legal_name: optionalValue(form.legalName),
+    country_code: form.countryCode,
     city: optionalValue(form.city),
     address: optionalValue(form.address),
     telephone: optionalValue(form.telephone),
@@ -169,6 +180,7 @@ export function ClientForm({ client, onSuccess }: Props) {
         <div className="space-y-2"><Label htmlFor="client-kind">Type</Label><Select value={form.kind} onValueChange={(value) => setForm((current) => ({ ...current, kind: value === "INDIVIDUAL" ? "INDIVIDUAL" : "ORGANIZATION" }))}><SelectTrigger id="client-kind"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ORGANIZATION">Organisation</SelectItem><SelectItem value="INDIVIDUAL">Personne physique</SelectItem></SelectContent></Select></div>
         <div className="space-y-2"><Label htmlFor="client-display-name">Nom / société</Label><Input id="client-display-name" value={form.displayName} onChange={(event) => setForm((current) => ({ ...current, displayName: event.target.value }))} /></div>
         <div className="space-y-2"><Label htmlFor="client-legal-name">Raison sociale</Label><Input id="client-legal-name" value={form.legalName} onChange={(event) => setForm((current) => ({ ...current, legalName: event.target.value }))} /></div>
+        <div className="space-y-2"><Label htmlFor="client-country">Pays</Label><Select value={form.countryCode} onValueChange={(value) => setForm((current) => ({ ...current, countryCode: value === "SN" ? "SN" : "CI" }))}><SelectTrigger id="client-country"><SelectValue /></SelectTrigger><SelectContent>{CLIENT_COUNTRY_CODES.map((code) => <SelectItem key={code} value={code}>{COUNTRY_LABELS[code]}</SelectItem>)}</SelectContent></Select></div>
         <div className="space-y-2"><Label htmlFor="client-city">Ville</Label><Input id="client-city" value={form.city} onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))} /></div>
       </div>
 
@@ -178,7 +190,7 @@ export function ClientForm({ client, onSuccess }: Props) {
 
       <div className="rounded-lg border p-4"><p className="mb-3 text-sm font-medium">Contact principal</p><div className="grid gap-4 sm:grid-cols-3"><div className="space-y-2"><Label htmlFor="client-contact-name">Nom</Label><Input id="client-contact-name" value={form.contactName} onChange={(event) => setForm((current) => ({ ...current, contactName: event.target.value }))} /></div><div className="space-y-2"><Label htmlFor="client-contact-phone">Téléphone</Label><Input id="client-contact-phone" inputMode="tel" value={form.contactPhone} onChange={(event) => setForm((current) => ({ ...current, contactPhone: event.target.value }))} /></div><div className="space-y-2"><Label htmlFor="client-contact-email">E-mail</Label><Input id="client-contact-email" type="email" value={form.contactEmail} onChange={(event) => setForm((current) => ({ ...current, contactEmail: event.target.value }))} /></div></div></div>
 
-      <div className="rounded-lg border p-4"><p className="mb-3 text-sm font-medium">Informations légales — Côte d’Ivoire</p><div className="grid gap-4 sm:grid-cols-[minmax(0,0.45fr)_minmax(0,0.55fr)]"><div className="space-y-2"><Label>Type</Label><Select value={form.identifierType} onValueChange={(value) => setForm((current) => ({ ...current, identifierType: value === "RCCM" ? value : "NONE", identifierValue: value === "NONE" ? "" : current.identifierValue }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="NONE">Non renseigné</SelectItem><SelectItem value="RCCM">RCCM</SelectItem></SelectContent></Select></div><div className="space-y-2"><Label htmlFor="client-identifier">Valeur</Label><Input id="client-identifier" disabled={form.identifierType === "NONE"} value={form.identifierValue} onChange={(event) => setForm((current) => ({ ...current, identifierValue: event.target.value }))} /></div></div><p className="mt-3 text-xs text-muted-foreground">Le RCCM est facultatif. Son format reste contrôlé par la règle configurée côté serveur.</p></div>
+      <div className="rounded-lg border p-4"><p className="mb-3 text-sm font-medium">Informations légales — {COUNTRY_LABELS[form.countryCode]}</p><div className="grid gap-4 sm:grid-cols-[minmax(0,0.45fr)_minmax(0,0.55fr)]"><div className="space-y-2"><Label>Type</Label><Select value={form.identifierType} onValueChange={(value) => setForm((current) => ({ ...current, identifierType: value === "RCCM" ? value : "NONE", identifierValue: value === "NONE" ? "" : current.identifierValue }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="NONE">Non renseigné</SelectItem><SelectItem value="RCCM">RCCM</SelectItem></SelectContent></Select></div><div className="space-y-2"><Label htmlFor="client-identifier">Valeur</Label><Input id="client-identifier" disabled={form.identifierType === "NONE"} value={form.identifierValue} onChange={(event) => setForm((current) => ({ ...current, identifierValue: event.target.value }))} /></div></div><p className="mt-3 text-xs text-muted-foreground">{form.countryCode === "CI" ? "Le RCCM est facultatif. Son format reste contrôlé par la règle configurée côté serveur." : "Aucun format d’identifiant légal n’est encore configuré pour ce pays : laissez ce champ sur « Non renseigné »."}</p></div>
 
       <div className="space-y-2"><Label htmlFor="client-notes">Notes internes</Label><Textarea id="client-notes" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} /></div>
 

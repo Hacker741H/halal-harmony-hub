@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { CircleDollarSign, FileText, Landmark, Plus, ReceiptText, Sprout } from "lucide-react";
 import { useState } from "react";
+import { z } from "zod";
 
 import { CommercialSaleForm } from "@/components/commercial/commercial-sale-form";
 import { CommercialSalesList } from "@/components/commercial/commercial-sales-list";
@@ -17,7 +18,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { usePermissions } from "@/hooks/use-permissions";
 import { COMMERCIAL_SALE_STATUSES, getCommercialSales } from "@/lib/commercial-sales.functions";
 
-export const Route = createFileRoute("/_authenticated/sales/")({ component: SalesPage });
+export const Route = createFileRoute("/_authenticated/sales/")({
+  validateSearch: z.object({ clientId: z.string().uuid().optional() }),
+  component: SalesPage,
+});
 
 function formatAmount(value: number) {
   return `${value.toLocaleString("fr-FR")} FCFA`;
@@ -29,11 +33,12 @@ function statusLabel(status: string) {
 }
 
 function SalesPage() {
+  const { clientId: initialClientId } = Route.useSearch();
   const navigate = useNavigate();
   const { can } = usePermissions();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("ALL");
-  const [clientId, setClientId] = useState("");
+  const [clientId, setClientId] = useState(initialClientId ?? "");
   const [farmId, setFarmId] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");

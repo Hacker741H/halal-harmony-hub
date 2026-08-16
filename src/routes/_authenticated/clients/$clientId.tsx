@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { Archive, ArrowLeft, Building2, Merge, Pencil, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -19,9 +19,13 @@ import {
   getClient,
   getClientAuditHistory,
   getClientFinancialMetrics,
+  getCommercialClientFinancialMetrics,
   mergeClients,
   restoreClient,
+  type CommercialClientFinancialMetrics,
 } from "@/lib/clients.functions";
+import { getCommercialSales } from "@/lib/commercial-sales.functions";
+import type { CommercialSaleListItem } from "@/lib/commercial-sales.functions";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId")({
   component: ClientDetailsPage,
@@ -49,6 +53,19 @@ function ClientDetailsPage() {
     queryKey: ["client-financial-metrics", clientId],
     queryFn: () => getClientFinancialMetrics({ data: clientId }),
     enabled: can("clients.financial.read"),
+  });
+  const canReadCommercialFinance = can("sales.finance.read");
+  const commercialMetricsQuery = useQuery({
+    queryKey: ["client-commercial-metrics", clientId],
+    queryFn: () => getCommercialClientFinancialMetrics({ data: clientId }),
+    enabled: canReadCommercialFinance,
+  });
+  const commercialSalesQuery = useQuery({
+    queryKey: ["client-commercial-sales", clientId],
+    queryFn: () => getCommercialSales({ data: {
+      page: 1, pageSize: 5, search: "", status: null, clientId, farmId: null, from: null, to: null,
+    } }),
+    enabled: canReadCommercialFinance,
   });
   const archiveMutation = useMutation({
     mutationFn: archiveClient,
@@ -79,8 +96,9 @@ function ClientDetailsPage() {
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"><div><Button asChild variant="ghost" className="px-0"><Link to="/clients"><ArrowLeft className="mr-2 h-4 w-4" />Clients</Link></Button><h1 className="mt-2 flex items-center gap-3 text-3xl font-bold"><Building2 className="h-7 w-7" />{client.display_name}</h1><p className="text-muted-foreground">{client.client_number}{client.legal_name ? ` · ${client.legal_name}` : ""}</p></div><div className="flex flex-wrap gap-2"><Badge variant={client.status === "ACTIVE" ? "success" : "outline"}>{client.status === "ACTIVE" ? "Actif" : "Archivé"}</Badge>{canEdit ? <Button variant="outline" onClick={() => setEditOpen(true)}><Pencil className="mr-2 h-4 w-4" />Modifier</Button> : null}{canMerge ? <Button variant="outline" onClick={() => setMergeOpen(true)}><Merge className="mr-2 h-4 w-4" />Fusionner</Button> : null}{canArchive && client.status === "ACTIVE" ? <Button variant="outline" onClick={() => { if (window.confirm(`Archiver ${client.display_name} ?`)) archiveMutation.mutate({ data: { id: client.id } }); }} disabled={archiveMutation.isPending}><Archive className="mr-2 h-4 w-4" />Archiver</Button> : null}{canArchive && client.status === "ARCHIVED" && !client.merged_into_client_id ? <Button variant="outline" onClick={() => restoreMutation.mutate({ data: { id: client.id } })} disabled={restoreMutation.isPending}><RotateCcw className="mr-2 h-4 w-4" />Restaurer</Button> : null}</div></div>
 
-      <Tabs defaultValue="informations" className="space-y-5"><TabsList className="h-auto flex-wrap justify-start"><TabsTrigger value="informations">Informations</TabsTrigger><TabsTrigger value="missions">Missions</TabsTrigger><TabsTrigger value="factures">Factures</TabsTrigger><TabsTrigger value="paiements">Paiements</TabsTrigger><TabsTrigger value="documents">Documents</TabsTrigger><TabsTrigger value="historique">Historique</TabsTrigger><TabsTrigger value="rentabilite">Rentabilité</TabsTrigger></TabsList>
-        <TabsContent value="informations"><Card><CardHeader><CardTitle>Informations générales</CardTitle></CardHeader><CardContent className="grid gap-5 md:grid-cols-2"><Info label="Type" value={client.kind === "INDIVIDUAL" ? "Personne physique" : "Organisation"} /><Info label="Pays" value={client.country_code === "CI" ? "Côte d’Ivoire" : client.country_code} /><Info label="Téléphone" value={client.telephone} /><Info label="E-mail" value={client.email} /><Info label="Ville" value={client.city} /><Info label="Adresse" value={client.address} /><Info label="Contact principal" value={client.contact_name} /><Info label="Téléphone du contact" value={client.contact_phone} /><Info label="E-mail du contact" value={client.contact_email} /><Info label="Identifiant légal" value={client.registration_identifier_type && client.registration_identifier_value ? `${client.registration_identifier_type} · ${client.registration_identifier_value}` : null} /><div className="md:col-span-2"><Info label="Notes internes" value={client.notes} /></div>{client.merged_into_client_id ? <div className="md:col-span-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">Ce client a été fusionné et archivé. Les relations ont été transférées vers la fiche cible.</div> : null}</CardContent></Card></TabsContent>
+      <Tabs defaultValue="informations" className="space-y-5"><TabsList className="h-auto flex-wrap justify-start"><TabsTrigger value="informations">Informations</TabsTrigger><TabsTrigger value="commerce">Activité commerciale</TabsTrigger><TabsTrigger value="missions">Missions</TabsTrigger><TabsTrigger value="factures">Factures</TabsTrigger><TabsTrigger value="paiements">Paiements</TabsTrigger><TabsTrigger value="documents">Documents</TabsTrigger><TabsTrigger value="historique">Historique</TabsTrigger><TabsTrigger value="rentabilite">Rentabilité</TabsTrigger></TabsList>
+        <TabsContent value="informations"><Card><CardHeader><CardTitle>Informations générales</CardTitle></CardHeader><CardContent className="grid gap-5 md:grid-cols-2"><Info label="Type" value={client.kind === "INDIVIDUAL" ? "Personne physique" : "Organisation"} /><Info label="Pays" value={client.country_code === "CI" ? "Côte d’Ivoire" : client.country_code === "SN" ? "Sénégal" : client.country_code} /><Info label="Téléphone" value={client.telephone} /><Info label="E-mail" value={client.email} /><Info label="Ville" value={client.city} /><Info label="Adresse" value={client.address} /><Info label="Contact principal" value={client.contact_name} /><Info label="Téléphone du contact" value={client.contact_phone} /><Info label="E-mail du contact" value={client.contact_email} /><Info label="Identifiant légal" value={client.registration_identifier_type && client.registration_identifier_value ? `${client.registration_identifier_type} · ${client.registration_identifier_value}` : null} /><div className="md:col-span-2"><Info label="Notes internes" value={client.notes} /></div>{client.merged_into_client_id ? <div className="md:col-span-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">Ce client a été fusionné et archivé. Les relations ont été transférées vers la fiche cible.</div> : null}</CardContent></Card></TabsContent>
+        <TabsContent value="commerce">{!canReadCommercialFinance ? <EmptyPanel>Vous n’avez pas l’autorisation de consulter l’activité commerciale de ce client.</EmptyPanel> : <CommercialActivityPanel clientId={clientId} metricsQuery={commercialMetricsQuery} salesQuery={commercialSalesQuery} />}</TabsContent>
         <TabsContent value="missions"><EmptyPanel>Les Missions de transport ne sont pas encore implémentées. Aucune donnée fictive n’est affichée.</EmptyPanel></TabsContent>
         <TabsContent value="factures"><EmptyPanel>Les Factures de mission ne sont pas encore implémentées. Aucune créance n’est calculée.</EmptyPanel></TabsContent>
         <TabsContent value="paiements"><EmptyPanel>Les Paiements de mission ne sont pas encore implémentés. Aucun encaissement n’est affiché.</EmptyPanel></TabsContent>
@@ -106,4 +124,92 @@ function Metric({ label, value }: { label: string; value: string }) {
 function historyLabel(action: string) {
   const labels: Record<string, string> = { CREATE: "Création", UPDATE: "Modification", ARCHIVE: "Archivage", RESTORE: "Restauration", MERGE: "Fusion" };
   return labels[action] ?? action;
+}
+
+function saleStatusLabel(status: string) {
+  const labels: Record<string, string> = { DRAFT: "Brouillon", CONFIRMED: "Confirmée", CANCELLED: "Annulée", ARCHIVED: "Archivée" };
+  return labels[status] ?? status;
+}
+
+function saleStatusVariant(status: string): "outline" | "success" | "danger" | "neutral" {
+  if (status === "CONFIRMED") return "success";
+  if (status === "CANCELLED") return "danger";
+  if (status === "ARCHIVED") return "neutral";
+  return "outline";
+}
+
+function CommercialActivityPanel({
+  clientId,
+  metricsQuery,
+  salesQuery,
+}: {
+  clientId: string;
+  metricsQuery: UseQueryResult<CommercialClientFinancialMetrics>;
+  salesQuery: UseQueryResult<{ sales: CommercialSaleListItem[]; total: number }>;
+}) {
+  const metrics = metricsQuery.data;
+  const sales = salesQuery.data?.sales ?? [];
+  const totalSales = salesQuery.data?.total ?? 0;
+
+  return (
+    <div className="space-y-5">
+      {metricsQuery.isPending ? (
+        <EmptyPanel>Calcul des indicateurs commerciaux…</EmptyPanel>
+      ) : !metrics ? (
+        <EmptyPanel>Impossible de calculer les indicateurs commerciaux pour l’instant.</EmptyPanel>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <Metric label="Ventes" value={String(metrics.sale_count)} />
+          <Metric label="Facturé" value={formatAmount(metrics.total_invoiced)} />
+          <Metric label="Encaissé" value={formatAmount(metrics.total_received)} />
+          <Metric label="Reste à recevoir" value={formatAmount(metrics.amount_due)} />
+        </div>
+      )}
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between gap-4">
+          <CardTitle>Ventes récentes</CardTitle>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/sales" search={{ clientId }}>Voir toutes les ventes{totalSales ? ` (${totalSales})` : ""}</Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {salesQuery.isPending ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">Chargement des ventes…</p>
+          ) : sales.length ? (
+            <ul className="space-y-2">
+              {sales.map((sale) => (
+                <li key={sale.id}>
+                  <Link
+                    to="/sales/$saleId"
+                    params={{ saleId: sale.id }}
+                    className="flex flex-col gap-2 rounded-lg border p-3 hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">{sale.sale_number}</span>
+                        <Badge variant={saleStatusVariant(sale.status)}>{saleStatusLabel(sale.status)}</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(new Date(`${sale.sale_date}T12:00:00`))}
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold">
+                      {sale.amountDue !== null && sale.amountDue > 0
+                        ? `Reste dû : ${formatAmount(sale.amountDue)}`
+                        : sale.totalInvoiced !== null
+                          ? formatAmount(sale.totalInvoiced)
+                          : "—"}
+                    </p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="py-8 text-center text-sm text-muted-foreground">Aucune vente commerciale pour ce client.</p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
