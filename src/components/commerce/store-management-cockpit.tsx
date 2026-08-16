@@ -342,6 +342,7 @@ function ControlReportDetailDialog({ reportId, locationId, onClose }: { reportId
             <DataRow label="CA total" value={money(report.totalRevenue)} />
             <DataRow label="Espèces attendues" value={money(report.cashExpected)} />
             <DataRow label="Mobile Money" value={money(report.mobileMoneyTotal)} />
+            <DataRow label="Autres moyens" value={money(report.otherPaymentTotal)} />
             <DataRow label="Reçu à ce jour" value={money(report.receivedTotal)} />
             <DataRow label="Restant" value={money(report.remainingAmount)} />
             <DataRow label="Réception finale" value={report.isFinalized ? "Oui" : "Non"} />
