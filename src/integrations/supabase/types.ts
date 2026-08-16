@@ -9426,6 +9426,28 @@ export type Database = {
         Args: { p_location_id: string }
         Returns: Json
       }
+      get_commercial_client_financial_metrics: {
+        Args: { p_client_id: string }
+        Returns: {
+          amount_due: number
+          last_payment_at: string
+          last_sale_at: string
+          metrics_available: boolean
+          sale_count: number
+          total_invoiced: number
+          total_received: number
+        }[]
+      }
+      get_commercial_client_financial_metrics_bulk: {
+        Args: { p_client_ids: string[] }
+        Returns: {
+          amount_due: number
+          client_id: string
+          sale_count: number
+          total_invoiced: number
+          total_received: number
+        }[]
+      }
       get_commercial_sale_financial_summary: {
         Args: { p_sale_id: string }
         Returns: {
