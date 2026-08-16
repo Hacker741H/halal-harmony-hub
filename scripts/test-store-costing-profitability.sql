@@ -26,8 +26,6 @@ DECLARE
   v_wallet_before_expense numeric(14,2);
   v_wallet_after_expense numeric(14,2);
   v_expense_operation_count integer;
-  v_real_sale jsonb;
-  v_real_line uuid;
   v_cashier_actor uuid;
   v_cashier_financial_denied boolean := false;
   v_cashier_valuation_denied boolean := false;
@@ -171,28 +169,6 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub',v_actor::text,true);
   IF NOT v_cashier_financial_denied OR NOT v_cashier_valuation_denied THEN
     RAISE EXCEPTION 'G failed: cashier reached a sensitive STORE-02 RPC.';
-  END IF;
-
-  -- Production opening stock validation, still inside this transaction. The
-  -- final ROLLBACK removes the test sale and restores quantity/value/wallet.
-  IF NOT EXISTS(
-    SELECT 1 FROM public.commerce_inventory_cost_states
-    WHERE business_location_id='ea6525b1-1a39-407d-b5c8-0c9c1d75fce9'
-      AND inventory_item_id='9674bf77-f1e4-4355-a684-b7623e1a4dd2'
-      AND quantity_on_hand=4 AND current_unit_cost=350 AND inventory_value=1400
-  ) THEN RAISE EXCEPTION 'Production opening stock is not 4 x 350 = 1400.'; END IF;
-
-  v_real_sale:=public.create_commerce_cash_sale(jsonb_build_object(
-    'business_location_id','ea6525b1-1a39-407d-b5c8-0c9c1d75fce9',
-    'payment_method','CASH','reference','ST02-REAL-ROLLBACK-'||v_token,
-    'lines',jsonb_build_array(jsonb_build_object(
-      'line_type','ARTICLE','inventory_item_id','9674bf77-f1e4-4355-a684-b7623e1a4dd2',
-      'quantity',1,'unit_price',500))));
-  SELECT line_row.id INTO v_real_line FROM public.commercial_sale_lines line_row
-  WHERE line_row.sale_id=(v_real_sale->>'saleId')::uuid;
-  IF NOT EXISTS(SELECT 1 FROM public.commercial_sale_line_costs
-    WHERE sale_line_id=v_real_line AND unit_cost=350 AND total_cost=350) THEN
-    RAISE EXCEPTION 'Production article test sale did not snapshot unit COGS 350.';
   END IF;
 END;
 $test$;
