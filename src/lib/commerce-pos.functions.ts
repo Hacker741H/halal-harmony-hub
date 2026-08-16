@@ -61,7 +61,7 @@ const storeCockpitProfitabilitySchema = z.object({
   operatingExpenses: z.number(),
   netResult: z.number().nullable(),
 });
-const commerceStoreCockpitSchema = z.object({
+export const commerceStoreCockpitSchema = z.object({
   period: z.object({ from: z.string(), to: z.string() }),
   access: storeCockpitAccessSchema,
   location: z.object({
@@ -107,17 +107,22 @@ const commerceStoreCockpitSchema = z.object({
     reviewRequiredCount: z.number(), unclosedSessionCount: z.number(),
     closures: z.array(z.object({
       id: z.string().uuid(), cashSessionId: z.string(), terminalId: z.string(), cashier: z.string(), openedAt: z.string(), closedAt: z.string(),
-      theoreticalCash: z.number(), countedCash: z.number(), difference: z.number(), status: z.enum(["SYNCED", "REVIEW_REQUIRED"]), totalsMatch: z.boolean(),
+      theoreticalCash: z.number(),
+      // Mission caisse: an AUTOMATIC closure (closure_kind='AUTOMATIC', no
+      // cashier declaration) never has a physical count to compare against,
+      // so counted_cash/server_difference/totals_match are NULL in the
+      // database, not merely absent -- nullable, not just optional.
+      countedCash: z.number().nullable(), difference: z.number().nullable(), status: z.enum(["SYNCED", "REVIEW_REQUIRED"]), totalsMatch: z.boolean().nullable(),
       // POS-06B: status describes offline-sync completeness only. A session
       // made of online sales can be SYNCED and still have a real cash gap --
       // this is that independent signal.
-      // Optional + derived here: the RPC only started returning this key
-      // once migration 20260814110000 lands (cash_discrepancy generated
-      // column, defined as `server_difference <> 0`). Until then, replicate
-      // that exact formula from `difference`, which the RPC always returns,
-      // instead of requiring a key that may not exist yet.
-      requiresCashReview: z.boolean().optional(),
-    })).transform((closures) => closures.map((closure) => ({ ...closure, requiresCashReview: closure.requiresCashReview ?? closure.difference !== 0 }))),
+      requiresCashReview: z.boolean().nullable().optional(),
+    })).transform((closures) => closures.map((closure) => ({
+      ...closure,
+      // null difference means "nothing to compare yet" (AUTOMATIC closure),
+      // never "a discrepancy was found" -- must not default to true.
+      requiresCashReview: closure.requiresCashReview ?? (closure.difference !== null && closure.difference !== 0),
+    }))),
   }).nullable(),
   remittances: z.array(z.object({
     id: z.string().uuid(), date: z.string(), amount: z.number(), status: z.string(), reference: z.string().nullable(), sourceWallet: z.string(), destinationWallet: z.string(),
