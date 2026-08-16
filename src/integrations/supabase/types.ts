@@ -7272,6 +7272,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      _internal_apply_commercial_sale_line_stock_exit: {
+        Args: {
+          p_business_location_id: string
+          p_client_label: string
+          p_description: string
+          p_reference: string
+          p_sale_line_id: string
+          p_wallet_id: string
+        }
+        Returns: undefined
+      }
       _internal_archive_document: {
         Args: { p_document_id: string }
         Returns: {

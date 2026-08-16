@@ -137,7 +137,7 @@ BEGIN
     v_credit_line_id uuid;
   BEGIN
     v_credit_sale := public.create_commercial_sale(jsonb_build_object(
-      'client_id', v_client_id,
+      'client_id', v_client_id, 'business_location_id', v_location_id,
       'lines', jsonb_build_array(jsonb_build_object('description', 'Vente credit test', 'quantity', 1, 'unit_price', 10000, 'inventory_item_id', v_item_id))
     ));
     PERFORM public.confirm_commercial_sale(v_credit_sale.id);
@@ -145,15 +145,18 @@ BEGIN
     PERFORM public.issue_commercial_invoice(v_credit_invoice.id);
     SELECT id INTO v_credit_line_id FROM public.commercial_sale_lines WHERE sale_id = v_credit_sale.id LIMIT 1;
 
+    -- Since Phase 5.5A, confirming an article line always requires (and
+    -- gets) a real stock exit -- this sale is properly stock-backed, so
+    -- its return needs a disposition like any other stock-backed line.
     PERFORM public.create_commerce_sale_return(jsonb_build_object('sale_id', v_credit_sale.id, 'reason', 'Test C -- retour credit non paye', 'idempotency_key', gen_random_uuid()::text,
-      'lines', jsonb_build_array(jsonb_build_object('original_sale_line_id', v_credit_line_id, 'quantity_returned', 0.2))));
+      'lines', jsonb_build_array(jsonb_build_object('original_sale_line_id', v_credit_line_id, 'quantity_returned', 0.2, 'disposition', 'RESTOCK'))));
 
     SELECT * INTO v_summary FROM public.get_commercial_sale_financial_summary(v_credit_sale.id);
     IF v_summary.amount_due <> 8000 OR v_summary.refundable_credit <> 0 THEN
       RAISE EXCEPTION 'STEP_C_FAILED: expected due=8000/refundable=0, got due=%/refundable=%', v_summary.amount_due, v_summary.refundable_credit;
     END IF;
   END;
-  RAISE NOTICE 'STEP_C_PASSED: unpaid credit sale return correctly stock-blind, créance net 8000, zero refundable.';
+  RAISE NOTICE 'STEP_C_PASSED: unpaid credit sale return, now correctly stock-backed since Phase 5.5A, créance net 8000, zero refundable.';
 
   ------------------------------------------------------------------
   -- D+E. Deja paye : vente 10000 payee -> retour 2000 -> credit 2000,
@@ -170,7 +173,7 @@ BEGIN
     v_key text;
   BEGIN
     v_paid_sale := public.create_commercial_sale(jsonb_build_object(
-      'client_id', v_client_id,
+      'client_id', v_client_id, 'business_location_id', v_location_id,
       'lines', jsonb_build_array(jsonb_build_object('description', 'Vente payee test', 'quantity', 1, 'unit_price', 10000, 'inventory_item_id', v_item_id))
     ));
     PERFORM public.confirm_commercial_sale(v_paid_sale.id);
@@ -184,7 +187,7 @@ BEGIN
     PERFORM public.confirm_commercial_invoice_payment(v_payment.id);
 
     PERFORM public.create_commerce_sale_return(jsonb_build_object('sale_id', v_paid_sale.id, 'reason', 'Test D -- retour vente payee', 'idempotency_key', gen_random_uuid()::text,
-      'lines', jsonb_build_array(jsonb_build_object('original_sale_line_id', v_paid_line_id, 'quantity_returned', 0.2))));
+      'lines', jsonb_build_array(jsonb_build_object('original_sale_line_id', v_paid_line_id, 'quantity_returned', 0.2, 'disposition', 'RESTOCK'))));
 
     SELECT * INTO v_summary FROM public.get_commercial_sale_financial_summary(v_paid_sale.id);
     IF v_summary.amount_due <> 0 OR v_summary.refundable_credit <> 2000 THEN
@@ -205,9 +208,9 @@ BEGIN
     -- Retry: create with the SAME idempotency key must not duplicate the return.
     v_key := gen_random_uuid()::text;
     PERFORM public.create_commerce_sale_return(jsonb_build_object('sale_id', v_paid_sale.id, 'reason', 'Test K -- retry', 'idempotency_key', v_key,
-      'lines', jsonb_build_array(jsonb_build_object('original_sale_line_id', v_paid_line_id, 'quantity_returned', 0.1))));
+      'lines', jsonb_build_array(jsonb_build_object('original_sale_line_id', v_paid_line_id, 'quantity_returned', 0.1, 'disposition', 'RESTOCK'))));
     PERFORM public.create_commerce_sale_return(jsonb_build_object('sale_id', v_paid_sale.id, 'reason', 'Test K -- retry', 'idempotency_key', v_key,
-      'lines', jsonb_build_array(jsonb_build_object('original_sale_line_id', v_paid_line_id, 'quantity_returned', 0.1))));
+      'lines', jsonb_build_array(jsonb_build_object('original_sale_line_id', v_paid_line_id, 'quantity_returned', 0.1, 'disposition', 'RESTOCK'))));
     IF (SELECT count(*) FROM public.commerce_sale_returns WHERE sale_id = v_paid_sale.id AND idempotency_key = v_key) <> 1 THEN
       RAISE EXCEPTION 'STEP_K_FAILED: retrying create_commerce_sale_return with the same idempotency key must not duplicate.';
     END IF;
