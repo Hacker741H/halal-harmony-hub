@@ -1257,6 +1257,213 @@ export type Database = {
           },
         ]
       }
+      commerce_sale_refunds: {
+        Row: {
+          amount: number
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          confirmed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          reference: string | null
+          refund_date: string
+          refund_number: string
+          sale_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          wallet_id: string
+        }
+        Insert: {
+          amount: number
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          reference?: string | null
+          refund_date?: string
+          refund_number: string
+          sale_id: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          wallet_id: string
+        }
+        Update: {
+          amount?: number
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          reference?: string | null
+          refund_date?: string
+          refund_number?: string
+          sale_id?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_sale_refunds_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_sale_refunds_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "finance_wallet_reconciliation"
+            referencedColumns: ["wallet_id"]
+          },
+          {
+            foreignKeyName: "commerce_sale_refunds_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_sale_return_lines: {
+        Row: {
+          created_at: string
+          disposition: string | null
+          historical_unit_cost: number | null
+          historical_unit_sale_price: number
+          id: string
+          original_sale_line_id: string
+          quantity_returned: number
+          return_id: string
+          stock_movement_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          disposition?: string | null
+          historical_unit_cost?: number | null
+          historical_unit_sale_price: number
+          id?: string
+          original_sale_line_id: string
+          quantity_returned: number
+          return_id: string
+          stock_movement_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          disposition?: string | null
+          historical_unit_cost?: number | null
+          historical_unit_sale_price?: number
+          id?: string
+          original_sale_line_id?: string
+          quantity_returned?: number
+          return_id?: string
+          stock_movement_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_sale_return_lines_original_sale_line_id_fkey"
+            columns: ["original_sale_line_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_sale_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_sale_return_lines_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_sale_returns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_sale_return_lines_stock_movement_id_fkey"
+            columns: ["stock_movement_id"]
+            isOneToOne: false
+            referencedRelation: "stock_movements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_sale_returns: {
+        Row: {
+          business_location_id: string | null
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          idempotency_key: string
+          reason: string
+          return_date: string
+          return_number: string
+          sale_id: string
+          status: string
+          updated_at: string
+          validated_by: string | null
+        }
+        Insert: {
+          business_location_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          idempotency_key: string
+          reason: string
+          return_date?: string
+          return_number: string
+          sale_id: string
+          status?: string
+          updated_at?: string
+          validated_by?: string | null
+        }
+        Update: {
+          business_location_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          idempotency_key?: string
+          reason?: string
+          return_date?: string
+          return_number?: string
+          sale_id?: string
+          status?: string
+          updated_at?: string
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_sale_returns_business_location_id_fkey"
+            columns: ["business_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_sale_returns_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "transport_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_sale_returns_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commerce_stock_transfer_lines: {
         Row: {
           created_at: string
@@ -3506,6 +3713,42 @@ export type Database = {
             columns: ["payment_id"]
             isOneToOne: false
             referencedRelation: "commercial_invoice_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_commercial_refund_links: {
+        Row: {
+          created_at: string
+          link_type: string
+          operation_id: string
+          refund_id: string
+        }
+        Insert: {
+          created_at?: string
+          link_type?: string
+          operation_id: string
+          refund_id: string
+        }
+        Update: {
+          created_at?: string
+          link_type?: string
+          operation_id?: string
+          refund_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_commercial_refund_links_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "finance_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_commercial_refund_links_refund_id_fkey"
+            columns: ["refund_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_sale_refunds"
             referencedColumns: ["id"]
           },
         ]
@@ -7171,6 +7414,10 @@ export type Database = {
           ticket_count: number
         }[]
       }
+      _internal_commerce_sale_refundable_credit: {
+        Args: { p_sale_id: string }
+        Returns: number
+      }
       _internal_confirm_commercial_invoice_payment: {
         Args: { p_actor_id?: string; p_payment_id: string }
         Returns: {
@@ -7623,6 +7870,14 @@ export type Database = {
         Returns: string
       }
       _internal_next_commerce_purchase_number: { Args: never; Returns: string }
+      _internal_next_commerce_sale_refund_number: {
+        Args: never
+        Returns: string
+      }
+      _internal_next_commerce_sale_return_number: {
+        Args: never
+        Returns: string
+      }
       _internal_next_commerce_stock_transfer_number: {
         Args: never
         Returns: string
@@ -8312,6 +8567,33 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      cancel_commerce_sale_refund: {
+        Args: { p_reason: string; p_refund_id: string }
+        Returns: {
+          amount: number
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          confirmed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          reference: string | null
+          refund_date: string
+          refund_number: string
+          sale_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          wallet_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_sale_refunds"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       cancel_commerce_stock_transfer: {
         Args: { p_reason: string; p_transfer_id: string }
         Returns: {
@@ -8703,6 +8985,33 @@ export type Database = {
             }
             Returns: Json
           }
+      confirm_commerce_sale_refund: {
+        Args: { p_refund_id: string }
+        Returns: {
+          amount: number
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          confirmed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          reference: string | null
+          refund_date: string
+          refund_number: string
+          sale_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          wallet_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_sale_refunds"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       confirm_commerce_store_expense: {
         Args: { p_expense_id: string; p_wallet_id: string }
         Returns: {
@@ -9180,6 +9489,57 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "commerce_purchases"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_commerce_sale_refund: {
+        Args: { p_refund: Json; p_sale_id: string }
+        Returns: {
+          amount: number
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          confirmed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          reference: string | null
+          refund_date: string
+          refund_number: string
+          sale_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          wallet_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_sale_refunds"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_commerce_sale_return: {
+        Args: { p_return: Json }
+        Returns: {
+          business_location_id: string | null
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          idempotency_key: string
+          reason: string
+          return_date: string
+          return_number: string
+          sale_id: string
+          status: string
+          updated_at: string
+          validated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commerce_sale_returns"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -10354,10 +10714,12 @@ export type Database = {
         Returns: {
           amount_due: number
           invoice_status: string
+          refundable_credit: number
           subtotal_amount: number
           tax_amount: number
           total_invoiced: number
           total_received: number
+          total_returned: number
         }[]
       }
       get_document_audit_history: {
