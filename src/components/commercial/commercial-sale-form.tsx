@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -6,7 +7,9 @@ import { ClientSelect, FarmSelect } from "@/components/selects/entity-selects";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { getCommercePosLocations } from "@/lib/commerce-pos.functions";
 import {
   createCommercialSale,
   updateCommercialSale,
@@ -14,6 +17,7 @@ import {
   type CommercialSaleLine,
   type CommercialSaleValues,
 } from "@/lib/commercial-sales.functions";
+import { getStocks } from "@/lib/stocks.functions";
 
 type LineForm = {
   key: string;
@@ -21,6 +25,7 @@ type LineForm = {
   quantity: string;
   unit: string;
   unitPrice: string;
+  inventoryItemId: string;
 };
 
 function today() {
@@ -34,11 +39,12 @@ function lineFromValues(line: CommercialSaleLine, index: number): LineForm {
     quantity: String(line.quantity),
     unit: line.unit,
     unitPrice: String(line.unit_price),
+    inventoryItemId: line.inventory_item_id ?? "",
   };
 }
 
 function emptyLine(index: number): LineForm {
-  return { key: `line-${index}`, description: "", quantity: "1", unit: "UNITE", unitPrice: "" };
+  return { key: `line-${index}`, description: "", quantity: "1", unit: "UNITE", unitPrice: "", inventoryItemId: "" };
 }
 
 function toNullable(value: string) {
@@ -56,6 +62,7 @@ export function CommercialSaleForm({
   onSuccess: (saleId: string) => void;
 }) {
   const [clientId, setClientId] = useState(sale?.client_id ?? "");
+  const [businessLocationId, setBusinessLocationId] = useState(sale?.business_location_id ?? "");
   const [saleDate, setSaleDate] = useState(sale?.sale_date ?? today());
   const [reference, setReference] = useState(sale?.reference ?? "");
   const [notes, setNotes] = useState(sale?.notes ?? "");
@@ -67,8 +74,23 @@ export function CommercialSaleForm({
   );
   const [submitting, setSubmitting] = useState(false);
 
+  const locationsQuery = useQuery({ queryKey: ["commerce-pos-locations"], queryFn: () => getCommercePosLocations() });
+  const itemsQuery = useQuery({ queryKey: ["stocks"], queryFn: () => getStocks() });
+  const items = itemsQuery.data ?? [];
+  const hasStockLine = lines.some((line) => line.inventoryItemId);
+
   function updateLine(key: string, field: keyof Omit<LineForm, "key">, value: string) {
     setLines((current) => current.map((line) => line.key === key ? { ...line, [field]: value } : line));
+  }
+
+  function selectLineItem(key: string, itemId: string) {
+    const item = items.find((entry) => entry.id === itemId);
+    setLines((current) => current.map((line) => line.key === key ? {
+      ...line,
+      inventoryItemId: itemId,
+      description: item ? item.nom : line.description,
+      unit: item?.unite ?? line.unit,
+    } : line));
   }
 
   function addLine() {
@@ -91,6 +113,7 @@ export function CommercialSaleForm({
     const values: CommercialSaleValues = {
       client_id: clientId,
       farm_id: linkFarm && farmId ? farmId : null,
+      business_location_id: businessLocationId || null,
       sale_date: saleDate,
       reference: toNullable(reference),
       notes: toNullable(notes),
@@ -99,7 +122,7 @@ export function CommercialSaleForm({
         quantity: Number(line.quantity),
         unit: line.unit,
         unit_price: Number(line.unitPrice),
-        inventory_item_id: null,
+        inventory_item_id: line.inventoryItemId || null,
         harvest_id: null,
         farm_id: linkFarm && farmId ? farmId : null,
       })),
@@ -111,6 +134,10 @@ export function CommercialSaleForm({
     }
     if (!saleDate) {
       toast.error("Indiquez la date de vente.");
+      return;
+    }
+    if (hasStockLine && !businessLocationId) {
+      toast.error("Un magasin est requis dès qu’une ligne référence un article de stock.");
       return;
     }
 
@@ -143,6 +170,14 @@ export function CommercialSaleForm({
           <Label htmlFor="commercial-sale-reference">Référence</Label>
           <Input id="commercial-sale-reference" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Bon, commande, référence…" disabled={submitting} />
         </div>
+        <div className="space-y-2 sm:col-span-2">
+          <Label>Magasin {hasStockLine ? <span className="text-destructive">*</span> : null}</Label>
+          <Select value={businessLocationId} onValueChange={setBusinessLocationId} disabled={submitting}>
+            <SelectTrigger><SelectValue placeholder="Sélectionner un magasin" /></SelectTrigger>
+            <SelectContent>{(locationsQuery.data ?? []).map((location) => <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>)}</SelectContent>
+          </Select>
+          <p className="text-caption text-muted-foreground">Obligatoire dès qu’une ligne référence un article de stock : la confirmation en dépend pour sortir la quantité vendue du bon magasin.</p>
+        </div>
       </div>
 
       <div className="rounded-xl border border-border/75 bg-surface-sunken/40 p-4">
@@ -170,12 +205,21 @@ export function CommercialSaleForm({
             </div>
             {lines.map((line) => {
               const total = Number(line.quantity) * Number(line.unitPrice);
-              return <div key={line.key} className="grid grid-cols-[minmax(14rem,1.8fr)_100px_110px_130px_110px_40px] items-center gap-3 px-3 py-3">
-                <Input value={line.description} onChange={(event) => updateLine(line.key, "description", event.target.value)} placeholder="Produit ou prestation" disabled={submitting} />
+              return <div key={line.key} className="grid grid-cols-[minmax(14rem,1.8fr)_100px_110px_130px_110px_40px] items-start gap-3 px-3 py-3">
+                <div className="space-y-1.5">
+                  <Select value={line.inventoryItemId || "NONE"} onValueChange={(value) => selectLineItem(line.key, value === "NONE" ? "" : value)} disabled={submitting}>
+                    <SelectTrigger className="h-8 text-caption"><SelectValue placeholder="Article de stock (optionnel)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NONE">Sans article de stock</SelectItem>
+                      {items.map((item) => <SelectItem key={item.id} value={item.id}>{item.nom}{item.sku ? ` (${item.sku})` : ""}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Input value={line.description} onChange={(event) => updateLine(line.key, "description", event.target.value)} placeholder="Produit ou prestation" disabled={submitting} />
+                </div>
                 <Input type="number" min="0.001" step="0.001" value={line.quantity} onChange={(event) => updateLine(line.key, "quantity", event.target.value)} aria-label="Quantité" disabled={submitting} />
                 <Input value={line.unit} onChange={(event) => updateLine(line.key, "unit", event.target.value)} aria-label="Unité" disabled={submitting} />
                 <Input type="number" min="0" step="0.01" value={line.unitPrice} onChange={(event) => updateLine(line.key, "unitPrice", event.target.value)} aria-label="Prix unitaire" disabled={submitting} />
-                <p className="truncate text-body-sm font-semibold tabular-nums text-foreground" title={`${Number.isFinite(total) ? total.toLocaleString("fr-FR") : 0} FCFA`}>{Number.isFinite(total) ? total.toLocaleString("fr-FR") : "0"} FCFA</p>
+                <p className="truncate pt-2 text-body-sm font-semibold tabular-nums text-foreground" title={`${Number.isFinite(total) ? total.toLocaleString("fr-FR") : 0} FCFA`}>{Number.isFinite(total) ? total.toLocaleString("fr-FR") : "0"} FCFA</p>
                 <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeLine(line.key)} disabled={submitting || lines.length === 1} aria-label="Retirer cette ligne"><Minus className="size-4" /></Button>
               </div>;
             })}

@@ -79,6 +79,7 @@ export const commercialSaleValuesSchema = z
   .object({
     client_id: idSchema,
     farm_id: idSchema.nullable(),
+    business_location_id: idSchema.nullable(),
     sale_date: z.string().date(),
     reference: z.string().trim().max(255).nullable(),
     notes: nullableText,
@@ -128,6 +129,7 @@ function commercialSalePayload(values: CommercialSaleValues): Json {
   return {
     client_id: values.client_id,
     farm_id: values.farm_id,
+    business_location_id: values.business_location_id,
     sale_date: values.sale_date,
     reference: values.reference,
     notes: values.notes,
