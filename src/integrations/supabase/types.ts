@@ -10755,6 +10755,36 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_global_control_center: {
+        Args: {
+          p_business_location_id?: string
+          p_from?: string
+          p_module?: string
+          p_page?: number
+          p_page_size?: number
+          p_severity?: string
+          p_status?: string
+          p_to?: string
+        }
+        Returns: {
+          action_label: string
+          action_route: string
+          actor: string
+          amount: number
+          business_location_id: string
+          description: string
+          item_id: string
+          metadata: Json
+          occurred_at: string
+          severity: string
+          source_id: string
+          source_module: string
+          source_type: string
+          status: string
+          title: string
+          total_count: number
+        }[]
+      }
       get_management_report: {
         Args: { p_filters?: Json; p_report_type: string }
         Returns: Json
