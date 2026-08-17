@@ -1,7 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Activity,
   ArrowLeftRight,
   BarChart3,
   Bell,
@@ -103,14 +102,13 @@ const navigationGroups: readonly NavigationGroup[] = [
     label: "Pilotage",
     items: [
       { title: "Centre de pilotage", url: "/", icon: LayoutDashboard },
-      { title: "Activité", url: "/finance", icon: Activity },
       { title: "Alertes", url: "/notifications", icon: Bell },
     ],
   },
   {
     label: "Ressources",
     items: [
-      { title: "Clients", url: "/clients", icon: Building2 },
+      { title: "Clients", url: "/clients", icon: Building2, permission: "clients.read" },
       { title: "Employés", url: "/employees", icon: Users },
       { title: "Chauffeurs", url: "/drivers", icon: UserCog },
     ],
@@ -144,7 +142,7 @@ const navigationGroups: readonly NavigationGroup[] = [
       { title: "Achats & dettes", url: "/purchases", icon: ShoppingCart, permission: "purchases.read" },
       { title: "Inventaires", url: "/inventory-counts", icon: ClipboardList, permission: "inventory.counts.read" },
       { title: "Transferts", url: "/stock-transfers", icon: ArrowLeftRight, permission: "transfers.read" },
-      { title: "Stocks", url: "/stocks", icon: Package },
+      { title: "Stocks", url: "/stocks", icon: Package, permission: "stocks.read" },
     ],
   },
   {
@@ -157,8 +155,8 @@ const navigationGroups: readonly NavigationGroup[] = [
   {
     label: "Finance",
     items: [
-      { title: "Wallets", url: "/wallets", icon: Wallet },
-      { title: "Finance", url: "/finance", icon: Wallet },
+      { title: "Wallets", url: "/wallets", icon: Wallet, permission: "wallets.read" },
+      { title: "Finance", url: "/finance", icon: Wallet, permission: "finance.read" },
       { title: "Revenus", url: "/revenues", icon: TrendingUp },
       { title: "Dépenses", url: "/expenses", icon: TrendingDown },
       { title: "Paiements", url: "/payments", icon: CreditCard },

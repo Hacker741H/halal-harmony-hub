@@ -81,8 +81,8 @@ function SalesPage() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <HeroKpi icon={FileText} label="Brouillons" value={summaryUnavailable ? null : String(overview.drafts)} detail="Ventes à compléter" tone="info" />
         <HeroKpi icon={ReceiptText} label="Ventes confirmées" value={summaryUnavailable ? null : String(overview.confirmed)} detail="Sur la page affichée" tone="success" />
-        <HeroKpi icon={CircleDollarSign} label="Facturé" value={summaryUnavailable || !canReadFinance ? null : formatAmount(overview.invoiced)} detail={canReadFinance ? "Factures non annulées" : "Accès financier requis"} tone="warning" />
-        <HeroKpi icon={Landmark} label="Reste à encaisser" value={summaryUnavailable || !canReadFinance ? null : formatAmount(overview.due)} detail={canReadFinance ? "Solde client restant" : "Accès financier requis"} tone="danger" />
+        <HeroKpi icon={CircleDollarSign} label="Facturé" value={summaryUnavailable || !canReadFinance ? null : formatAmount(overview.invoiced)} detail={canReadFinance ? "Sur la page affichée" : "Accès financier requis"} tone="warning" />
+        <HeroKpi icon={Landmark} label="Reste à encaisser" value={summaryUnavailable || !canReadFinance ? null : formatAmount(overview.due)} detail={canReadFinance ? "Sur la page affichée" : "Accès financier requis"} tone="danger" />
       </div>
     </ModuleHero>
 

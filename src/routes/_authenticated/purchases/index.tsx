@@ -72,7 +72,7 @@ function PurchasesPage() {
       <div className="grid gap-3 sm:grid-cols-3">
         <HeroKpi icon={ShoppingCart} label="Achats réceptionnés" value={summaryUnavailable ? null : String(overview.received)} detail="Sur la page affichée" />
         <HeroKpi icon={CircleDollarSign} label="Total acheté" value={summaryUnavailable || !canReadFinance ? null : formatAmount(overview.total)} detail={canReadFinance ? "Sur la page affichée" : "Accès financier requis"} />
-        <HeroKpi icon={Landmark} label="Reste dû" value={summaryUnavailable || !canReadFinance ? null : formatAmount(overview.due)} detail={canReadFinance ? "Dette fournisseurs restante" : "Accès financier requis"} />
+        <HeroKpi icon={Landmark} label="Reste dû" value={summaryUnavailable || !canReadFinance ? null : formatAmount(overview.due)} detail={canReadFinance ? "Sur la page affichée" : "Accès financier requis"} />
       </div>
     </ModuleHero>
 
@@ -97,7 +97,8 @@ function PurchasesPage() {
               {purchasesQuery.isPending ? Array.from({ length: 5 }).map((_, index) => (
                 <TableRow key={index}><TableCell colSpan={5}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
               )) : null}
-              {!purchasesQuery.isPending && purchases.length === 0 ? <TableRow><TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">Aucun achat ne correspond aux critères actuels.</TableCell></TableRow> : null}
+              {purchasesQuery.isError ? <TableRow><TableCell colSpan={5} className="py-10 text-center text-sm text-destructive">Impossible de charger les achats. Réessayez dans un instant.</TableCell></TableRow> : null}
+              {!purchasesQuery.isPending && !purchasesQuery.isError && purchases.length === 0 ? <TableRow><TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">Aucun achat ne correspond aux critères actuels.</TableCell></TableRow> : null}
               {purchases.map((purchase) => (
                 <TableRow key={purchase.id}>
                   <TableCell><Link to="/purchases/$purchaseId" params={{ purchaseId: purchase.id }} className="font-medium hover:underline">{purchase.purchase_number}</Link>{purchase.reference ? <p className="text-xs text-muted-foreground">{purchase.reference}</p> : null}</TableCell>

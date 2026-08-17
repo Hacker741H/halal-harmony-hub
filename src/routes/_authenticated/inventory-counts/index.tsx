@@ -100,7 +100,8 @@ function InventoryCountsPage() {
               {countsQuery.isPending ? Array.from({ length: 5 }).map((_, index) => (
                 <TableRow key={index}><TableCell colSpan={4}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
               )) : null}
-              {!countsQuery.isPending && counts.length === 0 ? <TableRow><TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">Aucun inventaire ne correspond aux critères actuels.</TableCell></TableRow> : null}
+              {countsQuery.isError ? <TableRow><TableCell colSpan={4} className="py-10 text-center text-sm text-destructive">Impossible de charger les inventaires. Réessayez dans un instant.</TableCell></TableRow> : null}
+              {!countsQuery.isPending && !countsQuery.isError && counts.length === 0 ? <TableRow><TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">Aucun inventaire ne correspond aux critères actuels.</TableCell></TableRow> : null}
               {counts.map((count) => (
                 <TableRow key={count.id}>
                   <TableCell><Link to="/inventory-counts/$countId" params={{ countId: count.id }} className="font-medium hover:underline">{count.count_number}</Link></TableCell>

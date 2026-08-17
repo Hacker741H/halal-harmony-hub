@@ -94,7 +94,8 @@ function StockTransfersPage() {
               {transfersQuery.isPending ? Array.from({ length: 5 }).map((_, index) => (
                 <TableRow key={index}><TableCell colSpan={5}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
               )) : null}
-              {!transfersQuery.isPending && transfers.length === 0 ? <TableRow><TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">Aucun transfert ne correspond aux critères actuels.</TableCell></TableRow> : null}
+              {transfersQuery.isError ? <TableRow><TableCell colSpan={5} className="py-10 text-center text-sm text-destructive">Impossible de charger les transferts. Réessayez dans un instant.</TableCell></TableRow> : null}
+              {!transfersQuery.isPending && !transfersQuery.isError && transfers.length === 0 ? <TableRow><TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">Aucun transfert ne correspond aux critères actuels.</TableCell></TableRow> : null}
               {transfers.map((transfer) => (
                 <TableRow key={transfer.id}>
                   <TableCell><Link to="/stock-transfers/$transferId" params={{ transferId: transfer.id }} className="font-medium hover:underline">{transfer.transfer_number}</Link></TableCell>
