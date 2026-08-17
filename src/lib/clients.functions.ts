@@ -37,6 +37,7 @@ export type CommercialClientFinancialMetrics = {
   sale_count: number;
   total_invoiced: number;
   total_received: number;
+  total_returned: number;
   amount_due: number;
   last_sale_at: string | null;
   last_payment_at: string | null;
@@ -47,6 +48,7 @@ export type CommercialClientFinancialMetricsBulkEntry = {
   sale_count: number;
   total_invoiced: number;
   total_received: number;
+  total_returned: number;
   amount_due: number;
 };
 
@@ -285,6 +287,7 @@ export const getCommercialClientFinancialMetrics = createServerFn({ method: "GET
       sale_count: 0,
       total_invoiced: 0,
       total_received: 0,
+      total_returned: 0,
       amount_due: 0,
       last_sale_at: null,
       last_payment_at: null,

@@ -158,10 +158,11 @@ function CommercialActivityPanel({
       ) : !metrics ? (
         <EmptyPanel>Impossible de calculer les indicateurs commerciaux pour l’instant.</EmptyPanel>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <Metric label="Ventes" value={String(metrics.sale_count)} />
           <Metric label="Facturé" value={formatAmount(metrics.total_invoiced)} />
           <Metric label="Encaissé" value={formatAmount(metrics.total_received)} />
+          <Metric label="Retourné" value={formatAmount(metrics.total_returned)} />
           <Metric label="Reste à recevoir" value={formatAmount(metrics.amount_due)} />
         </div>
       )}

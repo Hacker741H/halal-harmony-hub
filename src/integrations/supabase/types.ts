@@ -10708,6 +10708,7 @@ export type Database = {
           sale_count: number
           total_invoiced: number
           total_received: number
+          total_returned: number
         }[]
       }
       get_commercial_client_financial_metrics_bulk: {
@@ -10718,6 +10719,7 @@ export type Database = {
           sale_count: number
           total_invoiced: number
           total_received: number
+          total_returned: number
         }[]
       }
       get_commercial_sale_financial_summary: {
