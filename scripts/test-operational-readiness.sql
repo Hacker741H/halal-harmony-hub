@@ -42,9 +42,14 @@ BEGIN
     'telephone', '+225 07 ' || substr(v_suffix, 1, 6),
     'email', 'or01-' || lower(v_suffix) || '@example.test'
   ));
+  -- create_transport_mission stopped reading quoted_amount when
+  -- 20260813143000_add_real_course_pricing_and_simplify_workflow.sql moved
+  -- pricing to pricing_mode/actual_transport_amount; create_transport_invoice
+  -- now requires actual_transport_amount to be set before it will invoice.
   v_course := public.create_transport_mission(jsonb_build_object(
     'client_id', v_client.id,
-    'quoted_amount', 10000
+    'pricing_mode', 'FLAT',
+    'actual_transport_amount', 10000
   ));
 
   v_expense := public.create_transport_mission_expense(v_course.id, jsonb_build_object(

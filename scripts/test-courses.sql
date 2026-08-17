@@ -105,7 +105,12 @@ BEGIN
   IF EXISTS (SELECT 1 FROM public.transport_missions WHERE id=v_planned_deletion_course.id) THEN
     RAISE EXCEPTION 'A planned Course without dependencies must be deleted through its dedicated RPC';
   END IF;
-  v_course := public.create_transport_mission(jsonb_build_object('client_id',v_client.id,'vehicle_id',v_vehicle_id,'driver_id',v_driver_id,'departure_location','Abidjan','destination_location','Bouaké','cargo_description','Marchandise de test','planned_departure_at',v_departure_at,'planned_arrival_at',v_arrival_at,'quoted_amount',100000));
+  -- create_transport_mission stopped reading quoted_amount when
+  -- 20260813143000_add_real_course_pricing_and_simplify_workflow.sql moved
+  -- pricing to pricing_mode/actual_transport_amount; create_transport_invoice
+  -- (below, once expenses/budget are exercised) now requires
+  -- actual_transport_amount to be set before it will invoice.
+  v_course := public.create_transport_mission(jsonb_build_object('client_id',v_client.id,'vehicle_id',v_vehicle_id,'driver_id',v_driver_id,'departure_location','Abidjan','destination_location','Bouaké','cargo_description','Marchandise de test','planned_departure_at',v_departure_at,'planned_arrival_at',v_arrival_at,'pricing_mode','FLAT','actual_transport_amount',100000));
   IF v_course.status <> 'DRAFT' OR v_course.mission_number IS NULL THEN RAISE EXCEPTION 'Course creation failed'; END IF;
   v_course := public.set_transport_mission_status(v_course.id,'PLANNED',null);
   BEGIN

@@ -73,9 +73,14 @@ BEGIN
     'telephone', '+225 07 ' || substr(v_suffix, 1, 6),
     'email', 'jeko-' || lower(v_suffix) || '@example.test'
   ));
+  -- create_transport_mission stopped reading quoted_amount when
+  -- 20260813143000_add_real_course_pricing_and_simplify_workflow.sql moved
+  -- pricing to pricing_mode/actual_transport_amount; create_transport_invoice
+  -- now requires actual_transport_amount to be set before it will invoice.
   v_mission := public.create_transport_mission(jsonb_build_object(
     'client_id', v_client.id,
-    'quoted_amount', v_invoice_amount
+    'pricing_mode', 'FLAT',
+    'actual_transport_amount', v_invoice_amount
   ));
   v_invoice := public.create_transport_invoice(v_mission.id, jsonb_build_object(
     'subtotal_amount', v_invoice_amount,
@@ -188,7 +193,7 @@ BEGIN
   END IF;
 
   -- Create a second issued invoice for amount/currency mismatch and retry checks.
-  v_mission := public.create_transport_mission(jsonb_build_object('client_id', v_client.id, 'quoted_amount', 10000));
+  v_mission := public.create_transport_mission(jsonb_build_object('client_id', v_client.id, 'pricing_mode', 'FLAT', 'actual_transport_amount', 10000));
   v_invoice := public.create_transport_invoice(v_mission.id, jsonb_build_object('subtotal_amount', 10000, 'tax_rate', 0));
   v_invoice := public.issue_transport_invoice(v_invoice.id);
   v_request := public.register_jeko_payment_request(jsonb_build_object(
