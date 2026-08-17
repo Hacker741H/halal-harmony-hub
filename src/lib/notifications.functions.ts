@@ -66,10 +66,6 @@ export interface NotificationSummary {
   overdueMaintenance: number;
 }
 
-function activeNotification(status: string): boolean {
-  return status === "UNREAD" || status === "READ" || status === "SNOOZED";
-}
-
 function isoDateAfter(days: number): string {
   const date = new Date();
   date.setDate(date.getDate() + days);
@@ -108,40 +104,21 @@ export const getNotifications = createServerFn({ method: "GET" })
 export const getNotificationSummary = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<NotificationSummary> => {
-    const [notificationsResult, permissionCodes] = await Promise.all([
-      context.supabase.from("notifications").select("status, severity, type, due_date"),
+    const [summaryResult, permissionCodes] = await Promise.all([
+      context.supabase.rpc("get_notification_summary_counts").single(),
       getPermissionCodesForClient(context.supabase),
     ]);
-    if (notificationsResult.error) throw notificationsResult.error;
-
-    const notifications = notificationsResult.data ?? [];
-    const today = new Date().toISOString().slice(0, 10);
-    const sevenDays = isoDateAfter(7);
-    const thirtyDays = isoDateAfter(30);
-    const active = notifications.filter((notification) => activeNotification(notification.status));
+    if (summaryResult.error) throw summaryResult.error;
+    const counts = summaryResult.data;
 
     return {
       canGenerate: permissionCodes.includes("notifications.manage"),
-      unread: active.filter((notification) => notification.status === "UNREAD").length,
-      critical: active.filter((notification) => notification.severity === "CRITICAL").length,
-      dueInSevenDays: active.filter(
-        (notification) =>
-          notification.due_date !== null &&
-          notification.due_date >= today &&
-          notification.due_date <= sevenDays,
-      ).length,
-      dueInThirtyDays: active.filter(
-        (notification) =>
-          notification.due_date !== null &&
-          notification.due_date >= today &&
-          notification.due_date <= thirtyDays,
-      ).length,
-      lowStock: active.filter((notification) => notification.type === "LOW_STOCK").length,
-      overdueMaintenance: active.filter(
-        (notification) =>
-          (notification.type ?? "").startsWith("MOTORCYCLE_MAINTENANCE") &&
-          (notification.due_date === null || notification.due_date < today),
-      ).length,
+      unread: Number(counts.unread),
+      critical: Number(counts.critical),
+      dueInSevenDays: Number(counts.due_in_seven_days),
+      dueInThirtyDays: Number(counts.due_in_thirty_days),
+      lowStock: Number(counts.low_stock),
+      overdueMaintenance: Number(counts.overdue_maintenance),
     };
   });
 

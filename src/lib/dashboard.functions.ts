@@ -106,7 +106,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       docsExp,
       recentFinanceOperations,
       wallets,
-      notifications,
+      notificationSummary,
       courseRows,
     ] = await Promise.all([
       supabase
@@ -149,13 +149,12 @@ export const getDashboardStats = createServerFn({ method: "GET" })
         .select("id, name, type, balance, color")
         .order("is_default", { ascending: false })
         .order("name", { ascending: true }),
-      supabase
-        .from("notifications")
-        .select("status, severity, type, due_date")
-        .in("status", ["UNREAD", "READ", "SNOOZED"]),
+      supabase.rpc("get_notification_summary_counts").single(),
       supabase
         .from("transport_missions")
-        .select("id, status, client_id, vehicle_id, driver_id, planned_arrival_at, actual_transport_amount"),
+        .select("id, status, client_id, vehicle_id, driver_id, planned_arrival_at, actual_transport_amount")
+        .order("created_at", { ascending: false })
+        .limit(500),
     ]);
 
     const sum = (rows: { amount: number | string | null }[] | null | undefined) =>
@@ -180,10 +179,8 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       .sort((a, b) => (b.at ?? "").localeCompare(a.at ?? ""))
       .slice(0, 8);
 
-    const todayIso = iso(today);
-    const in7 = new Date(today);
-    in7.setDate(in7.getDate() + 7);
-    const notificationsActives = notifications.data ?? [];
+    if (notificationSummary.error) throw notificationSummary.error;
+    const notificationCounts = notificationSummary.data;
     const courses = courseRows.data ?? [];
     const activeCourses = courses.filter((course) => course.status === "PLANNED" || course.status === "IN_PROGRESS");
     const completedCourses = courses.filter((course) => course.status === "COMPLETED" || course.status === "CLOSED");
@@ -212,25 +209,11 @@ export const getDashboardStats = createServerFn({ method: "GET" })
     const vehicleLabels = new Map((courseVehicles?.data ?? []).map((vehicle) => [vehicle.id, vehicle.registration]));
     const driverLabels = new Map((courseDrivers?.data ?? []).map((driver) => [driver.id, [driver.employees?.nom, driver.employees?.prenom].filter(Boolean).join(" ") || "Chauffeur"]));
     const alertesERP = {
-      critiques: notificationsActives.filter((notification) => notification.severity === "CRITICAL").length,
-      echeances7Jours: notificationsActives.filter(
-        (notification) =>
-          notification.due_date !== null &&
-          notification.due_date >= todayIso &&
-          notification.due_date <= iso(in7),
-      ).length,
-      echeances30Jours: notificationsActives.filter(
-        (notification) =>
-          notification.due_date !== null &&
-          notification.due_date >= todayIso &&
-          notification.due_date <= iso(in30),
-      ).length,
-      stocksFaibles: notificationsActives.filter((notification) => notification.type === "LOW_STOCK").length,
-      entretiensEnRetard: notificationsActives.filter(
-        (notification) =>
-          (notification.type ?? "").startsWith("MOTORCYCLE_MAINTENANCE") &&
-          (notification.due_date === null || notification.due_date < todayIso),
-      ).length,
+      critiques: Number(notificationCounts.critical),
+      echeances7Jours: Number(notificationCounts.due_in_seven_days),
+      echeances30Jours: Number(notificationCounts.due_in_thirty_days),
+      stocksFaibles: Number(notificationCounts.low_stock),
+      entretiensEnRetard: Number(notificationCounts.overdue_maintenance),
     };
 
     return {

@@ -78,6 +78,14 @@ const updateStockMovementSchema = stockMovementObjectSchema
     validateStockMovement(value, context);
   });
 
+// Hard cap: stock_movements is explicitly expected to grow to thousands of
+// rows and both queries below previously fetched the entire table/item
+// history unbounded. Ordered by most recent first, so the cap always keeps
+// the currently-relevant rows. Real server-side pagination (page controls)
+// is the recommended follow-up if a screen needs to browse past this
+// window; this cap exists to close the unbounded-growth risk now.
+const STOCK_MOVEMENTS_HARD_CAP = 500;
+
 export const getStockMovements = createServerFn({
   method: "GET",
 })
@@ -86,7 +94,8 @@ export const getStockMovements = createServerFn({
     const { data, error } = await context.supabase
       .from("stock_movements")
       .select("*")
-      .order("movement_date", { ascending: false });
+      .order("movement_date", { ascending: false })
+      .range(0, STOCK_MOVEMENTS_HARD_CAP - 1);
 
     if (error) throw error;
 
@@ -103,7 +112,8 @@ export const getStockMovementsByItem = createServerFn({
       .from("stock_movements")
       .select("*")
       .eq("inventory_item_id", data)
-      .order("movement_date", { ascending: false });
+      .order("movement_date", { ascending: false })
+      .range(0, STOCK_MOVEMENTS_HARD_CAP - 1);
 
     if (error) throw error;
 

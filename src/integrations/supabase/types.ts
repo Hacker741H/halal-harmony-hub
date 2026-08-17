@@ -11746,6 +11746,16 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_finance_operation_stats: {
+        Args: never
+        Returns: {
+          depenses: number
+          recettes: number
+          total_operations: number
+          transferts: number
+          versements: number
+        }[]
+      }
       get_global_control_center: {
         Args: {
           p_business_location_id?: string
@@ -11800,6 +11810,17 @@ export type Database = {
       get_management_treasury_report: {
         Args: { p_filters?: Json }
         Returns: Json
+      }
+      get_notification_summary_counts: {
+        Args: never
+        Returns: {
+          critical: number
+          due_in_seven_days: number
+          due_in_thirty_days: number
+          low_stock: number
+          overdue_maintenance: number
+          unread: number
+        }[]
       }
       get_permission_administration: { Args: never; Returns: Json }
       get_salary_payment_people: {

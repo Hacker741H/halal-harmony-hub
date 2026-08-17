@@ -156,10 +156,12 @@ function Dashboard() {
     queryKey: ["dashboard-stats"],
     queryFn: () => fetchStats(),
     refetchInterval: 60_000,
+    staleTime: 30_000,
   });
   const { data: identity } = useQuery({
     queryKey: ["current-user-identity"],
     queryFn: () => fetchIdentity(),
+    staleTime: 5 * 60_000,
   });
 
   useEffect(() => {

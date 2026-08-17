@@ -97,6 +97,14 @@ const financeOperationSelect = `
     )
   ` as const;
 
+// Hard cap: these historically fetched the entire finance_operations table
+// (a table explicitly expected to grow to thousands of rows) with no bound
+// at all. Ordered by most recent first, so the cap always keeps the
+// currently-relevant rows. Real server-side pagination (page controls) is
+// the recommended follow-up if a screen needs to browse past this window;
+// this cap exists to close the unbounded-growth risk now.
+const FINANCE_OPERATIONS_HARD_CAP = 500;
+
 export const getFinanceOperations = createServerFn({
   method: "GET",
 })
@@ -106,7 +114,8 @@ export const getFinanceOperations = createServerFn({
       .from("finance_operations")
       .select(financeOperationSelect)
       .order("operation_date", { ascending: false })
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(0, FINANCE_OPERATIONS_HARD_CAP - 1);
 
     if (error) throw error;
 
@@ -124,7 +133,8 @@ export const getFinanceOperationsByType = createServerFn({
       .select(financeOperationSelect)
       .eq("type", type)
       .order("operation_date", { ascending: false })
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(0, FINANCE_OPERATIONS_HARD_CAP - 1);
 
     if (error) throw error;
 
@@ -140,7 +150,8 @@ export const getFinanceOperationsByWallet = createServerFn({ method: "GET" })
       .select(financeOperationSelect)
       .or(`wallet_id.eq.${walletId},destination_wallet_id.eq.${walletId}`)
       .order("operation_date", { ascending: false })
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(0, FINANCE_OPERATIONS_HARD_CAP - 1);
     if (error) throw error;
     return data ?? [];
   });
@@ -156,7 +167,8 @@ export const getFinanceOperationsByFarm = createServerFn({
       .select(financeOperationSelect)
       .eq("farm_id", farmId)
       .order("operation_date", { ascending: false })
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(0, FINANCE_OPERATIONS_HARD_CAP - 1);
 
     if (error) throw error;
 
@@ -201,29 +213,18 @@ export const getFinanceStats = createServerFn({
 })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
-      .from("finance_operations")
-      .select("type, amount");
-
+    const { data, error } = await context.supabase.rpc("get_finance_operation_stats").single();
     if (error) throw error;
 
-    const operations = data ?? [];
-    const totalFor = (type: (typeof FINANCE_OPERATION_TYPES)[number]) =>
-      operations
-        .filter((operation) => operation.type === type)
-        .reduce((sum, operation) => sum + Number(operation.amount), 0);
-
-    const recettes = totalFor("REVENUE");
-    const depenses = totalFor("EXPENSE");
-    const versements = totalFor("DEPOSIT");
-    const transferts = totalFor("TRANSFER");
+    const recettes = Number(data.recettes);
+    const depenses = Number(data.depenses);
 
     return {
-      totalOperations: operations.length,
+      totalOperations: Number(data.total_operations),
       recettes,
       depenses,
-      versements,
-      transferts,
+      versements: Number(data.versements),
+      transferts: Number(data.transferts),
       resultat: recettes - depenses,
     };
   });

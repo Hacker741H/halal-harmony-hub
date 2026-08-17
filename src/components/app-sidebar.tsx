@@ -187,6 +187,7 @@ export function AppSidebar() {
     queryKey: ["notification-summary"],
     queryFn: () => getNotificationSummary(),
     refetchInterval: 60_000,
+    staleTime: 30_000,
   });
   const unreadNotifications = notificationSummary?.unread ?? 0;
   const isActive = (url: NavigationRoute) => (url === "/" ? pathname === "/" : pathname.startsWith(url));

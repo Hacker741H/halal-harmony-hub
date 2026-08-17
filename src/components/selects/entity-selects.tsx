@@ -72,7 +72,7 @@ function SearchableEntitySelect({
 }
 
 export function EmployeeSelect(props: EntitySelectProps) {
-  const { data = [] } = useQuery({ queryKey: ["employees"], queryFn: () => getEmployees() });
+  const { data = [] } = useQuery({ queryKey: ["employees"], queryFn: () => getEmployees(), staleTime: 60_000 });
   return <SearchableEntitySelect {...props} options={data.map((employee) => ({ id: employee.id, label: [employee.nom, employee.prenom].filter(Boolean).join(" "), detail: [employee.telephone, employee.poste].filter(Boolean).join(" · ") }))} />;
 }
 
@@ -81,6 +81,7 @@ export function ClientSelect(props: EntitySelectProps) {
   const { data } = useQuery({
     queryKey: ["clients", "select", search],
     queryFn: () => getClients({ data: { page: 1, pageSize: 100, search, status: "ACTIVE" } }),
+    staleTime: 60_000,
   });
   return <SearchableEntitySelect {...props} options={(data?.clients ?? []).map((client) => ({
     id: client.id,
@@ -94,6 +95,7 @@ export function SupplierSelect(props: EntitySelectProps) {
   const { data } = useQuery({
     queryKey: ["suppliers", "select", search],
     queryFn: () => getSuppliers({ data: { page: 1, pageSize: 100, search, status: "ACTIVE" } }),
+    staleTime: 60_000,
   });
   return <SearchableEntitySelect {...props} options={(data?.suppliers ?? []).map((supplier) => ({
     id: supplier.id,
@@ -104,37 +106,37 @@ export function SupplierSelect(props: EntitySelectProps) {
 
 export function CourseSelect(props: EntitySelectProps) {
   const [search, setSearch] = useState("");
-  const { data } = useQuery({ queryKey: ["courses", "select", search], queryFn: () => getCourses({ data: { page: 1, pageSize: 100, search, status: null, clientId: null, driverId: null, vehicleId: null, from: null, to: null } }) });
+  const { data } = useQuery({ queryKey: ["courses", "select", search], queryFn: () => getCourses({ data: { page: 1, pageSize: 100, search, status: null, clientId: null, driverId: null, vehicleId: null, from: null, to: null } }), staleTime: 60_000 });
   return <SearchableEntitySelect {...props} options={(data?.courses ?? []).map((course) => ({ id: course.id, label: course.mission_number, detail: [course.clientName, course.status].filter(Boolean).join(" · ") }))} onSearchChange={setSearch} />;
 }
 
 export function DriverSelect(props: EntitySelectProps) {
-  const { data = [] } = useQuery({ queryKey: ["drivers"], queryFn: () => getDrivers() });
+  const { data = [] } = useQuery({ queryKey: ["drivers"], queryFn: () => getDrivers(), staleTime: 60_000 });
   return <SearchableEntitySelect {...props} options={data.map((driver) => ({ id: driver.id, label: [driver.employees?.nom, driver.employees?.prenom].filter(Boolean).join(" ") || "Chauffeur sans employé", detail: [driver.employees?.telephone, driver.statut].filter(Boolean).join(" · ") }))} />;
 }
 
 export function VehicleSelect(props: EntitySelectProps) {
-  const { data = [] } = useQuery({ queryKey: ["vehicles"], queryFn: () => getVehicles() });
+  const { data = [] } = useQuery({ queryKey: ["vehicles"], queryFn: () => getVehicles(), staleTime: 60_000 });
   return <SearchableEntitySelect {...props} options={data.map((vehicle) => ({ id: vehicle.id, label: vehicle.registration, detail: [vehicle.brand, vehicle.model, vehicle.status].filter(Boolean).join(" · ") }))} />;
 }
 
 export function MotorcycleSelect(props: EntitySelectProps) {
-  const { data = [] } = useQuery({ queryKey: ["motorcycles"], queryFn: () => getMotorcycles() });
+  const { data = [] } = useQuery({ queryKey: ["motorcycles"], queryFn: () => getMotorcycles(), staleTime: 60_000 });
   return <SearchableEntitySelect {...props} options={data.map((motorcycle) => ({ id: motorcycle.id, label: motorcycle.immatriculation, detail: [motorcycle.marque, motorcycle.modele, motorcycle.statut].filter(Boolean).join(" · ") }))} />;
 }
 
 export function FarmSelect(props: EntitySelectProps) {
-  const { data = [] } = useQuery({ queryKey: ["farms"], queryFn: () => getFarms() });
+  const { data = [] } = useQuery({ queryKey: ["farms"], queryFn: () => getFarms(), staleTime: 60_000 });
   return <SearchableEntitySelect {...props} options={data.map((farm) => ({ id: farm.id, label: farm.nom, detail: [farm.village, farm.type_culture, farm.statut].filter(Boolean).join(" · ") }))} />;
 }
 
 export function ContractSelect(props: EntitySelectProps) {
-  const { data = [] } = useQuery({ queryKey: ["contracts"], queryFn: () => getContracts() });
+  const { data = [] } = useQuery({ queryKey: ["contracts"], queryFn: () => getContracts(), staleTime: 60_000 });
   return <SearchableEntitySelect {...props} options={data.map((contract) => ({ id: contract.id, label: contract.reference || contract.type || "Contrat sans référence", detail: [contract.partie, contract.statut].filter(Boolean).join(" · ") }))} />;
 }
 
 export function WalletSelect(props: EntitySelectProps) {
-  const { data = [] } = useQuery({ queryKey: ["wallets"], queryFn: () => getWallets() });
+  const { data = [] } = useQuery({ queryKey: ["wallets"], queryFn: () => getWallets(), staleTime: 15_000 });
   return <SearchableEntitySelect {...props} options={data.map((wallet) => ({ id: wallet.id, label: wallet.name, detail: `${(wallet.balance ?? 0).toLocaleString("fr-FR")} FCFA` }))} />;
 }
 

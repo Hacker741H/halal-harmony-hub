@@ -80,15 +80,18 @@ function ControlCenterPage() {
     queryKey: ["gcc-severity-counts"],
     queryFn: () => getGlobalControlCenterSeverityCounts(),
     refetchInterval: 60_000,
+    staleTime: 30_000,
   });
   const locationsQuery = useQuery({
     queryKey: ["gcc-locations"],
     queryFn: () => getGlobalControlCenterLocations(),
+    staleTime: 5 * 60_000,
   });
   const overviewQuery = useQuery({
     queryKey: ["gcc-overview"],
     queryFn: () => getGlobalControlCenter({ data: { page: 1, pageSize: 100 } }),
     enabled: view === "overview",
+    staleTime: 15_000,
   });
   const triageQuery = useQuery({
     queryKey: ["gcc-triage", { module, severity, status, locationId, from, to, page }],
@@ -106,6 +109,7 @@ function ControlCenterPage() {
         },
       }),
     enabled: view === "triage",
+    staleTime: 15_000,
   });
 
   const counts = countsQuery.data;
