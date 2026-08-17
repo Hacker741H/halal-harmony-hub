@@ -89,6 +89,66 @@ export const getHarvest = createServerFn({ method: "GET" })
     return harvest;
   });
 
+export type HarvestSaleAvailability = {
+  poidsLivreKg: number | null;
+  alreadySoldKg: number;
+  remainingKg: number;
+  hasLegacySale: boolean;
+  linkedSales: Array<{
+    saleId: string;
+    saleNumber: string | null;
+    status: string | null;
+    quantity: number;
+  }>;
+};
+
+export const getHarvestSaleAvailability = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator(harvestIdSchema)
+  .handler(async ({ context, data }): Promise<HarvestSaleAvailability> => {
+    const { data: harvest, error } = await context.supabase
+      .from("harvests")
+      .select("id, poids_livre_kg")
+      .eq("id", data)
+      .maybeSingle();
+    if (error) throw error;
+    if (!harvest) throw new Error("Récolte introuvable.");
+
+    const [linesResult, legacyLinkResult] = await Promise.all([
+      context.supabase
+        .from("commercial_sale_lines")
+        .select("sale_id, quantity, commercial_sales (id, sale_number, status)")
+        .eq("harvest_id", data),
+      context.supabase
+        .from("finance_harvest_links")
+        .select("operation_id")
+        .eq("harvest_id", data)
+        .maybeSingle(),
+    ]);
+    if (linesResult.error) throw linesResult.error;
+
+    const lines = linesResult.data ?? [];
+    const alreadySoldKg = lines
+      .filter((line) => line.commercial_sales?.status === "CONFIRMED")
+      .reduce((sum, line) => sum + Number(line.quantity), 0);
+    const poidsLivreKg = harvest.poids_livre_kg !== null ? Number(harvest.poids_livre_kg) : null;
+
+    return {
+      poidsLivreKg,
+      alreadySoldKg,
+      remainingKg: Math.max(0, (poidsLivreKg ?? 0) - alreadySoldKg),
+      hasLegacySale: Boolean(legacyLinkResult.data),
+      linkedSales: lines
+        .filter((line) => line.commercial_sales && line.commercial_sales.status !== "CANCELLED")
+        .map((line) => ({
+          saleId: line.sale_id,
+          saleNumber: line.commercial_sales?.sale_number ?? null,
+          status: line.commercial_sales?.status ?? null,
+          quantity: Number(line.quantity),
+        })),
+    };
+  });
+
 export const getHarvestsByFarm = createServerFn({
   method: "GET",
 })
@@ -333,6 +393,13 @@ export const cancelHarvestPlan = createServerFn({ method: "POST" })
     return harvest;
   });
 
+// LEGACY: writes finance_operations directly (immediate wallet credit, no
+// invoice/créance) and is blocked server-side once a GFC sale already
+// references the harvest. Kept only for historical compatibility -- no
+// longer reachable from the modern UI. New harvest sales go through
+// createCommercialSale (commercial-sales.functions.ts) with a
+// commercial_sale_lines.harvest_id line instead; see
+// harvests/$harvestId.tsx's "Créer une vente" action.
 const sellHarvestSchema = z
   .object({
     id: harvestIdSchema,

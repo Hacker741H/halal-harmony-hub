@@ -1,6 +1,6 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Sprout } from "lucide-react";
 import { toast } from "sonner";
@@ -18,19 +18,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ModuleHero } from "@/components/ui/module-hero";
 import { Textarea } from "@/components/ui/textarea";
+import { ClientSelect } from "@/components/selects/entity-selects";
 
-import { getWallets } from "@/lib/wallet.functions";
+import { createCommercialSale } from "@/lib/commercial-sales.functions";
 import {
   cancelHarvestPlan,
   closeHarvest,
   configureHarvestRecurrence,
   getHarvest,
   getHarvestRecurrenceRule,
+  getHarvestSaleAvailability,
   recordHarvest,
   recordHarvestDelivery,
   rescheduleHarvest,
-  sellHarvest,
   startHarvest,
+  type HarvestSaleAvailability,
   type HarvestStatus,
 } from "@/lib/harvests.functions";
 
@@ -66,7 +68,7 @@ function InfoRow({ label, value }: { label: string; value: string | number | nul
 function HarvestDetailPage() {
   const { harvestId } = Route.useParams();
   const queryClient = useQueryClient();
-  const [dialog, setDialog] = useState<"record" | "deliver" | "sell" | "reschedule" | "recurrence" | null>(null);
+  const [dialog, setDialog] = useState<"record" | "deliver" | "createSale" | "reschedule" | "recurrence" | null>(null);
 
   const harvestQuery = useQuery({
     queryKey: ["harvest", harvestId],
@@ -80,11 +82,15 @@ function HarvestDetailPage() {
     enabled: Boolean(harvest),
   });
 
-  const walletsQuery = useQuery({ queryKey: ["wallets"], queryFn: () => getWallets() });
+  const availabilityQuery = useQuery({
+    queryKey: ["harvest-sale-availability", harvestId],
+    queryFn: () => getHarvestSaleAvailability({ data: harvestId }),
+  });
 
   async function invalidate() {
     await queryClient.invalidateQueries({ queryKey: ["harvest", harvestId] });
     await queryClient.invalidateQueries({ queryKey: ["harvests"] });
+    await queryClient.invalidateQueries({ queryKey: ["harvest-sale-availability", harvestId] });
   }
 
   const startMutation = useMutation({
@@ -137,19 +143,28 @@ function HarvestDetailPage() {
             ) : null}
             {status === "STARTED" ? <Button onClick={() => setDialog("record")}>Enregistrer la récolte</Button> : null}
             {status === "HARVESTED" ? (
-              <>
-                <Button onClick={() => setDialog("deliver")}>Enregistrer la livraison</Button>
-                <Button variant="outline" onClick={() => setDialog("sell")}>Vendre</Button>
-              </>
+              <Button onClick={() => setDialog("deliver")}>Enregistrer la livraison</Button>
             ) : null}
             {status === "DELIVERED" ? (
               <>
                 <Button disabled={closeMutation.isPending} onClick={() => closeMutation.mutate()}>Clôturer</Button>
-                <Button variant="outline" onClick={() => setDialog("sell")}>Vendre</Button>
+                <Button
+                  variant="outline"
+                  disabled={!availabilityQuery.data || availabilityQuery.data.hasLegacySale || availabilityQuery.data.remainingKg <= 0}
+                  onClick={() => setDialog("createSale")}
+                >
+                  Créer une vente
+                </Button>
               </>
             ) : null}
-            {status === "CLOSED" && !harvest.sale_wallet_id ? (
-              <Button variant="outline" onClick={() => setDialog("sell")}>Vendre</Button>
+            {status === "CLOSED" ? (
+              <Button
+                variant="outline"
+                disabled={!availabilityQuery.data || availabilityQuery.data.hasLegacySale || availabilityQuery.data.remainingKg <= 0}
+                onClick={() => setDialog("createSale")}
+              >
+                Créer une vente
+              </Button>
             ) : null}
           </>
         }
@@ -211,16 +226,50 @@ function HarvestDetailPage() {
           <CardContent>
             {harvest.sale_wallet_id ? (
               <>
+                <Badge variant="neutral" appearance="soft">Vente historique (circuit direct)</Badge>
                 <InfoRow label="Quantité vendue" value={harvest.quantite_kg !== null ? `${harvest.quantite_kg} kg` : null} />
                 <InfoRow label="Prix / kg" value={harvest.prix_kg !== null ? `${harvest.prix_kg} FCFA` : null} />
                 <InfoRow label="Montant" value={harvest.montant_total !== null ? `${Number(harvest.montant_total).toLocaleString()} FCFA` : null} />
                 <InfoRow label="Acheteur" value={harvest.acheteur} />
               </>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Aucune vente enregistrée pour cette récolte. Tant qu'aucun wallet d'encaissement n'est renseigné, aucune écriture financière n'est créée.
+            ) : null}
+
+            {harvest.poids_livre_kg !== null ? (
+              <>
+                <InfoRow label="Quantité livrée" value={`${harvest.poids_livre_kg} kg`} />
+                <InfoRow label="Déjà vendu (GFC)" value={availabilityQuery.data ? `${availabilityQuery.data.alreadySoldKg} kg` : "—"} />
+                <InfoRow label="Restant vendable (GFC)" value={availabilityQuery.data ? `${availabilityQuery.data.remainingKg} kg` : "—"} />
+              </>
+            ) : null}
+
+            {availabilityQuery.data && availabilityQuery.data.linkedSales.length > 0 ? (
+              <div className="mt-3 space-y-1">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Ventes GFC liées</p>
+                {availabilityQuery.data.linkedSales.map((sale) => (
+                  <Link
+                    key={sale.saleId}
+                    to="/sales/$saleId"
+                    params={{ saleId: sale.saleId }}
+                    className="flex items-center justify-between gap-4 rounded-md border border-border/50 px-3 py-2 text-sm hover:bg-accent"
+                  >
+                    <span>{sale.saleNumber ?? sale.saleId}</span>
+                    <span className="text-muted-foreground">{sale.quantity} kg — {sale.status}</span>
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+
+            {availabilityQuery.data?.hasLegacySale ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Cette récolte a déjà été vendue via l'ancien circuit direct — aucune nouvelle vente GFC n'est possible pour elle.
               </p>
-            )}
+            ) : null}
+
+            {!harvest.sale_wallet_id && !availabilityQuery.data?.linkedSales.length ? (
+              <p className="text-sm text-muted-foreground">
+                Aucune vente enregistrée pour cette récolte.
+              </p>
+            ) : null}
           </CardContent>
         </Card>
 
@@ -261,12 +310,11 @@ function HarvestDetailPage() {
 
       <RecordHarvestDialog open={dialog === "record"} onClose={() => setDialog(null)} harvestId={harvestId} onSaved={invalidate} />
       <RecordDeliveryDialog open={dialog === "deliver"} onClose={() => setDialog(null)} harvestId={harvestId} onSaved={invalidate} />
-      <SellHarvestDialog
-        open={dialog === "sell"}
+      <CreateHarvestSaleDialog
+        open={dialog === "createSale"}
         onClose={() => setDialog(null)}
-        harvestId={harvestId}
-        wallets={walletsQuery.data ?? []}
-        onSaved={invalidate}
+        harvest={harvest}
+        availability={availabilityQuery.data}
       />
       <RescheduleDialog open={dialog === "reschedule"} onClose={() => setDialog(null)} harvestId={harvestId} onSaved={invalidate} />
       <RecurrenceDialog
@@ -425,41 +473,61 @@ function RecordDeliveryDialog({
   );
 }
 
-function SellHarvestDialog({
-  open, onClose, harvestId, wallets, onSaved,
+function CreateHarvestSaleDialog({
+  open, onClose, harvest, availability,
 }: {
-  open: boolean; onClose: () => void; harvestId: string;
-  wallets: Array<{ id: string; name: string }>; onSaved: () => Promise<void>;
+  open: boolean;
+  onClose: () => void;
+  harvest: { id: string; produit: string; farm_id: string };
+  availability: HarvestSaleAvailability | undefined;
 }) {
+  const navigate = useNavigate();
+  const [clientId, setClientId] = useState("");
   const [quantite, setQuantite] = useState("");
   const [prix, setPrix] = useState("");
-  const [acheteur, setAcheteur] = useState("");
-  const [walletId, setWalletId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const remainingKg = availability?.remainingKg ?? 0;
+
+  useEffect(() => {
+    if (open) setQuantite(remainingKg > 0 ? String(remainingKg) : "");
+  }, [open, remainingKg]);
 
   async function submit() {
     const quantiteValue = Number(quantite);
     const prixValue = Number(prix);
-    if (!Number.isFinite(quantiteValue) || quantiteValue <= 0 || !Number.isFinite(prixValue) || prixValue < 0 || !walletId) {
-      setError("Quantité, prix et wallet d'encaissement sont obligatoires pour vendre.");
-      return;
-    }
+    if (!clientId) { setError("Sélectionnez le client de la vente."); return; }
+    if (!Number.isFinite(quantiteValue) || quantiteValue <= 0) { setError("La quantité doit être positive."); return; }
+    if (quantiteValue > remainingKg) { setError(`La quantité ne peut pas dépasser le restant vendable (${remainingKg} kg).`); return; }
+    if (!Number.isFinite(prixValue) || prixValue < 0) { setError("Le prix au kg est obligatoire."); return; }
     try {
       setLoading(true);
       setError(null);
-      await sellHarvest({
+      const sale = await createCommercialSale({
         data: {
-          id: harvestId,
-          quantite_kg: quantiteValue,
-          prix_kg: prixValue,
-          acheteur: acheteur.trim() || null,
-          sale_wallet_id: walletId,
+          client_id: clientId,
+          farm_id: harvest.farm_id,
+          business_location_id: null,
+          sale_date: new Date().toISOString().slice(0, 10),
+          reference: null,
+          notes: null,
+          lines: [
+            {
+              description: harvest.produit,
+              quantity: quantiteValue,
+              unit: "KG",
+              unit_price: prixValue,
+              inventory_item_id: null,
+              harvest_id: harvest.id,
+              farm_id: harvest.farm_id,
+            },
+          ],
         },
       });
-      await onSaved();
-      toast.success("Vente enregistrée.");
+      toast.success("Vente créée — poursuivez la confirmation et la facturation depuis la fiche vente.");
       onClose();
+      await navigate({ to: "/sales/$saleId", params: { saleId: sale.id } });
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -468,29 +536,28 @@ function SellHarvestDialog({
   }
 
   return (
-    <DialogShell open={open} onClose={onClose} title="Vendre la récolte">
+    <DialogShell open={open} onClose={onClose} title="Créer une vente">
       <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          {harvest.produit} — {remainingKg} kg restant vendable sur {availability?.poidsLivreKg ?? "—"} kg livré.
+        </p>
+        <div>
+          <Label>Client <span className="text-destructive">*</span></Label>
+          <ClientSelect value={clientId} onValueChange={setClientId} placeholder="Sélectionner un client" disabled={loading} />
+        </div>
         <div>
           <Label>Quantité vendue (kg)</Label>
-          <Input type="number" min="0.01" step="0.01" value={quantite} onChange={(e) => setQuantite(e.target.value)} />
+          <Input type="number" min="0.01" max={remainingKg || undefined} step="0.01" value={quantite} onChange={(e) => setQuantite(e.target.value)} />
         </div>
         <div>
           <Label>Prix / kg (FCFA)</Label>
           <Input type="number" min="0" step="0.01" value={prix} onChange={(e) => setPrix(e.target.value)} />
         </div>
-        <div>
-          <Label>Acheteur</Label>
-          <Input value={acheteur} onChange={(e) => setAcheteur(e.target.value)} />
-        </div>
-        <div>
-          <Label>Wallet d'encaissement</Label>
-          <select className="mt-1 w-full rounded-md border bg-background px-3 py-2" value={walletId} onChange={(e) => setWalletId(e.target.value)}>
-            <option value="">Sélectionner…</option>
-            {wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
-          </select>
-        </div>
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        <Button className="w-full" disabled={loading} onClick={submit}>{loading ? "Enregistrement…" : "Confirmer la vente"}</Button>
+        <p className="text-xs text-muted-foreground">
+          Cette vente crée une facture et une créance dans la Grande Fonction Commerciale — l'encaissement se fait ensuite, séparément, depuis la fiche vente.
+        </p>
+        <Button className="w-full" disabled={loading || remainingKg <= 0} onClick={submit}>{loading ? "Création…" : "Créer la vente"}</Button>
       </div>
     </DialogShell>
   );
