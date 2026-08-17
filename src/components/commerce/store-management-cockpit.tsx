@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getRouteApi } from "@tanstack/react-router";
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { endOfMonth, format, startOfMonth, startOfYear, subDays, subMonths } from "date-fns";
 import { fr } from "date-fns/locale";
 import { AlertCircle, ArrowRight, Banknote, CalendarDays, CheckCircle2, CircleDollarSign, ClipboardCheck, Flag, History, Package, ReceiptText, RefreshCw, ShieldAlert, Store, TriangleAlert, WalletCards } from "lucide-react";
@@ -92,6 +92,7 @@ export function StoreManagementCockpit({
   onOpenCashier: () => void;
 }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [periodKey, setPeriodKey] = useState<PeriodKey>("month");
   const [customPeriod, setCustomPeriod] = useState(() => resolvePeriod("month"));
   const openedAt = queryClient.getQueryData<CommerceStoreCockpit>(["commerce-store-cockpit", locationId, customPeriod.from, customPeriod.to])?.location.openedAt;
@@ -127,6 +128,12 @@ export function StoreManagementCockpit({
     if (reason) mutate.mutate({ type, id, reason });
   };
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const goToAttention = (alert: { type: string; id: string }) => {
+    if (alert.type === "INVENTORY_COUNT") { void navigate({ to: "/inventory-counts/$countId", params: { countId: alert.id } }); return; }
+    if (alert.type === "STOCK_TRANSFER") { void navigate({ to: "/stock-transfers/$transferId", params: { transferId: alert.id } }); return; }
+    if (alert.type === "REFUNDABLE_CREDIT") { void navigate({ to: "/sales/$saleId", params: { saleId: alert.id } }); return; }
+    scrollTo(alert.type.includes("STOCK") ? "store-stock" : alert.type.includes("SYNC") ? "store-sync" : alert.type.includes("CASH") ? "store-cash" : alert.type.includes("WALLET") ? "store-finance" : "store-expenses");
+  };
 
   return (
     <div className="space-y-4">
@@ -169,7 +176,7 @@ export function StoreManagementCockpit({
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,.6fr)]">
-          <Card variant="section" id="store-attention"><CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-lg"><TriangleAlert className="size-5 text-warning" /> À comprendre aujourd’hui</CardTitle></CardHeader><CardContent>{cockpit.attention.length ? <div className="divide-y divide-border/60">{cockpit.attention.map((alert) => <button key={`${alert.type}-${alert.id}`} type="button" className="flex w-full items-start gap-3 py-3 text-left" onClick={() => scrollTo(alert.type.includes("STOCK") ? "store-stock" : alert.type.includes("SYNC") ? "store-sync" : alert.type.includes("CASH") ? "store-cash" : alert.type.includes("WALLET") ? "store-finance" : "store-expenses")}><span className={`mt-1 size-2 rounded-full ${alert.priority === 1 ? "bg-destructive" : "bg-warning"}`} /><span className="min-w-0"><span className="block font-medium">{alert.title}</span><span className="mt-0.5 block text-sm text-muted-foreground">{alert.detail}</span></span><ArrowRight className="ml-auto mt-1 size-4 shrink-0 text-muted-foreground" /></button>)}</div> : <Empty label="Aucun élément déterminable ne nécessite une action immédiate." />}</CardContent></Card>
+          <Card variant="section" id="store-attention"><CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-lg"><TriangleAlert className="size-5 text-warning" /> À comprendre aujourd’hui</CardTitle></CardHeader><CardContent>{cockpit.attention.length ? <div className="divide-y divide-border/60">{cockpit.attention.map((alert) => <button key={`${alert.type}-${alert.id}`} type="button" className="flex w-full items-start gap-3 py-3 text-left" onClick={() => goToAttention(alert)}><span className={`mt-1 size-2 rounded-full ${alert.priority === 1 ? "bg-destructive" : "bg-warning"}`} /><span className="min-w-0"><span className="block font-medium">{alert.title}</span><span className="mt-0.5 block text-sm text-muted-foreground">{alert.detail}</span></span><ArrowRight className="ml-auto mt-1 size-4 shrink-0 text-muted-foreground" /></button>)}</div> : <Empty label="Aucun élément déterminable ne nécessite une action immédiate." />}</CardContent></Card>
           <Card variant="information"><CardHeader className="pb-3"><CardTitle className="text-lg">Période analysée</CardTitle></CardHeader><CardContent className="space-y-3 text-sm"><DataRow label="Du" value={day(cockpit.period.from)} /><DataRow label="Au" value={day(cockpit.period.to)} /><DataRow label="Tickets" value={String(cockpit.sales?.ticketCount ?? 0)} /><DataRow label="Panier moyen" value={money(cockpit.sales?.averageBasket)} /><DataRow label="Wallets actifs" value={String(cockpit.wallets.length)} /></CardContent></Card>
         </section>
 
