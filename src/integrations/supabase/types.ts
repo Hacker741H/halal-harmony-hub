@@ -4738,48 +4738,207 @@ export type Database = {
           },
         ]
       }
-      harvests: {
+      harvest_recurrence_rules: {
         Row: {
-          acheteur: string | null
           created_at: string
-          date_recolte: string
+          created_by: string | null
+          cycle_status: string
+          day_of_month: number | null
+          enabled: boolean
           farm_id: string
+          frequency: string
           id: string
-          montant_total: number | null
-          observations: string | null
-          prix_kg: number
+          interval_value: number
+          last_harvest_id: string | null
+          next_expected_date: string | null
           produit: string
-          quantite_kg: number
-          sale_wallet_id: string | null
+          reminder_days_before: number
           updated_at: string
         }
         Insert: {
-          acheteur?: string | null
           created_at?: string
-          date_recolte: string
+          created_by?: string | null
+          cycle_status?: string
+          day_of_month?: number | null
+          enabled?: boolean
           farm_id: string
+          frequency: string
           id?: string
-          montant_total?: number | null
-          observations?: string | null
-          prix_kg?: number
+          interval_value?: number
+          last_harvest_id?: string | null
+          next_expected_date?: string | null
           produit: string
-          quantite_kg?: number
-          sale_wallet_id?: string | null
+          reminder_days_before?: number
           updated_at?: string
         }
         Update: {
-          acheteur?: string | null
           created_at?: string
-          date_recolte?: string
+          created_by?: string | null
+          cycle_status?: string
+          day_of_month?: number | null
+          enabled?: boolean
           farm_id?: string
+          frequency?: string
+          id?: string
+          interval_value?: number
+          last_harvest_id?: string | null
+          next_expected_date?: string | null
+          produit?: string
+          reminder_days_before?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harvest_recurrence_rules_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "harvest_recurrence_rules_last_harvest_id_fkey"
+            columns: ["last_harvest_id"]
+            isOneToOne: false
+            referencedRelation: "harvests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      harvests: {
+        Row: {
+          acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
+          farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
+          id: string
+          montant_total: number | null
+          observations: string | null
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
+          produit: string
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
+          sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
+          updated_at: string
+          vehicule: string | null
+        }
+        Insert: {
+          acheteur?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          date_recolte?: string | null
+          delivered_at?: string | null
+          delivered_by?: string | null
+          delivery_notes?: string | null
+          departure_notes?: string | null
+          destination_prevue?: string | null
+          destination_reelle?: string | null
+          ecart_livraison_kg?: number | null
+          equipe?: string | null
+          farm_id: string
+          harvested_at?: string | null
+          harvested_by?: string | null
           id?: string
           montant_total?: number | null
           observations?: string | null
-          prix_kg?: number
-          produit?: string
-          quantite_kg?: number
+          parcelle?: string | null
+          planned_by?: string | null
+          planned_date?: string | null
+          planning_notes?: string | null
+          poids_livre_kg?: number | null
+          poids_perte_recolte_kg?: number | null
+          poids_recolte_kg?: number | null
+          prix_kg?: number | null
+          produit: string
+          quantite_kg?: number | null
+          receptionnaire?: string | null
+          responsable_employee_id?: string | null
           sale_wallet_id?: string | null
+          started_at?: string | null
+          started_by?: string | null
+          status?: string
+          transport_amount_theorique?: number | null
+          transport_rate_per_kg?: number | null
+          transporteur?: string | null
           updated_at?: string
+          vehicule?: string | null
+        }
+        Update: {
+          acheteur?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          date_recolte?: string | null
+          delivered_at?: string | null
+          delivered_by?: string | null
+          delivery_notes?: string | null
+          departure_notes?: string | null
+          destination_prevue?: string | null
+          destination_reelle?: string | null
+          ecart_livraison_kg?: number | null
+          equipe?: string | null
+          farm_id?: string
+          harvested_at?: string | null
+          harvested_by?: string | null
+          id?: string
+          montant_total?: number | null
+          observations?: string | null
+          parcelle?: string | null
+          planned_by?: string | null
+          planned_date?: string | null
+          planning_notes?: string | null
+          poids_livre_kg?: number | null
+          poids_perte_recolte_kg?: number | null
+          poids_recolte_kg?: number | null
+          prix_kg?: number | null
+          produit?: string
+          quantite_kg?: number | null
+          receptionnaire?: string | null
+          responsable_employee_id?: string | null
+          sale_wallet_id?: string | null
+          started_at?: string | null
+          started_by?: string | null
+          status?: string
+          transport_amount_theorique?: number | null
+          transport_rate_per_kg?: number | null
+          transporteur?: string | null
+          updated_at?: string
+          vehicule?: string | null
         }
         Relationships: [
           {
@@ -4787,6 +4946,13 @@ export type Database = {
             columns: ["farm_id"]
             isOneToOne: false
             referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "harvests_responsable_employee_id_fkey"
+            columns: ["responsable_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
           {
@@ -7360,6 +7526,60 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      _internal_cancel_harvest: {
+        Args: { p_harvest_id: string; p_reason: string }
+        Returns: {
+          acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
+          farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
+          id: string
+          montant_total: number | null
+          observations: string | null
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
+          produit: string
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
+          sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
+          updated_at: string
+          vehicule: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       _internal_cancel_salary_payment_with_finance: {
         Args: { p_payment_id: string }
         Returns: boolean
@@ -7408,6 +7628,60 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      _internal_close_harvest: {
+        Args: { p_harvest_id: string }
+        Returns: {
+          acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
+          farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
+          id: string
+          montant_total: number | null
+          observations: string | null
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
+          produit: string
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
+          sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
+          updated_at: string
+          vehicule: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       _internal_commerce_pos_session_commercial_totals: {
         Args: {
           p_business_location_id: string
@@ -7428,6 +7702,31 @@ export type Database = {
       _internal_commerce_sale_refundable_credit: {
         Args: { p_sale_id: string }
         Returns: number
+      }
+      _internal_configure_harvest_recurrence: {
+        Args: { p_rule: Json }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          cycle_status: string
+          day_of_month: number | null
+          enabled: boolean
+          farm_id: string
+          frequency: string
+          id: string
+          interval_value: number
+          last_harvest_id: string | null
+          next_expected_date: string | null
+          produit: string
+          reminder_days_before: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvest_recurrence_rules"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       _internal_confirm_commercial_invoice_payment: {
         Args: { p_actor_id?: string; p_payment_id: string }
@@ -7453,6 +7752,60 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "commercial_invoice_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      _internal_confirm_harvest_cycle: {
+        Args: { p_rule_id: string }
+        Returns: {
+          acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
+          farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
+          id: string
+          montant_total: number | null
+          observations: string | null
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
+          produit: string
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
+          sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
+          updated_at: string
+          vehicule: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvests"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -7628,17 +7981,48 @@ export type Database = {
         Args: { p_harvest: Json }
         Returns: {
           acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
           created_at: string
-          date_recolte: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
           farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
           id: string
           montant_total: number | null
           observations: string | null
-          prix_kg: number
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
           produit: string
-          quantite_kg: number
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
           sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
           updated_at: string
+          vehicule: string | null
         }
         SetofOptions: {
           from: "*"
@@ -7896,27 +8280,391 @@ export type Database = {
       _internal_next_commerce_supplier_number: { Args: never; Returns: string }
       _internal_next_commercial_invoice_number: { Args: never; Returns: string }
       _internal_next_commercial_sale_number: { Args: never; Returns: string }
+      _internal_next_harvest_occurrence: {
+        Args: {
+          p_day_of_month: number
+          p_frequency: string
+          p_from: string
+          p_interval: number
+        }
+        Returns: string
+      }
       _internal_next_transport_invoice_number: { Args: never; Returns: string }
       _internal_next_transport_mission_number: { Args: never; Returns: string }
+      _internal_plan_harvest: {
+        Args: { p_harvest: Json }
+        Returns: {
+          acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
+          farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
+          id: string
+          montant_total: number | null
+          observations: string | null
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
+          produit: string
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
+          sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
+          updated_at: string
+          vehicule: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      _internal_record_harvest: {
+        Args: { p_harvest_id: string; p_payload: Json }
+        Returns: {
+          acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
+          farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
+          id: string
+          montant_total: number | null
+          observations: string | null
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
+          produit: string
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
+          sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
+          updated_at: string
+          vehicule: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      _internal_record_harvest_delivery: {
+        Args: { p_harvest_id: string; p_payload: Json }
+        Returns: {
+          acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
+          farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
+          id: string
+          montant_total: number | null
+          observations: string | null
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
+          produit: string
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
+          sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
+          updated_at: string
+          vehicule: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       _internal_refresh_transport_course_budget_notification: {
         Args: { p_mission_id: string }
         Returns: number
+      }
+      _internal_reschedule_harvest: {
+        Args: { p_harvest_id: string; p_new_date: string }
+        Returns: {
+          acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
+          farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
+          id: string
+          montant_total: number | null
+          observations: string | null
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
+          produit: string
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
+          sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
+          updated_at: string
+          vehicule: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      _internal_sell_harvest: {
+        Args: { p_harvest_id: string; p_payload: Json }
+        Returns: {
+          acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
+          farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
+          id: string
+          montant_total: number | null
+          observations: string | null
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
+          produit: string
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
+          sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
+          updated_at: string
+          vehicule: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      _internal_start_harvest: {
+        Args: { p_harvest_id: string; p_payload: Json }
+        Returns: {
+          acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
+          farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
+          id: string
+          montant_total: number | null
+          observations: string | null
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
+          produit: string
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
+          sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
+          updated_at: string
+          vehicule: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       _internal_update_harvest_with_finance: {
         Args: { p_harvest: Json }
         Returns: {
           acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
           created_at: string
-          date_recolte: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
           farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
           id: string
           montant_total: number | null
           observations: string | null
-          prix_kg: number
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
           produit: string
-          quantite_kg: number
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
           sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
           updated_at: string
+          vehicule: string | null
         }
         SetofOptions: {
           from: "*"
@@ -8801,6 +9549,60 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      cancel_harvest: {
+        Args: { p_harvest_id: string; p_reason?: string }
+        Returns: {
+          acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
+          farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
+          id: string
+          montant_total: number | null
+          observations: string | null
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
+          produit: string
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
+          sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
+          updated_at: string
+          vehicule: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       cancel_salary_payment_with_finance: {
         Args: { p_payment_id: string }
         Returns: boolean
@@ -8932,6 +9734,60 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      close_harvest: {
+        Args: { p_harvest_id: string }
+        Returns: {
+          acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
+          farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
+          id: string
+          montant_total: number | null
+          observations: string | null
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
+          produit: string
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
+          sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
+          updated_at: string
+          vehicule: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       commerce_location_access_allowed: {
         Args: { p_location_id: string }
         Returns: boolean
@@ -8964,6 +9820,31 @@ export type Database = {
       configure_commerce_location_item: {
         Args: { p_item: Json }
         Returns: Json
+      }
+      configure_harvest_recurrence: {
+        Args: { p_rule: Json }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          cycle_status: string
+          day_of_month: number | null
+          enabled: boolean
+          farm_id: string
+          frequency: string
+          id: string
+          interval_value: number
+          last_harvest_id: string | null
+          next_expected_date: string | null
+          produit: string
+          reminder_days_before: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvest_recurrence_rules"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       confirm_commerce_cash_remittance: {
         Args: {
@@ -9141,6 +10022,60 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "field_declarations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      confirm_harvest_cycle: {
+        Args: { p_rule_id: string }
+        Returns: {
+          acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
+          farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
+          id: string
+          montant_total: number | null
+          observations: string | null
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
+          produit: string
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
+          sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
+          updated_at: string
+          vehicule: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvests"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -9845,17 +10780,48 @@ export type Database = {
         Args: { p_harvest: Json }
         Returns: {
           acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
           created_at: string
-          date_recolte: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
           farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
           id: string
           montant_total: number | null
           observations: string | null
-          prix_kg: number
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
           produit: string
-          quantite_kg: number
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
           sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
           updated_at: string
+          vehicule: string | null
         }
         SetofOptions: {
           from: "*"
@@ -10414,6 +11380,31 @@ export type Database = {
           supplier_number: string
           telephone: string
         }[]
+      }
+      dismiss_harvest_cycle: {
+        Args: { p_rule_id: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          cycle_status: string
+          day_of_month: number | null
+          enabled: boolean
+          farm_id: string
+          frequency: string
+          id: string
+          interval_value: number
+          last_harvest_id: string | null
+          next_expected_date: string | null
+          produit: string
+          reminder_days_before: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvest_recurrence_rules"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       dispatch_commerce_stock_transfer: {
         Args: { p_transfer_id: string }
@@ -11089,6 +12080,85 @@ export type Database = {
         Args: { p_permission_code: string }
         Returns: undefined
       }
+      plan_harvest: {
+        Args: { p_harvest: Json }
+        Returns: {
+          acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
+          farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
+          id: string
+          montant_total: number | null
+          observations: string | null
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
+          produit: string
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
+          sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
+          updated_at: string
+          vehicule: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      postpone_harvest_cycle: {
+        Args: { p_new_date: string; p_rule_id: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          cycle_status: string
+          day_of_month: number | null
+          enabled: boolean
+          farm_id: string
+          frequency: string
+          id: string
+          interval_value: number
+          last_harvest_id: string | null
+          next_expected_date: string | null
+          produit: string
+          reminder_days_before: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvest_recurrence_rules"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       process_jeko_payment_event: {
         Args: { p_event_id: string }
         Returns: {
@@ -11158,6 +12228,114 @@ export type Database = {
       record_document_storage_cleanup: {
         Args: { p_result: string; p_storage_path: string }
         Returns: undefined
+      }
+      record_harvest: {
+        Args: { p_harvest_id: string; p_payload: Json }
+        Returns: {
+          acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
+          farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
+          id: string
+          montant_total: number | null
+          observations: string | null
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
+          produit: string
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
+          sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
+          updated_at: string
+          vehicule: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_harvest_delivery: {
+        Args: { p_harvest_id: string; p_payload: Json }
+        Returns: {
+          acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
+          farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
+          id: string
+          montant_total: number | null
+          observations: string | null
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
+          produit: string
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
+          sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
+          updated_at: string
+          vehicule: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       record_reporting_export: {
         Args: { p_report_type: string; p_row_count: number }
@@ -11258,6 +12436,60 @@ export type Database = {
       reporting_can_access_report: {
         Args: { p_report_type: string }
         Returns: boolean
+      }
+      reschedule_harvest: {
+        Args: { p_harvest_id: string; p_new_date: string }
+        Returns: {
+          acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
+          farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
+          id: string
+          montant_total: number | null
+          observations: string | null
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
+          produit: string
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
+          sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
+          updated_at: string
+          vehicule: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       resolve_configured_notifications: { Args: never; Returns: number }
       resolve_obsolete_notifications: { Args: never; Returns: number }
@@ -11475,6 +12707,60 @@ export type Database = {
         }
       }
       security_require_finance_role: { Args: never; Returns: undefined }
+      sell_harvest: {
+        Args: { p_harvest_id: string; p_payload: Json }
+        Returns: {
+          acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
+          farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
+          id: string
+          montant_total: number | null
+          observations: string | null
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
+          produit: string
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
+          sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
+          updated_at: string
+          vehicule: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       set_business_location_wallet: {
         Args: { p_mapping: Json }
         Returns: {
@@ -11618,6 +12904,60 @@ export type Database = {
       setup_commerce_location: { Args: { p_setup: Json }; Returns: Json }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      start_harvest: {
+        Args: { p_harvest_id: string; p_payload?: Json }
+        Returns: {
+          acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
+          farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
+          id: string
+          montant_total: number | null
+          observations: string | null
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
+          produit: string
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
+          sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
+          updated_at: string
+          vehicule: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harvests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       stock_movement_delta: {
         Args: { p_movement_type: string; p_quantity: number }
         Returns: number
@@ -11723,17 +13063,48 @@ export type Database = {
         Args: { p_harvest: Json }
         Returns: {
           acheteur: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          closed_at: string | null
+          closed_by: string | null
           created_at: string
-          date_recolte: string
+          date_recolte: string | null
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_notes: string | null
+          departure_notes: string | null
+          destination_prevue: string | null
+          destination_reelle: string | null
+          ecart_livraison_kg: number | null
+          equipe: string | null
           farm_id: string
+          harvested_at: string | null
+          harvested_by: string | null
           id: string
           montant_total: number | null
           observations: string | null
-          prix_kg: number
+          parcelle: string | null
+          planned_by: string | null
+          planned_date: string | null
+          planning_notes: string | null
+          poids_livre_kg: number | null
+          poids_perte_recolte_kg: number | null
+          poids_recolte_kg: number | null
+          prix_kg: number | null
           produit: string
-          quantite_kg: number
+          quantite_kg: number | null
+          receptionnaire: string | null
+          responsable_employee_id: string | null
           sale_wallet_id: string | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          transport_amount_theorique: number | null
+          transport_rate_per_kg: number | null
+          transporteur: string | null
           updated_at: string
+          vehicule: string | null
         }
         SetofOptions: {
           from: "*"

@@ -52,8 +52,9 @@ const moduleLabels: Record<string, string> = {
   COMMERCE_CASH: "Caisse",
   COMMERCE_CREDIT: "Créances & dettes",
   COMMERCE_STOCK: "Stock",
-  FIELD: "HALAL Field",
+  FIELD: "Terrain",
   TRANSPORT: "Transport",
+  HALAL_FIELD: "Fermes & récoltes",
 };
 
 function severityClass(severity: string): string {

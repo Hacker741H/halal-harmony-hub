@@ -13,6 +13,7 @@ import {
   Sprout,
   User,
 } from "lucide-react";
+import { toast } from "sonner";
 import { DocumentUpload } from "@/components/documents/document-upload";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { EntityAlertsSection } from "@/components/notifications/entity-alerts-section";
@@ -51,8 +52,11 @@ import {
 } from "@/lib/farms.functions";
 
 import {
+  cancelHarvestPlan,
+  closeHarvest,
   deleteHarvest,
   getHarvestsByFarm,
+  startHarvest,
   type Harvest,
 } from "@/lib/harvests.functions";
 
@@ -74,8 +78,7 @@ function FarmDetailsPage() {
   const queryClient = useQueryClient();
 
   const [openHarvest, setOpenHarvest] = useState(false);
-  const [editingHarvest, setEditingHarvest] =
-    useState<Harvest | null>(null);
+  const [actingHarvestId, setActingHarvestId] = useState<string | undefined>();
 
   const [openExpense, setOpenExpense] = useState(false);
   const [editingExpense, setEditingExpense] =
@@ -120,11 +123,36 @@ function FarmDetailsPage() {
 
   async function refreshHarvests() {
     setOpenHarvest(false);
-    setEditingHarvest(null);
 
     await queryClient.invalidateQueries({
       queryKey: ["harvests", farmId],
     });
+  }
+
+  async function runHarvestAction(harvestId: string, action: () => Promise<unknown>, successMessage: string) {
+    try {
+      setActingHarvestId(harvestId);
+      await action();
+      await queryClient.invalidateQueries({ queryKey: ["harvests", farmId] });
+      toast.success(successMessage);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Action impossible.");
+    } finally {
+      setActingHarvestId(undefined);
+    }
+  }
+
+  function startHarvestAction(harvest: Harvest) {
+    void runHarvestAction(harvest.id, () => startHarvest({ data: { id: harvest.id } }), "Récolte démarrée.");
+  }
+
+  function closeHarvestAction(harvest: Harvest) {
+    void runHarvestAction(harvest.id, () => closeHarvest({ data: { id: harvest.id } }), "Récolte clôturée.");
+  }
+
+  function cancelHarvestAction(harvest: Harvest) {
+    if (!window.confirm("Annuler cette récolte planifiée ?")) return;
+    void runHarvestAction(harvest.id, () => cancelHarvestPlan({ data: { id: harvest.id } }), "Récolte annulée.");
   }
 
   async function refreshExpenses() {
@@ -185,30 +213,13 @@ function FarmDetailsPage() {
   }
 
   return (
-    <div className="space-y-6">      <Dialog
-        open={openHarvest}
-        onOpenChange={(open) => {
-          setOpenHarvest(open);
-
-          if (!open) {
-            setEditingHarvest(null);
-          }
-        }}
-      >
+    <div className="space-y-6">      <Dialog open={openHarvest} onOpenChange={setOpenHarvest}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>
-              {editingHarvest
-                ? "Modifier la récolte"
-                : "Nouvelle récolte"}
-            </DialogTitle>
+            <DialogTitle>Nouvelle récolte</DialogTitle>
           </DialogHeader>
 
-          <HarvestForm
-            farmId={farmId}
-            harvest={editingHarvest}
-            onSuccess={refreshHarvests}
-          />
+          <HarvestForm farmId={farmId} onSuccess={refreshHarvests} />
         </DialogContent>
       </Dialog>
 
@@ -251,12 +262,7 @@ function FarmDetailsPage() {
           </p>
         </div>
 
-        <Button
-          onClick={() => {
-            setEditingHarvest(null);
-            setOpenHarvest(true);
-          }}
-        >
+        <Button onClick={() => setOpenHarvest(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Nouvelle récolte
         </Button>
@@ -418,12 +424,7 @@ function FarmDetailsPage() {
 
           <div className="mb-4 flex justify-end">
 
-            <Button
-              onClick={() => {
-                setEditingHarvest(null);
-                setOpenHarvest(true);
-              }}
-            >
+            <Button onClick={() => setOpenHarvest(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Nouvelle récolte
             </Button>
@@ -433,11 +434,11 @@ function FarmDetailsPage() {
           <HarvestTable
             harvests={harvests}
             loading={harvestsLoading}
-            onEdit={(harvest) => {
-              setEditingHarvest(harvest);
-              setOpenHarvest(true);
-            }}
+            onStart={startHarvestAction}
+            onClose={closeHarvestAction}
+            onCancel={cancelHarvestAction}
             onDelete={removeHarvest}
+            actingId={actingHarvestId}
           />
 
         </TabsContent>

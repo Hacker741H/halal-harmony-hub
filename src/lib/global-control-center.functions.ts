@@ -13,6 +13,7 @@ export const GLOBAL_CONTROL_CENTER_MODULES = [
   "COMMERCE_STOCK",
   "FIELD",
   "TRANSPORT",
+  "HALAL_FIELD",
 ] as const;
 export type GlobalControlCenterModule = (typeof GLOBAL_CONTROL_CENTER_MODULES)[number];
 
