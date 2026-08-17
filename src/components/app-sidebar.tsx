@@ -16,6 +16,7 @@ import {
   Leaf,
   Package,
   PackageCheck,
+  Radar,
   Settings,
   ShieldCheck,
   ShoppingCart,
@@ -52,6 +53,7 @@ import { cn } from "@/lib/utils";
 
 type NavigationRoute =
   | "/"
+  | "/control-center"
   | "/employees"
   | "/drivers"
   | "/clients"
@@ -102,6 +104,7 @@ const navigationGroups: readonly NavigationGroup[] = [
     label: "Pilotage",
     items: [
       { title: "Centre de pilotage", url: "/", icon: LayoutDashboard },
+      { title: "Centre de contrôle", url: "/control-center", icon: Radar },
       { title: "Alertes", url: "/notifications", icon: Bell },
     ],
   },

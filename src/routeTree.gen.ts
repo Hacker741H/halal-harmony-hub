@@ -16,6 +16,7 @@ import { Route as AuthenticatedAssignmentsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
 import { Route as AuthenticatedCommerceRouteImport } from './routes/_authenticated/commerce'
 import { Route as AuthenticatedContractsRouteImport } from './routes/_authenticated/contracts'
+import { Route as AuthenticatedControlCenterRouteImport } from './routes/_authenticated/control-center'
 import { Route as AuthenticatedCoursesRouteImport } from './routes/_authenticated/courses'
 import { Route as AuthenticatedDeliveriesRouteImport } from './routes/_authenticated/deliveries'
 import { Route as AuthenticatedDeparturesRouteImport } from './routes/_authenticated/departures'
@@ -108,6 +109,12 @@ const AuthenticatedContractsRoute = AuthenticatedContractsRouteImport.update({
   path: '/contracts',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedControlCenterRoute =
+  AuthenticatedControlCenterRouteImport.update({
+    id: '/control-center',
+    path: '/control-center',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCoursesRoute = AuthenticatedCoursesRouteImport.update({
   id: '/courses',
   path: '/courses',
@@ -429,6 +436,7 @@ export interface FileRoutesByFullPath {
   '/clients': typeof AuthenticatedClientsRouteWithChildren
   '/commerce': typeof AuthenticatedCommerceRouteWithChildren
   '/contracts': typeof AuthenticatedContractsRouteWithChildren
+  '/control-center': typeof AuthenticatedControlCenterRoute
   '/courses': typeof AuthenticatedCoursesRouteWithChildren
   '/deliveries': typeof AuthenticatedDeliveriesRoute
   '/departures': typeof AuthenticatedDeparturesRoute
@@ -489,6 +497,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/assignments': typeof AuthenticatedAssignmentsRoute
+  '/control-center': typeof AuthenticatedControlCenterRoute
   '/deliveries': typeof AuthenticatedDeliveriesRoute
   '/departures': typeof AuthenticatedDeparturesRoute
   '/design-showcase': typeof AuthenticatedDesignShowcaseRoute
@@ -548,6 +557,7 @@ export interface FileRoutesById {
   '/_authenticated/clients': typeof AuthenticatedClientsRouteWithChildren
   '/_authenticated/commerce': typeof AuthenticatedCommerceRouteWithChildren
   '/_authenticated/contracts': typeof AuthenticatedContractsRouteWithChildren
+  '/_authenticated/control-center': typeof AuthenticatedControlCenterRoute
   '/_authenticated/courses': typeof AuthenticatedCoursesRouteWithChildren
   '/_authenticated/deliveries': typeof AuthenticatedDeliveriesRoute
   '/_authenticated/departures': typeof AuthenticatedDeparturesRoute
@@ -615,6 +625,7 @@ export interface FileRouteTypes {
     | '/clients'
     | '/commerce'
     | '/contracts'
+    | '/control-center'
     | '/courses'
     | '/deliveries'
     | '/departures'
@@ -675,6 +686,7 @@ export interface FileRouteTypes {
   to:
     | '/auth'
     | '/assignments'
+    | '/control-center'
     | '/deliveries'
     | '/departures'
     | '/design-showcase'
@@ -733,6 +745,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clients'
     | '/_authenticated/commerce'
     | '/_authenticated/contracts'
+    | '/_authenticated/control-center'
     | '/_authenticated/courses'
     | '/_authenticated/deliveries'
     | '/_authenticated/departures'
@@ -846,6 +859,13 @@ declare module '@tanstack/react-router' {
       path: '/contracts'
       fullPath: '/contracts'
       preLoaderRoute: typeof AuthenticatedContractsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/control-center': {
+      id: '/_authenticated/control-center'
+      path: '/control-center'
+      fullPath: '/control-center'
+      preLoaderRoute: typeof AuthenticatedControlCenterRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/courses': {
@@ -1445,6 +1465,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedClientsRoute: typeof AuthenticatedClientsRouteWithChildren
   AuthenticatedCommerceRoute: typeof AuthenticatedCommerceRouteWithChildren
   AuthenticatedContractsRoute: typeof AuthenticatedContractsRouteWithChildren
+  AuthenticatedControlCenterRoute: typeof AuthenticatedControlCenterRoute
   AuthenticatedCoursesRoute: typeof AuthenticatedCoursesRouteWithChildren
   AuthenticatedDeliveriesRoute: typeof AuthenticatedDeliveriesRoute
   AuthenticatedDeparturesRoute: typeof AuthenticatedDeparturesRoute
@@ -1486,6 +1507,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedClientsRoute: AuthenticatedClientsRouteWithChildren,
   AuthenticatedCommerceRoute: AuthenticatedCommerceRouteWithChildren,
   AuthenticatedContractsRoute: AuthenticatedContractsRouteWithChildren,
+  AuthenticatedControlCenterRoute: AuthenticatedControlCenterRoute,
   AuthenticatedCoursesRoute: AuthenticatedCoursesRouteWithChildren,
   AuthenticatedDeliveriesRoute: AuthenticatedDeliveriesRoute,
   AuthenticatedDeparturesRoute: AuthenticatedDeparturesRoute,
