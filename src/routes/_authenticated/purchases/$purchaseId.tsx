@@ -59,6 +59,11 @@ function PurchaseDetailsPage() {
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ["purchase", purchaseId] });
     void queryClient.invalidateQueries({ queryKey: ["purchases"] });
+    // Supplier payment confirmation debits a wallet -- without this the
+    // Wallets page can show a pre-mutation balance for the rest of the
+    // global staleTime window instead of refetching immediately.
+    void queryClient.invalidateQueries({ queryKey: ["wallets"] });
+    void queryClient.invalidateQueries({ queryKey: ["wallet-stats"] });
   };
   const confirmPaymentMutation = useMutation({ mutationFn: confirmSupplierPayment, onSuccess: () => { toast.success("Paiement confirmé, wallet débité."); invalidate(); }, onError: showError("Impossible de confirmer le paiement.") });
 

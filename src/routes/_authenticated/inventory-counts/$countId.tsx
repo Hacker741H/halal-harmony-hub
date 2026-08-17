@@ -56,6 +56,11 @@ function InventoryCountDetailPage() {
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ["inventory-count", countId] });
     void queryClient.invalidateQueries({ queryKey: ["inventory-counts"] });
+    // Completing a count applies its discrepancies to stock -- without this
+    // the Stocks page can show pre-mutation quantities for the rest of the
+    // global staleTime window instead of refetching immediately.
+    void queryClient.invalidateQueries({ queryKey: ["stocks"] });
+    void queryClient.invalidateQueries({ queryKey: ["stock-movements"] });
   };
 
   if (countQuery.isPending) return <div className="p-6 text-muted-foreground">Chargement de l’inventaire…</div>;

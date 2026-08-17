@@ -122,6 +122,11 @@ function CommercialSaleDetailsPage() {
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ["commercial-sale", saleId] });
     void queryClient.invalidateQueries({ queryKey: ["commercial-sales"] });
+    // Payment/refund confirmation on this screen moves a wallet balance --
+    // without this the Wallets page can show a pre-mutation balance for the
+    // rest of the global staleTime window instead of refetching immediately.
+    void queryClient.invalidateQueries({ queryKey: ["wallets"] });
+    void queryClient.invalidateQueries({ queryKey: ["wallet-stats"] });
   };
   const confirmSaleMutation = useMutation({ mutationFn: confirmCommercialSale, onSuccess: () => { toast.success("Vente confirmée."); invalidate(); }, onError: showError("Impossible de confirmer la vente.") });
   const issueInvoiceMutation = useMutation({ mutationFn: issueCommercialInvoice, onSuccess: () => { toast.success("Facture émise."); invalidate(); }, onError: showError("Impossible d’émettre la facture.") });

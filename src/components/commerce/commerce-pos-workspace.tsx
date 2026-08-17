@@ -363,6 +363,16 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     toast.success(posSession.networkStatus === "ONLINE"
       ? "Session cl\u00f4tur\u00e9e. Rapport de contr\u00f4le g\u00e9n\u00e9r\u00e9, synchronis\u00e9."
       : "Session cl\u00f4tur\u00e9e. Rapport enregistr\u00e9 sur cet appareil, synchronisation automatique d\u00e8s le retour d\u2019Internet.");
+    // The offline-first cash session hook has no TanStack Query awareness by
+    // design (it's driven entirely by IndexedDB), so a same-session switch to
+    // the management cockpit needs an explicit nudge here -- otherwise the
+    // just-created control report/remittance stay invisible there for the
+    // rest of the global staleTime window.
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["commerce-pos-control-reports", selectedLocationId] }),
+      queryClient.invalidateQueries({ queryKey: ["commerce-store-cockpit", selectedLocationId] }),
+      queryClient.invalidateQueries({ queryKey: ["commerce-cash-remittances", selectedLocationId] }),
+    ]);
   };
 
   const startNewCashSession = async () => {

@@ -60,6 +60,11 @@ function StockTransferDetailPage() {
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ["stock-transfer", transferId] });
     void queryClient.invalidateQueries({ queryKey: ["stock-transfers"] });
+    // Dispatch debits source stock and receipt credits destination stock --
+    // without this the Stocks page can show pre-mutation quantities for the
+    // rest of the global staleTime window instead of refetching immediately.
+    void queryClient.invalidateQueries({ queryKey: ["stocks"] });
+    void queryClient.invalidateQueries({ queryKey: ["stock-movements"] });
   };
   const dispatchMutation = useMutation({
     mutationFn: dispatchStockTransfer,
