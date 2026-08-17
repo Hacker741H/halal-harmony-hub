@@ -13,7 +13,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { shouldSkipFullSessionResync } from "../lib/auth-session-resync";
+import { isRelevantAuthEvent, shouldSkipFullSessionResync } from "../lib/auth-session-resync";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
@@ -118,7 +118,7 @@ function useSession() {
       else setSession(null);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      if (!isRelevantAuthEvent(event)) return;
       const nextUserId = nextSession?.user?.id ?? null;
       // supabase-js commonly re-emits SIGNED_IN for the SAME already-connected
       // user when the tab regains visibility (its own token-refresh logic,

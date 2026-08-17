@@ -18,3 +18,13 @@ export function shouldSkipFullSessionResync(
 ): boolean {
   return event === "SIGNED_IN" && nextUserId !== null && nextUserId === previousUserId;
 }
+
+/**
+ * A plain TOKEN_REFRESHED (or any other Supabase auth event outside this
+ * list) never changes who is signed in, so it must never trigger a cache
+ * purge or router invalidation on its own -- only SIGNED_IN/SIGNED_OUT/
+ * USER_UPDATED are even candidates for a resync decision.
+ */
+export function isRelevantAuthEvent(event: string): boolean {
+  return event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED";
+}

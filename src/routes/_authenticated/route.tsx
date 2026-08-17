@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/
 import { useEffect, useState } from "react";
 import { useCurrentUserAccess } from "@/hooks/use-current-user-access";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveBackgroundVerification, resolveSessionCheck } from "@/lib/auth-bootstrap";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -30,7 +31,7 @@ function AuthenticatedRoute() {
     void supabase.auth.getSession().then(({ data }) => {
       if (!isCurrent) return;
 
-      if (!data.session) {
+      if (resolveSessionCheck(Boolean(data.session)) === "REDIRECT_TO_AUTH") {
         void navigate({ to: "/auth", replace: true });
         return;
       }
@@ -39,7 +40,7 @@ function AuthenticatedRoute() {
 
       void supabase.auth.getUser().then(({ data: userData, error }) => {
         if (!isCurrent) return;
-        if (error || !userData.user) {
+        if (resolveBackgroundVerification(userData.user, error) === "REDIRECT_TO_AUTH") {
           void navigate({ to: "/auth", replace: true });
         }
       });
