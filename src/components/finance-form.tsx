@@ -200,11 +200,12 @@ export function FinanceForm({
 
         <div>
 
-          <Label>
+          <Label htmlFor="finance-wallet">
             Wallet
           </Label>
 
           <select
+            id="finance-wallet"
             className="w-full rounded-md border px-3 py-2"
             value={form.wallet_id}
             onChange={(e) =>
@@ -235,11 +236,12 @@ export function FinanceForm({
 
         <div>
 
-          <Label>
+          <Label htmlFor="finance-type">
             Type d'opération
           </Label>
 
           <Input
+            id="finance-type"
             value={form.type}
             disabled
             className="bg-muted font-semibold"
@@ -249,11 +251,12 @@ export function FinanceForm({
 
         <div>
 
-          <Label>
+          <Label htmlFor="finance-amount">
             Montant (FCFA)
           </Label>
 
           <Input
+            id="finance-amount"
             type="number"
             placeholder="0"
             value={form.amount}
@@ -270,11 +273,12 @@ export function FinanceForm({
 
         <div>
 
-          <Label>
+          <Label htmlFor="finance-category">
             Catégorie
           </Label>
 
           <Input
+            id="finance-category"
             placeholder={
               form.type ===
               "REVENUE"
@@ -296,11 +300,12 @@ export function FinanceForm({
 
         </div>        <div>
 
-          <Label>
+          <Label htmlFor="finance-description">
             Description
           </Label>
 
           <Input
+            id="finance-description"
             placeholder={
               form.type ===
               "REVENUE"
@@ -324,11 +329,12 @@ export function FinanceForm({
 
         <div>
 
-          <Label>
+          <Label htmlFor="finance-date">
             Date
           </Label>
 
           <Input
+            id="finance-date"
             type="date"
             value={
               form.operation_date
@@ -346,11 +352,12 @@ export function FinanceForm({
 
         <div className="md:col-span-2">
 
-          <Label>
+          <Label htmlFor="finance-reference">
             Référence de facture / dossier
           </Label>
 
           <Input
+            id="finance-reference"
             placeholder={
               form.type ===
               "REVENUE"

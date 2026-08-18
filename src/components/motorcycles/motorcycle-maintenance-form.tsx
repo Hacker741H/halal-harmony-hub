@@ -148,9 +148,10 @@ export function MotorcycleMaintenanceForm({
       <div className="grid gap-4 md:grid-cols-2">
 
         <div>
-          <Label>Type d'entretien</Label>
+          <Label htmlFor="motorcycle-maintenance-type">Type d'entretien</Label>
 
           <select
+            id="motorcycle-maintenance-type"
             className="w-full rounded-md border px-3 py-2"
             value={type}
             onChange={(e) =>
@@ -170,9 +171,10 @@ export function MotorcycleMaintenanceForm({
         </div>
 
         <div>
-          <Label>Date</Label>
+          <Label htmlFor="motorcycle-maintenance-date">Date</Label>
 
           <Input
+            id="motorcycle-maintenance-date"
             type="date"
             value={maintenanceDate}
             onChange={(e) =>
@@ -184,9 +186,10 @@ export function MotorcycleMaintenanceForm({
         </div>
 
         <div>
-          <Label>Kilométrage</Label>
+          <Label htmlFor="motorcycle-maintenance-kilometrage">Kilométrage</Label>
 
           <Input
+            id="motorcycle-maintenance-kilometrage"
             type="number"
             value={kilometrage}
             onChange={(e) =>
@@ -198,9 +201,10 @@ export function MotorcycleMaintenanceForm({
         </div>
 
         <div>
-          <Label>Coût (FCFA)</Label>
+          <Label htmlFor="motorcycle-maintenance-cost">Coût (FCFA)</Label>
 
           <Input
+            id="motorcycle-maintenance-cost"
             type="number"
             value={cost}
             onChange={(e) =>
@@ -210,9 +214,10 @@ export function MotorcycleMaintenanceForm({
         </div>
 
         <div>
-          <Label>Wallet de paiement</Label>
+          <Label htmlFor="motorcycle-maintenance-wallet">Wallet de paiement</Label>
 
           <select
+            id="motorcycle-maintenance-wallet"
             className="w-full rounded-md border px-3 py-2"
             value={walletId}
             disabled={Number(cost || 0) <= 0}
@@ -232,9 +237,10 @@ export function MotorcycleMaintenanceForm({
         </div>
 
         <div>
-          <Label>Garage</Label>
+          <Label htmlFor="motorcycle-maintenance-garage">Garage</Label>
 
           <Input
+            id="motorcycle-maintenance-garage"
             value={garage}
             onChange={(e) =>
               setGarage(e.target.value)
@@ -243,9 +249,10 @@ export function MotorcycleMaintenanceForm({
         </div>
 
         <div>
-          <Label>Prochaine date</Label>
+          <Label htmlFor="motorcycle-maintenance-next-date">Prochaine date</Label>
 
           <Input
+            id="motorcycle-maintenance-next-date"
             type="date"
             value={nextDate}
             onChange={(e) =>
@@ -257,9 +264,10 @@ export function MotorcycleMaintenanceForm({
         </div>
 
         <div>
-          <Label>Prochain kilométrage</Label>
+          <Label htmlFor="motorcycle-maintenance-next-kilometrage">Prochain kilométrage</Label>
 
           <Input
+            id="motorcycle-maintenance-next-kilometrage"
             type="number"
             value={nextKilometrage}
             onChange={(e) =>
@@ -278,7 +286,9 @@ export function MotorcycleMaintenanceForm({
           Description
         </h3>
 
+        <Label htmlFor="motorcycle-maintenance-description" className="sr-only">Description</Label>
         <Textarea
+          id="motorcycle-maintenance-description"
           rows={5}
           placeholder="Description de l'entretien..."
           value={description}

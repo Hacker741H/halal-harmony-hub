@@ -113,7 +113,7 @@ export function DriverForm({
 
   return (
     <div className="space-y-4">      <div>
-        <Label>Employé</Label>
+        <Label htmlFor="driver-employee">Employé</Label>
 
         <Select
           value={form.employee_id}
@@ -124,7 +124,7 @@ export function DriverForm({
             })
           }
         >
-          <SelectTrigger>
+          <SelectTrigger id="driver-employee">
             <SelectValue placeholder="Sélectionner un employé" />
           </SelectTrigger>
 
@@ -142,9 +142,10 @@ export function DriverForm({
       </div>
 
       <div>
-        <Label>Numéro de permis</Label>
+        <Label htmlFor="driver-numero-permis">Numéro de permis</Label>
 
         <Input
+          id="driver-numero-permis"
           value={form.numero_permis}
           onChange={(e) =>
             setForm({
@@ -156,9 +157,10 @@ export function DriverForm({
       </div>
 
       <div>
-        <Label>Catégorie du permis</Label>
+        <Label htmlFor="driver-categorie-permis">Catégorie du permis</Label>
 
         <Input
+          id="driver-categorie-permis"
           value={form.categorie_permis}
           onChange={(e) =>
             setForm({
@@ -170,9 +172,10 @@ export function DriverForm({
       </div>
 
       <div>
-        <Label>Date d'expiration</Label>
+        <Label htmlFor="driver-date-expiration">Date d'expiration</Label>
 
         <Input
+          id="driver-date-expiration"
           type="date"
           value={form.date_expiration_permis}
           onChange={(e) =>
@@ -185,9 +188,10 @@ export function DriverForm({
       </div>
 
       <div>
-        <Label>Notes</Label>
+        <Label htmlFor="driver-notes">Notes</Label>
 
         <Input
+          id="driver-notes"
           value={form.notes}
           onChange={(e) =>
             setForm({

@@ -242,8 +242,9 @@ function MaintenancePage() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">{assetType === "motorcycle" ? "Moto" : "Véhicule"}</label>
+              <label htmlFor="maintenance-asset" className="text-sm font-medium">{assetType === "motorcycle" ? "Moto" : "Véhicule"}</label>
               <select
+                id="maintenance-asset"
                 className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3"
                 value={assetId}
                 onChange={(event) => setAssetId(event.target.value)}

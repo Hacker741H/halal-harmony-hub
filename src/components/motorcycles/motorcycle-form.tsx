@@ -164,8 +164,9 @@ export function MotorcycleForm({
       <div className="grid gap-4 md:grid-cols-2">
 
         <div>
-          <Label>Immatriculation</Label>
+          <Label htmlFor="motorcycle-immatriculation">Immatriculation</Label>
           <Input
+            id="motorcycle-immatriculation"
             value={immatriculation}
             onChange={(e) =>
               setImmatriculation(e.target.value)
@@ -174,8 +175,9 @@ export function MotorcycleForm({
         </div>
 
         <div>
-          <Label>Marque</Label>
+          <Label htmlFor="motorcycle-marque">Marque</Label>
           <Input
+            id="motorcycle-marque"
             value={marque}
             onChange={(e) =>
               setMarque(e.target.value)
@@ -184,8 +186,9 @@ export function MotorcycleForm({
         </div>
 
         <div>
-          <Label>Modèle</Label>
+          <Label htmlFor="motorcycle-modele">Modèle</Label>
           <Input
+            id="motorcycle-modele"
             value={modele}
             onChange={(e) =>
               setModele(e.target.value)
@@ -194,8 +197,9 @@ export function MotorcycleForm({
         </div>
 
         <div>
-          <Label>Couleur</Label>
+          <Label htmlFor="motorcycle-couleur">Couleur</Label>
           <Input
+            id="motorcycle-couleur"
             value={couleur}
             onChange={(e) =>
               setCouleur(e.target.value)
@@ -204,8 +208,9 @@ export function MotorcycleForm({
         </div>
 
         <div>
-          <Label>Année</Label>
+          <Label htmlFor="motorcycle-annee">Année</Label>
           <Input
+            id="motorcycle-annee"
             type="number"
             value={annee}
             onChange={(e) =>
@@ -215,8 +220,9 @@ export function MotorcycleForm({
         </div>
 
         <div>
-          <Label>Kilométrage</Label>
+          <Label htmlFor="motorcycle-kilometrage">Kilométrage</Label>
           <Input
+            id="motorcycle-kilometrage"
             type="number"
             value={kilometrage}
             onChange={(e) =>
@@ -236,8 +242,9 @@ export function MotorcycleForm({
         <div className="grid gap-4 md:grid-cols-2">
 
           <div>
-            <Label>Prix d'achat</Label>
+            <Label htmlFor="motorcycle-prix-achat">Prix d'achat</Label>
             <Input
+              id="motorcycle-prix-achat"
               type="number"
               value={prixAchat}
               onChange={(e) =>
@@ -247,8 +254,9 @@ export function MotorcycleForm({
           </div>
 
           <div>
-            <Label>Date d'achat</Label>
+            <Label htmlFor="motorcycle-date-achat">Date d'achat</Label>
             <Input
+              id="motorcycle-date-achat"
               type="date"
               value={dateAchat}
               onChange={(e) =>
@@ -258,8 +266,9 @@ export function MotorcycleForm({
           </div>
 
           <div className="md:col-span-2">
-            <Label>Wallet d'achat</Label>
+            <Label htmlFor="motorcycle-purchase-wallet">Wallet d'achat</Label>
             <select
+              id="motorcycle-purchase-wallet"
               className="w-full rounded-md border px-3 py-2"
               value={purchaseWalletId}
               disabled={Number(prixAchat || 0) <= 0}
@@ -288,8 +297,9 @@ export function MotorcycleForm({
         <div className="grid gap-4 md:grid-cols-2">
 
           <div>
-            <Label>Expiration assurance</Label>
+            <Label htmlFor="motorcycle-assurance-expiration">Expiration assurance</Label>
             <Input
+              id="motorcycle-assurance-expiration"
               type="date"
               value={assuranceExpiration}
               onChange={(e) =>
@@ -301,8 +311,9 @@ export function MotorcycleForm({
           </div>
 
           <div>
-            <Label>Expiration visite technique</Label>
+            <Label htmlFor="motorcycle-visite-expiration">Expiration visite technique</Label>
             <Input
+              id="motorcycle-visite-expiration"
               type="date"
               value={visiteExpiration}
               onChange={(e) =>
@@ -314,8 +325,9 @@ export function MotorcycleForm({
           </div>
 
           <div>
-            <Label>Dernière révision</Label>
+            <Label htmlFor="motorcycle-derniere-revision">Dernière révision</Label>
             <Input
+              id="motorcycle-derniere-revision"
               type="date"
               value={derniereRevision}
               onChange={(e) =>
@@ -327,8 +339,9 @@ export function MotorcycleForm({
           </div>
 
           <div>
-            <Label>Prochaine révision</Label>
+            <Label htmlFor="motorcycle-prochaine-revision">Prochaine révision</Label>
             <Input
+              id="motorcycle-prochaine-revision"
               type="date"
               value={prochaineRevision}
               onChange={(e) =>
@@ -349,7 +362,9 @@ export function MotorcycleForm({
           Observations
         </h3>
 
+        <Label htmlFor="motorcycle-observations" className="sr-only">Observations</Label>
         <Textarea
+          id="motorcycle-observations"
           rows={5}
           placeholder="Notes sur la moto..."
           value={observations}

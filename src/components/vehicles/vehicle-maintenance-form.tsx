@@ -111,20 +111,21 @@ export function VehicleMaintenanceForm({
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <Label>Date</Label>
-          <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+          <Label htmlFor="vehicle-maintenance-date">Date</Label>
+          <Input id="vehicle-maintenance-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
         </div>
         <div>
-          <Label>Type d'entretien</Label>
-          <Input value={type} onChange={(event) => setType(event.target.value)} />
+          <Label htmlFor="vehicle-maintenance-type">Type d'entretien</Label>
+          <Input id="vehicle-maintenance-type" value={type} onChange={(event) => setType(event.target.value)} />
         </div>
         <div>
-          <Label>Coût (FCFA)</Label>
-          <Input type="number" min="0" value={cost} onChange={(event) => setCost(event.target.value)} />
+          <Label htmlFor="vehicle-maintenance-cost">Coût (FCFA)</Label>
+          <Input id="vehicle-maintenance-cost" type="number" min="0" value={cost} onChange={(event) => setCost(event.target.value)} />
         </div>
         <div>
-          <Label>Wallet de paiement</Label>
+          <Label htmlFor="vehicle-maintenance-wallet">Wallet de paiement</Label>
           <select
+            id="vehicle-maintenance-wallet"
             className="w-full rounded-md border px-3 py-2"
             value={walletId}
             disabled={Number(cost || 0) <= 0}
@@ -140,18 +141,18 @@ export function VehicleMaintenanceForm({
           </p>
         </div>
         <div>
-          <Label>Kilométrage</Label>
-          <Input type="number" min="0" value={kilometrage} onChange={(event) => setKilometrage(event.target.value)} />
+          <Label htmlFor="vehicle-maintenance-kilometrage">Kilométrage</Label>
+          <Input id="vehicle-maintenance-kilometrage" type="number" min="0" value={kilometrage} onChange={(event) => setKilometrage(event.target.value)} />
         </div>
         <div>
-          <Label>Prestataire</Label>
-          <Input value={provider} onChange={(event) => setProvider(event.target.value)} />
+          <Label htmlFor="vehicle-maintenance-provider">Prestataire</Label>
+          <Input id="vehicle-maintenance-provider" value={provider} onChange={(event) => setProvider(event.target.value)} />
         </div>
       </div>
 
       <div>
-        <Label>Notes</Label>
-        <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} />
+        <Label htmlFor="vehicle-maintenance-notes">Notes</Label>
+        <Textarea id="vehicle-maintenance-notes" value={notes} onChange={(event) => setNotes(event.target.value)} />
       </div>
 
       <div className="flex justify-end gap-2">

@@ -26,6 +26,7 @@ type EntitySelectProps = {
   onValueChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  id?: string;
 };
 
 type SelectOption = { id: string; label: string; detail?: string };
@@ -35,6 +36,7 @@ function SearchableEntitySelect({
   onValueChange,
   placeholder = "Sélectionner…",
   disabled,
+  id,
   options,
   onSearchChange,
 }: EntitySelectProps & { options: SelectOption[]; onSearchChange?: (value: string) => void }) {
@@ -47,7 +49,7 @@ function SearchableEntitySelect({
 
   return (
     <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-      <SelectTrigger><SelectValue placeholder={placeholder} /></SelectTrigger>
+      <SelectTrigger id={id}><SelectValue placeholder={placeholder} /></SelectTrigger>
       <SelectContent>
         <div className="p-1">
           <Input

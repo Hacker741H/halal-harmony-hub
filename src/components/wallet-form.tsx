@@ -83,16 +83,18 @@ export function WalletForm({ onSuccess, wallet }: Props) {
     <div className="space-y-5">
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <Label>Nom du wallet *</Label>
+          <Label htmlFor="wallet-name">Nom du wallet *</Label>
           <Input
+            id="wallet-name"
             placeholder="Wave Business"
             value={form.name}
             onChange={(event) => setForm({ ...form, name: event.target.value })}
           />
         </div>
         <div>
-          <Label>Type</Label>
+          <Label htmlFor="wallet-type">Type</Label>
           <select
+            id="wallet-type"
             className="w-full rounded-md border px-3 py-2"
             value={form.type}
             onChange={(event) => setForm({ ...form, type: event.target.value })}
@@ -108,8 +110,9 @@ export function WalletForm({ onSuccess, wallet }: Props) {
           </select>
         </div>
         <div>
-          <Label>Solde d'ouverture (FCFA)</Label>
+          <Label htmlFor="wallet-initial-balance">Solde d'ouverture (FCFA)</Label>
           <Input
+            id="wallet-initial-balance"
             type="number"
             placeholder="0"
             value={form.initial_balance}
@@ -120,16 +123,18 @@ export function WalletForm({ onSuccess, wallet }: Props) {
           </p>
         </div>
         <div>
-          <Label>Couleur</Label>
+          <Label htmlFor="wallet-color">Couleur</Label>
           <Input
+            id="wallet-color"
             type="color"
             value={form.color}
             onChange={(event) => setForm({ ...form, color: event.target.value })}
           />
         </div>
         <div>
-          <Label>Icône</Label>
+          <Label htmlFor="wallet-icon">Icône</Label>
           <Input
+            id="wallet-icon"
             placeholder="wallet"
             value={form.icon}
             onChange={(event) => setForm({ ...form, icon: event.target.value })}
