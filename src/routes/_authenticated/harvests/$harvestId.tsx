@@ -133,7 +133,7 @@ function HarvestDetailPage() {
                 <Button disabled={startMutation.isPending} onClick={() => startMutation.mutate()}>Démarrer</Button>
                 <Button variant="outline" onClick={() => setDialog("reschedule")}>Reporter</Button>
                 <Button
-                  variant="outline"
+                  variant="destructive"
                   disabled={cancelMutation.isPending}
                   onClick={() => { if (window.confirm("Annuler cette récolte ?")) cancelMutation.mutate(""); }}
                 >

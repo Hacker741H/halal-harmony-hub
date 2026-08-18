@@ -74,6 +74,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         <Comp
           className={cn(buttonVariants({ variant, size, className }))}
           ref={ref}
+          data-variant={variant ?? "default"}
           aria-busy={loading || undefined}
           {...props}
         >
@@ -86,6 +87,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
+        data-variant={variant ?? "default"}
         disabled={disabled || loading}
         aria-busy={loading || undefined}
         {...props}

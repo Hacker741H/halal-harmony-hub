@@ -53,7 +53,25 @@ export function ModuleHero({
             </p>
           </div>
         </div>
-        {actions ? <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.08] p-2 backdrop-blur-sm [&>button]:border-transparent [&>button]:bg-white [&>button]:text-primary [&>button]:shadow-sm [&>button:hover]:bg-emerald-50">{actions}</div> : null}
+        {actions ? (
+          <div
+            className={cn(
+              "flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.08] p-2 backdrop-blur-sm",
+              // Only recolor buttons that don't already carry their own
+              // meaning-bearing variant. Forcing every button to the same
+              // white pill made a destructive action (e.g. "Annuler" on a
+              // récolte) render identically to the primary action next to
+              // it -- the two were indistinguishable at a glance.
+              "[&>button:not([data-variant=destructive]):not([data-variant=danger])]:border-transparent",
+              "[&>button:not([data-variant=destructive]):not([data-variant=danger])]:bg-white",
+              "[&>button:not([data-variant=destructive]):not([data-variant=danger])]:text-primary",
+              "[&>button:not([data-variant=destructive]):not([data-variant=danger])]:shadow-sm",
+              "[&>button:not([data-variant=destructive]):not([data-variant=danger]):hover]:bg-emerald-50",
+            )}
+          >
+            {actions}
+          </div>
+        ) : null}
       </div>
       {children ? <div className="relative mt-6">{children}</div> : null}
     </section>
