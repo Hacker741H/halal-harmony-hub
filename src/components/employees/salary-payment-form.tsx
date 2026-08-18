@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   createSalaryPayment,
@@ -92,18 +93,29 @@ export function SalaryPaymentForm({
       </p>
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <Label>Employé</Label>
-          <select className="w-full rounded-md border px-3 py-2" value={employeeId} disabled={Boolean(driverId)} onChange={(event) => setEmployeeId(event.target.value)}>
-            <option value="">Sélectionner un employé</option>
-            {people.map((person) => <option key={person.employee_id} value={person.employee_id}>{person.nom} {person.prenom ?? ""}</option>)}
-          </select>
+          <Label htmlFor="salary-employee">Employé</Label>
+          <Select value={employeeId || undefined} disabled={Boolean(driverId)} onValueChange={setEmployeeId}>
+            <SelectTrigger id="salary-employee">
+              <SelectValue placeholder="Sélectionner un employé" />
+            </SelectTrigger>
+            <SelectContent>
+              {people.map((person) => <SelectItem key={person.employee_id} value={person.employee_id}>{person.nom} {person.prenom ?? ""}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
         <div>
-          <Label>Chauffeur (facultatif)</Label>
-          <select className="w-full rounded-md border px-3 py-2" value={driverId} disabled={Boolean(initialDriverId)} onChange={(event) => setDriverId(event.target.value)}>
-            <option value="">Paiement employé</option>
-            {people.filter((person) => person.driver_id).map((person) => <option key={person.driver_id} value={person.driver_id ?? ""}>{person.nom} {person.prenom ?? ""}</option>)}
-          </select>
+          <Label htmlFor="salary-driver">Chauffeur (facultatif)</Label>
+          <Select
+            value={driverId || "NONE"}
+            disabled={Boolean(initialDriverId)}
+            onValueChange={(value) => setDriverId(value === "NONE" ? "" : value)}
+          >
+            <SelectTrigger id="salary-driver"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="NONE">Paiement employé</SelectItem>
+              {people.filter((person) => person.driver_id).map((person) => <SelectItem key={person.driver_id} value={person.driver_id ?? ""}>{person.nom} {person.prenom ?? ""}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <Label>Période concernée</Label>
@@ -118,11 +130,15 @@ export function SalaryPaymentForm({
           <Input type="number" min="0" value={amount} onChange={(event) => setAmount(event.target.value)} />
         </div>
         <div>
-          <Label>Wallet</Label>
-          <select className="w-full rounded-md border px-3 py-2" value={walletId} onChange={(event) => setWalletId(event.target.value)}>
-            <option value="">Sélectionner un wallet</option>
-            {wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
-          </select>
+          <Label htmlFor="salary-wallet">Wallet</Label>
+          <Select value={walletId || undefined} onValueChange={setWalletId}>
+            <SelectTrigger id="salary-wallet">
+              <SelectValue placeholder="Sélectionner un wallet" />
+            </SelectTrigger>
+            <SelectContent>
+              {wallets.map((wallet) => <SelectItem key={wallet.id} value={wallet.id}>{wallet.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
         <div className="md:col-span-2">
           <label className="flex items-center gap-2 text-sm">

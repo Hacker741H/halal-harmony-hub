@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { Stock } from "@/lib/stocks.functions";
 import { createStockMovement } from "@/lib/stock-movements.functions";
@@ -100,17 +101,24 @@ export function StockMovementForm({ stocks, onSuccess }: Props) {
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <Label>Article</Label>
-          <select className="w-full rounded-md border px-3 py-2" value={itemId} onChange={(event) => setItemId(event.target.value)}>
-            <option value="">Sélectionner un article</option>
-            {stocks.map((stock) => <option key={stock.id} value={stock.id}>{stock.nom}</option>)}
-          </select>
+          <Label htmlFor="stock-movement-item">Article</Label>
+          <Select value={itemId || undefined} onValueChange={setItemId}>
+            <SelectTrigger id="stock-movement-item">
+              <SelectValue placeholder="Sélectionner un article" />
+            </SelectTrigger>
+            <SelectContent>
+              {stocks.map((stock) => <SelectItem key={stock.id} value={stock.id}>{stock.nom}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
         <div>
-          <Label>Type de mouvement</Label>
-          <select className="w-full rounded-md border px-3 py-2" value={movementType} onChange={(event) => setMovementType(event.target.value as keyof typeof movementLabels)}>
-            {Object.entries(movementLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select>
+          <Label htmlFor="stock-movement-type">Type de mouvement</Label>
+          <Select value={movementType} onValueChange={(value) => setMovementType(value as keyof typeof movementLabels)}>
+            <SelectTrigger id="stock-movement-type"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {Object.entries(movementLabels).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <Label>Quantité {selectedItem?.unite ? `(${selectedItem.unite})` : ""}</Label>
@@ -127,11 +135,15 @@ export function StockMovementForm({ stocks, onSuccess }: Props) {
               <Input type="number" min="0" value={unitPrice} onChange={(event) => setUnitPrice(event.target.value)} />
             </div>
             <div>
-              <Label>{movementType === "PURCHASE" ? "Wallet débité" : "Wallet crédité"}</Label>
-              <select className="w-full rounded-md border px-3 py-2" value={walletId} onChange={(event) => setWalletId(event.target.value)}>
-                <option value="">Sélectionner un wallet</option>
-                {wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
-              </select>
+              <Label htmlFor="stock-movement-wallet">{movementType === "PURCHASE" ? "Wallet débité" : "Wallet crédité"}</Label>
+              <Select value={walletId || undefined} onValueChange={setWalletId}>
+                <SelectTrigger id="stock-movement-wallet">
+                  <SelectValue placeholder="Sélectionner un wallet" />
+                </SelectTrigger>
+                <SelectContent>
+                  {wallets.map((wallet) => <SelectItem key={wallet.id} value={wallet.id}>{wallet.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
               <p className="mt-1 text-xs text-muted-foreground">
                 Une {movementType === "PURCHASE" ? "dépense" : "recette"} sera créée automatiquement.
               </p>

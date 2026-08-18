@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   createVehicle,
@@ -215,9 +216,12 @@ export default function VehicleForm({ vehicle, onSuccess }: Props) {
           </div>
           <div>
             <Label htmlFor="vehicle-status">Statut</Label>
-            <select id="vehicle-status" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as VehicleStatus })}>
-              {VEHICLE_STATUSES.map((status) => <option key={status} value={status}>{VEHICLE_STATUS_LABELS[status]}</option>)}
-            </select>
+            <Select value={form.status} onValueChange={(value) => setForm({ ...form, status: value as VehicleStatus })}>
+              <SelectTrigger id="vehicle-status"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {VEHICLE_STATUSES.map((status) => <SelectItem key={status} value={status}>{VEHICLE_STATUS_LABELS[status]}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label htmlFor="vehicle-chassis-number">Numéro de châssis</Label>
@@ -229,14 +233,18 @@ export default function VehicleForm({ vehicle, onSuccess }: Props) {
           </div>
           <div className="md:col-span-2">
             <Label htmlFor="vehicle-driver">Chauffeur affecté</Label>
-            <select id="vehicle-driver" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={form.driver_id} disabled>
-              <option value="">Aucun chauffeur affecté</option>
-              {drivers.map((driver: DriverWithEmployee) => (
-                <option key={driver.id} value={driver.id}>
-                  {[driver.employees?.nom, driver.employees?.prenom].filter(Boolean).join(" ") || "Chauffeur sans nom"}
-                </option>
-              ))}
-            </select>
+            <Select value={form.driver_id || undefined} disabled>
+              <SelectTrigger id="vehicle-driver">
+                <SelectValue placeholder="Aucun chauffeur affecté" />
+              </SelectTrigger>
+              <SelectContent>
+                {drivers.map((driver: DriverWithEmployee) => (
+                  <SelectItem key={driver.id} value={driver.id}>
+                    {[driver.employees?.nom, driver.employees?.prenom].filter(Boolean).join(" ") || "Chauffeur sans nom"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </section>
@@ -254,10 +262,12 @@ export default function VehicleForm({ vehicle, onSuccess }: Props) {
           </div>
           <div>
             <Label htmlFor="vehicle-purchase-wallet">Wallet de paiement</Label>
-            <select id="vehicle-purchase-wallet" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={form.purchase_wallet_id} onChange={(event) => setForm({ ...form, purchase_wallet_id: event.target.value })}>
-              <option value="">Choisir…</option>
-              {wallets.map((wallet: Wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}
-            </select>
+            <Select value={form.purchase_wallet_id || undefined} onValueChange={(value) => setForm({ ...form, purchase_wallet_id: value })}>
+              <SelectTrigger id="vehicle-purchase-wallet"><SelectValue placeholder="Choisir…" /></SelectTrigger>
+              <SelectContent>
+                {wallets.map((wallet: Wallet) => <SelectItem key={wallet.id} value={wallet.id}>{wallet.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label htmlFor="vehicle-supplier">Fournisseur</Label>

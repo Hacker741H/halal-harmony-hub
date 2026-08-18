@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
   ALERT_SEVERITIES,
@@ -352,10 +353,13 @@ function AlertRuleCard({ rule, disabled, onSaved }: { rule: AlertRule; disabled:
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>Gravité par défaut</Label>
-            <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={defaultSeverity} disabled={disabled} onChange={(event) => setDefaultSeverity(event.target.value as AlertSeverity)}>
-              {ALERT_SEVERITIES.map((severity) => <option key={severity} value={severity}>{severity}</option>)}
-            </select>
+            <Label htmlFor={`rule-${rule.id}-default-severity`}>Gravité par défaut</Label>
+            <Select value={defaultSeverity} disabled={disabled} onValueChange={(value) => setDefaultSeverity(value as AlertSeverity)}>
+              <SelectTrigger id={`rule-${rule.id}-default-severity`} className="h-10 w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ALERT_SEVERITIES.map((severity) => <SelectItem key={severity} value={severity}>{severity}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
           {rule.alert_type === "LOW_WALLET" && (
             <div className="space-y-2"><Label>Seuil global (FCFA)</Label><Input type="number" min="0" value={threshold} disabled={disabled} onChange={(event) => setThreshold(event.target.value)} placeholder="Désactivé si vide" /></div>
@@ -367,12 +371,15 @@ function AlertRuleCard({ rule, disabled, onSaved }: { rule: AlertRule; disabled:
             <div className="space-y-2"><Label>Délais avant échéance (jours, séparés par des virgules)</Label><Input value={dueDays} disabled={disabled} onChange={(event) => setDueDays(event.target.value)} placeholder="30, 15, 7" /></div>
             <div className="grid gap-3 sm:grid-cols-2">
               {["overdue", "0", ...(parsedDueDays ?? []) .map(String)].filter((item, index, values) => values.indexOf(item) === index).map((stage) => (
-                <label key={stage} className="space-y-1 text-sm">
-                  <span>{stage === "overdue" ? "Échu" : stage === "0" ? "Jour de l’échéance" : `À ${stage} jour(s)`}</span>
-                  <select className="h-9 w-full rounded-md border border-input bg-background px-2" value={schedule[stage] ?? defaultSeverity} disabled={disabled} onChange={(event) => setSchedule((current) => ({ ...current, [stage]: event.target.value as AlertSeverity }))}>
-                    {ALERT_SEVERITIES.map((severity) => <option key={severity} value={severity}>{severity}</option>)}
-                  </select>
-                </label>
+                <div key={stage} className="space-y-1 text-sm">
+                  <Label htmlFor={`rule-${rule.id}-stage-${stage}`} className="text-sm font-normal">{stage === "overdue" ? "Échu" : stage === "0" ? "Jour de l’échéance" : `À ${stage} jour(s)`}</Label>
+                  <Select value={schedule[stage] ?? defaultSeverity} disabled={disabled} onValueChange={(value) => setSchedule((current) => ({ ...current, [stage]: value as AlertSeverity }))}>
+                    <SelectTrigger id={`rule-${rule.id}-stage-${stage}`} className="h-9 w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ALERT_SEVERITIES.map((severity) => <SelectItem key={severity} value={severity}>{severity}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               ))}
             </div>
           </div>

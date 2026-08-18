@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
 import { ModuleHero } from "@/components/ui/module-hero";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getAllMotorcycleMaintenances, type MotorcycleMaintenance } from "@/lib/motorcycle-maintenances.functions";
 import { getMotorcycles, type Motorcycle } from "@/lib/motorcycles.functions";
 import {
@@ -243,17 +244,16 @@ function MaintenancePage() {
           <div className="space-y-4">
             <div>
               <label htmlFor="maintenance-asset" className="text-sm font-medium">{assetType === "motorcycle" ? "Moto" : "Véhicule"}</label>
-              <select
-                id="maintenance-asset"
-                className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3"
-                value={assetId}
-                onChange={(event) => setAssetId(event.target.value)}
-              >
-                <option value="">Sélectionner…</option>
-                {assetType === "motorcycle"
-                  ? motorcycles.map((item) => <option key={item.id} value={item.id}>{item.immatriculation} — {item.marque} {item.modele}</option>)
-                  : vehicles.map((item) => <option key={item.id} value={item.id}>{item.registration} — {item.brand} {item.model}</option>)}
-              </select>
+              <Select value={assetId || undefined} onValueChange={setAssetId}>
+                <SelectTrigger id="maintenance-asset" className="mt-1 w-full">
+                  <SelectValue placeholder="Sélectionner…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {assetType === "motorcycle"
+                    ? motorcycles.map((item) => <SelectItem key={item.id} value={item.id}>{item.immatriculation} — {item.marque} {item.modele}</SelectItem>)
+                    : vehicles.map((item) => <SelectItem key={item.id} value={item.id}>{item.registration} — {item.brand} {item.model}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             {assetType === "motorcycle" && selectedMotorcycle ? (
               <MotorcycleMaintenanceForm motorcycleId={selectedMotorcycle.id} onSuccess={refresh} onCancel={() => setDialogOpen(false)} />

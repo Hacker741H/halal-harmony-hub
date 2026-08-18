@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import {
   createFinanceOperation,
@@ -177,81 +178,77 @@ export function TransferForm({
 
       <div className="grid gap-4 md:grid-cols-2">        <div>
 
-          <Label>
+          <Label htmlFor="transfer-source-wallet">
             Wallet source
           </Label>
 
-          <select
-            className="w-full rounded-md border p-2"
-            value={form.wallet_id}
-            onChange={(e) =>
+          <Select
+            value={form.wallet_id || undefined}
+            onValueChange={(value) =>
               setForm({
                 ...form,
-                wallet_id:
-                  e.target.value,
+                wallet_id: value,
               })
             }
           >
-            <option value="">
-              Choisir...
-            </option>
-
-            {wallets.map(
-              (wallet: Wallet) => (
-                <option
-                  key={wallet.id}
-                  value={wallet.id}
-                >
-                  {wallet.name}
-                </option>
-              ),
-            )}
-          </select>
+            <SelectTrigger id="transfer-source-wallet">
+              <SelectValue placeholder="Choisir..." />
+            </SelectTrigger>
+            <SelectContent>
+              {wallets.map(
+                (wallet: Wallet) => (
+                  <SelectItem
+                    key={wallet.id}
+                    value={wallet.id}
+                  >
+                    {wallet.name}
+                  </SelectItem>
+                ),
+              )}
+            </SelectContent>
+          </Select>
 
         </div>
 
         <div>
 
-          <Label>
+          <Label htmlFor="transfer-destination-wallet">
             Wallet destination
           </Label>
 
-          <select
-            className="w-full rounded-md border p-2"
-            value={
-              form.destination_wallet_id
-            }
-            onChange={(e) =>
+          <Select
+            value={form.destination_wallet_id || undefined}
+            onValueChange={(value) =>
               setForm({
                 ...form,
-                destination_wallet_id:
-                  e.target.value,
+                destination_wallet_id: value,
               })
             }
           >
-            <option value="">
-              Choisir...
-            </option>
-
-            {wallets
-              .filter(
-                (wallet) =>
-                  wallet.id !==
-                  form.wallet_id,
-              )
-              .map(
-                (
-                  wallet: Wallet,
-                ) => (
-                  <option
-                    key={wallet.id}
-                    value={wallet.id}
-                  >
-                    {wallet.name}
-                  </option>
-                ),
-              )}
-          </select>
+            <SelectTrigger id="transfer-destination-wallet">
+              <SelectValue placeholder="Choisir..." />
+            </SelectTrigger>
+            <SelectContent>
+              {wallets
+                .filter(
+                  (wallet) =>
+                    wallet.id !==
+                    form.wallet_id,
+                )
+                .map(
+                  (
+                    wallet: Wallet,
+                  ) => (
+                    <SelectItem
+                      key={wallet.id}
+                      value={wallet.id}
+                    >
+                      {wallet.name}
+                    </SelectItem>
+                  ),
+                )}
+            </SelectContent>
+          </Select>
 
         </div>
 

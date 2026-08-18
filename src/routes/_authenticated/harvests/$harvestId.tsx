@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ModuleHero } from "@/components/ui/module-hero";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ClientSelect } from "@/components/selects/entity-selects";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -660,12 +661,15 @@ function RecurrenceDialog({
     <DialogShell open={open} onClose={onClose} title={`Récurrence — ${produit}`}>
       <div className="space-y-4">
         <div>
-          <Label>Fréquence</Label>
-          <select className="mt-1 w-full rounded-md border bg-background px-3 py-2" value={frequency} onChange={(e) => setFrequency(e.target.value as typeof frequency)}>
-            <option value="WEEKLY">Hebdomadaire</option>
-            <option value="MONTHLY">Mensuelle</option>
-            <option value="CUSTOM_DAYS">Tous les N jours</option>
-          </select>
+          <Label htmlFor="harvest-recurrence-frequency">Fréquence</Label>
+          <Select value={frequency} onValueChange={(value) => setFrequency(value as typeof frequency)}>
+            <SelectTrigger id="harvest-recurrence-frequency" className="mt-1 w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="WEEKLY">Hebdomadaire</SelectItem>
+              <SelectItem value="MONTHLY">Mensuelle</SelectItem>
+              <SelectItem value="CUSTOM_DAYS">Tous les N jours</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <Label>{frequency === "WEEKLY" ? "Toutes les N semaines" : frequency === "CUSTOM_DAYS" ? "Tous les N jours" : "Tous les N mois"}</Label>

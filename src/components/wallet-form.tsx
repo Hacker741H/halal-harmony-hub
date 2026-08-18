@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createWallet, updateWallet, type Wallet } from "@/lib/wallet.functions";
 
 type Props = { onSuccess: () => void; wallet?: Wallet | null };
@@ -93,21 +94,19 @@ export function WalletForm({ onSuccess, wallet }: Props) {
         </div>
         <div>
           <Label htmlFor="wallet-type">Type</Label>
-          <select
-            id="wallet-type"
-            className="w-full rounded-md border px-3 py-2"
-            value={form.type}
-            onChange={(event) => setForm({ ...form, type: event.target.value })}
-          >
-            <option value="CASH">Espèces</option>
-            <option value="JEKO">Jèko</option>
-            <option value="WAVE">Wave</option>
-            <option value="ORANGE_MONEY">Orange Money</option>
-            <option value="MTN_MOMO">MTN MoMo</option>
-            <option value="BANK">Banque</option>
-            <option value="SAVINGS">Épargne</option>
-            <option value="ASSET">Actif</option>
-          </select>
+          <Select value={form.type} onValueChange={(value) => setForm({ ...form, type: value })}>
+            <SelectTrigger id="wallet-type"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="CASH">Espèces</SelectItem>
+              <SelectItem value="JEKO">Jèko</SelectItem>
+              <SelectItem value="WAVE">Wave</SelectItem>
+              <SelectItem value="ORANGE_MONEY">Orange Money</SelectItem>
+              <SelectItem value="MTN_MOMO">MTN MoMo</SelectItem>
+              <SelectItem value="BANK">Banque</SelectItem>
+              <SelectItem value="SAVINGS">Épargne</SelectItem>
+              <SelectItem value="ASSET">Actif</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <Label htmlFor="wallet-initial-balance">Solde d'ouverture (FCFA)</Label>

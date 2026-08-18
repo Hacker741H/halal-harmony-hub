@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ModuleHero } from "@/components/ui/module-hero";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   getGlobalControlCenter,
@@ -214,36 +215,33 @@ function ControlCenterPage() {
               </div>
             </CardHeader>
             <CardContent className="flex flex-col gap-3 p-5 md:flex-row md:flex-wrap md:items-center sm:p-6">
-              <select
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                value={module}
-                onChange={(event) => { setModule(event.target.value as GlobalControlCenterModule | "ALL"); setPage(1); }}
-              >
-                <option value="ALL">Tous les modules</option>
-                {GLOBAL_CONTROL_CENTER_MODULES.map((item) => (
-                  <option key={item} value={item}>{moduleLabels[item] ?? item}</option>
-                ))}
-              </select>
-              <select
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                value={severity}
-                onChange={(event) => { setSeverity(event.target.value as GlobalControlCenterSeverity | "ALL"); setPage(1); }}
-              >
-                <option value="ALL">Toutes les gravités</option>
-                {GLOBAL_CONTROL_CENTER_SEVERITIES.map((item) => (
-                  <option key={item} value={item}>{severityLabels[item] ?? item}</option>
-                ))}
-              </select>
-              <select
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                value={locationId}
-                onChange={(event) => { setLocationId(event.target.value); setPage(1); }}
-              >
-                <option value="ALL">Tous les magasins</option>
-                {(locationsQuery.data ?? []).map((location) => (
-                  <option key={location.id} value={location.id}>{location.name}</option>
-                ))}
-              </select>
+              <Select value={module} onValueChange={(value) => { setModule(value as GlobalControlCenterModule | "ALL"); setPage(1); }}>
+                <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Tous les modules</SelectItem>
+                  {GLOBAL_CONTROL_CENTER_MODULES.map((item) => (
+                    <SelectItem key={item} value={item}>{moduleLabels[item] ?? item}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={severity} onValueChange={(value) => { setSeverity(value as GlobalControlCenterSeverity | "ALL"); setPage(1); }}>
+                <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Toutes les gravités</SelectItem>
+                  {GLOBAL_CONTROL_CENTER_SEVERITIES.map((item) => (
+                    <SelectItem key={item} value={item}>{severityLabels[item] ?? item}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={locationId} onValueChange={(value) => { setLocationId(value); setPage(1); }}>
+                <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Tous les magasins</SelectItem>
+                  {(locationsQuery.data ?? []).map((location) => (
+                    <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Input
                 value={status}
                 onChange={(event) => { setStatus(event.target.value); setPage(1); }}

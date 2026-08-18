@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DriverAssignmentPanel } from "@/components/assignments/driver-assignment-panel";
 import { DocumentUpload } from "@/components/documents/document-upload";
@@ -221,26 +222,29 @@ function VehicleDetailsPage() {
             <Pencil className="mr-2 h-4 w-4" />
             Modifier
           </Button>
-          <select
-            aria-label="Modifier le statut du véhicule"
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+          <Select
             value={currentStatus}
             disabled={statusMutation.isPending}
-            onChange={(event) =>
+            onValueChange={(value) =>
               statusMutation.mutate({
                 data: {
                   id: vehicle.id,
-                  status: event.target.value as VehicleStatus,
+                  status: value as VehicleStatus,
                 },
               })
             }
           >
-            {VEHICLE_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {VEHICLE_STATUS_LABELS[status]}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger aria-label="Modifier le statut du véhicule" className="h-10">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {VEHICLE_STATUSES.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {VEHICLE_STATUS_LABELS[status]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

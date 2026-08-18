@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import {
   createFinanceOperation,
   updateFinanceOperation,
@@ -175,34 +177,33 @@ export function RevenueForm({
       <div className="grid gap-5 md:grid-cols-2">
 
         <div>
-          <Label>Wallet</Label>
+          <Label htmlFor="revenue-wallet">Wallet</Label>
 
-          <select
-            className="w-full rounded-md border px-3 py-2"
-            value={form.wallet_id}
-            onChange={(e) =>
+          <Select
+            value={form.wallet_id || undefined}
+            onValueChange={(value) =>
               setForm({
                 ...form,
-                wallet_id:
-                  e.target.value,
+                wallet_id: value,
               })
             }
           >
-            <option value="">
-              Sélectionner...
-            </option>
-
-            {wallets.map(
-              (wallet: Wallet) => (
-                <option
-                  key={wallet.id}
-                  value={wallet.id}
-                >
-                  {wallet.name}
-                </option>
-              ),
-            )}
-          </select>
+            <SelectTrigger id="revenue-wallet">
+              <SelectValue placeholder="Sélectionner..." />
+            </SelectTrigger>
+            <SelectContent>
+              {wallets.map(
+                (wallet: Wallet) => (
+                  <SelectItem
+                    key={wallet.id}
+                    value={wallet.id}
+                  >
+                    {wallet.name}
+                  </SelectItem>
+                ),
+              )}
+            </SelectContent>
+          </Select>
         </div>
 
         <div>
@@ -259,40 +260,26 @@ export function RevenueForm({
 
         </div>        <div>
 
-          <Label>Moyen de paiement</Label>
+          <Label htmlFor="revenue-payment-method">Moyen de paiement</Label>
 
-          <select
-            className="w-full rounded-md border px-3 py-2"
+          <Select
             value={form.payment_method}
-            onChange={(e) =>
+            onValueChange={(value) =>
               setForm({
                 ...form,
-                payment_method:
-                  e.target.value,
+                payment_method: value,
               })
             }
           >
-            <option value="ESPECES">
-              Espèces
-            </option>
-
-            <option value="WAVE">
-              Wave
-            </option>
-
-            <option value="ORANGE_MONEY">
-              Orange Money
-            </option>
-
-            <option value="MTN_MONEY">
-              MTN Money
-            </option>
-
-            <option value="BANQUE">
-              Banque
-            </option>
-
-          </select>
+            <SelectTrigger id="revenue-payment-method"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ESPECES">Espèces</SelectItem>
+              <SelectItem value="WAVE">Wave</SelectItem>
+              <SelectItem value="ORANGE_MONEY">Orange Money</SelectItem>
+              <SelectItem value="MTN_MONEY">MTN Money</SelectItem>
+              <SelectItem value="BANQUE">Banque</SelectItem>
+            </SelectContent>
+          </Select>
 
         </div>
 

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 import {
@@ -150,24 +151,22 @@ export function MotorcycleMaintenanceForm({
         <div>
           <Label htmlFor="motorcycle-maintenance-type">Type d'entretien</Label>
 
-          <select
-            id="motorcycle-maintenance-type"
-            className="w-full rounded-md border px-3 py-2"
-            value={type}
-            onChange={(e) =>
-              setType(e.target.value)
-            }
-          >
-            <option>Vidange</option>
-            <option>Pneus</option>
-            <option>Freins</option>
-            <option>Chaîne</option>
-            <option>Batterie</option>
-            <option>Assurance</option>
-            <option>Visite technique</option>
-            <option>Réparation</option>
-            <option>Autre</option>
-          </select>
+          <Select value={type} onValueChange={setType}>
+            <SelectTrigger id="motorcycle-maintenance-type">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Vidange">Vidange</SelectItem>
+              <SelectItem value="Pneus">Pneus</SelectItem>
+              <SelectItem value="Freins">Freins</SelectItem>
+              <SelectItem value="Chaîne">Chaîne</SelectItem>
+              <SelectItem value="Batterie">Batterie</SelectItem>
+              <SelectItem value="Assurance">Assurance</SelectItem>
+              <SelectItem value="Visite technique">Visite technique</SelectItem>
+              <SelectItem value="Réparation">Réparation</SelectItem>
+              <SelectItem value="Autre">Autre</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div>
@@ -216,20 +215,18 @@ export function MotorcycleMaintenanceForm({
         <div>
           <Label htmlFor="motorcycle-maintenance-wallet">Wallet de paiement</Label>
 
-          <select
-            id="motorcycle-maintenance-wallet"
-            className="w-full rounded-md border px-3 py-2"
-            value={walletId}
-            disabled={Number(cost || 0) <= 0}
-            onChange={(event) => setWalletId(event.target.value)}
-          >
-            <option value="">Sélectionner un wallet</option>
-            {wallets.map((wallet) => (
-              <option key={wallet.id} value={wallet.id}>
-                {wallet.name}
-              </option>
-            ))}
-          </select>
+          <Select value={walletId} onValueChange={setWalletId} disabled={Number(cost || 0) <= 0}>
+            <SelectTrigger id="motorcycle-maintenance-wallet">
+              <SelectValue placeholder="Sélectionner un wallet" />
+            </SelectTrigger>
+            <SelectContent>
+              {wallets.map((wallet) => (
+                <SelectItem key={wallet.id} value={wallet.id}>
+                  {wallet.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <p className="mt-1 text-xs text-muted-foreground">
             Une dépense sera créée automatiquement si le coût est supérieur à zéro.

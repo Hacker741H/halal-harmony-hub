@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   createExpense,
@@ -96,19 +97,19 @@ export function ExpenseForm({ farmId, expense, onSuccess }: Props) {
         </div>
 
         <div>
-          <Label>Wallet</Label>
-          <select
-            className="w-full rounded-md border px-3 py-2"
-            value={form.wallet_id}
-            onChange={(event) => setForm({ ...form, wallet_id: event.target.value })}
-          >
-            <option value="">Sélectionner...</option>
-            {wallets.map((wallet) => (
-              <option key={wallet.id} value={wallet.id}>
-                {wallet.name}
-              </option>
-            ))}
-          </select>
+          <Label htmlFor="expense-wallet">Wallet</Label>
+          <Select value={form.wallet_id || undefined} onValueChange={(value) => setForm({ ...form, wallet_id: value })}>
+            <SelectTrigger id="expense-wallet">
+              <SelectValue placeholder="Sélectionner..." />
+            </SelectTrigger>
+            <SelectContent>
+              {wallets.map((wallet) => (
+                <SelectItem key={wallet.id} value={wallet.id}>
+                  {wallet.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div>

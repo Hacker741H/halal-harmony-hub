@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 import { getEmployees } from "@/lib/employees.functions";
@@ -137,20 +138,22 @@ export function HarvestForm({ farmId, onSuccess }: Props) {
         </div>
 
         <div className="md:col-span-2">
-          <Label>Responsable</Label>
-          <select
-            className="mt-1 w-full rounded-md border bg-background px-3 py-2"
-            required
-            value={form.responsable_employee_id}
-            onChange={(event) => setForm({ ...form, responsable_employee_id: event.target.value })}
+          <Label htmlFor="harvest-responsable">Responsable</Label>
+          <Select
+            value={form.responsable_employee_id || undefined}
+            onValueChange={(value) => setForm({ ...form, responsable_employee_id: value })}
           >
-            <option value="">Sélectionner…</option>
-            {employees.map((employee) => (
-              <option key={employee.id} value={employee.id}>
-                {[employee.prenom, employee.nom].filter(Boolean).join(" ")}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id="harvest-responsable" className="mt-1 w-full">
+              <SelectValue placeholder="Sélectionner…" />
+            </SelectTrigger>
+            <SelectContent>
+              {employees.map((employee) => (
+                <SelectItem key={employee.id} value={employee.id}>
+                  {[employee.prenom, employee.nom].filter(Boolean).join(" ")}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div>

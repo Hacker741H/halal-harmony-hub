@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
 import { ModuleHero } from "@/components/ui/module-hero";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { runNotificationsManually } from "@/lib/alert-settings.functions";
 import {
   getNotificationSummary,
@@ -150,19 +151,28 @@ function NotificationsPage() {
         <CardContent className="flex flex-col gap-3 p-5 md:flex-row md:flex-wrap md:items-center sm:p-6">
           <Input value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); }} placeholder="Rechercher une alerte…" className="md:max-w-sm" />
           <Input value={type} onChange={(event) => { setType(event.target.value); setPage(0); }} placeholder="Type (ex. LOW_STOCK)" className="md:max-w-56" />
-          <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={status} onChange={(event) => updateFilters(event.target.value as NotificationStatus | "ALL", severity)}>
-            <option value="ALL">Tous les statuts</option>
-            {NOTIFICATION_STATUSES.map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
-          <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={severity} onChange={(event) => updateFilters(status, event.target.value as NotificationSeverity | "ALL")}>
-            <option value="ALL">Toutes les gravités</option>
-            {NOTIFICATION_SEVERITIES.map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
-          <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={dueDays ?? "ALL"} onChange={(event) => { const value = event.target.value; setDueDays(value === "7" ? 7 : value === "30" ? 30 : undefined); setPage(0); }}>
-            <option value="ALL">Toutes les échéances</option>
-            <option value="7">À 7 jours</option>
-            <option value="30">À 30 jours</option>
-          </select>
+          <Select value={status} onValueChange={(value) => updateFilters(value as NotificationStatus | "ALL", severity)}>
+            <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Tous les statuts</SelectItem>
+              {NOTIFICATION_STATUSES.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={severity} onValueChange={(value) => updateFilters(status, value as NotificationSeverity | "ALL")}>
+            <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Toutes les gravités</SelectItem>
+              {NOTIFICATION_SEVERITIES.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={dueDays ? String(dueDays) : "ALL"} onValueChange={(value) => { setDueDays(value === "7" ? 7 : value === "30" ? 30 : undefined); setPage(0); }}>
+            <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Toutes les échéances</SelectItem>
+              <SelectItem value="7">À 7 jours</SelectItem>
+              <SelectItem value="30">À 30 jours</SelectItem>
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
 

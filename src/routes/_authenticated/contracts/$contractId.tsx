@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { usePermissions } from "@/hooks/use-permissions";
 import { CONTRACT_STATUSES, getContract, updateContractStatus } from "@/lib/contracts.functions";
@@ -98,19 +99,22 @@ function ContractDetailsPage() {
         {can("contracts.manage") ? (
           <div className="space-y-1">
             <label htmlFor="contract-status" className="text-sm font-medium">Statut</label>
-            <select
-              id="contract-status"
-              className="block h-10 rounded-md border border-input bg-background px-3 text-sm"
+            <Select
               value={currentStatus}
               disabled={statusMutation.isPending}
-              onChange={(event) => statusMutation.mutate({ data: { id: contract.id, statut: event.target.value } })}
+              onValueChange={(value) => statusMutation.mutate({ data: { id: contract.id, statut: value } })}
             >
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {statusLabels[status] ?? status}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="contract-status" className="h-10">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {statusOptions.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {statusLabels[status] ?? status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         ) : (
           <Badge variant="outline">{statusLabels[currentStatus] ?? currentStatus}</Badge>

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import {
   createFinanceOperation,
@@ -204,33 +205,31 @@ export function FinanceForm({
             Wallet
           </Label>
 
-          <select
-            id="finance-wallet"
-            className="w-full rounded-md border px-3 py-2"
-            value={form.wallet_id}
-            onChange={(e) =>
+          <Select
+            value={form.wallet_id || undefined}
+            onValueChange={(value) =>
               setForm({
                 ...form,
-                wallet_id:
-                  e.target.value,
+                wallet_id: value,
               })
             }
           >
-            <option value="">
-              Sélectionner un wallet...
-            </option>
-
-            {wallets.map(
-              (wallet: Wallet) => (
-                <option
-                  key={wallet.id}
-                  value={wallet.id}
-                >
-                  {wallet.name}
-                </option>
-              ),
-            )}
-          </select>
+            <SelectTrigger id="finance-wallet">
+              <SelectValue placeholder="Sélectionner un wallet..." />
+            </SelectTrigger>
+            <SelectContent>
+              {wallets.map(
+                (wallet: Wallet) => (
+                  <SelectItem
+                    key={wallet.id}
+                    value={wallet.id}
+                  >
+                    {wallet.name}
+                  </SelectItem>
+                ),
+              )}
+            </SelectContent>
+          </Select>
 
         </div>
 

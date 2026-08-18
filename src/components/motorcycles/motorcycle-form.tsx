@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 import {
@@ -267,20 +268,22 @@ export function MotorcycleForm({
 
           <div className="md:col-span-2">
             <Label htmlFor="motorcycle-purchase-wallet">Wallet d'achat</Label>
-            <select
-              id="motorcycle-purchase-wallet"
-              className="w-full rounded-md border px-3 py-2"
+            <Select
               value={purchaseWalletId}
+              onValueChange={setPurchaseWalletId}
               disabled={Number(prixAchat || 0) <= 0}
-              onChange={(event) => setPurchaseWalletId(event.target.value)}
             >
-              <option value="">Sélectionner un wallet</option>
-              {wallets.map((wallet) => (
-                <option key={wallet.id} value={wallet.id}>
-                  {wallet.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="motorcycle-purchase-wallet">
+                <SelectValue placeholder="Sélectionner un wallet" />
+              </SelectTrigger>
+              <SelectContent>
+                {wallets.map((wallet) => (
+                  <SelectItem key={wallet.id} value={wallet.id}>
+                    {wallet.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <p className="mt-1 text-xs text-muted-foreground">
               Le prix d'achat crée automatiquement une dépense liée à cette moto.
             </p>

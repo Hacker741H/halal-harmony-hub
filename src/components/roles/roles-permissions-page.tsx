@@ -26,6 +26,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -273,7 +274,7 @@ function AccountManagement({ roles }: { roles: PermissionRole[] }) {
           <div><Label htmlFor="account-full-name">Nom complet</Label><Input id="account-full-name" value={fullName} onChange={(event) => setFullName(event.target.value)} placeholder="Nom de l’employé" required /></div>
           <div><Label htmlFor="account-username">Nom d’utilisateur</Label><Input id="account-username" value={username} onChange={(event) => setUsername(event.target.value.toLowerCase())} placeholder="mariam.keita" pattern="[A-Za-z0-9._-]{3,40}" aria-invalid={username.includes("@") || undefined} required /><p className={`mt-1 text-xs ${username.includes("@") ? "text-destructive" : "text-muted-foreground"}`}>{username.includes("@") ? "Utilisez seulement mariam.keita, sans @gmail.com." : "3 à 40 caractères : lettres, chiffres, point, tiret ou _. Pas d’adresse e-mail."}</p></div>
           <div><Label htmlFor="account-password">Mot de passe initial</Label><Input id="account-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} required /><p className="mt-1 text-xs text-muted-foreground">Au moins 8 caractères. Communiquez-le directement à la personne.</p></div>
-          <div><Label htmlFor="account-role">Rôle initial</Label><select id="account-role" value={role} onChange={(event) => setRole(getRole(event.target.value))} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"><option value="">Choisir un rôle</option>{roles.filter((item) => item.is_active).map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}</select></div>
+          <div><Label htmlFor="account-role">Rôle initial</Label><Select value={role} onValueChange={(value) => setRole(getRole(value))}><SelectTrigger id="account-role" className="h-9"><SelectValue /></SelectTrigger><SelectContent>{roles.filter((item) => item.is_active).map((item) => <SelectItem key={item.code} value={item.code}>{item.label}</SelectItem>)}</SelectContent></Select></div>
           <div className="md:col-span-2"><Button type="submit" disabled={createMutation.isPending}><UserPlus className="mr-2 h-4 w-4" />Créer l’accès</Button></div>
         </form>
       </CardContent>

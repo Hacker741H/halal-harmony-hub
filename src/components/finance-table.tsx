@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -201,54 +202,50 @@ export function FinanceTable({
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
-        <select
-          className="rounded-md border bg-background px-3 py-2"
-          value={typeFilter}
-          onChange={(event) => setTypeFilter(event.target.value)}
-        >
-          <option value="">Tous les types</option>
-          {filterOptions.types.map((type) => (
-            <option key={type} value={type}>
-              {typeLabels[type] ?? type}
-            </option>
-          ))}
-        </select>
-        <select
-          className="rounded-md border bg-background px-3 py-2"
-          value={walletFilter}
-          onChange={(event) => setWalletFilter(event.target.value)}
-        >
-          <option value="">Tous les wallets</option>
-          {filterOptions.wallets.map(([id, name]) => (
-            <option key={id} value={id}>
-              {name}
-            </option>
-          ))}
-        </select>
-        <select
-          className="rounded-md border bg-background px-3 py-2"
-          value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value)}
-        >
-          <option value="">Tous les statuts</option>
-          {filterOptions.statuses.map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-        </select>
-        <select
-          className="rounded-md border bg-background px-3 py-2"
-          value={moduleFilter}
-          onChange={(event) => setModuleFilter(event.target.value)}
-        >
-          <option value="">Tous les modules</option>
-          {filterOptions.modules.map((module) => (
-            <option key={module} value={module}>
-              {module}
-            </option>
-          ))}
-        </select>
+        <Select value={typeFilter || "ALL"} onValueChange={(value) => setTypeFilter(value === "ALL" ? "" : value)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Tous les types</SelectItem>
+            {filterOptions.types.map((type) => (
+              <SelectItem key={type} value={type}>
+                {typeLabels[type] ?? type}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={walletFilter || "ALL"} onValueChange={(value) => setWalletFilter(value === "ALL" ? "" : value)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Tous les wallets</SelectItem>
+            {filterOptions.wallets.map(([id, name]) => (
+              <SelectItem key={id} value={id}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter || "ALL"} onValueChange={(value) => setStatusFilter(value === "ALL" ? "" : value)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Tous les statuts</SelectItem>
+            {filterOptions.statuses.map((status) => (
+              <SelectItem key={status} value={status}>
+                {status}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={moduleFilter || "ALL"} onValueChange={(value) => setModuleFilter(value === "ALL" ? "" : value)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Tous les modules</SelectItem>
+            {filterOptions.modules.map((module) => (
+              <SelectItem key={module} value={module}>
+                {module}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
         <Input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
         <div className="grid grid-cols-2 gap-2">
