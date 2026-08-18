@@ -146,7 +146,6 @@ function AuthenticatedShell() {
   const session = useSession();
   const access = useCurrentUserAccess(Boolean(session));
   const navigate = useNavigate();
-  const pathname = useRouterState({ select: (router) => router.location.pathname });
   const { sidebarWidth, density } = useShellPreferences();
 
   if (session && access.isPending) return null;
@@ -163,7 +162,7 @@ function AuthenticatedShell() {
   // own app bar, including sign-out, so nothing here can replace it.
   if (access.isCashierOnly) {
     return (
-      <div key={pathname} className="min-h-screen w-full bg-canvas lg:h-dvh lg:overflow-hidden">
+      <div className="min-h-screen w-full bg-canvas lg:h-dvh lg:overflow-hidden">
         <Outlet />
       </div>
     );
@@ -182,7 +181,16 @@ function AuthenticatedShell() {
         <div className="flex min-w-0 flex-1 flex-col pb-3 md:pb-4">
           <ProductHeader user={session} onSignOut={signOut} />
           <main className="flex-1 overflow-x-hidden pt-3 md:pt-4">
-            <div key={pathname} className="animate-fade-in">
+            {/* No per-navigation key here: this div used to remount on every
+                pathname change, which also tore down and rebuilt everything
+                inside <Outlet/> -- including _authenticated/route.tsx's
+                session-check effect. That turned every single in-app
+                navigation into a fresh "am I still logged in?" round trip,
+                producing a blank frame while it resolved and, if that check
+                ever raced with a token refresh, an incorrect bounce to
+                /auth. The fade-in animation still plays on first load; it
+                just no longer replays on every navigation. */}
+            <div className="animate-fade-in">
               <Outlet />
             </div>
           </main>
