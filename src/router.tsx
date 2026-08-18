@@ -23,6 +23,15 @@ export const getRouter = () => {
   const queryClient = new QueryClient({
     queryCache: new QueryCache({
       onError: (error) => {
+        // getRouter() runs on both the SSR request and the client -- a
+        // query that fails during the server render has no DOM/Toaster to
+        // render into, and sonner's toast() call in that context was
+        // corrupting the HTML this handler was added in, sending every
+        // route into a React #418 hydration-mismatch crash on first load.
+        // SSR failures don't need a toast: the page's own loading/error
+        // state already covers that render, and a retry after hydration
+        // (where window exists) surfaces normally.
+        if (typeof window === "undefined") return;
         // Every server function in this app rejects an expired/missing
         // session through the same requireSupabaseAuth middleware, which
         // always throws Error("Unauthorized: ...") -- see
