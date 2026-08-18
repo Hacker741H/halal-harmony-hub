@@ -247,10 +247,10 @@ function WalletDetailsPage() {
               >
                 <div>
                   <p className="font-medium">
-                    {operation.category || operation.description || FINANCE_OPERATION_TYPE_LABELS[operation.type]}
+                    {operation.category || operation.description || FINANCE_OPERATION_TYPE_LABELS[operation.type as keyof typeof FINANCE_OPERATION_TYPE_LABELS]}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {operation.operation_date} · {FINANCE_OPERATION_TYPE_LABELS[operation.type] ?? operation.type}
+                    {operation.operation_date} · {FINANCE_OPERATION_TYPE_LABELS[operation.type as keyof typeof FINANCE_OPERATION_TYPE_LABELS] ?? operation.type}
                     {operation.destination_wallet_id === walletId ? " · transfert reçu" : ""}
                   </p>
                   <Badge className="mt-2 w-fit" variant="info" appearance="soft">
