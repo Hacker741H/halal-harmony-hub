@@ -83,68 +83,11 @@ type DashboardRoute =
   | "/notifications"
   | "/courses";
 
-function isMariamKeita(fullName: string | null | undefined, username: string | undefined) {
-  const identity = `${fullName ?? ""} ${username ?? ""}`.trim().toLocaleLowerCase("fr-FR");
-  return identity.includes("mariam") && identity.includes("keita");
-}
-
-function isFabiola(fullName: string | null | undefined, username: string | undefined) {
-  const identity = `${fullName ?? ""} ${username ?? ""}`.trim().toLocaleLowerCase("fr-FR");
-  return identity.includes("fabiola");
-}
-
-function isSamira(fullName: string | null | undefined, username: string | undefined) {
-  const identity = `${fullName ?? ""} ${username ?? ""}`.trim().toLocaleLowerCase("fr-FR");
-  return identity.includes("samira");
-}
-
-function isAbraham(fullName: string | null | undefined, username: string | undefined) {
-  const identity = `${fullName ?? ""} ${username ?? ""}`.trim().toLocaleLowerCase("fr-FR");
-  return identity.includes("abraham");
-}
-
-function PersonalizedWelcomeCard({
-  title,
-  headline,
-  description,
-}: {
-  title: string;
-  headline: string;
-  description: string;
-}) {
-  return (
-    <div
-      className="relative mt-5 max-w-xl overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.12] via-surface-elevated to-surface p-4 shadow-md animate-welcome-reveal motion-reduce:animate-none"
-      role="status"
-      aria-live="polite"
-    >
-      <span
-        className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 bg-gradient-to-r from-transparent via-primary/20 to-transparent animate-welcome-sweep motion-reduce:animate-none"
-        aria-hidden="true"
-      />
-      <div className="relative flex items-start gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm animate-scale-in motion-reduce:animate-none">
-          <Sparkles className="size-4" aria-hidden="true" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-overline text-primary">{title}</p>
-          <p className="mt-1 text-h4 text-foreground">{headline}</p>
-          <p className="mt-1 text-body-sm text-muted-foreground">{description}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function getGreetingName(fullName: string | null | undefined, username: string | undefined) {
-  if (isMariamKeita(fullName, username)) return "Mme Keita";
-
   return (fullName ?? username ?? "").trim().split(/\s+/)[0] || "";
 }
 
 function getDashboardGreeting(fullName: string | null | undefined, username: string | undefined) {
-  if (isFabiola(fullName, username)) return "おかえりなさい、ファビオラさん。";
-
   const greetingName = getGreetingName(fullName, username);
   return greetingName ? `Bonjour ${greetingName}.` : "Bonjour.";
 }
@@ -175,11 +118,6 @@ function Dashboard() {
   const positiveResult = stats.benefice >= 0;
   const greeting = getDashboardGreeting(identity?.fullName, identity?.username);
   const greetingName = getGreetingName(identity?.fullName, identity?.username);
-  const showFabiolaWelcome = isFabiola(identity?.fullName, identity?.username);
-  const showNamedGreeting = Boolean(greetingName) && !showFabiolaWelcome;
-  const showSamiraWelcome = isSamira(identity?.fullName, identity?.username);
-  const showMariamWelcome = isMariamKeita(identity?.fullName, identity?.username);
-  const showAbrahamWelcome = isAbraham(identity?.fullName, identity?.username);
   const today = new Intl.DateTimeFormat("fr-FR", {
     weekday: "long",
     day: "numeric",
@@ -210,7 +148,7 @@ function Dashboard() {
                 <time dateTime={new Date().toISOString().slice(0, 10)}>{today}</time>
               </div>
               <h1 className="mt-4 max-w-2xl text-display text-foreground">
-                {showNamedGreeting ? (
+                {greetingName ? (
                   <>
                     Bonjour{" "}
                     <span
@@ -225,82 +163,10 @@ function Dashboard() {
                     </span>
                     .
                   </>
-                ) : showFabiolaWelcome ? (
-                  <>
-                    <span className="animate-fabiola-title motion-reduce:animate-none">おかえりなさい、</span>{" "}
-                    <span className="relative inline-block text-primary animate-welcome-name motion-reduce:animate-none">
-                      ファビオラさん
-                      <span
-                        className="absolute inset-x-1 -bottom-1 h-px bg-primary/45"
-                        aria-hidden="true"
-                      />
-                    </span>
-                    。
-                  </>
                 ) : (
                   greeting
                 )}
               </h1>
-              {showMariamWelcome ? (
-                <PersonalizedWelcomeCard
-                  title="Bienvenue dans HALAL ERP"
-                  headline="Votre espace de pilotage est prêt."
-                  description="Retrouvez l’essentiel de votre activité en un regard, Mme Keita."
-                />
-              ) : showAbrahamWelcome ? (
-                <PersonalizedWelcomeCard
-                  title="Bienvenue dans HALAL ERP"
-                  headline="Votre espace de pilotage est prêt, Abraham."
-                  description="Retrouvez l’essentiel de votre activité en un regard."
-                />
-              ) : showSamiraWelcome ? (
-                <div
-                  className="relative mt-5 max-w-xl overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.12] via-surface-elevated to-surface p-4 shadow-md animate-welcome-reveal motion-reduce:animate-none"
-                  role="status"
-                  aria-live="polite"
-                >
-                  <span
-                    className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 bg-gradient-to-r from-transparent via-primary/20 to-transparent animate-welcome-sweep motion-reduce:animate-none"
-                    aria-hidden="true"
-                  />
-                  <div className="relative flex items-start gap-3">
-                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm animate-scale-in motion-reduce:animate-none">
-                      <Sparkles className="size-4" aria-hidden="true" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-overline text-primary">Bienvenue dans HALAL ERP</p>
-                      <p className="mt-1 text-h4 text-foreground">
-                        Votre espace de pilotage est prêt. Aidez chakoul à avancer.
-                      </p>
-                      <p className="mt-1 text-body-sm text-muted-foreground">
-                        Retrouvez l’essentiel de votre activité en un regard, Mme KEITA.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : showFabiolaWelcome ? (
-                <div
-                  className="relative mt-5 max-w-xl overflow-hidden rounded-2xl border border-primary/25 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--primary)_12%,var(--surface)),var(--surface-elevated)_52%,color-mix(in_oklab,var(--accent)_9%,var(--surface)))] p-4 shadow-md animate-welcome-reveal motion-reduce:animate-none"
-                  role="status"
-                  aria-live="polite"
-                >
-                  <span className="pointer-events-none absolute right-7 top-3 size-2 rounded-full bg-primary/50 animate-fabiola-petal-one motion-reduce:animate-none" aria-hidden="true" />
-                  <span className="pointer-events-none absolute right-20 top-7 size-1.5 rounded-full bg-accent/65 animate-fabiola-petal-two motion-reduce:animate-none" aria-hidden="true" />
-                  <span className="pointer-events-none absolute bottom-4 right-12 size-2 rounded-full bg-primary/35 animate-fabiola-petal-three motion-reduce:animate-none" aria-hidden="true" />
-                  <div className="relative flex items-start gap-3">
-                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm animate-scale-in motion-reduce:animate-none">
-                      <Sparkles className="size-4" aria-hidden="true" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-overline text-primary">ようこそ · HALAL ERP</p>
-                      <p className="mt-1 text-h4 text-foreground">Votre espace est prêt, Fabiola.</p>
-                      <p className="mt-1 text-body-sm text-muted-foreground">
-                        Une vue calme et claire pour commencer votre journée avec précision.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
               {isLoading ? (
                 <div className="mt-5 max-w-2xl space-y-2" aria-label="Chargement du résumé du jour">
                   <Skeleton className="h-4 w-full max-w-xl" />
@@ -429,7 +295,7 @@ function Dashboard() {
               eyebrow="Performance"
               title="Flux du mois"
               description="Lecture immédiate des encaissements, décaissements et du résultat courant."
-              action={<Link className="inline-flex items-center gap-1 text-body-sm font-medium text-primary transition-colors transition-ui-fast hover:text-primary/80 focus-visible:outline-none" to="/finance">Voir le journal <ChevronRight aria-hidden="true" /></Link>}
+              action={<Link className="inline-flex items-center gap-1 text-body-sm font-medium text-primary transition-colors transition-ui-fast hover:text-primary/80 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" to="/finance">Voir le journal <ChevronRight aria-hidden="true" /></Link>}
             />
 
             <div className="mt-6 grid gap-4 md:grid-cols-3">
@@ -468,7 +334,7 @@ function Dashboard() {
               eyebrow="Centre d’activité"
               title="Dernières opérations"
               description="Les dernières écritures disponibles dans le journal financier."
-              action={<Link className="inline-flex items-center gap-1 text-body-sm font-medium text-primary transition-colors transition-ui-fast hover:text-primary/80 focus-visible:outline-none" to="/finance">Tout voir <ChevronRight aria-hidden="true" /></Link>}
+              action={<Link className="inline-flex items-center gap-1 text-body-sm font-medium text-primary transition-colors transition-ui-fast hover:text-primary/80 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" to="/finance">Tout voir <ChevronRight aria-hidden="true" /></Link>}
             />
 
             <div className="mt-5 space-y-2">
@@ -503,7 +369,7 @@ function Dashboard() {
               eyebrow="Priorités"
               title="Ce qui mérite votre attention"
               description="Les alertes sont hiérarchisées par urgence, avec un accès direct à leur traitement."
-              action={<Link className="inline-flex items-center gap-1 text-body-sm font-medium text-primary transition-colors transition-ui-fast hover:text-primary/80 focus-visible:outline-none" to="/notifications">Ouvrir les alertes <ChevronRight aria-hidden="true" /></Link>}
+              action={<Link className="inline-flex items-center gap-1 text-body-sm font-medium text-primary transition-colors transition-ui-fast hover:text-primary/80 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" to="/notifications">Ouvrir les alertes <ChevronRight aria-hidden="true" /></Link>}
               headingId="dashboard-alerts-title"
             />
 
@@ -514,7 +380,8 @@ function Dashboard() {
                 value={stats.alertesERP.critiques}
                 level="Critique"
                 tone="critical"
-                href="/notifications?severity=CRITICAL"
+                to="/notifications"
+                search={{ severity: "CRITICAL" }}
                 loading={isLoading}
               />
               <PriorityCard
@@ -523,7 +390,8 @@ function Dashboard() {
                 value={stats.alertesERP.echeances7Jours}
                 level="Important"
                 tone="warning"
-                href="/notifications?due=7"
+                to="/notifications"
+                search={{ due: "7" }}
                 loading={isLoading}
               />
               <PriorityCard
@@ -532,7 +400,8 @@ function Dashboard() {
                 value={stats.alertesERP.echeances30Jours}
                 level="Information"
                 tone="info"
-                href="/notifications?due=30"
+                to="/notifications"
+                search={{ due: "30" }}
                 loading={isLoading}
               />
               <PriorityCard
@@ -541,7 +410,7 @@ function Dashboard() {
                 value={stats.alertesDocuments}
                 level="Important"
                 tone="warning"
-                href="/documents"
+                to="/documents"
                 loading={isLoading}
               />
               <PriorityCard
@@ -550,7 +419,8 @@ function Dashboard() {
                 value={stats.alertesERP.entretiensEnRetard}
                 level="À planifier"
                 tone="info"
-                href="/notifications?type=MOTORCYCLE_MAINTENANCE"
+                to="/notifications"
+                search={{ type: "MOTORCYCLE_MAINTENANCE" }}
                 loading={isLoading}
               />
               <PriorityCard
@@ -559,7 +429,8 @@ function Dashboard() {
                 value={stats.alertesERP.stocksFaibles}
                 level="Information"
                 tone="info"
-                href="/notifications?type=LOW_STOCK"
+                to="/notifications"
+                search={{ type: "LOW_STOCK" }}
                 loading={isLoading}
               />
             </div>
@@ -572,7 +443,7 @@ function Dashboard() {
               eyebrow="Exploitation"
               title="Courses de transport"
               description="Lecture consolidée des Courses actives, de leur encaissement et du résultat disponible."
-              action={<Link className="inline-flex items-center gap-1 text-body-sm font-medium text-primary transition-colors transition-ui-fast hover:text-primary/80 focus-visible:outline-none" to="/courses">Ouvrir les Courses <ChevronRight aria-hidden="true" /></Link>}
+              action={<Link className="inline-flex items-center gap-1 text-body-sm font-medium text-primary transition-colors transition-ui-fast hover:text-primary/80 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" to="/courses">Ouvrir les Courses <ChevronRight aria-hidden="true" /></Link>}
             />
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <PerformanceTotal label="Actives" value={isLoading ? null : formatNumber(stats.courses.active)} tone={stats.courses.late > 0 ? "warning" : "success"} />
@@ -844,7 +715,7 @@ function KpiCard({
   return (
     <Link
       to={to}
-      className="group block rounded-xl animate-fade-in motion-reduce:animate-none focus-visible:outline-none"
+      className="group block rounded-xl animate-fade-in motion-reduce:animate-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       style={{ animationDelay }}
     >
       <Card variant="kpi" className="relative h-full overflow-hidden border-border/80 p-4 transition-[border-color,box-shadow,transform] transition-ui hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none">
@@ -956,7 +827,8 @@ function PriorityCard({
   value,
   level,
   tone,
-  href,
+  to,
+  search,
   loading,
 }: {
   icon: LucideIcon;
@@ -964,13 +836,18 @@ function PriorityCard({
   value: number;
   level: string;
   tone: "critical" | "warning" | "info";
-  href: string;
+  to: DashboardRoute;
+  search?: Record<string, string>;
   loading: boolean;
 }) {
   const badgeVariant = tone === "critical" ? "danger" : tone === "warning" ? "warning" : "info";
 
   return (
-    <a href={href} className="group rounded-xl border bg-surface p-4 transition-[border-color,box-shadow,transform] transition-ui hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-sm focus-visible:outline-none">
+    <Link
+      to={to}
+      search={search}
+      className="group rounded-xl border bg-surface p-4 transition-[border-color,box-shadow,transform] transition-ui hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="grid size-8 place-items-center rounded-lg bg-muted text-muted-foreground"><Icon className="size-4" aria-hidden="true" /></div>
         <Badge variant={badgeVariant} appearance="soft">{level}</Badge>
@@ -978,7 +855,7 @@ function PriorityCard({
       {loading ? <Skeleton className="mt-4 h-7 w-12" /> : <p className="mt-4 text-2xl font-semibold tracking-tight text-foreground">{formatNumber(value)}</p>}
       <p className="mt-1 text-body-sm text-muted-foreground">{label}</p>
       <span className="mt-4 inline-flex items-center gap-1 text-caption font-medium text-primary">Consulter <ChevronRight className="size-3.5 transition-transform transition-ui-fast group-hover:translate-x-0.5" aria-hidden="true" /></span>
-    </a>
+    </Link>
   );
 }
 
@@ -994,7 +871,7 @@ function QuickAction({
   description: string;
 }) {
   return (
-    <Link to={to} className="group flex items-center gap-3 rounded-xl border bg-surface px-3.5 py-3 transition-[border-color,background-color,transform] transition-ui hover:-translate-y-0.5 hover:border-primary/30 hover:bg-surface-hover focus-visible:outline-none">
+    <Link to={to} className="group flex items-center gap-3 rounded-xl border bg-surface px-3.5 py-3 transition-[border-color,background-color,transform] transition-ui hover:-translate-y-0.5 hover:border-primary/30 hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
       <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><Icon className="size-4" aria-hidden="true" /></div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-body-sm font-semibold text-foreground">{label}</p>
@@ -1019,7 +896,7 @@ function OperationalRow({
   loading: boolean;
 }) {
   return (
-    <Link to={to} className="group flex items-center gap-3 rounded-lg px-2 py-2 transition-colors transition-ui-fast hover:bg-surface-hover focus-visible:outline-none">
+    <Link to={to} className="group flex items-center gap-3 rounded-lg px-2 py-2 transition-colors transition-ui-fast hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
       <Icon className="size-4 text-primary" aria-hidden="true" />
       <span className="flex-1 text-body-sm text-muted-foreground">{label}</span>
       {loading ? <Skeleton className="h-5 w-10" /> : <span className="font-semibold tabular-nums text-foreground">{formatNumber(value)}</span>}
