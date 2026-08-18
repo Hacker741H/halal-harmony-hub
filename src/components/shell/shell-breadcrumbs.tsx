@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 
 import {
@@ -116,18 +117,26 @@ function ShellBreadcrumbs() {
           const isLast = index === crumbs.length - 1;
           const hideOnMobile = hasOverflow && index > 0 && !isLast;
 
+          // BreadcrumbItem and BreadcrumbSeparator both render an <li> (see
+          // ui/breadcrumb.tsx) and are meant to be siblings inside the <ol>.
+          // Nesting the separator inside the item produced <li><li>...</li></li>,
+          // invalid HTML that the browser's parser silently restructures on
+          // the initial (SSR) paint -- causing a hydration mismatch severe
+          // enough to blank the whole page on every route with 2+ crumbs.
           return (
-            <BreadcrumbItem key={`${crumb.label}-${index}`} className={hideOnMobile ? "hidden sm:inline-flex" : "min-w-0"}>
+            <Fragment key={`${crumb.label}-${index}`}>
               {index > 0 ? <BreadcrumbSeparator className={hideOnMobile ? "hidden sm:block" : undefined} /> : null}
-              {index === 1 && hasOverflow ? <BreadcrumbEllipsis className="sm:hidden" /> : null}
-              {isLast || !crumb.to ? (
-                <BreadcrumbPage className="truncate text-sm font-medium">{crumb.label}</BreadcrumbPage>
-              ) : (
-                <BreadcrumbLink asChild className="truncate">
-                  <Link to={crumb.to}>{crumb.label}</Link>
-                </BreadcrumbLink>
-              )}
-            </BreadcrumbItem>
+              <BreadcrumbItem className={hideOnMobile ? "hidden sm:inline-flex" : "min-w-0"}>
+                {index === 1 && hasOverflow ? <BreadcrumbEllipsis className="sm:hidden" /> : null}
+                {isLast || !crumb.to ? (
+                  <BreadcrumbPage className="truncate text-sm font-medium">{crumb.label}</BreadcrumbPage>
+                ) : (
+                  <BreadcrumbLink asChild className="truncate">
+                    <Link to={crumb.to}>{crumb.label}</Link>
+                  </BreadcrumbLink>
+                )}
+              </BreadcrumbItem>
+            </Fragment>
           );
         })}
       </BreadcrumbList>
