@@ -19,6 +19,8 @@ import { DocumentUpload } from "@/components/documents/document-upload";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { EntityAlertsSection } from "@/components/notifications/entity-alerts-section";
 import { getDocumentsForRelation } from "@/lib/documents.functions";
+import { formatXOF } from "@/lib/format";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 import {
@@ -49,6 +51,7 @@ import { ExpenseForm } from "@/components/expenses/expense-form";
 import { ExpenseTable } from "@/components/expenses/expense-table";
 
 import {
+  FARM_STATUS_LABELS,
   getFarm,
 } from "@/lib/farms.functions";
 
@@ -72,6 +75,12 @@ export const Route = createFileRoute(
 )({
   component: FarmDetailsPage,
 });
+
+function farmStatusVariant(statut: string): "success" | "secondary" | "outline" {
+  if (statut === "actif" || statut === "en_service") return "success";
+  if (statut === "archive") return "outline";
+  return "secondary";
+}
 
 function FarmDetailsPage() {
   const { farmId } = Route.useParams();
@@ -334,9 +343,9 @@ function FarmDetailsPage() {
           </CardHeader>
 
           <CardContent>
-            <div className="text-xl font-semibold">
-              {farm.statut}
-            </div>
+            <Badge variant={farmStatusVariant(farm.statut)} className="text-sm">
+              {FARM_STATUS_LABELS[farm.statut] ?? farm.statut}
+            </Badge>
           </CardContent>
         </Card>
 
@@ -476,14 +485,13 @@ function FarmDetailsPage() {
 
                   <div className="text-3xl font-bold text-red-600">
 
-                    {expenses
-                      .reduce(
+                    {formatXOF(
+                      expenses.reduce(
                         (total: number, expense: Expense) =>
                           total + Number(expense.amount),
                         0,
-                      )
-                      .toLocaleString()}{" "}
-                    FCFA
+                      ),
+                    )}
 
                   </div>
 
@@ -649,8 +657,8 @@ function FarmDetailsPage() {
 
                 <div className="text-3xl font-bold text-green-600">
 
-                  {harvests
-                    .reduce(
+                  {formatXOF(
+                    harvests.reduce(
                       (total: number, harvest: Harvest) =>
                         total +
                         Number(
@@ -659,9 +667,8 @@ function FarmDetailsPage() {
                               Number(harvest.prix_kg),
                         ),
                       0,
-                    )
-                    .toLocaleString()}{" "}
-                  FCFA
+                    ),
+                  )}
 
                 </div>
 
@@ -679,15 +686,14 @@ function FarmDetailsPage() {
 
                 <div className="text-3xl font-bold text-red-600">
 
-                  {expenses
-                    .reduce(
+                  {formatXOF(
+                    expenses.reduce(
                       (total: number, expense: Expense) =>
                         total +
                         Number(expense.amount),
                       0,
-                    )
-                    .toLocaleString()}{" "}
-                  FCFA
+                    ),
+                  )}
 
                 </div>
 
@@ -705,7 +711,7 @@ function FarmDetailsPage() {
 
                 <div className="text-3xl font-bold text-blue-600">
 
-                  {(
+                  {formatXOF(
                     harvests.reduce(
                       (total: number, harvest: Harvest) =>
                         total +
@@ -721,9 +727,8 @@ function FarmDetailsPage() {
                         total +
                         Number(expense.amount),
                       0,
-                    )
-                  ).toLocaleString()}{" "}
-                  FCFA
+                    ),
+                  )}
 
                 </div>
 

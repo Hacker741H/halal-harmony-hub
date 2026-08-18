@@ -5,7 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import type { Notification, NotificationStatus } from "@/lib/notifications.functions";
+import {
+  NOTIFICATION_SEVERITY_LABELS,
+  NOTIFICATION_STATUS_LABELS,
+  type Notification,
+  type NotificationStatus,
+} from "@/lib/notifications.functions";
 import { cn } from "@/lib/utils";
 
 interface NotificationListProps {
@@ -16,19 +21,8 @@ interface NotificationListProps {
   emptyMessage?: string;
 }
 
-const severityLabels: Record<string, string> = {
-  INFO: "Information",
-  WARNING: "À suivre",
-  CRITICAL: "Critique",
-};
-
-const statusLabels: Record<string, string> = {
-  UNREAD: "Non lue",
-  READ: "Lue",
-  RESOLVED: "Résolue",
-  DISMISSED: "Ignorée",
-  SNOOZED: "Reportée",
-};
+const severityLabels: Record<string, string> = NOTIFICATION_SEVERITY_LABELS;
+const statusLabels: Record<string, string> = NOTIFICATION_STATUS_LABELS;
 
 function severityClass(severity: string): string {
   if (severity === "CRITICAL") return "border-destructive/30 bg-destructive/10 text-destructive";

@@ -23,6 +23,14 @@ const farmStatusSchema = z.enum([
   "en_reparation",
 ]);
 
+export const FARM_STATUS_LABELS: Record<string, string> = {
+  actif: "Actif",
+  inactif: "Inactif",
+  archive: "Archivée",
+  en_service: "En service",
+  en_reparation: "En réparation",
+};
+
 const farmValuesSchema = z
   .object({
     code: z.string(),

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { formatXOF } from "@/lib/format";
 
 import {
   createFinanceOperation,
@@ -375,9 +376,7 @@ export function TransferForm({
             <span>Montant</span>
 
             <span className="font-bold">
-              {Number(
-                form.amount || 0,
-              ).toLocaleString()} FCFA
+              {formatXOF(Number(form.amount || 0))}
             </span>
 
           </div>

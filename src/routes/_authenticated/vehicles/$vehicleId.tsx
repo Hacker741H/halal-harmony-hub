@@ -41,6 +41,7 @@ import {
 } from "@/lib/vehicles.functions";
 import { getDocumentsForRelation } from "@/lib/documents.functions";
 import { archiveDocument } from "@/lib/documents.functions";
+import { FINANCE_OPERATION_TYPE_LABELS } from "@/lib/finance.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/vehicles/$vehicleId")({
@@ -451,7 +452,7 @@ function VehicleDetailsPage() {
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Type</p>
-                      <p>{operation.type}</p>
+                      <p>{FINANCE_OPERATION_TYPE_LABELS[operation.type as keyof typeof FINANCE_OPERATION_TYPE_LABELS] ?? operation.type}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Catégorie</p>

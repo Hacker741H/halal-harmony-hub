@@ -10,9 +10,12 @@ import {
   ReceiptText,
 } from "lucide-react";
 
-import type {
-  FinanceOperation,
-  FinanceOperationWithWallets,
+import {
+  FINANCE_MODULE_LABELS,
+  FINANCE_OPERATION_STATUS_LABELS,
+  FINANCE_OPERATION_TYPE_LABELS,
+  type FinanceOperation,
+  type FinanceOperationWithWallets,
 } from "@/lib/finance.functions";
 
 import { Badge } from "@/components/ui/badge";
@@ -47,12 +50,9 @@ type DisplayRow =
   | { kind: "operation"; operation: FinanceOperationWithWallets }
   | { kind: "group"; reference: string; operations: FinanceOperationWithWallets[] };
 
-const typeLabels: Record<string, string> = {
-  REVENUE: "Recette",
-  EXPENSE: "Dépense",
-  DEPOSIT: "Versement",
-  TRANSFER: "Transfert",
-};
+const typeLabels: Record<string, string> = FINANCE_OPERATION_TYPE_LABELS;
+const moduleLabels: Record<string, string> = FINANCE_MODULE_LABELS;
+const statusLabels: Record<string, string> = FINANCE_OPERATION_STATUS_LABELS;
 
 function badgeVariant(type: string) {
   switch (type) {
@@ -230,7 +230,7 @@ export function FinanceTable({
             <SelectItem value="ALL">Tous les statuts</SelectItem>
             {filterOptions.statuses.map((status) => (
               <SelectItem key={status} value={status}>
-                {status}
+                {statusLabels[status] ?? status}
               </SelectItem>
             ))}
           </SelectContent>
@@ -241,7 +241,7 @@ export function FinanceTable({
             <SelectItem value="ALL">Tous les modules</SelectItem>
             {filterOptions.modules.map((module) => (
               <SelectItem key={module} value={module}>
-                {module}
+                {moduleLabels[module] ?? module}
               </SelectItem>
             ))}
           </SelectContent>

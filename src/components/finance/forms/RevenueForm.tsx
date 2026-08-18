@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { formatXOF } from "@/lib/format";
 
 import {
   createFinanceOperation,
@@ -433,9 +434,7 @@ export function RevenueForm({
             <span>Montant</span>
 
             <span className="font-bold text-green-600">
-              {Number(
-                form.amount || 0,
-              ).toLocaleString()} FCFA
+              {formatXOF(Number(form.amount || 0))}
             </span>
           </div>
 

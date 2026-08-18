@@ -8,6 +8,8 @@ import {
   Mail,
 } from "lucide-react";
 
+import { formatXOF } from "@/lib/format";
+
 import type { Employee } from "@/lib/employees.functions";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -213,9 +215,7 @@ export function EmployeeTable({
 
                   <TableCell>
 
-                    {employee.salaire_base
-                      ? `${employee.salaire_base.toLocaleString()} FCFA`
-                      : "-"}
+                    {formatXOF(employee.salaire_base)}
 
                   </TableCell>
 

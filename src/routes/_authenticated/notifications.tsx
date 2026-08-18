@@ -20,7 +20,9 @@ import {
   getNotifications,
   markAllNotificationsRead,
   NOTIFICATION_SEVERITIES,
+  NOTIFICATION_SEVERITY_LABELS,
   NOTIFICATION_STATUSES,
+  NOTIFICATION_STATUS_LABELS,
   type NotificationSeverity,
   type NotificationStatus,
   updateNotificationStatus,
@@ -155,14 +157,14 @@ function NotificationsPage() {
             <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">Tous les statuts</SelectItem>
-              {NOTIFICATION_STATUSES.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+              {NOTIFICATION_STATUSES.map((item) => <SelectItem key={item} value={item}>{NOTIFICATION_STATUS_LABELS[item]}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={severity} onValueChange={(value) => updateFilters(status, value as NotificationSeverity | "ALL")}>
             <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">Toutes les gravités</SelectItem>
-              {NOTIFICATION_SEVERITIES.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+              {NOTIFICATION_SEVERITIES.map((item) => <SelectItem key={item} value={item}>{NOTIFICATION_SEVERITY_LABELS[item]}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={dueDays ? String(dueDays) : "ALL"} onValueChange={(value) => { setDueDays(value === "7" ? 7 : value === "30" ? 30 : undefined); setPage(0); }}>

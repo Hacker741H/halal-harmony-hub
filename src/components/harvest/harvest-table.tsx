@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronRight, Trash2 } from "lucide-react";
 
 import type { Harvest, HarvestStatus } from "@/lib/harvests.functions";
+import { formatNumber } from "@/lib/format";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -117,14 +118,14 @@ export function HarvestTable({
                     </TableCell>
                     <TableCell>
                       {status === "LEGACY"
-                        ? `${Number(harvest.quantite_kg ?? 0).toLocaleString()} kg (vente)`
+                        ? `${formatNumber(harvest.quantite_kg ?? 0)} kg (vente)`
                         : harvest.poids_recolte_kg !== null
-                          ? `${Number(harvest.poids_recolte_kg).toLocaleString()} kg`
+                          ? `${formatNumber(harvest.poids_recolte_kg)} kg`
                           : "-"}
                     </TableCell>
                     <TableCell>
                       {harvest.poids_livre_kg !== null
-                        ? `${Number(harvest.poids_livre_kg).toLocaleString()} kg${harvest.ecart_livraison_kg ? ` (écart ${Number(harvest.ecart_livraison_kg).toLocaleString()} kg)` : ""}`
+                        ? `${formatNumber(harvest.poids_livre_kg)} kg${harvest.ecart_livraison_kg ? ` (écart ${formatNumber(harvest.ecart_livraison_kg)} kg)` : ""}`
                         : "-"}
                     </TableCell>
                     <TableCell>

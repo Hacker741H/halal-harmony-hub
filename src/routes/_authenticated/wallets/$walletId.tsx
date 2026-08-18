@@ -19,14 +19,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
 import { ModuleHero } from "@/components/ui/module-hero";
-import { getFinanceOperationsByWallet } from "@/lib/finance.functions";
+import { formatXOF } from "@/lib/format";
+import { FINANCE_OPERATION_TYPE_LABELS, getFinanceOperationsByWallet } from "@/lib/finance.functions";
 import { getWallet } from "@/lib/wallet.functions";
 
 export const Route = createFileRoute("/_authenticated/wallets/$walletId")({
   component: WalletDetailsPage,
 });
 
-const format = (value: number) => `${value.toLocaleString("fr-FR")} FCFA`;
+const format = formatXOF;
 
 function WalletDetailsPage() {
   const { walletId } = Route.useParams();
@@ -246,10 +247,10 @@ function WalletDetailsPage() {
               >
                 <div>
                   <p className="font-medium">
-                    {operation.category || operation.description || operation.type}
+                    {operation.category || operation.description || FINANCE_OPERATION_TYPE_LABELS[operation.type]}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {operation.operation_date} · {operation.type}
+                    {operation.operation_date} · {FINANCE_OPERATION_TYPE_LABELS[operation.type] ?? operation.type}
                     {operation.destination_wallet_id === walletId ? " · transfert reçu" : ""}
                   </p>
                   <Badge className="mt-2 w-fit" variant="info" appearance="soft">

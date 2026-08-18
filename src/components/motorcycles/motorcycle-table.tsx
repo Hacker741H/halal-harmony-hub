@@ -13,7 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import type { Motorcycle } from "@/lib/motorcycles.functions";
+import { formatNumber } from "@/lib/format";
+import { MOTORCYCLE_STATUS_LABELS, type Motorcycle } from "@/lib/motorcycles.functions";
 
 type Props = {
   motorcycles: Motorcycle[];
@@ -98,10 +99,10 @@ export function MotorcycleTable({
             <TableCell>{motorcycle.annee ?? "-"}</TableCell>
 
             <TableCell>
-              {motorcycle.kilometrage?.toLocaleString() ?? "0"}
+              {motorcycle.kilometrage != null ? formatNumber(motorcycle.kilometrage) : "0"}
             </TableCell>
 
-            <TableCell>{motorcycle.statut}</TableCell>
+            <TableCell>{MOTORCYCLE_STATUS_LABELS[motorcycle.statut] ?? motorcycle.statut}</TableCell>
 
             <TableCell className="text-right">
               <div className="flex justify-end gap-2">

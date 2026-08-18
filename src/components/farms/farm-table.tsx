@@ -1,7 +1,8 @@
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import type { Farm } from "@/lib/farms.functions";
+import { FARM_STATUS_LABELS, type Farm } from "@/lib/farms.functions";
+import { formatXOF } from "@/lib/format";
 
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,12 @@ type Props = {
   onEdit: (farm: Farm) => void;
   onDelete: (farm: Farm) => void;
 };
+
+function farmStatusVariant(statut: string): "success" | "secondary" | "outline" {
+  if (statut === "actif" || statut === "en_service") return "success";
+  if (statut === "archive") return "outline";
+  return "secondary";
+}
 
 export function FarmTable({
   farms,
@@ -157,14 +164,14 @@ export function FarmTable({
                   </TableCell>
 
                   <TableCell>
-                    {farm.prix_kg ?? 0} FCFA
+                    {formatXOF(farm.prix_kg ?? 0)}
                   </TableCell>
 
                   <TableCell>
 
-                    <Badge>
+                    <Badge variant={farmStatusVariant(farm.statut ?? "actif")}>
 
-                      {farm.statut ?? "Actif"}
+                      {FARM_STATUS_LABELS[farm.statut ?? "actif"] ?? farm.statut}
 
                     </Badge>
 

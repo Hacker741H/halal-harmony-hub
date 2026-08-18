@@ -13,6 +13,36 @@ export type FinanceOperationWithWallets = FinanceOperation & {
   destination_wallet: Pick<Tables<"wallets">, "id" | "name" | "type" | "color"> | null;
 };
 
+export const FINANCE_OPERATION_TYPE_LABELS: Record<(typeof FINANCE_OPERATION_TYPES)[number], string> = {
+  REVENUE: "Recette",
+  EXPENSE: "Dépense",
+  DEPOSIT: "Versement",
+  TRANSFER: "Transfert",
+};
+
+export const FINANCE_MODULE_LABELS: Record<(typeof FINANCE_MODULES)[number], string> = {
+  VEHICLE: "Véhicule",
+  MOTO: "Moto",
+  EMPLOYEE: "Employé",
+  DRIVER: "Chauffeur",
+  STOCK: "Stock",
+  CONTRACT: "Contrat",
+  EXPLOITATION: "Exploitation",
+  HARVEST: "Récolte",
+  VEHICLE_MAINTENANCE: "Entretien véhicule",
+  MOTORCYCLE_MAINTENANCE: "Entretien moto",
+  DOCUMENT: "Document",
+  OTHER: "Autre",
+};
+
+// finance_operations.status is free text at the schema level, but current
+// code only ever writes "VALIDE" (default) or "CANCELLED" -- unrecognized
+// values fall back to showing the raw text rather than a translated label.
+export const FINANCE_OPERATION_STATUS_LABELS: Record<string, string> = {
+  VALIDE: "Validée",
+  CANCELLED: "Annulée",
+};
+
 const financeOperationIdSchema = z.string().uuid();
 const walletIdSchema = z.string().uuid();
 const nullableTextSchema = z.string().nullable();

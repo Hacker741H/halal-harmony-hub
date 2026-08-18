@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { NOTIFICATION_SEVERITY_LABELS } from "@/lib/notifications.functions";
 import {
   ALERT_SEVERITIES,
   APP_ROLES,
@@ -357,7 +358,7 @@ function AlertRuleCard({ rule, disabled, onSaved }: { rule: AlertRule; disabled:
             <Select value={defaultSeverity} disabled={disabled} onValueChange={(value) => setDefaultSeverity(value as AlertSeverity)}>
               <SelectTrigger id={`rule-${rule.id}-default-severity`} className="h-10 w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {ALERT_SEVERITIES.map((severity) => <SelectItem key={severity} value={severity}>{severity}</SelectItem>)}
+                {ALERT_SEVERITIES.map((severity) => <SelectItem key={severity} value={severity}>{NOTIFICATION_SEVERITY_LABELS[severity]}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -376,7 +377,7 @@ function AlertRuleCard({ rule, disabled, onSaved }: { rule: AlertRule; disabled:
                   <Select value={schedule[stage] ?? defaultSeverity} disabled={disabled} onValueChange={(value) => setSchedule((current) => ({ ...current, [stage]: value as AlertSeverity }))}>
                     <SelectTrigger id={`rule-${rule.id}-stage-${stage}`} className="h-9 w-full"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {ALERT_SEVERITIES.map((severity) => <SelectItem key={severity} value={severity}>{severity}</SelectItem>)}
+                      {ALERT_SEVERITIES.map((severity) => <SelectItem key={severity} value={severity}>{NOTIFICATION_SEVERITY_LABELS[severity]}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>

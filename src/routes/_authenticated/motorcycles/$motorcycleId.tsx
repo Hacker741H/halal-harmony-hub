@@ -64,6 +64,7 @@ import {
   MotorcycleMaintenanceTable,
 } from "@/components/motorcycles/motorcycle-maintenance-table";
 import { getDocumentsForRelation } from "@/lib/documents.functions";
+import { formatNumber, formatXOF } from "@/lib/format";
 
 export const Route = createFileRoute(
   "/_authenticated/motorcycles/$motorcycleId",
@@ -258,7 +259,7 @@ function MotorcycleDetailsPage() {
           <CardContent>
 
             <div className="text-xl font-semibold">
-              {(motorcycle.kilometrage ?? 0).toLocaleString()} km
+              {formatNumber(motorcycle.kilometrage ?? 0)} km
             </div>
 
           </CardContent>
@@ -275,7 +276,7 @@ function MotorcycleDetailsPage() {
           <CardContent>
 
             <div className="text-xl font-semibold">
-              {(motorcycle.prix_achat ?? 0).toLocaleString()} FCFA
+              {formatXOF(motorcycle.prix_achat ?? 0)}
             </div>
 
           </CardContent>
@@ -398,13 +399,13 @@ function MotorcycleDetailsPage() {
               </div>              <div className="flex items-center gap-2">
                 <Gauge className="h-4 w-4" />
                 <strong>Kilométrage :</strong>
-                {(motorcycle.kilometrage ?? 0).toLocaleString()} km
+                {formatNumber(motorcycle.kilometrage ?? 0)} km
               </div>
 
               <div className="flex items-center gap-2">
                 <Coins className="h-4 w-4" />
                 <strong>Prix d'achat :</strong>
-                {(motorcycle.prix_achat ?? 0).toLocaleString()} FCFA
+                {formatXOF(motorcycle.prix_achat ?? 0)}
               </div>
 
               <div className="flex items-center gap-2">
@@ -574,7 +575,7 @@ function MotorcycleDetailsPage() {
               </CardHeader>              <CardContent>
 
                 <div className="text-3xl font-bold">
-                  {(motorcycle.kilometrage ?? 0).toLocaleString()}
+                  {formatNumber(motorcycle.kilometrage ?? 0)}
                 </div>
 
                 <div className="text-muted-foreground">
@@ -594,7 +595,7 @@ function MotorcycleDetailsPage() {
               <CardContent>
 
                 <div className="text-3xl font-bold text-green-600">
-                  {(motorcycle.prix_achat ?? 0).toLocaleString()} FCFA
+                  {formatXOF(motorcycle.prix_achat ?? 0)}
                 </div>
 
               </CardContent>

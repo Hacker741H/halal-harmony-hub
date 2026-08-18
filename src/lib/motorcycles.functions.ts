@@ -17,6 +17,14 @@ const motorcycleStatusSchema = z.enum([
   "en_reparation",
 ]);
 
+export const MOTORCYCLE_STATUS_LABELS: Record<string, string> = {
+  actif: "Actif",
+  inactif: "Inactif",
+  archive: "Archivée",
+  en_service: "En service",
+  en_reparation: "En réparation",
+};
+
 const motorcycleValuesSchema = z
   .object({
     immatriculation: z.string().trim().min(1),

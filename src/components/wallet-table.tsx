@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import type { Wallet as WalletType } from "@/lib/wallet.functions";
+import { formatXOF } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,11 +34,7 @@ type Props = {
 };
 
 function formatMoney(amount: number | null) {
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency: "XOF",
-    maximumFractionDigits: 0,
-  }).format(amount ?? 0);
+  return formatXOF(amount ?? 0);
 }
 
 function getWalletMeta(type: string) {

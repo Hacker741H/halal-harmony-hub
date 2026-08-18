@@ -20,6 +20,20 @@ export const NOTIFICATION_SEVERITIES = ["INFO", "WARNING", "CRITICAL"] as const;
 export type NotificationStatus = (typeof NOTIFICATION_STATUSES)[number];
 export type NotificationSeverity = (typeof NOTIFICATION_SEVERITIES)[number];
 
+export const NOTIFICATION_STATUS_LABELS: Record<NotificationStatus, string> = {
+  UNREAD: "Non lue",
+  READ: "Lue",
+  RESOLVED: "Résolue",
+  DISMISSED: "Ignorée",
+  SNOOZED: "Reportée",
+};
+
+export const NOTIFICATION_SEVERITY_LABELS: Record<NotificationSeverity, string> = {
+  INFO: "Information",
+  WARNING: "À suivre",
+  CRITICAL: "Critique",
+};
+
 const notificationIdSchema = z.string().uuid();
 const notificationStatusSchema = z.enum(NOTIFICATION_STATUSES);
 const notificationSeveritySchema = z.enum(NOTIFICATION_SEVERITIES);

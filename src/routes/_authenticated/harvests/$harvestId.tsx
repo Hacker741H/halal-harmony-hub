@@ -6,6 +6,7 @@ import { ArrowLeft, Sprout } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
+import { formatXOF } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -232,7 +233,7 @@ function HarvestDetailPage() {
             <InfoRow label="Livrée le" value={harvest.delivered_at ? new Date(harvest.delivered_at).toLocaleString("fr-FR") : null} />
             <InfoRow
               label="Transport théorique"
-              value={harvest.transport_amount_theorique !== null ? `${Number(harvest.transport_amount_theorique).toLocaleString()} FCFA` : null}
+              value={harvest.transport_amount_theorique !== null ? formatXOF(harvest.transport_amount_theorique) : null}
             />
             <p className="mt-2 text-xs text-muted-foreground">
               Montant calculé à titre indicatif — aucun paiement transport n'est déclenché automatiquement.
@@ -247,8 +248,8 @@ function HarvestDetailPage() {
               <>
                 <Badge variant="neutral" appearance="soft">Vente historique (circuit direct)</Badge>
                 <InfoRow label="Quantité vendue" value={harvest.quantite_kg !== null ? `${harvest.quantite_kg} kg` : null} />
-                <InfoRow label="Prix / kg" value={harvest.prix_kg !== null ? `${harvest.prix_kg} FCFA` : null} />
-                <InfoRow label="Montant" value={harvest.montant_total !== null ? `${Number(harvest.montant_total).toLocaleString()} FCFA` : null} />
+                <InfoRow label="Prix / kg" value={harvest.prix_kg !== null ? formatXOF(harvest.prix_kg) : null} />
+                <InfoRow label="Montant" value={harvest.montant_total !== null ? formatXOF(harvest.montant_total) : null} />
                 <InfoRow label="Acheteur" value={harvest.acheteur} />
               </>
             ) : null}
