@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link, Outlet, createFileRoute, useMatchRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Bike,
@@ -7,6 +8,7 @@ import {
   CircleDollarSign,
   FileText,
   History,
+  Pencil,
   ShieldCheck,
   UserRound,
   Wallet,
@@ -17,9 +19,11 @@ import { EntityAlertsSection } from "@/components/notifications/entity-alerts-se
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
 import { ModuleHero } from "@/components/ui/module-hero";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DriverForm } from "@/components/drivers/driver-form";
 import { getDriverAssignments } from "@/lib/assignments.functions";
 import { getContractsForRelation } from "@/lib/contracts.functions";
 import { getDocumentsForRelation } from "@/lib/documents.functions";
@@ -51,6 +55,8 @@ function DriverDetailsPage() {
 }
 
 function DriverDetailsContent({ driverId }: { driverId: string }) {
+  const queryClient = useQueryClient();
+  const [editOpen, setEditOpen] = useState(false);
   const driverQuery = useQuery({
     queryKey: ["driver", driverId],
     queryFn: () => getDriver({ data: driverId }),
@@ -114,6 +120,10 @@ function DriverDetailsContent({ driverId }: { driverId: string }) {
         actions={
           <>
             <Badge variant="info" appearance="soft">{driver.statut || "Statut non renseigné"}</Badge>
+            <Button variant="outline" onClick={() => setEditOpen(true)}>
+              <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
+              Modifier
+            </Button>
             <Button asChild variant="outline">
               <Link to="/drivers/$driverId/activity" params={{ driverId }}>
                 <Wallet className="mr-2 h-4 w-4" aria-hidden="true" />
@@ -290,6 +300,20 @@ function DriverDetailsContent({ driverId }: { driverId: string }) {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+          <DialogHeader><DialogTitle>Modifier le chauffeur</DialogTitle></DialogHeader>
+          <DriverForm
+            driver={driver}
+            onSuccess={() => {
+              setEditOpen(false);
+              void queryClient.invalidateQueries({ queryKey: ["driver", driverId] });
+              void queryClient.invalidateQueries({ queryKey: ["drivers"] });
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

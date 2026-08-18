@@ -40,6 +40,15 @@ const createContractSchema = z
   })
   .strict();
 
+export const CONTRACT_STATUSES = ["ACTIF", "TERMINE", "RESILIE"] as const;
+
+const updateContractStatusSchema = z
+  .object({
+    id: z.string().uuid(),
+    statut: z.string().trim().min(1).max(2_000),
+  })
+  .strict();
+
 export const getContracts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -76,6 +85,20 @@ export const createContract = createServerFn({ method: "POST" })
     if (error) throw error;
     if (!contract) throw new Error("Le contrat n'a pas été créé.");
     return contract;
+  });
+
+export const updateContractStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(updateContractStatusSchema)
+  .handler(async ({ context, data }) => {
+    const { data: contract, error } = await context.supabase
+      .from("contracts")
+      .update({ statut: data.statut })
+      .eq("id", data.id)
+      .select("*")
+      .single();
+    if (error) throw error;
+    return contract as Contract;
   });
 
 export const getContractsForRelation = createServerFn({ method: "GET" })

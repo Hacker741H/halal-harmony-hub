@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { ArrowLeft, Contact } from "lucide-react";
+import { useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
+import { ArrowLeft, Contact, Pencil } from "lucide-react";
 
+import { SupplierForm } from "@/components/suppliers/supplier-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePermissions } from "@/hooks/use-permissions";
 import { getSupplier, getSupplierFinancialMetrics, type SupplierFinancialMetrics } from "@/lib/suppliers.functions";
@@ -37,7 +40,9 @@ function purchaseStatusLabel(status: string) {
 
 function SupplierDetailsPage() {
   const { supplierId } = Route.useParams();
+  const queryClient = useQueryClient();
   const { can } = usePermissions();
+  const [editOpen, setEditOpen] = useState(false);
   const supplierQuery = useQuery({ queryKey: ["supplier", supplierId], queryFn: () => getSupplier({ data: supplierId }) });
   const canReadFinance = can("purchases.finance.read");
   const metricsQuery = useQuery({
@@ -63,7 +68,12 @@ function SupplierDetailsPage() {
           <h1 className="mt-2 flex items-center gap-3 text-3xl font-bold"><Contact className="h-7 w-7" />{supplier.display_name}</h1>
           <p className="text-muted-foreground">{supplier.supplier_number}{supplier.legal_name ? ` · ${supplier.legal_name}` : ""}</p>
         </div>
-        <Badge variant={supplier.status === "ACTIVE" ? "success" : "outline"}>{supplier.status === "ACTIVE" ? "Actif" : "Archivé"}</Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={supplier.status === "ACTIVE" ? "success" : "outline"}>{supplier.status === "ACTIVE" ? "Actif" : "Archivé"}</Badge>
+          {can("suppliers.update") && supplier.status === "ACTIVE" ? (
+            <Button variant="outline" onClick={() => setEditOpen(true)}><Pencil className="mr-2 h-4 w-4" />Modifier</Button>
+          ) : null}
+        </div>
       </div>
 
       <Tabs defaultValue="informations" className="space-y-5">
@@ -87,6 +97,20 @@ function SupplierDetailsPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+          <DialogHeader><DialogTitle>Modifier le fournisseur</DialogTitle></DialogHeader>
+          <SupplierForm
+            supplier={supplier}
+            onSuccess={() => {
+              setEditOpen(false);
+              void queryClient.invalidateQueries({ queryKey: ["supplier", supplierId] });
+              void queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,12 +1,15 @@
+import { useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, UserCheck } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Pencil, UserCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentUpload } from "@/components/documents/document-upload";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
+import { EmployeeForm } from "@/components/employees/employee-form";
 import { EntityAlertsSection } from "@/components/notifications/entity-alerts-section";
 import { getContractsForRelation } from "@/lib/contracts.functions";
 import { getDocumentsForRelation } from "@/lib/documents.functions";
@@ -23,6 +26,8 @@ export const Route = createFileRoute("/_authenticated/employees/$employeeId")({
 
 function EmployeeDetailsPage() {
   const { employeeId } = Route.useParams();
+  const queryClient = useQueryClient();
+  const [editOpen, setEditOpen] = useState(false);
   const employeeQuery = useQuery({
     queryKey: ["employee", employeeId],
     queryFn: () => getEmployee({ data: employeeId }),
@@ -74,11 +79,17 @@ function EmployeeDetailsPage() {
           Retour aux employés
         </Link>
       </Button>
-      <div>
-        <h1 className="text-3xl font-bold">
-          {[employee.nom, employee.prenom].filter(Boolean).join(" ")}
-        </h1>
-        <p className="text-muted-foreground">Fiche employé à 360°</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold">
+            {[employee.nom, employee.prenom].filter(Boolean).join(" ")}
+          </h1>
+          <p className="text-muted-foreground">Fiche employé à 360°</p>
+        </div>
+        <Button variant="outline" onClick={() => setEditOpen(true)}>
+          <Pencil className="mr-2 h-4 w-4" />
+          Modifier
+        </Button>
       </div>
       <Tabs defaultValue="informations" className="space-y-4">
         <TabsList className="h-auto flex-wrap justify-start">
@@ -221,6 +232,20 @@ function EmployeeDetailsPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+          <DialogHeader><DialogTitle>Modifier l'employé</DialogTitle></DialogHeader>
+          <EmployeeForm
+            employee={employee}
+            onSuccess={() => {
+              setEditOpen(false);
+              void queryClient.invalidateQueries({ queryKey: ["employee", employeeId] });
+              void queryClient.invalidateQueries({ queryKey: ["employees"] });
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

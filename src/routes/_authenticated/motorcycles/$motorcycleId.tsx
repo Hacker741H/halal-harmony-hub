@@ -12,6 +12,7 @@ import {
   Calendar,
   Coins,
   Gauge,
+  Pencil,
   Shield,
   Wrench,
 } from "lucide-react";
@@ -21,6 +22,7 @@ import { DriverAssignmentPanel } from "@/components/assignments/driver-assignmen
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { DocumentUpload } from "@/components/documents/document-upload";
 import { EntityAlertsSection } from "@/components/notifications/entity-alerts-section";
+import { MotorcycleForm } from "@/components/motorcycles/motorcycle-form";
 
 import {
   Card,
@@ -85,9 +87,13 @@ function MotorcycleDetailsPage() {
   const [dialogOpen, setDialogOpen] =
     useState(false);
 
+  const [editOpen, setEditOpen] = useState(false);
+
   const {
     data: motorcycle,
     isPending,
+    isError,
+    refetch,
   } = useQuery({
     queryKey: [
       "motorcycle",
@@ -140,6 +146,26 @@ function MotorcycleDetailsPage() {
 
   if (isPending) {
     return <div>Chargement...</div>;
+  }
+
+  if (isError) {
+    return (
+      <div className="space-y-4">
+        <Button asChild variant="outline">
+          <Link to="/motorcycles">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Retour
+          </Link>
+        </Button>
+        <Card>
+          <CardContent className="space-y-3 py-12 text-center">
+            <p className="font-medium text-destructive">Impossible de charger cette moto.</p>
+            <p className="text-sm text-muted-foreground">Réessayez dans un instant ou vérifiez votre connexion.</p>
+            <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>Réessayer</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (!motorcycle) {
@@ -197,6 +223,11 @@ function MotorcycleDetailsPage() {
           </p>
 
         </div>
+
+        <Button variant="outline" onClick={() => setEditOpen(true)}>
+          <Pencil className="mr-2 h-4 w-4" />
+          Modifier
+        </Button>
 
       </div>
 
@@ -654,6 +685,20 @@ function MotorcycleDetailsPage() {
 
         </DialogContent>
 
+      </Dialog>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader><DialogTitle>Modifier la moto</DialogTitle></DialogHeader>
+          <MotorcycleForm
+            motorcycle={motorcycle}
+            onSuccess={() => {
+              setEditOpen(false);
+              void queryClient.invalidateQueries({ queryKey: ["motorcycle", motorcycleId] });
+              void queryClient.invalidateQueries({ queryKey: ["motorcycles"] });
+            }}
+          />
+        </DialogContent>
       </Dialog>
 
     </div>

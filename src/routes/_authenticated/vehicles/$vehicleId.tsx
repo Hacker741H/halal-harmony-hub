@@ -9,6 +9,7 @@ import {
   FileText,
   Gauge,
   History,
+  Pencil,
   Trash2,
   UserRound,
   Wrench,
@@ -23,6 +24,7 @@ import { DriverAssignmentPanel } from "@/components/assignments/driver-assignmen
 import { DocumentUpload } from "@/components/documents/document-upload";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { EntityAlertsSection } from "@/components/notifications/entity-alerts-section";
+import VehicleForm from "@/components/vehicles/vehicle-form";
 import { VehicleMaintenanceForm } from "@/components/vehicles/vehicle-maintenance-form";
 import {
   deleteVehicleMaintenance,
@@ -67,6 +69,7 @@ function VehicleDetailsPage() {
   const queryClient = useQueryClient();
   const [maintenanceDialogOpen, setMaintenanceDialogOpen] = useState(false);
   const [selectedMaintenance, setSelectedMaintenance] = useState<VehicleMaintenance | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const vehicleQuery = useQuery({
     queryKey: ["vehicle", vehicleId],
@@ -141,7 +144,27 @@ function VehicleDetailsPage() {
     return <div className="p-6 text-muted-foreground">Chargement du véhicule…</div>;
   }
 
-  if (vehicleQuery.isError || !vehicleQuery.data) {
+  if (vehicleQuery.isError) {
+    return (
+      <div className="space-y-4 p-6">
+        <Button asChild variant="outline">
+          <Link to="/vehicles">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Retour aux véhicules
+          </Link>
+        </Button>
+        <Card>
+          <CardContent className="space-y-3 py-12 text-center">
+            <p className="font-medium text-destructive">Impossible de charger ce véhicule.</p>
+            <p className="text-sm text-muted-foreground">Réessayez dans un instant ou vérifiez votre connexion.</p>
+            <Button type="button" variant="outline" size="sm" onClick={() => void vehicleQuery.refetch()}>Réessayer</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!vehicleQuery.data) {
     return (
       <div className="space-y-4 p-6">
         <Button asChild variant="outline">
@@ -192,8 +215,12 @@ function VehicleDetailsPage() {
           <p className="text-muted-foreground">{vehicle.registration}</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Badge>{statusLabel(vehicle.status)}</Badge>
+          <Button variant="outline" onClick={() => setEditOpen(true)}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Modifier
+          </Button>
           <select
             aria-label="Modifier le statut du véhicule"
             className="h-10 rounded-md border border-input bg-background px-3 text-sm"
@@ -583,6 +610,20 @@ function VehicleDetailsPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader><DialogTitle>Modifier le véhicule</DialogTitle></DialogHeader>
+          <VehicleForm
+            vehicle={vehicle}
+            onSuccess={() => {
+              setEditOpen(false);
+              void queryClient.invalidateQueries({ queryKey: ["vehicle", vehicleId] });
+              void queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
