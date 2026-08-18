@@ -54,12 +54,14 @@ import { Route as AuthenticatedDriversIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedDriversDriverIdRouteImport } from './routes/_authenticated/drivers/$driverId'
 import { Route as AuthenticatedEmployeesIndexRouteImport } from './routes/_authenticated/employees/index'
 import { Route as AuthenticatedEmployeesEmployeeIdRouteImport } from './routes/_authenticated/employees/$employeeId'
+import { Route as AuthenticatedFarmsIndexRouteImport } from './routes/_authenticated/farms/index'
 import { Route as AuthenticatedFarmsFarmIdRouteImport } from './routes/_authenticated/farms/$farmId'
 import { Route as AuthenticatedFieldIndexRouteImport } from './routes/_authenticated/field/index'
 import { Route as AuthenticatedFieldReportIdRouteImport } from './routes/_authenticated/field/$reportId'
 import { Route as AuthenticatedHarvestsHarvestIdRouteImport } from './routes/_authenticated/harvests/$harvestId'
 import { Route as AuthenticatedInventoryCountsIndexRouteImport } from './routes/_authenticated/inventory-counts/index'
 import { Route as AuthenticatedInventoryCountsCountIdRouteImport } from './routes/_authenticated/inventory-counts/$countId'
+import { Route as AuthenticatedMotorcyclesIndexRouteImport } from './routes/_authenticated/motorcycles/index'
 import { Route as AuthenticatedMotorcyclesMotorcycleIdRouteImport } from './routes/_authenticated/motorcycles/$motorcycleId'
 import { Route as AuthenticatedPurchasesIndexRouteImport } from './routes/_authenticated/purchases/index'
 import { Route as AuthenticatedPurchasesPurchaseIdRouteImport } from './routes/_authenticated/purchases/$purchaseId'
@@ -317,6 +319,11 @@ const AuthenticatedEmployeesEmployeeIdRoute =
     path: '/$employeeId',
     getParentRoute: () => AuthenticatedEmployeesRoute,
   } as any)
+const AuthenticatedFarmsIndexRoute = AuthenticatedFarmsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedFarmsRoute,
+} as any)
 const AuthenticatedFarmsFarmIdRoute =
   AuthenticatedFarmsFarmIdRouteImport.update({
     id: '/$farmId',
@@ -351,6 +358,12 @@ const AuthenticatedInventoryCountsCountIdRoute =
     id: '/inventory-counts/$countId',
     path: '/inventory-counts/$countId',
     getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMotorcyclesIndexRoute =
+  AuthenticatedMotorcyclesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedMotorcyclesRoute,
   } as any)
 const AuthenticatedMotorcyclesMotorcycleIdRoute =
   AuthenticatedMotorcyclesMotorcycleIdRouteImport.update({
@@ -492,8 +505,10 @@ export interface FileRoutesByFullPath {
   '/courses/': typeof AuthenticatedCoursesIndexRoute
   '/drivers/': typeof AuthenticatedDriversIndexRoute
   '/employees/': typeof AuthenticatedEmployeesIndexRoute
+  '/farms/': typeof AuthenticatedFarmsIndexRoute
   '/field/': typeof AuthenticatedFieldIndexRoute
   '/inventory-counts/': typeof AuthenticatedInventoryCountsIndexRoute
+  '/motorcycles/': typeof AuthenticatedMotorcyclesIndexRoute
   '/purchases/': typeof AuthenticatedPurchasesIndexRoute
   '/sales/': typeof AuthenticatedSalesIndexRoute
   '/stock-transfers/': typeof AuthenticatedStockTransfersIndexRoute
@@ -511,11 +526,9 @@ export interface FileRoutesByTo {
   '/design-showcase': typeof AuthenticatedDesignShowcaseRoute
   '/documents': typeof AuthenticatedDocumentsRouteWithChildren
   '/expenses': typeof AuthenticatedExpensesRoute
-  '/farms': typeof AuthenticatedFarmsRouteWithChildren
   '/finance': typeof AuthenticatedFinanceRoute
   '/inventory': typeof AuthenticatedInventoryRoute
   '/maintenance': typeof AuthenticatedMaintenanceRoute
-  '/motorcycles': typeof AuthenticatedMotorcyclesRouteWithChildren
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/payments': typeof AuthenticatedPaymentsRoute
   '/planning': typeof AuthenticatedPlanningRoute
@@ -548,8 +561,10 @@ export interface FileRoutesByTo {
   '/courses': typeof AuthenticatedCoursesIndexRoute
   '/drivers': typeof AuthenticatedDriversIndexRoute
   '/employees': typeof AuthenticatedEmployeesIndexRoute
+  '/farms': typeof AuthenticatedFarmsIndexRoute
   '/field': typeof AuthenticatedFieldIndexRoute
   '/inventory-counts': typeof AuthenticatedInventoryCountsIndexRoute
+  '/motorcycles': typeof AuthenticatedMotorcyclesIndexRoute
   '/purchases': typeof AuthenticatedPurchasesIndexRoute
   '/sales': typeof AuthenticatedSalesIndexRoute
   '/stock-transfers': typeof AuthenticatedStockTransfersIndexRoute
@@ -616,8 +631,10 @@ export interface FileRoutesById {
   '/_authenticated/courses/': typeof AuthenticatedCoursesIndexRoute
   '/_authenticated/drivers/': typeof AuthenticatedDriversIndexRoute
   '/_authenticated/employees/': typeof AuthenticatedEmployeesIndexRoute
+  '/_authenticated/farms/': typeof AuthenticatedFarmsIndexRoute
   '/_authenticated/field/': typeof AuthenticatedFieldIndexRoute
   '/_authenticated/inventory-counts/': typeof AuthenticatedInventoryCountsIndexRoute
+  '/_authenticated/motorcycles/': typeof AuthenticatedMotorcyclesIndexRoute
   '/_authenticated/purchases/': typeof AuthenticatedPurchasesIndexRoute
   '/_authenticated/sales/': typeof AuthenticatedSalesIndexRoute
   '/_authenticated/stock-transfers/': typeof AuthenticatedStockTransfersIndexRoute
@@ -684,8 +701,10 @@ export interface FileRouteTypes {
     | '/courses/'
     | '/drivers/'
     | '/employees/'
+    | '/farms/'
     | '/field/'
     | '/inventory-counts/'
+    | '/motorcycles/'
     | '/purchases/'
     | '/sales/'
     | '/stock-transfers/'
@@ -703,11 +722,9 @@ export interface FileRouteTypes {
     | '/design-showcase'
     | '/documents'
     | '/expenses'
-    | '/farms'
     | '/finance'
     | '/inventory'
     | '/maintenance'
-    | '/motorcycles'
     | '/notifications'
     | '/payments'
     | '/planning'
@@ -740,8 +757,10 @@ export interface FileRouteTypes {
     | '/courses'
     | '/drivers'
     | '/employees'
+    | '/farms'
     | '/field'
     | '/inventory-counts'
+    | '/motorcycles'
     | '/purchases'
     | '/sales'
     | '/stock-transfers'
@@ -807,8 +826,10 @@ export interface FileRouteTypes {
     | '/_authenticated/courses/'
     | '/_authenticated/drivers/'
     | '/_authenticated/employees/'
+    | '/_authenticated/farms/'
     | '/_authenticated/field/'
     | '/_authenticated/inventory-counts/'
+    | '/_authenticated/motorcycles/'
     | '/_authenticated/purchases/'
     | '/_authenticated/sales/'
     | '/_authenticated/stock-transfers/'
@@ -1140,6 +1161,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEmployeesEmployeeIdRouteImport
       parentRoute: typeof AuthenticatedEmployeesRoute
     }
+    '/_authenticated/farms/': {
+      id: '/_authenticated/farms/'
+      path: '/'
+      fullPath: '/farms/'
+      preLoaderRoute: typeof AuthenticatedFarmsIndexRouteImport
+      parentRoute: typeof AuthenticatedFarmsRoute
+    }
     '/_authenticated/farms/$farmId': {
       id: '/_authenticated/farms/$farmId'
       path: '/$farmId'
@@ -1181,6 +1209,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/inventory-counts/$countId'
       preLoaderRoute: typeof AuthenticatedInventoryCountsCountIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/motorcycles/': {
+      id: '/_authenticated/motorcycles/'
+      path: '/'
+      fullPath: '/motorcycles/'
+      preLoaderRoute: typeof AuthenticatedMotorcyclesIndexRouteImport
+      parentRoute: typeof AuthenticatedMotorcyclesRoute
     }
     '/_authenticated/motorcycles/$motorcycleId': {
       id: '/_authenticated/motorcycles/$motorcycleId'
@@ -1402,10 +1437,12 @@ const AuthenticatedEmployeesRouteWithChildren =
 
 interface AuthenticatedFarmsRouteChildren {
   AuthenticatedFarmsFarmIdRoute: typeof AuthenticatedFarmsFarmIdRoute
+  AuthenticatedFarmsIndexRoute: typeof AuthenticatedFarmsIndexRoute
 }
 
 const AuthenticatedFarmsRouteChildren: AuthenticatedFarmsRouteChildren = {
   AuthenticatedFarmsFarmIdRoute: AuthenticatedFarmsFarmIdRoute,
+  AuthenticatedFarmsIndexRoute: AuthenticatedFarmsIndexRoute,
 }
 
 const AuthenticatedFarmsRouteWithChildren =
@@ -1426,12 +1463,14 @@ const AuthenticatedFieldRouteWithChildren =
 
 interface AuthenticatedMotorcyclesRouteChildren {
   AuthenticatedMotorcyclesMotorcycleIdRoute: typeof AuthenticatedMotorcyclesMotorcycleIdRoute
+  AuthenticatedMotorcyclesIndexRoute: typeof AuthenticatedMotorcyclesIndexRoute
 }
 
 const AuthenticatedMotorcyclesRouteChildren: AuthenticatedMotorcyclesRouteChildren =
   {
     AuthenticatedMotorcyclesMotorcycleIdRoute:
       AuthenticatedMotorcyclesMotorcycleIdRoute,
+    AuthenticatedMotorcyclesIndexRoute: AuthenticatedMotorcyclesIndexRoute,
   }
 
 const AuthenticatedMotorcyclesRouteWithChildren =
