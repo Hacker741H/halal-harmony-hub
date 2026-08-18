@@ -238,6 +238,7 @@ export function EmployeeTable({
                         <Button
                           size="icon"
                           variant="ghost"
+                          aria-label={`Actions de ${employee.nom} ${employee.prenom ?? ""}`.trim()}
                         >
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
