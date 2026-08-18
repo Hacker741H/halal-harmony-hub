@@ -3,6 +3,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDownCircle, ArrowUpCircle, Banknote, Plus, Wallet } from "lucide-react";
+import { toast } from "sonner";
 
 import { FinanceSelector } from "@/components/finance/FinanceSelector";
 import { DepositForm } from "@/components/finance/forms/DepositForm";
@@ -16,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
 import { ModuleHero } from "@/components/ui/module-hero";
+import { useConfirm } from "@/hooks/use-confirm";
 import {
   deleteFinanceOperation,
   getFinanceOperations,
@@ -37,6 +39,7 @@ function FinancePage() {
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [type, setType] = useState<FinanceType>(null);
   const [selectedOperation, setSelectedOperation] = useState<FinanceOperation | null>(null);
+  const { confirm, dialog } = useConfirm();
 
   const { data: operations = [], isLoading } = useQuery({
     queryKey: ["finance-operations"],
@@ -61,23 +64,30 @@ function FinancePage() {
     setOpen(true);
   }
 
-  async function remove(operation: FinanceOperation) {
-    if (!confirm("Supprimer cette opération ?")) return;
-
-    try {
-      await deleteFinanceOperation({ data: { id: operation.id } });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["finance-operations"] }),
-        queryClient.invalidateQueries({ queryKey: ["finance-stats"] }),
-        queryClient.invalidateQueries({ queryKey: ["wallets"] }),
-        queryClient.invalidateQueries({ queryKey: ["wallet-stats"] }),
-        queryClient.invalidateQueries({ queryKey: ["treasury"] }),
-      ]);
-      alert("✅ Opération supprimée.");
-    } catch (error) {
-      console.error(error);
-      alert(error instanceof Error ? error.message : JSON.stringify(error, null, 2));
-    }
+  function remove(operation: FinanceOperation) {
+    const amountLabel = `${Number(operation.amount).toLocaleString("fr-FR")} FCFA`;
+    confirm({
+      title: "Supprimer cette opération ?",
+      description: `Cette opération de ${amountLabel}${operation.category ? ` (${operation.category})` : ""} sera définitivement supprimée. Cette action est irréversible.`,
+      variant: "destructive",
+      onConfirm: async () => {
+        try {
+          await deleteFinanceOperation({ data: { id: operation.id } });
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ["finance-operations"] }),
+            queryClient.invalidateQueries({ queryKey: ["finance-stats"] }),
+            queryClient.invalidateQueries({ queryKey: ["wallets"] }),
+            queryClient.invalidateQueries({ queryKey: ["wallet-stats"] }),
+            queryClient.invalidateQueries({ queryKey: ["treasury"] }),
+          ]);
+          toast.success("Opération supprimée.");
+        } catch (error) {
+          console.error(error);
+          toast.error(error instanceof Error ? error.message : "Impossible de supprimer l'opération.");
+          throw error;
+        }
+      },
+    });
   }
 
   function refresh() {
@@ -196,6 +206,7 @@ function FinancePage() {
           {type === null ? <FinanceForm operation={selectedOperation} onSuccess={refresh} /> : null}
         </DialogContent>
       </Dialog>
+      {dialog}
     </>
   );
 }

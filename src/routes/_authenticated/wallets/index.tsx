@@ -3,6 +3,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Landmark, Plus, Wallet, WalletCards } from "lucide-react";
+import { toast } from "sonner";
 
 import { WalletForm } from "@/components/wallet-form";
 import { WalletTable } from "@/components/wallet-table";
@@ -11,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
 import { ModuleHero } from "@/components/ui/module-hero";
+import { useConfirm } from "@/hooks/use-confirm";
 import { deleteWallet, getWallets, getWalletStats, type Wallet as WalletType } from "@/lib/wallet.functions";
 
 export const Route = createFileRoute("/_authenticated/wallets/")({
@@ -21,6 +23,7 @@ const formatAmount = (value: number) => `${value.toLocaleString("fr-FR")} FCFA`;
 
 function WalletsPage() {
   const queryClient = useQueryClient();
+  const { confirm, dialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState<WalletType | null>(null);
   const { data: wallets = [], isLoading } = useQuery({ queryKey: ["wallets"], queryFn: () => getWallets() });
@@ -34,17 +37,25 @@ function WalletsPage() {
     void queryClient.invalidateQueries({ queryKey: ["wallet-stats"] });
   };
 
-  const remove = async (wallet: WalletType) => {
-    if (!confirm(`Supprimer le wallet « ${wallet.name} » ?`)) return;
-    try {
-      await deleteWallet({ data: { id: wallet.id } });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["wallets"] }),
-        queryClient.invalidateQueries({ queryKey: ["wallet-stats"] }),
-      ]);
-    } catch (error) {
-      alert(error instanceof Error ? error.message : "Impossible de supprimer ce wallet.");
-    }
+  const remove = (wallet: WalletType) => {
+    confirm({
+      title: "Supprimer ce wallet ?",
+      description: `Le wallet « ${wallet.name} » sera définitivement supprimé.`,
+      variant: "destructive",
+      confirmLabel: "Supprimer",
+      onConfirm: async () => {
+        try {
+          await deleteWallet({ data: { id: wallet.id } });
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ["wallets"] }),
+            queryClient.invalidateQueries({ queryKey: ["wallet-stats"] }),
+          ]);
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Impossible de supprimer ce wallet.");
+          throw error;
+        }
+      },
+    });
   };
 
   return (
@@ -127,6 +138,8 @@ function WalletsPage() {
           <WalletForm wallet={selectedWallet} onSuccess={refresh} />
         </DialogContent>
       </Dialog>
+
+      {dialog}
     </div>
   );
 }

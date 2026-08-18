@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,17 +93,17 @@ export function MotorcycleForm({
 
   async function save() {
     if (!immatriculation.trim()) {
-      alert("L'immatriculation est obligatoire.");
+      toast.error("L'immatriculation est obligatoire.");
       return;
     }
 
     const purchasePrice = prixAchat ? Number(prixAchat) : 0;
     if (!Number.isFinite(purchasePrice) || purchasePrice < 0) {
-      alert("Le prix d'achat doit être un montant valide.");
+      toast.error("Le prix d'achat doit être un montant valide.");
       return;
     }
     if (purchasePrice > 0 && !purchaseWalletId) {
-      alert("Sélectionnez le wallet utilisé pour l'achat.");
+      toast.error("Sélectionnez le wallet utilisé pour l'achat.");
       return;
     }
 
@@ -147,7 +148,7 @@ export function MotorcycleForm({
       onSuccess();
     } catch (error) {
       console.error(error);
-      alert(
+      toast.error(
         error instanceof Error
           ? error.message
           : "Une erreur est survenue.",

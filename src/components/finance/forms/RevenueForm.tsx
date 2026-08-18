@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import {
   createFinanceOperation,
@@ -90,17 +91,17 @@ export function RevenueForm({
   const isEditing =
     !!operation;  async function save() {
     if (!form.wallet_id) {
-      alert("Choisissez un wallet.");
+      toast.error("Choisissez un wallet.");
       return;
     }
 
     if (!form.client.trim()) {
-      alert("Le client est obligatoire.");
+      toast.error("Le client est obligatoire.");
       return;
     }
 
     if (!form.amount) {
-      alert("Le montant est obligatoire.");
+      toast.error("Le montant est obligatoire.");
       return;
     }
 
@@ -144,20 +145,24 @@ export function RevenueForm({
             values,
           },
         });
+
+        toast.success("Recette mise à jour.");
       } else {
         await createFinanceOperation({
           data: { operation: values },
         });
+
+        toast.success("Recette enregistrée.");
       }
 
       onSuccess();
     } catch (error) {
       console.error(error);
 
-      alert(
+      toast.error(
         error instanceof Error
           ? error.message
-          : JSON.stringify(error, null, 2),
+          : "Une erreur est survenue.",
       );
     } finally {
       setLoading(false);

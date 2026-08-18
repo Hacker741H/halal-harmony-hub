@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,17 +82,17 @@ export function MotorcycleMaintenanceForm({
 
   async function save() {
     if (!maintenanceDate) {
-      alert("La date est obligatoire.");
+      toast.error("La date est obligatoire.");
       return;
     }
 
     const numericCost = cost ? Number(cost) : 0;
     if (!Number.isFinite(numericCost) || numericCost < 0) {
-      alert("Le coût doit être un montant valide.");
+      toast.error("Le coût doit être un montant valide.");
       return;
     }
     if (numericCost > 0 && !walletId) {
-      alert("Sélectionnez le wallet réglant cet entretien.");
+      toast.error("Sélectionnez le wallet réglant cet entretien.");
       return;
     }
 
@@ -131,7 +132,7 @@ export function MotorcycleMaintenanceForm({
       onSuccess();
     } catch (error) {
       console.error(error);
-      alert(
+      toast.error(
         error instanceof Error
           ? error.message
           :
@@ -290,7 +291,7 @@ export function MotorcycleMaintenanceForm({
 
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
 
         <Button
           type="button"

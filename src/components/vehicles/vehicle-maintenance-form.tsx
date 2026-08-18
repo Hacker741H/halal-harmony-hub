@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,22 +59,22 @@ export function VehicleMaintenanceForm({
     const numericKilometrage = kilometrage ? Number(kilometrage) : null;
 
     if (!date || !type.trim()) {
-      alert("La date et le type d'entretien sont obligatoires.");
+      toast.error("La date et le type d'entretien sont obligatoires.");
       return;
     }
     if (!Number.isFinite(numericCost) || numericCost < 0) {
-      alert("Le coût doit être un montant valide.");
+      toast.error("Le coût doit être un montant valide.");
       return;
     }
     if (
       numericKilometrage !== null &&
       (!Number.isInteger(numericKilometrage) || numericKilometrage < 0)
     ) {
-      alert("Le kilométrage doit être un entier positif.");
+      toast.error("Le kilométrage doit être un entier positif.");
       return;
     }
     if (numericCost > 0 && !walletId) {
-      alert("Sélectionnez le wallet qui règle cet entretien.");
+      toast.error("Sélectionnez le wallet qui règle cet entretien.");
       return;
     }
 
@@ -100,7 +101,7 @@ export function VehicleMaintenanceForm({
       onSuccess();
     } catch (error) {
       console.error(error);
-      alert(error instanceof Error ? error.message : "Impossible d'enregistrer l'entretien.");
+      toast.error(error instanceof Error ? error.message : "Impossible d'enregistrer l'entretien.");
     } finally {
       setLoading(false);
     }

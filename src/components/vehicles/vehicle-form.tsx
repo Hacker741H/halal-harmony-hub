@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -111,17 +112,17 @@ export default function VehicleForm({ vehicle, onSuccess }: Props) {
 
   async function save() {
     if (!form.registration.trim()) {
-      alert("L'immatriculation est obligatoire.");
+      toast.error("L'immatriculation est obligatoire.");
       return;
     }
 
     if (!form.brand.trim()) {
-      alert("La marque est obligatoire.");
+      toast.error("La marque est obligatoire.");
       return;
     }
 
     if (!form.model.trim()) {
-      alert("Le modèle est obligatoire.");
+      toast.error("Le modèle est obligatoire.");
       return;
     }
 
@@ -130,7 +131,7 @@ export default function VehicleForm({ vehicle, onSuccess }: Props) {
       : null;
 
     if (purchasePrice && !form.purchase_wallet_id) {
-      alert("Sélectionnez le wallet utilisé pour l'achat.");
+      toast.error("Sélectionnez le wallet utilisé pour l'achat.");
       return;
     }
 
@@ -164,16 +165,16 @@ export default function VehicleForm({ vehicle, onSuccess }: Props) {
             values,
           },
         });
-        alert("Véhicule mis à jour.");
+        toast.success("Véhicule mis à jour.");
       } else {
         await createVehicle({ data: values });
-        alert("Véhicule créé.");
+        toast.success("Véhicule créé.");
       }
 
       onSuccess();
     } catch (error: unknown) {
       console.error(error);
-      alert(error instanceof Error ? error.message : "Impossible d'enregistrer le véhicule.");
+      toast.error(error instanceof Error ? error.message : "Impossible d'enregistrer le véhicule.");
     } finally {
       setLoading(false);
     }

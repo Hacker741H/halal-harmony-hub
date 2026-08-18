@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { ModuleHero } from "@/components/ui/module-hero";
 import { Textarea } from "@/components/ui/textarea";
 import { ClientSelect } from "@/components/selects/entity-selects";
+import { useConfirm } from "@/hooks/use-confirm";
 
 import { createCommercialSale } from "@/lib/commercial-sales.functions";
 import {
@@ -69,6 +70,7 @@ function HarvestDetailPage() {
   const { harvestId } = Route.useParams();
   const queryClient = useQueryClient();
   const [dialog, setDialog] = useState<"record" | "deliver" | "createSale" | "reschedule" | "recurrence" | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   const harvestQuery = useQuery({
     queryKey: ["harvest", harvestId],
@@ -135,7 +137,14 @@ function HarvestDetailPage() {
                 <Button
                   variant="destructive"
                   disabled={cancelMutation.isPending}
-                  onClick={() => { if (window.confirm("Annuler cette récolte ?")) cancelMutation.mutate(""); }}
+                  onClick={() => confirm({
+                    title: "Annuler cette récolte ?",
+                    description: "La planification sera annulée. Cette action est irréversible.",
+                    variant: "destructive",
+                    confirmLabel: "Annuler la récolte",
+                    cancelLabel: "Retour",
+                    onConfirm: async () => { await cancelMutation.mutateAsync(""); },
+                  })}
                 >
                   Annuler
                 </Button>
@@ -326,6 +335,7 @@ function HarvestDetailPage() {
           await queryClient.invalidateQueries({ queryKey: ["harvest-recurrence", harvest.farm_id, harvest.produit] });
         }}
       />
+      {confirmDialog}
     </div>
   );
 }

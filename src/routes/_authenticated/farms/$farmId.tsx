@@ -14,6 +14,7 @@ import {
   User,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirm } from "@/hooks/use-confirm";
 import { DocumentUpload } from "@/components/documents/document-upload";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { EntityAlertsSection } from "@/components/notifications/entity-alerts-section";
@@ -76,6 +77,7 @@ function FarmDetailsPage() {
   const { farmId } = Route.useParams();
 
   const queryClient = useQueryClient();
+  const { confirm, dialog } = useConfirm();
 
   const [openHarvest, setOpenHarvest] = useState(false);
   const [actingHarvestId, setActingHarvestId] = useState<string | undefined>();
@@ -151,8 +153,13 @@ function FarmDetailsPage() {
   }
 
   function cancelHarvestAction(harvest: Harvest) {
-    if (!window.confirm("Annuler cette récolte planifiée ?")) return;
-    void runHarvestAction(harvest.id, () => cancelHarvestPlan({ data: { id: harvest.id } }), "Récolte annulée.");
+    confirm({
+      title: "Annuler la récolte",
+      description: "Annuler cette récolte planifiée ?",
+      variant: "destructive",
+      onConfirm: () =>
+        runHarvestAction(harvest.id, () => cancelHarvestPlan({ data: { id: harvest.id } }), "Récolte annulée."),
+    });
   }
 
   async function refreshExpenses() {
@@ -164,44 +171,42 @@ function FarmDetailsPage() {
     });
   }
 
-  async function removeHarvest(
+  function removeHarvest(
     harvest: Harvest,
   ) {
-    if (
-      !window.confirm(
-        "Supprimer cette récolte ?",
-      )
-    ) {
-      return;
-    }
+    confirm({
+      title: "Supprimer la récolte",
+      description: "Supprimer cette récolte ?",
+      variant: "destructive",
+      onConfirm: async () => {
+        await deleteHarvest({
+          data: {
+            id: harvest.id,
+          },
+        });
 
-    await deleteHarvest({
-      data: {
-        id: harvest.id,
+        await refreshHarvests();
       },
     });
-
-    await refreshHarvests();
   }
 
-  async function removeExpense(
+  function removeExpense(
     expense: Expense,
   ) {
-    if (
-      !window.confirm(
-        "Supprimer cette dépense ?",
-      )
-    ) {
-      return;
-    }
+    confirm({
+      title: "Supprimer la dépense",
+      description: "Supprimer cette dépense ?",
+      variant: "destructive",
+      onConfirm: async () => {
+        await deleteExpense({
+          data: {
+            id: expense.id,
+          },
+        });
 
-    await deleteExpense({
-      data: {
-        id: expense.id,
+        await refreshExpenses();
       },
     });
-
-    await refreshExpenses();
   }
 
   if (isPending) {
@@ -518,7 +523,7 @@ function FarmDetailsPage() {
           relation="farm"
           onSuccess={() => {
             void queryClient.invalidateQueries({ queryKey: ["farm-documents", farmId] });
-            alert("Document ajouté.");
+            toast.success("Document ajouté.");
           }}
         />
 
@@ -720,6 +725,7 @@ function FarmDetailsPage() {
 
       </Tabs>
 
+      {dialog}
     </div>
   );
 }

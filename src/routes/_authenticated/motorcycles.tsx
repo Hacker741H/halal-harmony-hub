@@ -16,6 +16,7 @@ import {
   getMotorcycles,
   type Motorcycle,
 } from "@/lib/motorcycles.functions";
+import { useConfirm } from "@/hooks/use-confirm";
 
 export const Route = createFileRoute("/_authenticated/motorcycles")({
   head: () => ({
@@ -33,6 +34,7 @@ function MotorcyclesPage() {
     queryKey: ["motorcycles"],
     queryFn: () => getMotorcycles(),
   });
+  const { confirm, dialog } = useConfirm();
 
   async function refresh() {
     setOpen(false);
@@ -40,11 +42,17 @@ function MotorcyclesPage() {
     await queryClient.invalidateQueries({ queryKey: ["motorcycles"] });
   }
 
-  async function removeMotorcycle(motorcycle: Motorcycle) {
-    if (!window.confirm("Supprimer cette moto ?")) return;
-
-    await deleteMotorcycle({ data: { id: motorcycle.id } });
-    await refresh();
+  function removeMotorcycle(motorcycle: Motorcycle) {
+    confirm({
+      title: "Supprimer cette moto ?",
+      description: "Cette action est définitive.",
+      variant: "destructive",
+      confirmLabel: "Supprimer",
+      onConfirm: async () => {
+        await deleteMotorcycle({ data: { id: motorcycle.id } });
+        await refresh();
+      },
+    });
   }
 
   const operationalMotorcycles = motorcycles.filter(
@@ -140,6 +148,7 @@ function MotorcyclesPage() {
       </Card>
 
       <Outlet />
+      {dialog}
     </div>
   );
 }

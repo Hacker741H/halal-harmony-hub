@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -102,14 +103,14 @@ export function FinanceForm({
 
   async function save() {
     if (!form.wallet_id) {
-      alert(
+      toast.error(
         "Choisissez un wallet.",
       );
       return;
     }
 
     if (!form.amount) {
-      alert(
+      toast.error(
         "Le montant est obligatoire.",
       );
       return;
@@ -118,7 +119,7 @@ export function FinanceForm({
     if (
       Number(form.amount) <= 0
     ) {
-      alert(
+      toast.error(
         "Le montant doit être supérieur à zéro.",
       );
       return;
@@ -153,16 +154,16 @@ export function FinanceForm({
           },
         });
 
-        alert(
-          "✅ Opération mise à jour.",
+        toast.success(
+          "Opération mise à jour.",
         );
       } else {
         await createFinanceOperation({
           data: { operation: values },
         });
 
-        alert(
-          "✅ Opération enregistrée.",
+        toast.success(
+          "Opération enregistrée.",
         );
       }
 
@@ -182,10 +183,10 @@ export function FinanceForm({
     } catch (error) {
       console.error(error);
 
-      alert(
+      toast.error(
         error instanceof Error
           ? error.message
-          : JSON.stringify(error, null, 2),
+          : "Une erreur est survenue.",
       );
     } finally {
       setLoading(false);

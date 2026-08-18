@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,12 +80,12 @@ export function TransferForm({
   const isEditing =
     !!operation;  async function save() {
     if (!form.wallet_id) {
-      alert("Choisissez un wallet source.");
+      toast.error("Choisissez un wallet source.");
       return;
     }
 
     if (!form.destination_wallet_id) {
-      alert("Choisissez un wallet destination.");
+      toast.error("Choisissez un wallet destination.");
       return;
     }
 
@@ -92,7 +93,7 @@ export function TransferForm({
       form.wallet_id ===
       form.destination_wallet_id
     ) {
-      alert(
+      toast.error(
         "Les deux wallets doivent être différents.",
       );
       return;
@@ -101,7 +102,7 @@ export function TransferForm({
     if (
       Number(form.amount) <= 0
     ) {
-      alert("Montant invalide.");
+      toast.error("Montant invalide.");
       return;
     }
 
@@ -144,19 +145,16 @@ export function TransferForm({
           },
         });
 
-        alert(
-          "✅ Transfert mis à jour.",
+        toast.success(
+          "Transfert mis à jour.",
         );
       } else {
-        console.log("Valeurs envoyées :", values);
-        const result = await createFinanceOperation({
-  data: { operation: values },
-});
+        await createFinanceOperation({
+          data: { operation: values },
+        });
 
-console.log("Résultat :", result);
-
-        alert(
-          "✅ Transfert enregistré.",
+        toast.success(
+          "Transfert enregistré.",
         );
       }
 
@@ -164,10 +162,10 @@ console.log("Résultat :", result);
     } catch (error) {
       console.error(error);
 
-      alert(
+      toast.error(
         error instanceof Error
           ? error.message
-          : JSON.stringify(error, null, 2),
+          : "Une erreur est survenue.",
       );
     } finally {
       setLoading(false);

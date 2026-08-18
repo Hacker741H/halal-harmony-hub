@@ -53,6 +53,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { useConfirm } from "@/hooks/use-confirm";
 import { usePermissions } from "@/hooks/use-permissions";
 import {
   assignFieldWallet,
@@ -169,6 +170,7 @@ export function FieldWorkspace() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { can, isPending: permissionsPending } = usePermissions();
+  const { confirm, dialog } = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
   const [assignmentOpen, setAssignmentOpen] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<FieldWallet | null>(null);
@@ -330,13 +332,14 @@ export function FieldWorkspace() {
             setAssignmentOpen(true);
           }}
           onRevoke={(assignment) => {
-            if (
-              window.confirm(
-                `Retirer l’accès terrain au wallet « ${assignment.label || assignment.wallet.name} » ? Le wallet, son solde et son historique ne seront pas supprimés.`,
-              )
-            ) {
-              revokeAssignmentMutation.mutate(assignment.id);
-            }
+            confirm({
+              title: "Retirer l’accès terrain",
+              description: `Retirer l’accès terrain au wallet « ${assignment.label || assignment.wallet.name} » ? Le wallet, son solde et son historique ne seront pas supprimés.`,
+              variant: "destructive",
+              onConfirm: async () => {
+                await revokeAssignmentMutation.mutateAsync(assignment.id);
+              },
+            });
           }}
         />
       </section>
@@ -359,6 +362,7 @@ export function FieldWorkspace() {
           void queryClient.invalidateQueries({ queryKey: ["field-wallets"] });
         }}
       />
+      {dialog}
     </main>
   );
 }

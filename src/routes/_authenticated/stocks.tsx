@@ -3,6 +3,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Boxes, Hash, Package, Plus } from "lucide-react";
+import { toast } from "sonner";
 
 import { StockForm } from "@/components/stocks/stock-form";
 import { StockMovementForm } from "@/components/stocks/stock-movement-form";
@@ -13,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
 import { ModuleHero } from "@/components/ui/module-hero";
+import { useConfirm } from "@/hooks/use-confirm";
 import { cancelStockMovement, getStockMovements } from "@/lib/stock-movements.functions";
 import { deleteStock, getStocks, type Stock } from "@/lib/stocks.functions";
 
@@ -25,6 +27,7 @@ function StocksPage() {
   const [open, setOpen] = useState(false);
   const [editingStock, setEditingStock] = useState<Stock | null>(null);
   const [movementOpen, setMovementOpen] = useState(false);
+  const { confirm, dialog } = useConfirm();
 
   const { data: stocks = [], isPending } = useQuery({
     queryKey: ["stocks"],
@@ -45,28 +48,40 @@ function StocksPage() {
     setMovementOpen(false);
   }
 
-  async function cancelMovement(id: string) {
-    if (!window.confirm("Annuler ce mouvement et son écriture financière éventuelle ?")) return;
-
-    try {
-      await cancelStockMovement({ data: { id } });
-      await refresh();
-    } catch (error) {
-      console.error(error);
-      alert(error instanceof Error ? error.message : "Impossible d'annuler le mouvement.");
-    }
+  function cancelMovement(id: string) {
+    confirm({
+      title: "Annuler le mouvement",
+      description: "Annuler ce mouvement et son écriture financière éventuelle ?",
+      variant: "destructive",
+      onConfirm: async () => {
+        try {
+          await cancelStockMovement({ data: { id } });
+          await refresh();
+        } catch (error) {
+          console.error(error);
+          toast.error(error instanceof Error ? error.message : "Impossible d'annuler le mouvement.");
+          throw error;
+        }
+      },
+    });
   }
 
-  async function handleDelete(stock: Stock) {
-    if (!window.confirm(`Supprimer "${stock.nom}" ?`)) return;
-
-    try {
-      await deleteStock({ data: { id: stock.id } });
-      await refresh();
-    } catch (error) {
-      console.error(error);
-      alert(error instanceof Error ? error.message : JSON.stringify(error, null, 2));
-    }
+  function handleDelete(stock: Stock) {
+    confirm({
+      title: "Supprimer l'article",
+      description: `Supprimer "${stock.nom}" ?`,
+      variant: "destructive",
+      onConfirm: async () => {
+        try {
+          await deleteStock({ data: { id: stock.id } });
+          await refresh();
+        } catch (error) {
+          console.error(error);
+          toast.error(error instanceof Error ? error.message : "Impossible de supprimer l'article.");
+          throw error;
+        }
+      },
+    });
   }
 
   function handleEdit(stock: Stock) {
@@ -224,6 +239,7 @@ function StocksPage() {
           )}
         </CardContent>
       </Card>
+      {dialog}
     </div>
   );
 }

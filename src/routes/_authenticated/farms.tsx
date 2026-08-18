@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
 import { ModuleHero } from "@/components/ui/module-hero";
+import { useConfirm } from "@/hooks/use-confirm";
 import { deleteFarm, getFarms, type Farm } from "@/lib/farms.functions";
 
 export const Route = createFileRoute("/_authenticated/farms")({
@@ -21,6 +22,7 @@ function FarmsPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editingFarm, setEditingFarm] = useState<Farm | null>(null);
+  const { confirm, dialog } = useConfirm();
 
   const { data: farms = [], isPending } = useQuery({
     queryKey: ["farms"],
@@ -33,11 +35,16 @@ function FarmsPage() {
     setOpen(false);
   }
 
-  async function handleDelete(farm: Farm) {
-    if (!window.confirm(`Supprimer ${farm.nom} ?`)) return;
-
-    await deleteFarm({ data: { id: farm.id } });
-    refresh();
+  function handleDelete(farm: Farm) {
+    confirm({
+      title: "Supprimer l'exploitation",
+      description: `Supprimer ${farm.nom} ?`,
+      variant: "destructive",
+      onConfirm: async () => {
+        await deleteFarm({ data: { id: farm.id } });
+        await refresh();
+      },
+    });
   }
 
   function handleEdit(farm: Farm) {
@@ -125,6 +132,7 @@ function FarmsPage() {
       </Card>
 
       <Outlet />
+      {dialog}
     </div>
   );
 }

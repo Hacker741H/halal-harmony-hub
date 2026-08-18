@@ -34,6 +34,7 @@ import {
 } from "@/lib/commerce-pos.functions";
 import { getWallets } from "@/lib/wallet.functions";
 import { useCommercePosSession } from "@/hooks/use-commerce-pos-session";
+import { useConfirm } from "@/hooks/use-confirm";
 import { useCurrentUserAccess } from "@/hooks/use-current-user-access";
 import { usePermissions } from "@/hooks/use-permissions";
 import { supabase } from "@/integrations/supabase/client";
@@ -1066,6 +1067,7 @@ const commerceAssignmentRoles: Array<{ value: CommerceAssignmentRole; label: str
 
 function CommerceLocationAssignments({ locationId }: { locationId: string }) {
   const queryClient = useQueryClient();
+  const { confirm, dialog } = useConfirm();
   const [userId, setUserId] = useState("");
   const [assignmentRole, setAssignmentRole] = useState<CommerceAssignmentRole>("CASHIER");
   const assignmentsQuery = useQuery({
@@ -1099,9 +1101,13 @@ function CommerceLocationAssignments({ locationId }: { locationId: string }) {
     if (selectedRole) setAssignmentRole(selectedRole.value);
   };
   const remove = (assignmentId: string, userName: string) => {
-    if (window.confirm(`Retirer l’accès de ${userName} à ce magasin ? Ses ventes et son historique seront conservés.`)) {
-      endMutation.mutate({ data: { assignmentId } });
-    }
+    confirm({
+      title: `Retirer l’accès de ${userName} à ce magasin ?`,
+      description: "Ses ventes et son historique seront conservés. Le changement sera immédiatement appliqué côté base de données.",
+      variant: "destructive",
+      confirmLabel: "Retirer",
+      onConfirm: async () => { await endMutation.mutateAsync({ data: { assignmentId } }); },
+    });
   };
 
   return (
@@ -1130,6 +1136,7 @@ function CommerceLocationAssignments({ locationId }: { locationId: string }) {
         <div className="flex items-end"><Button type="button" disabled={assignMutation.isPending || !userId} onClick={() => assignMutation.mutate({ data: { locationId, userId, assignmentRole, notes: null } })}><UserPlus />{assignMutation.isPending ? "Affectation…" : "Affecter"}</Button></div>
       </div>
       <p className="text-caption">Réaffecter un collaborateur met à jour son rôle tout en conservant son historique d’affectation.</p>
+      {dialog}
     </div>
   );
 }

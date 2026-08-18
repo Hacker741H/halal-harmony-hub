@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, UserCheck } from "lucide-react";
+import { toast } from "sonner";
 
 import { DriverForm } from "@/components/drivers/driver-form";
 import { DriverTable } from "@/components/drivers/driver-table";
@@ -18,6 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/hooks/use-confirm";
 
 export const Route = createFileRoute("/_authenticated/drivers/")({
   component: DriversPage,
@@ -32,6 +34,7 @@ function DriversPage() {
     queryKey: ["drivers"],
     queryFn: () => getDrivers(),
   });
+  const { confirm, dialog } = useConfirm();
 
   function refresh() {
     void queryClient.invalidateQueries({ queryKey: ["drivers"] });
@@ -39,22 +42,23 @@ function DriversPage() {
     setOpen(false);
   }
 
-  async function removeDriver(driver: DriverWithEmployee) {
-    if (
-      !confirm(
-        `Supprimer le chauffeur ${driver.employees?.nom} ${driver.employees?.prenom} ?`,
-      )
-    ) {
-      return;
-    }
-
-    try {
-      await deleteDriver({ data: { id: driver.id } });
-      refresh();
-    } catch (error) {
-      console.error(error);
-      alert("Impossible de supprimer ce chauffeur.");
-    }
+  function removeDriver(driver: DriverWithEmployee) {
+    confirm({
+      title: `Supprimer le chauffeur ${driver.employees?.nom} ${driver.employees?.prenom} ?`,
+      description: "Cette action est définitive.",
+      variant: "destructive",
+      confirmLabel: "Supprimer",
+      onConfirm: async () => {
+        try {
+          await deleteDriver({ data: { id: driver.id } });
+          refresh();
+        } catch (error) {
+          console.error(error);
+          toast.error("Impossible de supprimer ce chauffeur.");
+          throw error;
+        }
+      },
+    });
   }
 
   return (
@@ -101,6 +105,7 @@ function DriversPage() {
         }}
         onDelete={removeDriver}
       />
+      {dialog}
     </div>
   );
 }

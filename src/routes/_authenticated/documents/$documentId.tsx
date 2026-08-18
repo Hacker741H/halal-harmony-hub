@@ -5,6 +5,7 @@ import { Archive, Download, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/hooks/use-confirm";
 import { usePermissions } from "@/hooks/use-permissions";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -27,6 +28,7 @@ function DocumentDetailPage() {
   const queryClient = useQueryClient();
   const replacementInputRef = useRef<HTMLInputElement>(null);
   const permissions = usePermissions();
+  const { confirm, dialog } = useConfirm();
   const documentQuery = useQuery({ queryKey: ["document", documentId], queryFn: () => getDocument({ data: { id: documentId } }) });
   const relationsQuery = useQuery({ queryKey: ["document-relations", documentId], queryFn: () => getDocumentRelations({ data: { id: documentId } }) });
   const historyQuery = useQuery({ queryKey: ["document-history", documentId], queryFn: () => getDocumentHistory({ data: { id: documentId } }) });
@@ -67,21 +69,26 @@ function DocumentDetailPage() {
   });
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      if (!window.confirm("Supprimer définitivement ce document ?")) return false;
       if (document.storage_path) {
         const { error } = await supabase.storage.from("documents").remove([document.storage_path]);
         if (error) throw error;
       }
       await deleteDocumentMetadata({ data: { id: documentId } });
-      return true;
     },
-    onSuccess: (deleted) => { if (deleted) { toast.success("Document supprimé."); void queryClient.invalidateQueries({ queryKey: ["documents"] }); void navigate({ to: "/documents" }); } },
+    onSuccess: () => { toast.success("Document supprimé."); void queryClient.invalidateQueries({ queryKey: ["documents"] }); void navigate({ to: "/documents" }); },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Impossible de supprimer le document."),
   });
 
   return <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
     <input ref={replacementInputRef} className="hidden" type="file" onChange={(event) => { const file = event.target.files?.[0]; if (file) replaceMutation.mutate(file); event.currentTarget.value = ""; }} />
-    <div className="flex items-start justify-between gap-4"><div><Button asChild variant="ghost" className="mb-2 px-0"><Link to="/documents">← Documents</Link></Button><h1 className="text-2xl font-bold">{document.nom}</h1><p className="text-sm text-muted-foreground">{document.type ?? "Document"}</p></div><div className="flex flex-wrap gap-2">{document.url && <Button asChild variant="outline"><a href={document.url} target="_blank" rel="noreferrer"><Download className="mr-2 h-4 w-4" />Télécharger</a></Button>}{canReplace && <Button variant="outline" disabled={replaceMutation.isPending} onClick={() => replacementInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" />{replaceMutation.isPending ? "Remplacement…" : "Remplacer"}</Button>}{canDelete && <Button variant="destructive" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate()}><Trash2 className="mr-2 h-4 w-4" />{deleteMutation.isPending ? "Suppression…" : "Supprimer"}</Button>}{document.archived_at ? <Button variant="outline" disabled={restoreMutation.isPending} onClick={() => restoreMutation.mutate()}>Restaurer</Button> : <Button variant="outline" disabled={archiveMutation.isPending} onClick={() => archiveMutation.mutate()}><Archive className="mr-2 h-4 w-4" />Archiver</Button>}</div></div>
+    <div className="flex items-start justify-between gap-4"><div><Button asChild variant="ghost" className="mb-2 px-0"><Link to="/documents">← Documents</Link></Button><h1 className="text-2xl font-bold">{document.nom}</h1><p className="text-sm text-muted-foreground">{document.type ?? "Document"}</p></div><div className="flex flex-wrap gap-2">{document.url && <Button asChild variant="outline"><a href={document.url} target="_blank" rel="noreferrer"><Download className="mr-2 h-4 w-4" />Télécharger</a></Button>}{canReplace && <Button variant="outline" disabled={replaceMutation.isPending} onClick={() => replacementInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" />{replaceMutation.isPending ? "Remplacement…" : "Remplacer"}</Button>}{canDelete && <Button variant="destructive" disabled={deleteMutation.isPending} onClick={() => confirm({
+      title: "Supprimer définitivement ce document ?",
+      description: "Cette action est irréversible : le fichier et ses métadonnées seront supprimés.",
+      variant: "destructive",
+      confirmLabel: "Supprimer",
+      onConfirm: async () => { await deleteMutation.mutateAsync(); },
+    })}><Trash2 className="mr-2 h-4 w-4" />{deleteMutation.isPending ? "Suppression…" : "Supprimer"}</Button>}{document.archived_at ? <Button variant="outline" disabled={restoreMutation.isPending} onClick={() => restoreMutation.mutate()}>Restaurer</Button> : <Button variant="outline" disabled={archiveMutation.isPending} onClick={() => archiveMutation.mutate()}><Archive className="mr-2 h-4 w-4" />Archiver</Button>}</div></div>
     <div className="grid gap-4 md:grid-cols-2"><section className="rounded-lg border p-4"><h2 className="mb-3 font-semibold">Informations générales</h2><dl className="space-y-2 text-sm"><div><dt className="text-muted-foreground">Date d'émission</dt><dd>{document.date_emission ?? "—"}</dd></div><div><dt className="text-muted-foreground">Date d'expiration</dt><dd>{document.date_expiration ?? "—"}</dd></div><div><dt className="text-muted-foreground">Entité liée</dt><dd>{entityHref ? <a className="text-primary underline" href={entityHref}>Ouvrir {relation?.label}</a> : "Entité absente ou ancienne relation"}</dd></div></dl></section><section className="rounded-lg border p-4"><h2 className="mb-3 font-semibold">Historique</h2>{historyQuery.data?.length ? <ul className="space-y-2 text-sm">{historyQuery.data.map((entry) => <li key={entry.id}>{entry.action} · {new Date(entry.created_at).toLocaleString("fr-FR")}</li>)}</ul> : <p className="text-sm text-muted-foreground">Aucun événement visible.</p>}</section></div>
+    {dialog}
   </div>;
 }

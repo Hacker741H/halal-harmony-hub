@@ -3,12 +3,14 @@ import type { LucideIcon } from "lucide-react";
 import { Plus } from "lucide-react";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { FinanceTable } from "@/components/finance-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ModuleHero } from "@/components/ui/module-hero";
+import { useConfirm } from "@/hooks/use-confirm";
 import {
   deleteFinanceOperation,
   getFinanceOperationsByType,
@@ -46,6 +48,7 @@ export function FinanceOperationPage({
   const [open, setOpen] = useState(false);
   const [selectedOperation, setSelectedOperation] = useState<FinanceOperation | null>(null);
   const handledQuickCreate = useRef(false);
+  const { confirm, dialog } = useConfirm();
 
   useEffect(() => {
     if (!quickCreate) {
@@ -87,15 +90,22 @@ export function FinanceOperationPage({
     setOpen(true);
   };
 
-  const remove = async (operation: FinanceOperation) => {
-    if (!confirm("Supprimer cette opération ?")) return;
-    try {
-      await deleteFinanceOperation({ data: { id: operation.id } });
-      await refresh();
-    } catch (error) {
-      console.error(error);
-      alert(error instanceof Error ? error.message : "Impossible de supprimer l'opération.");
-    }
+  const remove = (operation: FinanceOperation) => {
+    confirm({
+      title: "Supprimer cette opération ?",
+      description: `Cette opération de ${Number(operation.amount).toLocaleString("fr-FR")} FCFA sera définitivement supprimée. Cette action est irréversible.`,
+      variant: "destructive",
+      onConfirm: async () => {
+        try {
+          await deleteFinanceOperation({ data: { id: operation.id } });
+          await refresh();
+        } catch (error) {
+          console.error(error);
+          toast.error(error instanceof Error ? error.message : "Impossible de supprimer l'opération.");
+          throw error;
+        }
+      },
+    });
   };
 
   return (
@@ -145,6 +155,7 @@ export function FinanceOperationPage({
           <Form operation={selectedOperation} onSuccess={refresh} />
         </DialogContent>
       </Dialog>
+      {dialog}
     </>
   );
 }

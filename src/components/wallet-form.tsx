@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,12 +48,12 @@ export function WalletForm({ onSuccess, wallet }: Props) {
 
   async function save() {
     if (!form.name.trim()) {
-      alert("Le nom du wallet est obligatoire.");
+      toast.error("Le nom du wallet est obligatoire.");
       return;
     }
     const initialBalance = Number(form.initial_balance || 0);
     if (!Number.isFinite(initialBalance)) {
-      alert("Le solde d'ouverture doit être un nombre valide.");
+      toast.error("Le solde d'ouverture doit être un nombre valide.");
       return;
     }
 
@@ -71,7 +73,7 @@ export function WalletForm({ onSuccess, wallet }: Props) {
       onSuccess();
     } catch (error) {
       console.error(error);
-      alert(error instanceof Error ? error.message : JSON.stringify(error, null, 2));
+      toast.error(error instanceof Error ? error.message : "Une erreur est survenue.");
     } finally {
       setLoading(false);
     }

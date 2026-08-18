@@ -37,6 +37,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { PermissionGuard } from "@/components/auth/permission-guard";
+import { useConfirm } from "@/hooks/use-confirm";
 
 const roleLabels: Record<AppRole, string> = {
   super_admin: "Super administrateur",
@@ -200,6 +201,7 @@ export function RolesPermissionsPage() {
 
 function AccountManagement({ roles }: { roles: PermissionRole[] }) {
   const queryClient = useQueryClient();
+  const { confirm, dialog } = useConfirm();
   const accountsQuery = useQuery({ queryKey: ["internal-accounts"], queryFn: () => getInternalAccounts() });
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
@@ -283,7 +285,13 @@ function AccountManagement({ roles }: { roles: PermissionRole[] }) {
         {accountsQuery.error && <Alert variant="destructive"><AlertTitle>Comptes indisponibles</AlertTitle><AlertDescription>La clé de service Supabase doit être configurée côté serveur pour gérer les accès.</AlertDescription></Alert>}
         {accountsQuery.data?.map((account) => <div key={account.userId} className="flex flex-col gap-3 rounded-lg border p-4 lg:flex-row lg:items-center lg:justify-between">
           <div><p className="font-medium">{account.fullName ?? account.username}</p><p className="text-sm text-muted-foreground">@{account.username} · {account.roles.map((item) => roleLabels[item]).join(", ") || "Aucun rôle"}</p></div>
-          <div className="flex flex-wrap gap-2"><Badge variant={account.active ? "default" : "secondary"}>{account.active ? "Actif" : "Désactivé"}</Badge><Button type="button" variant="outline" size="sm" onClick={() => startEditing(account)}><Pencil className="mr-2 h-4 w-4" />Modifier</Button><Button type="button" variant="outline" size="sm" onClick={() => setPasswordTarget(account.userId)}><KeyRound className="mr-2 h-4 w-4" />Mot de passe</Button><Button type="button" variant={account.active ? "destructive" : "default"} size="sm" disabled={statusMutation.isPending} onClick={() => { if (window.confirm(`${account.active ? "Désactiver" : "Réactiver"} l’accès de @${account.username} ?`)) statusMutation.mutate({ data: { userId: account.userId, active: !account.active } }); }}>{account.active ? <UserRoundX className="mr-2 h-4 w-4" /> : <UserRoundCheck className="mr-2 h-4 w-4" />}{account.active ? "Désactiver" : "Réactiver"}</Button></div>
+          <div className="flex flex-wrap gap-2"><Badge variant={account.active ? "default" : "secondary"}>{account.active ? "Actif" : "Désactivé"}</Badge><Button type="button" variant="outline" size="sm" onClick={() => startEditing(account)}><Pencil className="mr-2 h-4 w-4" />Modifier</Button><Button type="button" variant="outline" size="sm" onClick={() => setPasswordTarget(account.userId)}><KeyRound className="mr-2 h-4 w-4" />Mot de passe</Button><Button type="button" variant={account.active ? "destructive" : "default"} size="sm" disabled={statusMutation.isPending} onClick={() => confirm({
+            title: `${account.active ? "Désactiver" : "Réactiver"} l’accès de @${account.username} ?`,
+            description: `L’accès de @${account.username} sera ${account.active ? "désactivé" : "réactivé"} immédiatement. Le changement sera appliqué côté base de données et journalisé dans l’audit de sécurité.`,
+            variant: account.active ? "destructive" : "default",
+            confirmLabel: account.active ? "Désactiver" : "Réactiver",
+            onConfirm: async () => { await statusMutation.mutateAsync({ data: { userId: account.userId, active: !account.active } }); },
+          })}>{account.active ? <UserRoundX className="mr-2 h-4 w-4" /> : <UserRoundCheck className="mr-2 h-4 w-4" />}{account.active ? "Désactiver" : "Réactiver"}</Button></div>
         </div>)}
       </CardContent>
     </Card>
@@ -305,6 +313,7 @@ function AccountManagement({ roles }: { roles: PermissionRole[] }) {
         <AlertDialogFooter><AlertDialogCancel>Annuler</AlertDialogCancel><Button type="button" disabled={!editingAccount || editFullName.trim().length < 2 || !/^[a-z0-9._-]{3,40}$/i.test(editUsername) || editRoles.length === 0 || updateMutation.isPending} onClick={() => { if (editingAccount) updateMutation.mutate({ data: { userId: editingAccount.userId, fullName: editFullName, username: editUsername, roles: editRoles } }); }}>Enregistrer les modifications</Button></AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+    {dialog}
   </section>;
 }
 
@@ -337,13 +346,24 @@ function usePermissionGroups(permissions: PermissionDefinition[]) {
 
 function RoleAssignments({ users, roles, canAssign, canManageSuperAdministrators, pending, onAssign }: { users: Array<{ user_id: string; full_name: string | null; roles: AppRole[] }>; roles: PermissionRole[]; canAssign: boolean; canManageSuperAdministrators: boolean; pending: boolean; onAssign: (userId: string, role: AppRole, assigned: boolean) => void }) {
   const [query, setQuery] = useState("");
+  const { confirm, dialog } = useConfirm();
   const filteredUsers = users.filter((user) => `${user.full_name ?? ""} ${user.user_id}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
   return <Card>
     <CardHeader><CardTitle>Attributions utilisateurs</CardTitle><CardDescription>Un utilisateur cumule les permissions de tous ses rôles. Les protections du dernier super administrateur sont appliquées par la RPC.</CardDescription><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher un utilisateur" /></CardHeader>
     <CardContent className="space-y-4">
       {filteredUsers.length === 0 && <p className="text-sm text-muted-foreground">Aucun utilisateur ne correspond à la recherche.</p>}
-      {filteredUsers.map((user) => { const protectedAccount = user.roles.includes("super_admin") && !canManageSuperAdministrators; return <div key={user.user_id} className="rounded-lg border p-4"><p className="font-medium">{user.full_name ?? "Utilisateur sans nom"}</p><p className="mb-3 text-xs text-muted-foreground">{user.user_id}</p>{protectedAccount && <p className="mb-3 text-xs text-muted-foreground">Seul un super administrateur peut modifier les rôles de ce compte.</p>}<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{roles.map((role) => { const assigned = user.roles.includes(role.code); return <label key={role.code} className="flex items-center gap-2 text-sm"><Checkbox checked={assigned} disabled={!canAssign || pending || protectedAccount} onCheckedChange={(checked) => { if (checked !== assigned && window.confirm(`${checked === true ? "Attribuer" : "Retirer"} le rôle ${roleLabels[role.code]} ?`)) onAssign(user.user_id, role.code, checked === true); }} />{role.label}</label>; })}</div></div>; })}
+      {filteredUsers.map((user) => { const protectedAccount = user.roles.includes("super_admin") && !canManageSuperAdministrators; return <div key={user.user_id} className="rounded-lg border p-4"><p className="font-medium">{user.full_name ?? "Utilisateur sans nom"}</p><p className="mb-3 text-xs text-muted-foreground">{user.user_id}</p>{protectedAccount && <p className="mb-3 text-xs text-muted-foreground">Seul un super administrateur peut modifier les rôles de ce compte.</p>}<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{roles.map((role) => { const assigned = user.roles.includes(role.code); return <label key={role.code} className="flex items-center gap-2 text-sm"><Checkbox checked={assigned} disabled={!canAssign || pending || protectedAccount} onCheckedChange={(checked) => {
+                if (checked === assigned) return;
+                const willAssign = checked === true;
+                confirm({
+                  title: `${willAssign ? "Attribuer" : "Retirer"} le rôle ${roleLabels[role.code]} ?`,
+                  description: `Le rôle ${roleLabels[role.code]} sera ${willAssign ? "attribué à" : "retiré à"} ${user.full_name ?? "cet utilisateur"}. Le changement sera immédiatement appliqué côté base de données et journalisé dans l’audit de sécurité.`,
+                  confirmLabel: willAssign ? "Attribuer" : "Retirer",
+                  onConfirm: async () => { onAssign(user.user_id, role.code, willAssign); },
+                });
+              }} />{role.label}</label>; })}</div></div>; })}
       {!canAssign && <p className="text-sm text-muted-foreground">Vous pouvez consulter les attributions, mais pas les modifier.</p>}
     </CardContent>
+    {dialog}
   </Card>;
 }
