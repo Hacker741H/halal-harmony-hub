@@ -79,7 +79,7 @@ function AuthPage() {
             <div className="my-auto max-w-lg py-16 lg:py-0">
               <Badge variant="premium" appearance="soft" className="border-primary-foreground/15 bg-primary-foreground/10 text-primary-foreground">
                 <Sparkles className="size-3" aria-hidden="true" />
-                HALAL Field OS
+                HALAL ERP
               </Badge>
               <h1 className="mt-6 font-display text-4xl font-semibold leading-[1.06] tracking-[-0.045em] sm:text-5xl">
                 Votre entreprise,

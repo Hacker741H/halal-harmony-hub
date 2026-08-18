@@ -145,7 +145,6 @@ const navigationGroups: readonly NavigationGroup[] = [
       { title: "Achats & dettes", url: "/purchases", icon: ShoppingCart, permission: "purchases.read" },
       { title: "Inventaires", url: "/inventory-counts", icon: ClipboardList, permission: "inventory.counts.read" },
       { title: "Transferts", url: "/stock-transfers", icon: ArrowLeftRight, permission: "transfers.read" },
-      { title: "Stocks", url: "/stocks", icon: Package, permission: "stocks.read" },
     ],
   },
   {
@@ -153,6 +152,7 @@ const navigationGroups: readonly NavigationGroup[] = [
     items: [
       { title: "Fermes", url: "/farms", icon: Sprout },
       { title: "Contrats", url: "/contracts", icon: FileSignature },
+      { title: "Stocks", url: "/stocks", icon: Package, permission: "stocks.read" },
     ],
   },
   {
@@ -259,7 +259,7 @@ export function AppSidebar() {
           <div className="rounded-md bg-sidebar-accent/50 px-2.5 py-2 text-caption text-sidebar-foreground/60">
             <span className="font-medium text-sidebar-foreground/80">HALAL ERP</span>
             <span className="mx-1.5">·</span>
-            HALAL Field OS
+            Famille Keita
           </div>
         ) : null}
       </SidebarFooter>
