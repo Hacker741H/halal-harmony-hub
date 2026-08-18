@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import {
   DropdownMenu,
@@ -35,6 +36,7 @@ import {
 type Props = {
   employees: Employee[];
   loading: boolean;
+  error?: boolean;
   onEdit?: (employee: Employee) => void;
   onDelete?: (employee: Employee) => void;
 };
@@ -42,6 +44,7 @@ type Props = {
 export function EmployeeTable({
   employees,
   loading,
+  error,
   onEdit,
   onDelete,
 }: Props) {
@@ -128,18 +131,25 @@ export function EmployeeTable({
 
           <TableBody>
 
-            {loading && (
+            {loading &&
+              Array.from({ length: 4 }, (_, index) => (
+                <TableRow key={index}>
+                  <TableCell colSpan={6}>
+                    <Skeleton className="h-6 w-full" />
+                  </TableCell>
+                </TableRow>
+              ))}
+
+            {!loading && error && (
               <TableRow>
-                <TableCell
-                  colSpan={6}
-                  className="text-center py-10"
-                >
-                  Chargement...
+                <TableCell colSpan={6} className="py-10 text-center">
+                  <p className="font-medium text-destructive">Impossible de charger les employés.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Réessayez dans un instant ou vérifiez votre connexion.</p>
                 </TableCell>
               </TableRow>
             )}
 
-            {!loading &&
+            {!loading && !error &&
               filteredEmployees.map((employee) => (
                 <TableRow key={employee.id}>
 
@@ -262,7 +272,7 @@ export function EmployeeTable({
                 </TableRow>
               ))}
 
-            {!loading &&
+            {!loading && !error &&
               filteredEmployees.length === 0 && (
                 <TableRow>
 
@@ -270,7 +280,7 @@ export function EmployeeTable({
                     colSpan={6}
                     className="text-center py-12 text-muted-foreground"
                   >
-                    Aucun employé trouvé.
+                    {search.trim() ? "Aucun employé ne correspond à la recherche." : "Aucun employé trouvé."}
                   </TableCell>
 
                 </TableRow>

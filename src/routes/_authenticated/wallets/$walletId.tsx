@@ -45,6 +45,18 @@ function WalletDetailsPage() {
     return <p className="text-muted-foreground">Chargement du wallet…</p>;
   }
 
+  if (walletQuery.isError) {
+    return (
+      <Card>
+        <CardContent className="space-y-3 p-6 text-center">
+          <p className="font-medium text-destructive">Impossible de charger ce wallet.</p>
+          <p className="text-sm text-muted-foreground">Réessayez dans un instant ou vérifiez votre connexion.</p>
+          <Button type="button" variant="outline" size="sm" onClick={() => void walletQuery.refetch()}>Réessayer</Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const wallet = walletQuery.data;
   if (!wallet) {
     return (
@@ -217,6 +229,11 @@ function WalletDetailsPage() {
         <CardContent className="space-y-3">
           {operationsQuery.isPending ? (
             <p className="text-muted-foreground">Chargement…</p>
+          ) : operationsQuery.isError ? (
+            <div className="py-8 text-center">
+              <p className="font-medium text-destructive">Impossible de charger le journal.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Réessayez dans un instant ou vérifiez votre connexion.</p>
+            </div>
           ) : displayedOperations.length === 0 ? (
             <p className="py-8 text-center text-muted-foreground">
               {isPeriodFiltered ? "Aucune opération sur cette période." : "Aucune opération pour ce wallet."}

@@ -29,7 +29,7 @@ function StocksPage() {
   const [movementOpen, setMovementOpen] = useState(false);
   const { confirm, dialog } = useConfirm();
 
-  const { data: stocks = [], isPending } = useQuery({
+  const { data: stocks = [], isPending, isError } = useQuery({
     queryKey: ["stocks"],
     queryFn: () => getStocks(),
   });
@@ -184,7 +184,7 @@ function StocksPage() {
           </div>
         </CardHeader>
         <CardContent className="p-5 sm:p-6">
-          <StockTable stocks={stocks} loading={isPending} onEdit={handleEdit} onDelete={handleDelete} />
+          <StockTable stocks={stocks} loading={isPending} error={isError} onEdit={handleEdit} onDelete={handleDelete} />
         </CardContent>
       </Card>
 

@@ -89,6 +89,8 @@ function FarmDetailsPage() {
   const {
     data: farm,
     isPending,
+    isError,
+    refetch,
   } = useQuery({
     queryKey: ["farm", farmId],
     queryFn: () =>
@@ -211,6 +213,16 @@ function FarmDetailsPage() {
 
   if (isPending) {
     return <div>Chargement...</div>;
+  }
+
+  if (isError) {
+    return (
+      <div className="space-y-3 p-6 text-center">
+        <p className="font-medium text-destructive">Impossible de charger cette exploitation.</p>
+        <p className="text-sm text-muted-foreground">Réessayez dans un instant ou vérifiez votre connexion.</p>
+        <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>Réessayer</Button>
+      </div>
+    );
   }
 
   if (!farm) {

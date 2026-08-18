@@ -6,6 +6,7 @@ import type { Farm } from "@/lib/farms.functions";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import {
   Table,
@@ -26,6 +27,7 @@ import {
 type Props = {
   farms: Farm[];
   loading: boolean;
+  error?: boolean;
   onEdit: (farm: Farm) => void;
   onDelete: (farm: Farm) => void;
 };
@@ -33,6 +35,7 @@ type Props = {
 export function FarmTable({
   farms,
   loading,
+  error,
   onEdit,
   onDelete,
 }: Props) {
@@ -96,12 +99,21 @@ export function FarmTable({
 
             {loading ? (
 
+              Array.from({ length: 4 }, (_, index) => (
+                <TableRow key={index}>
+                  <TableCell colSpan={8}>
+                    <Skeleton className="h-6 w-full" />
+                  </TableCell>
+                </TableRow>
+              ))
+
+            ) : error ? (
+
               <TableRow>
-
-                <TableCell colSpan={8}>
-                  Chargement...
+                <TableCell colSpan={8} className="py-10 text-center">
+                  <p className="font-medium text-destructive">Impossible de charger les exploitations.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Réessayez dans un instant ou vérifiez votre connexion.</p>
                 </TableCell>
-
               </TableRow>
 
             ) : filtered.length === 0 ? (
@@ -109,7 +121,7 @@ export function FarmTable({
               <TableRow>
 
                 <TableCell colSpan={8}>
-                  Aucune exploitation trouvée.
+                  {search.trim() ? "Aucune exploitation ne correspond à la recherche." : "Aucune exploitation trouvée."}
                 </TableCell>
 
               </TableRow>
@@ -167,6 +179,7 @@ export function FarmTable({
                         <Button
                           variant="ghost"
                           size="icon"
+                          aria-label={`Actions de ${farm.nom}`}
                         >
 
                           <MoreHorizontal className="h-4 w-4" />

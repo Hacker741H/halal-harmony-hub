@@ -9,8 +9,10 @@ import { ContractForm } from "@/components/contracts/contract-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
 import { MetricCard } from "@/components/ui/metric-card";
 import { ModuleHero } from "@/components/ui/module-hero";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getContracts } from "@/lib/contracts.functions";
 
 export const Route = createFileRoute("/_authenticated/contracts/")({
@@ -23,7 +25,7 @@ function ContractsPage() {
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const { data: contracts = [], isPending } = useQuery({
+  const { data: contracts = [], isPending, isError, refetch } = useQuery({
     queryKey: ["contracts"],
     queryFn: () => getContracts(),
   });
@@ -77,13 +79,15 @@ function ContractsPage() {
         </CardHeader>
         <CardContent className="space-y-3 p-5 sm:p-6">
           {isPending ? (
-            <div className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground">
-              Chargement des contrats…
+            <div className="space-y-3" aria-label="Chargement des contrats">
+              {Array.from({ length: 3 }, (_, index) => (
+                <Skeleton key={index} className="h-16 w-full rounded-xl" />
+              ))}
             </div>
+          ) : isError ? (
+            <ErrorState title="Impossible de charger les contrats." onRetry={() => void refetch()} />
           ) : contracts.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground">
-              Aucun contrat enregistré pour le moment.
-            </div>
+            <EmptyState icon={FileSignature} title="Aucun contrat enregistré" description="Créez le premier contrat pour le voir apparaître ici." />
           ) : (
             contracts.map((contract) => (
               <Link

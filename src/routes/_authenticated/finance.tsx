@@ -41,7 +41,7 @@ function FinancePage() {
   const [selectedOperation, setSelectedOperation] = useState<FinanceOperation | null>(null);
   const { confirm, dialog } = useConfirm();
 
-  const { data: operations = [], isLoading } = useQuery({
+  const { data: operations = [], isLoading, isError } = useQuery({
     queryKey: ["finance-operations"],
     queryFn: () => getFinanceOperations(),
   });
@@ -158,11 +158,11 @@ function FinancePage() {
             </div>
           </CardHeader>
           <CardContent className="p-5 sm:p-6">
-            <FinanceTable operations={operations} loading={isLoading} onEdit={edit} onDelete={remove} />
+            <FinanceTable operations={operations} loading={isLoading} error={isError} onEdit={edit} onDelete={remove} />
           </CardContent>
         </Card>
 
-        {!isLoading && operations.length === 0 ? (
+        {!isLoading && !isError && operations.length === 0 ? (
           <Card variant="information">
             <CardContent className="py-12 text-center">
               <Wallet className="mx-auto h-10 w-10 text-primary" aria-hidden="true" />

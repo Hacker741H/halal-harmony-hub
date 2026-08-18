@@ -108,8 +108,8 @@ function SupplierPurchasesPanel({
     <div className="space-y-5">
       {metricsQuery.isPending ? (
         <EmptyPanel>Calcul des indicateurs fournisseur…</EmptyPanel>
-      ) : !metrics ? (
-        <EmptyPanel>Impossible de calculer les indicateurs pour l’instant.</EmptyPanel>
+      ) : metricsQuery.isError || !metrics ? (
+        <EmptyPanel>Impossible de charger les indicateurs. Réessayez dans un instant.</EmptyPanel>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Metric label="Achats" value={String(metrics.purchase_count)} />
@@ -127,6 +127,8 @@ function SupplierPurchasesPanel({
         <CardContent>
           {purchasesQuery.isPending ? (
             <p className="py-8 text-center text-sm text-muted-foreground">Chargement des achats…</p>
+          ) : purchasesQuery.isError ? (
+            <p className="py-8 text-center text-sm text-destructive">Impossible de charger les achats. Réessayez dans un instant.</p>
           ) : purchases.length ? (
             <ul className="space-y-2">
               {purchases.map((purchase) => (

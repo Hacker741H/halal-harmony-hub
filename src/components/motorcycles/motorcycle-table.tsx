@@ -11,12 +11,14 @@ import {
 } from "@/components/ui/table";
 
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import type { Motorcycle } from "@/lib/motorcycles.functions";
 
 type Props = {
   motorcycles: Motorcycle[];
   loading: boolean;
+  error?: boolean;
   onEdit: (motorcycle: Motorcycle) => void;
   onDelete: (motorcycle: Motorcycle) => void;
 };
@@ -24,6 +26,7 @@ type Props = {
 export function MotorcycleTable({
   motorcycles,
   loading,
+  error,
   onEdit,
   onDelete,
 }: Props) {
@@ -31,8 +34,19 @@ export function MotorcycleTable({
 
   if (loading) {
     return (
-      <div className="py-12 text-center text-muted-foreground">
-        Chargement...
+      <div className="space-y-2 p-2">
+        {Array.from({ length: 4 }, (_, index) => (
+          <Skeleton key={index} className="h-10 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-12 text-center">
+        <p className="font-medium text-destructive">Impossible de charger les motos.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Réessayez dans un instant ou vérifiez votre connexion.</p>
       </div>
     );
   }
@@ -94,6 +108,7 @@ export function MotorcycleTable({
                 <Button
                   size="icon"
                   variant="outline"
+                  aria-label={`Modifier ${motorcycle.immatriculation}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     onEdit(motorcycle);
@@ -105,6 +120,7 @@ export function MotorcycleTable({
                 <Button
                   size="icon"
                   variant="destructive"
+                  aria-label={`Supprimer ${motorcycle.immatriculation}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     onDelete(motorcycle);

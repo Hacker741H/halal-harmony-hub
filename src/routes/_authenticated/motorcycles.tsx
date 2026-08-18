@@ -30,7 +30,7 @@ function MotorcyclesPage() {
   const [open, setOpen] = useState(false);
   const [editingMotorcycle, setEditingMotorcycle] = useState<Motorcycle | null>(null);
 
-  const { data: motorcycles = [], isPending } = useQuery({
+  const { data: motorcycles = [], isPending, isError } = useQuery({
     queryKey: ["motorcycles"],
     queryFn: () => getMotorcycles(),
   });
@@ -138,6 +138,7 @@ function MotorcyclesPage() {
           <MotorcycleTable
             motorcycles={motorcycles}
             loading={isPending}
+            error={isError}
             onEdit={(motorcycle) => {
               setEditingMotorcycle(motorcycle);
               setOpen(true);

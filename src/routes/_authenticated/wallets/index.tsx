@@ -26,7 +26,7 @@ function WalletsPage() {
   const { confirm, dialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState<WalletType | null>(null);
-  const { data: wallets = [], isLoading } = useQuery({ queryKey: ["wallets"], queryFn: () => getWallets() });
+  const { data: wallets = [], isLoading, isError } = useQuery({ queryKey: ["wallets"], queryFn: () => getWallets() });
   const { data: stats } = useQuery({ queryKey: ["wallet-stats"], queryFn: () => getWalletStats() });
   const totalBalance = Number(stats?.totalBalance ?? 0);
 
@@ -115,6 +115,7 @@ function WalletsPage() {
           <WalletTable
             wallets={wallets}
             loading={isLoading}
+            error={isError}
             onEdit={(wallet) => {
               setSelectedWallet(wallet);
               setOpen(true);

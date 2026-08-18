@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -29,6 +30,7 @@ import {
 type Props = {
   vehicles: Vehicle[];
   loading: boolean;
+  error?: boolean;
   onEdit?: (vehicle: Vehicle) => void;
   onDelete?: (vehicle: Vehicle) => void;
 };
@@ -54,7 +56,7 @@ function getBadgeVariant(status: string | null) {
   }
 }
 
-export function VehicleTable({ vehicles, loading, onEdit, onDelete }: Props) {
+export function VehicleTable({ vehicles, loading, error, onEdit, onDelete }: Props) {
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
 
@@ -96,15 +98,25 @@ export function VehicleTable({ vehicles, loading, onEdit, onDelete }: Props) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading && (
+            {loading &&
+              Array.from({ length: 4 }, (_, index) => (
+                <TableRow key={index}>
+                  <TableCell colSpan={6}>
+                    <Skeleton className="h-6 w-full" />
+                  </TableCell>
+                </TableRow>
+              ))}
+
+            {!loading && error && (
               <TableRow>
                 <TableCell colSpan={6} className="py-10 text-center">
-                  Chargement…
+                  <p className="font-medium text-destructive">Impossible de charger les véhicules.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Réessayez dans un instant ou vérifiez votre connexion.</p>
                 </TableCell>
               </TableRow>
             )}
 
-            {!loading && filteredVehicles.map((vehicle) => (
+            {!loading && !error && filteredVehicles.map((vehicle) => (
               <TableRow
                 key={vehicle.id}
                 className="cursor-pointer hover:bg-muted/50"
@@ -175,10 +187,10 @@ export function VehicleTable({ vehicles, loading, onEdit, onDelete }: Props) {
               </TableRow>
             ))}
 
-            {!loading && filteredVehicles.length === 0 && (
+            {!loading && !error && filteredVehicles.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                  Aucun véhicule trouvé.
+                  {search.trim() ? "Aucun véhicule ne correspond à la recherche." : "Aucun véhicule trouvé."}
                 </TableCell>
               </TableRow>
             )}

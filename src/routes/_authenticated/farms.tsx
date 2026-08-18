@@ -24,7 +24,7 @@ function FarmsPage() {
   const [editingFarm, setEditingFarm] = useState<Farm | null>(null);
   const { confirm, dialog } = useConfirm();
 
-  const { data: farms = [], isPending } = useQuery({
+  const { data: farms = [], isPending, isError } = useQuery({
     queryKey: ["farms"],
     queryFn: () => getFarms(),
   });
@@ -127,7 +127,7 @@ function FarmsPage() {
           </div>
         </CardHeader>
         <CardContent className="p-5 sm:p-6">
-          <FarmTable farms={farms} loading={isPending} onEdit={handleEdit} onDelete={handleDelete} />
+          <FarmTable farms={farms} loading={isPending} error={isError} onEdit={handleEdit} onDelete={handleDelete} />
         </CardContent>
       </Card>
 

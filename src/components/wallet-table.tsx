@@ -16,6 +16,7 @@ import type { Wallet as WalletType } from "@/lib/wallet.functions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +27,7 @@ import {
 type Props = {
   wallets: WalletType[];
   loading: boolean;
+  error?: boolean;
   onEdit?: (wallet: WalletType) => void;
   onDelete?: (wallet: WalletType) => void;
 };
@@ -53,7 +55,7 @@ function getWalletMeta(type: string) {
   return items[type] ?? { label: type || "Wallet", icon: WalletCards };
 }
 
-export function WalletTable({ wallets, loading, onEdit, onDelete }: Props) {
+export function WalletTable({ wallets, loading, error, onEdit, onDelete }: Props) {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const filteredWallets = useMemo(() => {
@@ -85,12 +87,23 @@ export function WalletTable({ wallets, loading, onEdit, onDelete }: Props) {
       </div>
 
       {loading ? (
-        <div className="rounded-3xl border border-dashed p-12 text-center text-muted-foreground">
-          Chargement des wallets…
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" aria-label="Chargement des wallets">
+          {Array.from({ length: 3 }, (_, index) => (
+            <div key={index} className="rounded-2xl border border-border/75 bg-surface p-5">
+              <Skeleton className="h-12 w-12 rounded-2xl" />
+              <Skeleton className="mt-4 h-4 w-2/3" />
+              <Skeleton className="mt-8 h-8 w-3/4" />
+            </div>
+          ))}
+        </div>
+      ) : error ? (
+        <div className="rounded-3xl border border-destructive/20 bg-destructive/5 p-12 text-center">
+          <p className="font-medium text-destructive">Impossible de charger les wallets.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Réessayez dans un instant ou vérifiez votre connexion.</p>
         </div>
       ) : filteredWallets.length === 0 ? (
         <div className="rounded-3xl border border-dashed p-12 text-center text-muted-foreground">
-          Aucun wallet trouvé.
+          {search.trim() ? "Aucun wallet ne correspond à la recherche." : "Aucun wallet trouvé."}
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -134,7 +147,7 @@ export function WalletTable({ wallets, loading, onEdit, onDelete }: Props) {
                   <div onClick={(event) => event.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="rounded-full">
+                        <Button variant="ghost" size="icon" className="rounded-full" aria-label={`Actions de ${wallet.name}`}>
                           <MoreHorizontal className="h-5 w-5" />
                         </Button>
                       </DropdownMenuTrigger>

@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -36,6 +37,7 @@ import {
 type Props = {
   operations: FinanceOperationWithWallets[];
   loading: boolean;
+  error?: boolean;
   onEdit?: (operation: FinanceOperation) => void;
   onDelete?: (operation: FinanceOperation) => void;
 };
@@ -80,6 +82,7 @@ function typeIcon(type: string) {
 export function FinanceTable({
   operations,
   loading,
+  error,
   onEdit,
   onDelete,
 }: Props) {
@@ -280,15 +283,25 @@ export function FinanceTable({
           </TableHeader>
 
           <TableBody>
-            {loading && (
+            {loading &&
+              Array.from({ length: 4 }, (_, index) => (
+                <TableRow key={index}>
+                  <TableCell colSpan={6}>
+                    <Skeleton className="h-6 w-full" />
+                  </TableCell>
+                </TableRow>
+              ))}
+
+            {!loading && error && (
               <TableRow>
                 <TableCell colSpan={6} className="py-10 text-center">
-                  Chargement...
+                  <p className="font-medium text-destructive">Impossible de charger les opérations.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Réessayez dans un instant ou vérifiez votre connexion.</p>
                 </TableCell>
               </TableRow>
             )}
 
-            {!loading && displayRows.flatMap((row) => {
+            {!loading && !error && displayRows.flatMap((row) => {
               if (row.kind === "operation") return [<OperationRow key={row.operation.id} operation={row.operation} onEdit={onEdit} onDelete={onDelete} />];
               const expanded = expandedReferences.has(row.reference);
               const total = row.operations.reduce((sum, operation) => sum + Number(operation.amount), 0);
@@ -308,7 +321,7 @@ export function FinanceTable({
               ];
             })}
 
-            {!loading && displayRows.length === 0 && (
+            {!loading && !error && displayRows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                   Aucune opération trouvée.
@@ -329,6 +342,6 @@ function OperationRow({ operation, onEdit, onDelete, nested = false }: { operati
     <TableCell>{operation.category ?? operation.description ?? "-"}</TableCell>
     <TableCell className="font-semibold">{Number(operation.amount).toLocaleString("fr-FR")} FCFA</TableCell>
     <TableCell>{operation.operation_date}</TableCell>
-    <TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => onEdit?.(operation)}>Modifier</DropdownMenuItem><DropdownMenuItem className="text-red-600" onClick={() => onDelete?.(operation)}>Supprimer</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell>
+    <TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Actions de l'opération"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => onEdit?.(operation)}>Modifier</DropdownMenuItem><DropdownMenuItem className="text-red-600" onClick={() => onDelete?.(operation)}>Supprimer</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell>
   </TableRow>;
 }

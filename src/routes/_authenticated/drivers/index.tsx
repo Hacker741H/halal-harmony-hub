@@ -30,7 +30,7 @@ function DriversPage() {
   const [open, setOpen] = useState(false);
   const [selectedDriver, setSelectedDriver] =
     useState<DriverWithEmployee | null>(null);
-  const { data: drivers = [], isPending } = useQuery({
+  const { data: drivers = [], isPending, isError } = useQuery({
     queryKey: ["drivers"],
     queryFn: () => getDrivers(),
   });
@@ -99,6 +99,7 @@ function DriversPage() {
       <DriverTable
         drivers={drivers}
         loading={isPending}
+        error={isError}
         onEdit={(driver) => {
           setSelectedDriver(driver);
           setOpen(true);

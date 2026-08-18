@@ -112,7 +112,16 @@ function HarvestDetailPage() {
   });
 
   if (harvestQuery.isLoading) return <div className="p-6 text-sm text-muted-foreground">Chargement…</div>;
-  if (harvestQuery.isError || !harvest) return <div className="p-6 text-sm text-destructive">Récolte introuvable.</div>;
+  if (harvestQuery.isError) {
+    return (
+      <div className="space-y-3 p-6 text-center text-sm">
+        <p className="font-medium text-destructive">Impossible de charger cette récolte.</p>
+        <p className="text-muted-foreground">Réessayez dans un instant ou vérifiez votre connexion.</p>
+        <Button type="button" variant="outline" size="sm" onClick={() => void harvestQuery.refetch()}>Réessayer</Button>
+      </div>
+    );
+  }
+  if (!harvest) return <div className="p-6 text-sm text-destructive">Récolte introuvable.</div>;
 
   const status = harvest.status as HarvestStatus;
   const farmName = (harvest as unknown as { farms?: { nom?: string; id?: string } }).farms?.nom ?? "Exploitation";

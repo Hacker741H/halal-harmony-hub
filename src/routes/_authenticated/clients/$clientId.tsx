@@ -155,8 +155,8 @@ function CommercialActivityPanel({
     <div className="space-y-5">
       {metricsQuery.isPending ? (
         <EmptyPanel>Calcul des indicateurs commerciaux…</EmptyPanel>
-      ) : !metrics ? (
-        <EmptyPanel>Impossible de calculer les indicateurs commerciaux pour l’instant.</EmptyPanel>
+      ) : metricsQuery.isError || !metrics ? (
+        <EmptyPanel>Impossible de charger les indicateurs. Réessayez dans un instant.</EmptyPanel>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <Metric label="Ventes" value={String(metrics.sale_count)} />
@@ -177,6 +177,8 @@ function CommercialActivityPanel({
         <CardContent>
           {salesQuery.isPending ? (
             <p className="py-8 text-center text-sm text-muted-foreground">Chargement des ventes…</p>
+          ) : salesQuery.isError ? (
+            <p className="py-8 text-center text-sm text-destructive">Impossible de charger les ventes. Réessayez dans un instant.</p>
           ) : sales.length ? (
             <ul className="space-y-2">
               {sales.map((sale) => (

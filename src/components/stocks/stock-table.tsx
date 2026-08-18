@@ -12,6 +12,7 @@ import type { Stock } from "@/lib/stocks.functions";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import {
   Avatar,
@@ -37,6 +38,7 @@ import {
 type Props = {
   stocks: Stock[];
   loading: boolean;
+  error?: boolean;
   onEdit?: (stock: Stock) => void;
   onDelete?: (stock: Stock) => void;
 };
@@ -44,6 +46,7 @@ type Props = {
 export function StockTable({
   stocks,
   loading,
+  error,
   onEdit,
   onDelete,
 }: Props) {
@@ -125,20 +128,25 @@ export function StockTable({
 
           <TableBody>
 
-            {loading && (
+            {loading &&
+              Array.from({ length: 4 }, (_, index) => (
+                <TableRow key={index}>
+                  <TableCell colSpan={5}>
+                    <Skeleton className="h-6 w-full" />
+                  </TableCell>
+                </TableRow>
+              ))}
+
+            {!loading && error && (
               <TableRow>
-
-                <TableCell
-                  colSpan={5}
-                  className="text-center py-10"
-                >
-                  Chargement...
+                <TableCell colSpan={5} className="py-10 text-center">
+                  <p className="font-medium text-destructive">Impossible de charger les articles.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Réessayez dans un instant ou vérifiez votre connexion.</p>
                 </TableCell>
-
               </TableRow>
             )}
 
-            {!loading &&
+            {!loading && !error &&
               filteredStocks.map((stock) => (
                 <TableRow key={stock.id}>
 
@@ -232,6 +240,7 @@ export function StockTable({
                         <Button
                           variant="ghost"
                           size="icon"
+                          aria-label={`Actions de ${stock.nom}`}
                         >
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
@@ -262,7 +271,7 @@ export function StockTable({
                 </TableRow>
               ))}
 
-            {!loading &&
+            {!loading && !error &&
               filteredStocks.length === 0 && (
                 <TableRow>
 
@@ -270,7 +279,7 @@ export function StockTable({
                     colSpan={5}
                     className="text-center py-10 text-muted-foreground"
                   >
-                    Aucun article trouvé.
+                    {search.trim() ? "Aucun article ne correspond à la recherche." : "Aucun article trouvé."}
                   </TableCell>
 
                 </TableRow>

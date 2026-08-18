@@ -62,7 +62,7 @@ export function FinanceOperationPage({
     }
   }, [quickCreate]);
 
-  const { data: operations = [], isLoading } = useQuery({
+  const { data: operations = [], isLoading, isError } = useQuery({
     queryKey: ["finance-operations", type],
     queryFn: () => getFinanceOperationsByType({ data: type }),
   });
@@ -134,7 +134,7 @@ export function FinanceOperationPage({
             </div>
           </CardHeader>
           <CardContent className="p-5 sm:p-6">
-            <FinanceTable operations={operations} loading={isLoading} onEdit={edit} onDelete={remove} />
+            <FinanceTable operations={operations} loading={isLoading} error={isError} onEdit={edit} onDelete={remove} />
           </CardContent>
         </Card>
       </div>

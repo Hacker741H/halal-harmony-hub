@@ -11,6 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import {
   DropdownMenu,
@@ -32,6 +33,7 @@ import type { DriverWithEmployee } from "@/lib/drivers.functions";
 type Props = {
   drivers: DriverWithEmployee[];
   loading: boolean;
+  error?: boolean;
   onEdit?: (driver: DriverWithEmployee) => void;
   onDelete?: (driver: DriverWithEmployee) => void;
 };
@@ -39,6 +41,7 @@ type Props = {
 export function DriverTable({
   drivers,
   loading,
+  error,
   onEdit,
   onDelete,
 }: Props) {
@@ -121,18 +124,25 @@ export function DriverTable({
 
           <TableBody>
 
-            {loading && (
+            {loading &&
+              Array.from({ length: 4 }, (_, index) => (
+                <TableRow key={index}>
+                  <TableCell colSpan={7}>
+                    <Skeleton className="h-6 w-full" />
+                  </TableCell>
+                </TableRow>
+              ))}
+
+            {!loading && error && (
               <TableRow>
-
-                <TableCell
-                  colSpan={7}
-                  className="text-center py-10"
-                >
-                  Chargement...
+                <TableCell colSpan={7} className="py-10 text-center">
+                  <p className="font-medium text-destructive">Impossible de charger les chauffeurs.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Réessayez dans un instant ou vérifiez votre connexion.</p>
                 </TableCell>
-
               </TableRow>
-            )}            {!loading &&
+            )}
+
+            {!loading && !error &&
               filteredDrivers.map((driver) => (
 
                 <TableRow key={driver.id}>
@@ -237,7 +247,7 @@ export function DriverTable({
 
               ))}
 
-            {!loading &&
+            {!loading && !error &&
               filteredDrivers.length === 0 && (
 
                 <TableRow>
@@ -246,7 +256,7 @@ export function DriverTable({
                     colSpan={7}
                     className="text-center py-12 text-muted-foreground"
                   >
-                    Aucun chauffeur trouvé.
+                    {search.trim() ? "Aucun chauffeur ne correspond à la recherche." : "Aucun chauffeur trouvé."}
                   </TableCell>
 
                 </TableRow>

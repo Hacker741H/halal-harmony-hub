@@ -28,7 +28,7 @@ function EmployeesPage() {
   const [salaryDialogOpen, setSalaryDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
-  const { data: employees = [], isPending } = useQuery({
+  const { data: employees = [], isPending, isError } = useQuery({
     queryKey: ["employees"],
     queryFn: () => getEmployees(),
   });
@@ -150,6 +150,7 @@ function EmployeesPage() {
           <EmployeeTable
             employees={employees}
             loading={isPending}
+            error={isError}
             onEdit={(employee) => {
               setSelectedEmployee(employee);
               setEmployeeDialogOpen(true);
