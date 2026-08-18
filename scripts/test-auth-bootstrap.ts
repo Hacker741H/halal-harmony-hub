@@ -11,6 +11,8 @@
 // that code, not by a test double standing in for a real Supabase client.
 import assert from "node:assert/strict";
 
+import { AuthRetryableFetchError } from "@supabase/supabase-js";
+
 import { resolveBackgroundVerification, resolveSessionCheck } from "../src/lib/auth-bootstrap";
 import { isRelevantAuthEvent, shouldSkipFullSessionResync } from "../src/lib/auth-session-resync";
 
@@ -44,6 +46,15 @@ function run(): void {
   expect(
     resolveBackgroundVerification({ id: "user-1" }, null) === "OK",
     "A real user with no error must be accepted.",
+  );
+  // 3b. A transient network failure during the background check is not the
+  // same signal as "this token is invalid" -- getSession() already found a
+  // local session before this check ever ran. Bouncing the user to /auth
+  // over a dropped request, not an actual rejection, would be a false
+  // logout indistinguishable to them from a real one.
+  expect(
+    resolveBackgroundVerification(null, new AuthRetryableFetchError("fetch failed", 0)) === "OK",
+    "A transient network error from getUser() must not force a logout.",
   );
 
   // 4. TOKEN_REFRESHED (same user, by construction -- a token refresh can't
