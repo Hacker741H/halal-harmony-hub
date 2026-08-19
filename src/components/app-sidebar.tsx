@@ -6,15 +6,12 @@ import {
   Bell,
   Bike,
   Building2,
-  CalendarClock,
   Car,
-  CheckCircle2,
   ClipboardList,
   Contact,
   CreditCard,
   FileSignature,
   FileText,
-  Flag,
   LayoutDashboard,
   Landmark,
   Leaf,
@@ -30,7 +27,6 @@ import {
   TrendingDown,
   TrendingUp,
   Truck,
-  UserCheck,
   UserCog,
   Users,
   Wallet,
@@ -63,10 +59,6 @@ type NavigationRoute =
   | "/drivers"
   | "/clients"
   | "/courses"
-  | "/planning"
-  | "/assignments"
-  | "/departures"
-  | "/deliveries"
   | "/vehicles"
   | "/motorcycles"
   | "/maintenance"
@@ -132,10 +124,6 @@ const navigationGroups: readonly NavigationGroup[] = [
     label: "Exploitation",
     items: [
       { title: "Courses", url: "/courses", icon: Truck },
-      { title: "Planning", url: "/planning", icon: CalendarClock },
-      { title: "Affectations", url: "/assignments", icon: UserCheck },
-      { title: "Départs", url: "/departures", icon: Flag },
-      { title: "Livraisons", url: "/deliveries", icon: CheckCircle2 },
     ],
   },
   {
