@@ -78,7 +78,9 @@ export function MotorcycleTable({
         {motorcycles.map((motorcycle) => (
           <TableRow
             key={motorcycle.id}
-            className="cursor-pointer hover:bg-muted/50 transition-colors"
+            className="cursor-pointer hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+            role="button"
+            tabIndex={0}
             onClick={() =>
               navigate({
   to: "/motorcycles/$motorcycleId",
@@ -87,6 +89,12 @@ export function MotorcycleTable({
   },
 })
             }
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                navigate({ to: "/motorcycles/$motorcycleId", params: { motorcycleId: motorcycle.id } });
+              }
+            }}
           >
             <TableCell className="font-medium">
               {motorcycle.immatriculation}

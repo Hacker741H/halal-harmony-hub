@@ -120,11 +120,19 @@ export function VehicleTable({ vehicles, loading, error, onEdit, onDelete }: Pro
             {!loading && !error && filteredVehicles.map((vehicle) => (
               <TableRow
                 key={vehicle.id}
-                className="cursor-pointer hover:bg-muted/50"
+                className="cursor-pointer hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                role="button"
+                tabIndex={0}
                 onClick={() => navigate({
                   to: "/vehicles/$vehicleId",
                   params: { vehicleId: vehicle.id },
                 })}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    navigate({ to: "/vehicles/$vehicleId", params: { vehicleId: vehicle.id } });
+                  }
+                }}
               >
                 <TableCell>
                   <div className="flex items-center gap-3">

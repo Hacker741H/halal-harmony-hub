@@ -86,11 +86,11 @@ export function PurchaseForm({ onSuccess }: { onSuccess: (purchaseId: string) =>
       {error ? <p className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{error}</p> : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2"><Label>Fournisseur</Label><SupplierSelect value={supplierId} onValueChange={setSupplierId} placeholder="Sélectionner un fournisseur" /></div>
+        <div className="space-y-2"><Label htmlFor="purchase-supplier">Fournisseur</Label><SupplierSelect id="purchase-supplier" value={supplierId} onValueChange={setSupplierId} placeholder="Sélectionner un fournisseur" /></div>
         <div className="space-y-2">
-          <Label>Magasin</Label>
+          <Label htmlFor="purchase-location">Magasin</Label>
           <Select value={locationId} onValueChange={setLocationId}>
-            <SelectTrigger><SelectValue placeholder="Sélectionner un magasin" /></SelectTrigger>
+            <SelectTrigger id="purchase-location"><SelectValue placeholder="Sélectionner un magasin" /></SelectTrigger>
             <SelectContent>{(locationsQuery.data ?? []).map((location) => <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>)}</SelectContent>
           </Select>
         </div>
@@ -103,14 +103,14 @@ export function PurchaseForm({ onSuccess }: { onSuccess: (purchaseId: string) =>
         {lines.map((line) => (
           <div key={line.key} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_100px_130px_auto] sm:items-end">
             <div className="space-y-1">
-              <Label className="text-xs">Article</Label>
+              <Label htmlFor={`${line.key}-item`} className="text-xs">Article</Label>
               <Select value={line.inventoryItemId} onValueChange={(value) => updateLine(line.key, { inventoryItemId: value })}>
-                <SelectTrigger><SelectValue placeholder="Sélectionner un article" /></SelectTrigger>
+                <SelectTrigger id={`${line.key}-item`}><SelectValue placeholder="Sélectionner un article" /></SelectTrigger>
                 <SelectContent>{items.map((item) => <SelectItem key={item.id} value={item.id}>{item.nom}{item.sku ? ` (${item.sku})` : ""}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="space-y-1"><Label className="text-xs">Quantité</Label><Input type="number" min="0" step="0.001" value={line.quantity} onChange={(event) => updateLine(line.key, { quantity: event.target.value })} /></div>
-            <div className="space-y-1"><Label className="text-xs">Coût unitaire</Label><Input type="number" min="0" step="1" value={line.unitCost} onChange={(event) => updateLine(line.key, { unitCost: event.target.value })} /></div>
+            <div className="space-y-1"><Label htmlFor={`${line.key}-quantity`} className="text-xs">Quantité</Label><Input id={`${line.key}-quantity`} type="number" min="0" step="0.001" value={line.quantity} onChange={(event) => updateLine(line.key, { quantity: event.target.value })} /></div>
+            <div className="space-y-1"><Label htmlFor={`${line.key}-cost`} className="text-xs">Coût unitaire</Label><Input id={`${line.key}-cost`} type="number" min="0" step="1" value={line.unitCost} onChange={(event) => updateLine(line.key, { unitCost: event.target.value })} /></div>
             <Button type="button" variant="ghost" size="icon" disabled={lines.length <= 1} onClick={() => setLines((current) => current.filter((entry) => entry.key !== line.key))} aria-label="Retirer la ligne"><Minus className="h-4 w-4" /></Button>
           </div>
         ))}

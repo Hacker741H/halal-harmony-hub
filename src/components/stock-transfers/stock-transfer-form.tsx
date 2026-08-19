@@ -70,16 +70,16 @@ export function StockTransferForm({ onSuccess }: { onSuccess: (transferId: strin
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>Magasin source</Label>
+          <Label htmlFor="transfer-source">Magasin source</Label>
           <Select value={sourceLocationId} onValueChange={setSourceLocationId}>
-            <SelectTrigger><SelectValue placeholder="Sélectionner le magasin source" /></SelectTrigger>
+            <SelectTrigger id="transfer-source"><SelectValue placeholder="Sélectionner le magasin source" /></SelectTrigger>
             <SelectContent>{locations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Magasin destination</Label>
+          <Label htmlFor="transfer-destination">Magasin destination</Label>
           <Select value={destinationLocationId} onValueChange={setDestinationLocationId}>
-            <SelectTrigger><SelectValue placeholder="Sélectionner le magasin destination" /></SelectTrigger>
+            <SelectTrigger id="transfer-destination"><SelectValue placeholder="Sélectionner le magasin destination" /></SelectTrigger>
             <SelectContent>{locations.filter((location) => location.id !== sourceLocationId).map((location) => <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>)}</SelectContent>
           </Select>
         </div>
@@ -90,13 +90,13 @@ export function StockTransferForm({ onSuccess }: { onSuccess: (transferId: strin
         {lines.map((line) => (
           <div key={line.key} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_140px_auto] sm:items-end">
             <div className="space-y-1">
-              <Label className="text-xs">Article</Label>
+              <Label htmlFor={`${line.key}-item`} className="text-xs">Article</Label>
               <Select value={line.inventoryItemId} onValueChange={(value) => updateLine(line.key, { inventoryItemId: value })}>
-                <SelectTrigger><SelectValue placeholder="Sélectionner un article" /></SelectTrigger>
+                <SelectTrigger id={`${line.key}-item`}><SelectValue placeholder="Sélectionner un article" /></SelectTrigger>
                 <SelectContent>{items.map((item) => <SelectItem key={item.id} value={item.id}>{item.nom}{item.sku ? ` (${item.sku})` : ""}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="space-y-1"><Label className="text-xs">Quantité</Label><Input type="number" min="0" step="0.001" value={line.quantity} onChange={(event) => updateLine(line.key, { quantity: event.target.value })} /></div>
+            <div className="space-y-1"><Label htmlFor={`${line.key}-quantity`} className="text-xs">Quantité</Label><Input id={`${line.key}-quantity`} type="number" min="0" step="0.001" value={line.quantity} onChange={(event) => updateLine(line.key, { quantity: event.target.value })} /></div>
             <Button type="button" variant="ghost" size="icon" disabled={lines.length <= 1} onClick={() => setLines((current) => current.filter((entry) => entry.key !== line.key))} aria-label="Retirer la ligne"><Minus className="h-4 w-4" /></Button>
           </div>
         ))}

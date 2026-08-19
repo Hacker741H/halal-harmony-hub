@@ -84,7 +84,7 @@ function InventoryCountsPage() {
       <CardContent className="space-y-4 p-5">
         <div className="grid gap-3 md:grid-cols-[220px_auto]">
           <Select value={status} onValueChange={(value) => { setStatus(value); setPage(1); }}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger aria-label="Filtrer par statut"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">Tous les statuts</SelectItem>
               {INVENTORY_COUNT_STATUSES.map((value) => <SelectItem key={value} value={value}>{statusLabel(value)}</SelectItem>)}
@@ -156,9 +156,9 @@ function CreateInventoryCountDialog({ open, onOpenChange, onCreated }: { open: b
       <DialogHeader><DialogTitle>Nouvel inventaire physique</DialogTitle><DialogDescription>Chaque article actuellement suivi dans ce magasin sera ajouté comme ligne à compter.</DialogDescription></DialogHeader>
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label>Magasin</Label>
+          <Label htmlFor="inventory-count-location">Magasin</Label>
           <Select value={locationId} onValueChange={setLocationId}>
-            <SelectTrigger><SelectValue placeholder="Sélectionner un magasin" /></SelectTrigger>
+            <SelectTrigger id="inventory-count-location"><SelectValue placeholder="Sélectionner un magasin" /></SelectTrigger>
             <SelectContent>{(locationsQuery.data ?? []).map((location) => <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>)}</SelectContent>
           </Select>
         </div>

@@ -7,7 +7,6 @@ import { ClientSelect, DriverSelect, VehicleSelect } from "@/components/selects/
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { COURSE_PRICING_MODES, COURSE_PRICING_MODE_LABELS, createCourse, type CourseValues } from "@/lib/courses.functions";
@@ -106,4 +105,4 @@ export function CourseWizard({ onSuccess }: { onSuccess: (courseId: string) => v
   </div>;
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) { return <div className="space-y-2"><Label>{label}</Label>{children}</div>; }
+function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="block space-y-2"><span className="text-sm font-medium leading-none">{label}</span>{children}</label>; }

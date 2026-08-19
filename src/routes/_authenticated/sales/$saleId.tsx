@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { usePermissions } from "@/hooks/use-permissions";
+import { formatNumber } from "@/lib/format";
 import {
   cancelCommerceSaleRefund,
   confirmCommerceSaleRefund,
@@ -288,9 +289,9 @@ function CreateReturnDialog({ saleId, lines, returnedByLine, open, onOpenChange,
           {lines.map((line) => {
             const returnable = Number(line.quantity) - (returnedByLine[line.id] ?? 0);
             return <div key={line.id} className="grid grid-cols-[1fr_100px_160px] items-end gap-2 rounded-lg border border-border/70 p-3">
-              <div><p className="text-sm font-medium text-foreground">{line.description}</p><p className="text-caption text-muted-foreground">Restant retournable : {returnable.toLocaleString("fr-FR")}</p></div>
-              <div className="space-y-1"><Label className="text-xs">Quantité</Label><Input type="number" min="0" max={returnable} step="0.001" value={quantities[line.id] ?? ""} onChange={(event) => setQuantities((current) => ({ ...current, [line.id]: event.target.value }))} /></div>
-              <div className="space-y-1"><Label className="text-xs">Disposition</Label><Select value={dispositions[line.id] ?? "RESTOCK"} onValueChange={(value) => setDispositions((current) => ({ ...current, [line.id]: value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{RETURN_DISPOSITIONS.map((value) => <SelectItem key={value} value={value}>{dispositionLabel(value)}</SelectItem>)}</SelectContent></Select></div>
+              <div><p className="text-sm font-medium text-foreground">{line.description}</p><p className="text-caption text-muted-foreground">Restant retournable : {formatNumber(returnable)}</p></div>
+              <div className="space-y-1"><Label htmlFor={`${line.id}-return-quantity`} className="text-xs">Quantité</Label><Input id={`${line.id}-return-quantity`} type="number" min="0" max={returnable} step="0.001" value={quantities[line.id] ?? ""} onChange={(event) => setQuantities((current) => ({ ...current, [line.id]: event.target.value }))} /></div>
+              <div className="space-y-1"><Label htmlFor={`${line.id}-disposition`} className="text-xs">Disposition</Label><Select value={dispositions[line.id] ?? "RESTOCK"} onValueChange={(value) => setDispositions((current) => ({ ...current, [line.id]: value }))}><SelectTrigger id={`${line.id}-disposition`}><SelectValue /></SelectTrigger><SelectContent>{RETURN_DISPOSITIONS.map((value) => <SelectItem key={value} value={value}>{dispositionLabel(value)}</SelectItem>)}</SelectContent></Select></div>
             </div>;
           })}
         </div>
