@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -102,6 +103,7 @@ export function HarvestForm({ farmId, onSuccess }: Props) {
         },
       });
 
+      toast.success("Récolte planifiée.");
       onSuccess();
     } catch (error: unknown) {
       console.error(error);

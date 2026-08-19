@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import {
   Bell,
   ChevronDown,
@@ -40,6 +41,7 @@ import {
   type ShellDensity,
   type ShellSidebarWidth,
 } from "@/components/shell/shell-preferences";
+import { getNotificationSummary } from "@/lib/notifications.functions";
 
 const CommandPalette = React.lazy(async () => {
   const module = await import("@/components/shell/command-palette");
@@ -155,12 +157,20 @@ function QuickActionsMenu() {
 }
 
 function ActivityCenter() {
+  const { data: notificationSummary } = useQuery({
+    queryKey: ["notification-summary"],
+    queryFn: () => getNotificationSummary(),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+  const unread = notificationSummary?.unread ?? 0;
+
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button type="button" variant="ghost" size="icon" className="relative" aria-label="Ouvrir le centre d’activité">
           <Bell aria-hidden="true" />
-          <span className="absolute right-2.5 top-2.5 size-1.5 rounded-full bg-gold" aria-hidden="true" />
+          {unread > 0 ? <span className="absolute right-2.5 top-2.5 size-1.5 rounded-full bg-gold" aria-hidden="true" /> : null}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-96 max-w-[calc(100vw-2rem)] p-0">
@@ -169,7 +179,7 @@ function ActivityCenter() {
             <p className="font-semibold">Centre d’activité</p>
             <p className="text-caption">Interface prête à recevoir les alertes ERP.</p>
           </div>
-          <Badge variant="neutral" appearance="soft">0 non lue</Badge>
+          <Badge variant="neutral" appearance="soft">{unread} non lue{unread > 1 ? "s" : ""}</Badge>
         </div>
         <div className="space-y-4 p-4 text-sm">
           {[

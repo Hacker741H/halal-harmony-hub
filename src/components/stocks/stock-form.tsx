@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,7 +58,7 @@ export function StockForm({
 
   async function save() {
     if (!form.nom.trim()) {
-      alert("Le nom de l'article est obligatoire.");
+      toast.error("Le nom de l'article est obligatoire.");
       return;
     }
 
@@ -85,13 +86,13 @@ export function StockForm({
           },
         });
 
-        alert("✅ Article mis à jour.");
+        toast.success("Article mis à jour.");
       } else {
         await createStock({
           data: values,
         });
 
-        alert("✅ Article créé.");
+        toast.success("Article créé.");
       }
 
       setForm({
@@ -107,11 +108,7 @@ export function StockForm({
     } catch (error) {
       console.error(error);
 
-      alert(
-        error instanceof Error
-          ? error.message
-          : JSON.stringify(error, null, 2),
-      );
+      toast.error(error instanceof Error ? error.message : "Impossible d'enregistrer cet article.");
     } finally {
       setLoading(false);
     }

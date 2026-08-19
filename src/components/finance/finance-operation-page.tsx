@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ModuleHero } from "@/components/ui/module-hero";
 import { useConfirm } from "@/hooks/use-confirm";
+import { formatXOF } from "@/lib/format";
 import {
   deleteFinanceOperation,
   getFinanceOperationsByType,
@@ -93,12 +94,13 @@ export function FinanceOperationPage({
   const remove = (operation: FinanceOperation) => {
     confirm({
       title: "Supprimer cette opération ?",
-      description: `Cette opération de ${Number(operation.amount).toLocaleString("fr-FR")} FCFA sera définitivement supprimée. Cette action est irréversible.`,
+      description: `Cette opération de ${formatXOF(operation.amount)} sera définitivement supprimée. Cette action est irréversible.`,
       variant: "destructive",
       onConfirm: async () => {
         try {
           await deleteFinanceOperation({ data: { id: operation.id } });
           await refresh();
+          toast.success("Opération supprimée.");
         } catch (error) {
           console.error(error);
           toast.error(error instanceof Error ? error.message : "Impossible de supprimer l'opération.");

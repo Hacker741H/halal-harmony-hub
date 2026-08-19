@@ -57,6 +57,7 @@ function StocksPage() {
         try {
           await cancelStockMovement({ data: { id } });
           await refresh();
+          toast.success("Mouvement annulé.");
         } catch (error) {
           console.error(error);
           toast.error(error instanceof Error ? error.message : "Impossible d'annuler le mouvement.");
@@ -75,6 +76,7 @@ function StocksPage() {
         try {
           await deleteStock({ data: { id: stock.id } });
           await refresh();
+          toast.success("Article supprimé.");
         } catch (error) {
           console.error(error);
           toast.error(error instanceof Error ? error.message : "Impossible de supprimer l'article.");

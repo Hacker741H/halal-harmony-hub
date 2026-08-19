@@ -50,6 +50,7 @@ function WalletsPage() {
             queryClient.invalidateQueries({ queryKey: ["wallets"] }),
             queryClient.invalidateQueries({ queryKey: ["wallet-stats"] }),
           ]);
+          toast.success("Wallet supprimé.");
         } catch (error) {
           toast.error(error instanceof Error ? error.message : "Impossible de supprimer ce wallet.");
           throw error;

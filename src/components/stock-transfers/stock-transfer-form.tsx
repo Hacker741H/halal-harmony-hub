@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Minus, Plus } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +55,7 @@ export function StockTransferForm({ onSuccess }: { onSuccess: (transferId: strin
           lines: parsedLines,
         },
       });
+      toast.success("Transfert créé.");
       onSuccess(transfer.id);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Impossible de créer le transfert.");

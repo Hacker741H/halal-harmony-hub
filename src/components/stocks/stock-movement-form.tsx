@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,11 +61,11 @@ export function StockMovementForm({ stocks, onSuccess }: Props) {
     const numericUnitPrice = unitPrice ? Number(unitPrice) : null;
 
     if (!itemId || !Number.isFinite(numericQuantity) || numericQuantity <= 0) {
-      alert("Sélectionnez un article et une quantité positive.");
+      toast.error("Sélectionnez un article et une quantité positive.");
       return;
     }
     if (isFinancial && (!walletId || numericUnitPrice === null || numericUnitPrice <= 0)) {
-      alert("Un achat ou une vente exige un wallet et un prix unitaire positif.");
+      toast.error("Un achat ou une vente exige un wallet et un prix unitaire positif.");
       return;
     }
 
@@ -84,10 +85,11 @@ export function StockMovementForm({ stocks, onSuccess }: Props) {
           description: description.trim() || null,
         },
       });
+      toast.success("Mouvement enregistré.");
       onSuccess();
     } catch (error) {
       console.error(error);
-      alert(error instanceof Error ? error.message : "Impossible d'enregistrer le mouvement.");
+      toast.error(error instanceof Error ? error.message : "Impossible d'enregistrer le mouvement.");
     } finally {
       setLoading(false);
     }
