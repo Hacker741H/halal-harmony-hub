@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -68,6 +68,7 @@ const pageSize = 25;
 
 function ControlCenterPage() {
   const routeSearch = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const [view, setView] = useState<"overview" | "triage">(routeSearch.view ?? "overview");
   const [module, setModule] = useState<GlobalControlCenterModule | "ALL">(routeSearch.module ?? "ALL");
   const [severity, setSeverity] = useState<GlobalControlCenterSeverity | "ALL">(routeSearch.severity ?? "ALL");
@@ -76,6 +77,17 @@ function ControlCenterPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    void navigate({
+      search: {
+        view,
+        module: module === "ALL" ? undefined : module,
+        severity: severity === "ALL" ? undefined : severity,
+      },
+      replace: true,
+    });
+  }, [view, module, severity, navigate]);
 
   const countsQuery = useQuery({
     queryKey: ["gcc-severity-counts"],
@@ -179,6 +191,10 @@ function ControlCenterPage() {
               {overviewQuery.isLoading ? (
                 <div className="flex min-h-32 items-center justify-center gap-2 p-6 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" /> Chargement…
+                </div>
+              ) : overviewQuery.isError ? (
+                <div className="flex min-h-32 items-center justify-center p-6 text-center text-sm text-destructive">
+                  Impossible de charger le centre de contrôle.
                 </div>
               ) : topUrgent.length === 0 ? (
                 <div className="flex min-h-32 items-center justify-center p-6 text-center text-sm text-muted-foreground">
