@@ -713,7 +713,7 @@ function OfflineDraftsPanel({
           </div>
         </div>
         {online && drafts.length > 0 ? (
-          <Button size="sm" disabled={syncing} onClick={onSynchronize}>
+          <Button disabled={syncing} onClick={onSynchronize}>
             <RefreshCw className={`size-4 ${syncing ? "animate-spin" : ""}`} aria-hidden="true" />
             {syncing ? "Synchronisation…" : "Synchroniser"}
           </Button>
@@ -827,13 +827,13 @@ function DeclarationCard({
             {formatAmount(Number(declaration.amount))}
           </p>
           {declaration.status === "SUBMITTED" && canConfirm ? (
-            <Button size="sm" disabled={confirming} onClick={onConfirm}>
+            <Button disabled={confirming} onClick={onConfirm}>
               <CheckCircle2 className="size-4" aria-hidden="true" />
               Confirmer
             </Button>
           ) : null}
           {declaration.status === "SUBMITTED" && canReview ? (
-            <Button size="sm" variant="outline" onClick={onReject}>
+            <Button variant="outline" onClick={onReject}>
               <XCircle className="size-4" aria-hidden="true" />
               Refuser
             </Button>
@@ -1626,7 +1626,7 @@ function EmptyReports({ canCreate, onCreate }: { canCreate: boolean; onCreate: (
         contrôler.
       </p>
       {canCreate ? (
-        <Button className="mt-4" size="sm" onClick={onCreate}>
+        <Button className="mt-4" onClick={onCreate}>
           Créer un rapport
         </Button>
       ) : null}
@@ -1642,7 +1642,7 @@ function EmptyDeclarations({ canEdit, onAdd }: { canEdit: boolean; onAdd: () => 
         Ajoutez une recette, une dépense ou un versement à ce rapport.
       </p>
       {canEdit ? (
-        <Button className="mt-4" size="sm" onClick={onAdd}>
+        <Button className="mt-4" onClick={onAdd}>
           Ajouter une déclaration
         </Button>
       ) : null}
