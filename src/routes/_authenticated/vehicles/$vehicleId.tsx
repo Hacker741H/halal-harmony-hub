@@ -132,7 +132,7 @@ function VehicleDetailsPage() {
   function removeDocument(documentId: string) {
     confirm({
       title: "Supprimer ce document",
-      description: "Supprimer ce document ?",
+      description: "Ce document sera définitivement supprimé. Cette action est irréversible.",
       variant: "destructive",
       onConfirm: async () => { await archiveDocumentMutation.mutateAsync({ data: { id: documentId } }); },
     });

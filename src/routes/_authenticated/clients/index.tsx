@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { ModuleHero } from "@/components/ui/module-hero";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useConfirm } from "@/hooks/use-confirm";
 import { usePermissions } from "@/hooks/use-permissions";
 import {
   archiveClient,
@@ -35,6 +36,7 @@ function ClientsPage() {
   const [status, setStatus] = useState<"ALL" | "ACTIVE" | "ARCHIVED">("ACTIVE");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const { confirm, dialog } = useConfirm();
   const pageSize = 20;
 
   const clientsQuery = useQuery({
@@ -154,7 +156,13 @@ function ClientsPage() {
               setDialogOpen(true);
             }}
             onArchive={(client) => {
-              if (window.confirm(`Archiver ${client.display_name} ?`)) archiveMutation.mutate({ data: { id: client.id } });
+              confirm({
+                title: "Archiver ce client",
+                description: `Archiver ${client.display_name} ?`,
+                variant: "destructive",
+                confirmLabel: "Archiver",
+                onConfirm: async () => { await archiveMutation.mutateAsync({ data: { id: client.id } }); },
+              });
             }}
             onRestore={(client) => restoreMutation.mutate({ data: { id: client.id } })}
           />
@@ -183,6 +191,7 @@ function ClientsPage() {
           <ClientForm client={editingClient} onSuccess={refresh} />
         </DialogContent>
       </Dialog>
+      {dialog}
     </div>
   );
 }

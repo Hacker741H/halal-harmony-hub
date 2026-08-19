@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useConfirm } from "@/hooks/use-confirm";
 import {
   SUPPLIER_COUNTRY_CODES,
   createSupplier,
@@ -80,6 +81,7 @@ export function SupplierForm({ supplier, onSuccess }: Props) {
   const [form, setForm] = useState<SupplierFormState>(() => fromSupplier(supplier));
   const [duplicates, setDuplicates] = useState<SupplierDuplicate[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, dialog } = useConfirm();
 
   useEffect(() => {
     setForm(fromSupplier(supplier));
@@ -133,7 +135,12 @@ export function SupplierForm({ supplier, onSuccess }: Props) {
     if (!supplier) {
       const foundDuplicates = await checkDuplicates();
       if (foundDuplicates === null) return;
-      if (foundDuplicates.length > 0 && !window.confirm("Des fournisseurs similaires existent déjà. Créer tout de même ce fournisseur ?")) {
+      if (foundDuplicates.length > 0) {
+        confirm({
+          title: "Des fournisseurs similaires existent déjà",
+          description: "Créer tout de même ce fournisseur ?",
+          onConfirm: () => { saveMutation.mutate(values); },
+        });
         return;
       }
     }
@@ -170,6 +177,7 @@ export function SupplierForm({ supplier, onSuccess }: Props) {
       <div className="space-y-2"><Label htmlFor="supplier-notes">Notes internes</Label><Textarea id="supplier-notes" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} /></div>
 
       <div className="flex flex-wrap justify-end gap-2"><Button variant="outline" type="button" disabled={saving} onClick={() => { void checkDuplicates(); }}>Vérifier les doublons</Button><Button type="button" disabled={saving} onClick={() => { void save(); }}>{saving ? "Enregistrement…" : supplier ? "Enregistrer les modifications" : "Créer le fournisseur"}</Button></div>
+      {dialog}
     </div>
   );
 }

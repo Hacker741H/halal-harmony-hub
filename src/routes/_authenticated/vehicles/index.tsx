@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Car, CircleCheck, Gauge, Plus, Truck, Wrench } from "lucide-react";
+import { toast } from "sonner";
 import { z } from "zod";
 
 import VehicleForm from "@/components/vehicles/vehicle-form";
@@ -12,6 +13,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
 import { ModuleHero } from "@/components/ui/module-hero";
+import { useConfirm } from "@/hooks/use-confirm";
+import { formatNumber } from "@/lib/format";
 import { deleteVehicle, getVehicles, type Vehicle } from "@/lib/vehicles.functions";
 
 export const Route = createFileRoute("/_authenticated/vehicles/")({
@@ -25,6 +28,7 @@ function VehiclesPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
+  const { confirm, dialog } = useConfirm();
 
   const { data: vehicles = [], isPending, isError } = useQuery({
     queryKey: ["vehicles"],
@@ -49,16 +53,23 @@ function VehiclesPage() {
     clearQuickCreate();
   }
 
-  async function handleDelete(vehicle: Vehicle) {
-    if (!window.confirm(`Supprimer le véhicule "${vehicle.registration}" ?`)) return;
-
-    try {
-      await deleteVehicle({ data: { id: vehicle.id } });
-      await refresh();
-    } catch (error: unknown) {
-      console.error(error);
-      alert(error instanceof Error ? error.message : "Impossible de supprimer le véhicule.");
-    }
+  function handleDelete(vehicle: Vehicle) {
+    confirm({
+      title: "Supprimer ce véhicule",
+      description: `Supprimer le véhicule "${vehicle.registration}" ? Cette action est irréversible.`,
+      variant: "destructive",
+      onConfirm: async () => {
+        try {
+          await deleteVehicle({ data: { id: vehicle.id } });
+          await refresh();
+          toast.success("Véhicule supprimé.");
+        } catch (error: unknown) {
+          console.error(error);
+          toast.error(error instanceof Error ? error.message : "Impossible de supprimer le véhicule.");
+          throw error;
+        }
+      },
+    });
   }
 
   const serviceVehicles = vehicles.filter((vehicle) => vehicle.status === "EN_SERVICE").length;
@@ -117,7 +128,7 @@ function VehiclesPage() {
         />
         <MetricCard
           label="Kilométrage suivi"
-          value={totalKilometers.toLocaleString("fr-FR")}
+          value={formatNumber(totalKilometers)}
           description="Kilomètres enregistrés dans la flotte"
           icon={Gauge}
           tone="info"
@@ -149,6 +160,7 @@ function VehiclesPage() {
           />
         </CardContent>
       </Card>
+      {dialog}
     </div>
   );
 }

@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { ModuleHero } from "@/components/ui/module-hero";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useConfirm } from "@/hooks/use-confirm";
 import { usePermissions } from "@/hooks/use-permissions";
 import { archiveSupplier, getSuppliers, restoreSupplier, type Supplier } from "@/lib/suppliers.functions";
 
@@ -28,6 +29,7 @@ function SuppliersPage() {
   const [status, setStatus] = useState<"ALL" | "ACTIVE" | "ARCHIVED">("ACTIVE");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const { confirm, dialog } = useConfirm();
   const pageSize = 20;
 
   const suppliersQuery = useQuery({
@@ -114,7 +116,15 @@ function SuppliersPage() {
             canUpdate={can("suppliers.update")}
             canArchive={can("suppliers.archive")}
             onEdit={(supplier) => { setEditingSupplier(supplier); setDialogOpen(true); }}
-            onArchive={(supplier) => { if (window.confirm(`Archiver ${supplier.display_name} ?`)) archiveMutation.mutate({ data: { id: supplier.id } }); }}
+            onArchive={(supplier) => {
+              confirm({
+                title: "Archiver ce fournisseur",
+                description: `Archiver ${supplier.display_name} ?`,
+                variant: "destructive",
+                confirmLabel: "Archiver",
+                onConfirm: async () => { await archiveMutation.mutateAsync({ data: { id: supplier.id } }); },
+              });
+            }}
             onRestore={(supplier) => restoreMutation.mutate({ data: { id: supplier.id } })}
           />
 
@@ -134,6 +144,7 @@ function SuppliersPage() {
           <SupplierForm supplier={editingSupplier} onSuccess={refresh} />
         </DialogContent>
       </Dialog>
+      {dialog}
     </div>
   );
 }

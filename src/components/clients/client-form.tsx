@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useConfirm } from "@/hooks/use-confirm";
 import {
   CLIENT_COUNTRY_CODES,
   createClient,
@@ -100,6 +101,7 @@ export function ClientForm({ client, onSuccess }: Props) {
   const [form, setForm] = useState<ClientFormState>(() => fromClient(client));
   const [duplicates, setDuplicates] = useState<ClientDuplicate[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, dialog } = useConfirm();
 
   useEffect(() => {
     setForm(fromClient(client));
@@ -153,7 +155,12 @@ export function ClientForm({ client, onSuccess }: Props) {
     if (!client) {
       const foundDuplicates = await checkDuplicates();
       if (foundDuplicates === null) return;
-      if (foundDuplicates.length > 0 && !window.confirm("Des clients similaires existent déjà. Créer tout de même ce client ?")) {
+      if (foundDuplicates.length > 0) {
+        confirm({
+          title: "Des clients similaires existent déjà",
+          description: "Créer tout de même ce client ?",
+          onConfirm: () => { saveMutation.mutate(values); },
+        });
         return;
       }
     }
@@ -195,6 +202,7 @@ export function ClientForm({ client, onSuccess }: Props) {
       <div className="space-y-2"><Label htmlFor="client-notes">Notes internes</Label><Textarea id="client-notes" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} /></div>
 
       <div className="flex flex-wrap justify-end gap-2"><Button variant="outline" type="button" disabled={saving} onClick={() => { void checkDuplicates(); }}>Vérifier les doublons</Button><Button type="button" disabled={saving} onClick={() => { void save(); }}>{saving ? "Enregistrement…" : client ? "Enregistrer les modifications" : "Créer le client"}</Button></div>
+      {dialog}
     </div>
   );
 }

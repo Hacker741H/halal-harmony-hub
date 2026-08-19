@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { createCommercePosId } from "@/lib/commerce-pos-session";
 import { formatNumber, formatXOF } from "@/lib/format";
 import {
@@ -124,9 +125,11 @@ export function StoreManagementCockpit({
     onSuccess: async () => { await invalidate(); toast.success("Mise à jour enregistrée."); },
     onError: (error) => toast.error(error instanceof Error ? error.message : "La mise à jour a échoué."),
   });
+  const [cancelTarget, setCancelTarget] = useState<{ type: "cancel-expense" | "cancel-charge"; id: string } | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
   const cancelWithReason = (type: "cancel-expense" | "cancel-charge", id: string) => {
-    const reason = window.prompt("Motif d’annulation (obligatoire)")?.trim();
-    if (reason) mutate.mutate({ type, id, reason });
+    setCancelTarget({ type, id });
+    setCancelReason("");
   };
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   const goToAttention = (alert: { type: string; id: string }) => {
@@ -190,6 +193,35 @@ export function StoreManagementCockpit({
         <FinanceSection cockpit={cockpit} />
         <TimelineSection cockpit={cockpit} />
       </> : null}
+
+      <Dialog open={cancelTarget !== null} onOpenChange={(open) => { if (!open) { setCancelTarget(null); setCancelReason(""); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{cancelTarget?.type === "cancel-expense" ? "Annuler cette dépense" : "Annuler cette charge planifiée"}</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Le motif est obligatoire et sera conservé dans l’historique de l’opération.</p>
+            <div className="space-y-2">
+              <Label htmlFor="cockpit-cancel-reason">Motif d’annulation</Label>
+              <Textarea id="cockpit-cancel-reason" value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} placeholder="Expliquez la raison de l’annulation" />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setCancelTarget(null); setCancelReason(""); }}>Retour</Button>
+              <Button
+                variant="destructive"
+                disabled={cancelReason.trim().length === 0 || mutate.isPending}
+                onClick={() => {
+                  if (!cancelTarget) return;
+                  mutate.mutate(
+                    { type: cancelTarget.type, id: cancelTarget.id, reason: cancelReason.trim() },
+                    { onSuccess: () => { setCancelTarget(null); setCancelReason(""); } },
+                  );
+                }}
+              >
+                {mutate.isPending ? "Annulation…" : "Confirmer l’annulation"}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -304,6 +336,8 @@ function ControlReportDetailDialog({ reportId, locationId, onClose }: { reportId
   const [receivedAmount, setReceivedAmount] = useState("");
   const [isFinal, setIsFinal] = useState(false);
   const [note, setNote] = useState("");
+  const [flagOpen, setFlagOpen] = useState(false);
+  const [flagReason, setFlagReason] = useState("");
 
   const refresh = async () => {
     await Promise.all([
@@ -326,11 +360,11 @@ function ControlReportDetailDialog({ reportId, locationId, onClose }: { reportId
   });
   const flagMutation = useMutation({
     mutationFn: (reason: string) => flagCommercePosControlReport({ data: { reportId, reason } }),
-    onSuccess: async () => { toast.success("Rapport signalé à vérifier."); await refresh(); },
+    onSuccess: async () => { toast.success("Rapport signalé à vérifier."); setFlagOpen(false); setFlagReason(""); await refresh(); },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Le signalement a échoué."),
   });
   const flag = () => {
-    const reason = window.prompt("Motif du signalement (obligatoire)")?.trim();
+    const reason = flagReason.trim();
     if (reason) flagMutation.mutate(reason);
   };
 
@@ -373,10 +407,21 @@ function ControlReportDetailDialog({ reportId, locationId, onClose }: { reportId
             <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-0.5" checked={isFinal} onChange={(event) => setIsFinal(event.target.checked)} /><span>Réception finale — solde ce rapport. Un écart restant devient une réception « à vérifier », jamais une recette ou une dépense automatique.</span></label>
           </div> : !report.flaggedForReview ? <div className="flex items-center gap-2 rounded-xl border border-success/25 bg-success/[0.08] p-3 text-sm text-success"><CheckCircle2 className="size-4" />{report.isFinalized ? "Rapport soldé — aucune action supplémentaire nécessaire." : "Aucune espèce attendue sur ce rapport."}</div> : null}
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-4">
-            <Button type="button" variant="ghost" size="sm" onClick={flag} disabled={flagMutation.isPending}><Flag className="size-4" />{report.flaggedForReview ? "Mettre à jour le signalement" : "Signaler à vérifier"}</Button>
-            {canReceive ? <Button disabled={!(Number(receivedAmount) > 0) || receiveMutation.isPending} onClick={() => receiveMutation.mutate()}>{receiveMutation.isPending ? "Confirmation…" : "Confirmer la réception"}</Button> : null}
-          </div>
+          {flagOpen ? (
+            <div className="space-y-3 rounded-xl border border-border p-4">
+              <Label htmlFor="control-report-flag-reason">Motif du signalement</Label>
+              <Textarea id="control-report-flag-reason" value={flagReason} onChange={(event) => setFlagReason(event.target.value)} placeholder="Expliquez pourquoi ce rapport doit être vérifié" />
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => { setFlagOpen(false); setFlagReason(""); }}>Retour</Button>
+                <Button type="button" size="sm" disabled={flagReason.trim().length === 0 || flagMutation.isPending} onClick={flag}>{flagMutation.isPending ? "Signalement…" : "Confirmer le signalement"}</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-4">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setFlagOpen(true)}><Flag className="size-4" />{report.flaggedForReview ? "Mettre à jour le signalement" : "Signaler à vérifier"}</Button>
+              {canReceive ? <Button disabled={!(Number(receivedAmount) > 0) || receiveMutation.isPending} onClick={() => receiveMutation.mutate()}>{receiveMutation.isPending ? "Confirmation…" : "Confirmer la réception"}</Button> : null}
+            </div>
+          )}
         </div>}
     </DialogContent>
   </Dialog>;
