@@ -6,13 +6,17 @@ import {
   Bell,
   Bike,
   Building2,
+  CalendarClock,
   Car,
+  CheckCircle2,
   ClipboardList,
   Contact,
   CreditCard,
   FileSignature,
   FileText,
+  Flag,
   LayoutDashboard,
+  Landmark,
   Leaf,
   Package,
   PackageCheck,
@@ -26,6 +30,7 @@ import {
   TrendingDown,
   TrendingUp,
   Truck,
+  UserCheck,
   UserCog,
   Users,
   Wallet,
@@ -111,7 +116,6 @@ const navigationGroups: readonly NavigationGroup[] = [
   {
     label: "Ressources",
     items: [
-      { title: "Clients", url: "/clients", icon: Building2, permission: "clients.read" },
       { title: "Employés", url: "/employees", icon: Users },
       { title: "Chauffeurs", url: "/drivers", icon: UserCog },
     ],
@@ -125,9 +129,13 @@ const navigationGroups: readonly NavigationGroup[] = [
     ],
   },
   {
-    label: "EXPLOITATION",
+    label: "Exploitation",
     items: [
       { title: "Courses", url: "/courses", icon: Truck },
+      { title: "Planning", url: "/planning", icon: CalendarClock },
+      { title: "Affectations", url: "/assignments", icon: UserCheck },
+      { title: "Départs", url: "/departures", icon: Flag },
+      { title: "Livraisons", url: "/deliveries", icon: CheckCircle2 },
     ],
   },
   {
@@ -140,6 +148,7 @@ const navigationGroups: readonly NavigationGroup[] = [
     label: "Commerce",
     items: [
       { title: "Magasin & caisse", url: "/commerce", icon: Store, permission: "commerce.pos.read" },
+      { title: "Clients", url: "/clients", icon: Building2, permission: "clients.read" },
       { title: "Ventes & créances", url: "/sales", icon: PackageCheck, permission: "sales.read" },
       { title: "Fournisseurs", url: "/suppliers", icon: Contact, permission: "suppliers.read" },
       { title: "Achats & dettes", url: "/purchases", icon: ShoppingCart, permission: "purchases.read" },
@@ -159,7 +168,7 @@ const navigationGroups: readonly NavigationGroup[] = [
     label: "Finance",
     items: [
       { title: "Wallets", url: "/wallets", icon: Wallet, permission: "wallets.read" },
-      { title: "Finance", url: "/finance", icon: Wallet, permission: "finance.read" },
+      { title: "Finance", url: "/finance", icon: Landmark, permission: "finance.read" },
       { title: "Revenus", url: "/revenues", icon: TrendingUp },
       { title: "Dépenses", url: "/expenses", icon: TrendingDown },
       { title: "Paiements", url: "/payments", icon: CreditCard },
@@ -170,7 +179,6 @@ const navigationGroups: readonly NavigationGroup[] = [
     label: "Administration",
     items: [
       { title: "Documents", url: "/documents", icon: FileText },
-      { title: "Notifications", url: "/notifications", icon: Bell },
       { title: "Paramètres", url: "/settings", icon: Settings },
       { title: "Rôles", url: "/roles", icon: ShieldCheck },
     ],
