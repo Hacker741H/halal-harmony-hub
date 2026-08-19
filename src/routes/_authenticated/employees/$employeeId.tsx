@@ -14,7 +14,7 @@ import { EmployeeForm } from "@/components/employees/employee-form";
 import { EntityAlertsSection } from "@/components/notifications/entity-alerts-section";
 import { getContractsForRelation } from "@/lib/contracts.functions";
 import { getDocumentsForRelation } from "@/lib/documents.functions";
-import { formatXOF } from "@/lib/format";
+import { formatDate, formatXOF } from "@/lib/format";
 import {
   getEmployee,
   getEmployeeDriver,
@@ -116,7 +116,7 @@ function EmployeeDetailsPage() {
               <Info label="Téléphone" value={employee.telephone} />
               <Info label="E-mail" value={employee.email} />
               <Info label="Poste" value={employee.poste} />
-              <Info label="Date d'embauche" value={employee.date_embauche} />
+              <Info label="Date d'embauche" value={formatDate(employee.date_embauche)} />
               <Info label="Statut" value={employee.statut} />
             </CardContent>
           </Card>

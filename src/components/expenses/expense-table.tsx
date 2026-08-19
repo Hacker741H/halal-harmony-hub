@@ -1,17 +1,27 @@
 import { Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { formatDate, formatXOF } from "@/lib/format";
 import type { Expense } from "@/lib/expenses.functions";
 
 type Props = {
   expenses: Expense[];
   loading?: boolean;
+  error?: boolean;
   onEdit: (expense: Expense) => void;
   onDelete: (expense: Expense) => void;
 };
 
-export function ExpenseTable({ expenses, loading, onEdit, onDelete }: Props) {
+export function ExpenseTable({ expenses, loading, error, onEdit, onDelete }: Props) {
   if (loading) return <div>Chargement...</div>;
+
+  if (error) {
+    return (
+      <div className="rounded-lg border p-8 text-center text-destructive">
+        Impossible de charger les dépenses. Réessayez dans un instant.
+      </div>
+    );
+  }
 
   if (!expenses.length) {
     return (
@@ -36,18 +46,18 @@ export function ExpenseTable({ expenses, loading, onEdit, onDelete }: Props) {
         <tbody>
           {expenses.map((expense) => (
             <tr key={expense.id} className="border-t">
-              <td className="p-3">{expense.operation_date}</td>
+              <td className="p-3">{formatDate(expense.operation_date)}</td>
               <td className="p-3">{expense.category ?? "-"}</td>
               <td className="p-3">{expense.supplier ?? "-"}</td>
               <td className="p-3 text-right font-medium">
-                {Number(expense.amount).toLocaleString("fr-FR")} FCFA
+                {formatXOF(expense.amount)}
               </td>
               <td className="p-3">
                 <div className="flex justify-end gap-2">
-                  <Button size="icon" variant="outline" onClick={() => onEdit(expense)}>
+                  <Button size="icon" variant="outline" onClick={() => onEdit(expense)} aria-label={`Modifier la dépense${expense.category ? ` ${expense.category}` : ""}`}>
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button size="icon" variant="destructive" onClick={() => onDelete(expense)}>
+                  <Button size="icon" variant="destructive" onClick={() => onDelete(expense)} aria-label={`Supprimer la dépense${expense.category ? ` ${expense.category}` : ""}`}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>

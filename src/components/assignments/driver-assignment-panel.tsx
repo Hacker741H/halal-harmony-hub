@@ -96,7 +96,11 @@ export function DriverAssignmentPanel({ assetType, assetId }: Props) {
       <Card>
         <CardHeader><CardTitle>Chauffeur actuellement affecté</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          {activeAssignment?.driver ? (
+          {assignmentsQuery.isPending ? (
+            <p className="text-sm text-muted-foreground">Chargement…</p>
+          ) : assignmentsQuery.isError ? (
+            <p className="text-sm text-destructive">Impossible de charger les affectations. Réessayez dans un instant.</p>
+          ) : activeAssignment?.driver ? (
             <div className="flex flex-col justify-between gap-3 rounded-lg border p-4 sm:flex-row sm:items-center">
               <div>
                 <p className="font-medium">{[activeAssignment.driver.employee?.nom, activeAssignment.driver.employee?.prenom].filter(Boolean).join(" ")}</p>
@@ -126,7 +130,11 @@ export function DriverAssignmentPanel({ assetType, assetId }: Props) {
       <Card>
         <CardHeader><CardTitle>Historique des affectations</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          {assignments.length === 0 ? <p className="text-sm text-muted-foreground">Aucune affectation enregistrée.</p> : assignments.map((assignment) => (
+          {assignmentsQuery.isPending ? (
+            <p className="text-sm text-muted-foreground">Chargement…</p>
+          ) : assignmentsQuery.isError ? (
+            <p className="text-sm text-destructive">Impossible de charger les affectations. Réessayez dans un instant.</p>
+          ) : assignments.length === 0 ? <p className="text-sm text-muted-foreground">Aucune affectation enregistrée.</p> : assignments.map((assignment) => (
             <div key={assignment.id} className="flex flex-col justify-between gap-2 rounded-lg border p-3 sm:flex-row sm:items-center">
               <div>
                 <p className="font-medium">{[assignment.driver?.employee?.nom, assignment.driver?.employee?.prenom].filter(Boolean).join(" ") || "Chauffeur supprimé"}</p>

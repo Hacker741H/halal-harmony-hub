@@ -15,16 +15,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePermissions } from "@/hooks/use-permissions";
+import { formatXOF as formatAmount } from "@/lib/format";
 import { PURCHASE_STATUSES, getPurchases } from "@/lib/purchases.functions";
 
 export const Route = createFileRoute("/_authenticated/purchases/")({
   validateSearch: z.object({ supplierId: z.string().uuid().optional() }),
   component: PurchasesPage,
 });
-
-function formatAmount(value: number) {
-  return `${value.toLocaleString("fr-FR")} FCFA`;
-}
 
 function statusLabel(status: string) {
   return status === "CANCELLED" ? "Annulé" : "Réceptionné";

@@ -124,6 +124,7 @@ function FarmDetailsPage() {
   const {
     data: expenses = [],
     isPending: expensesLoading,
+    isError: expensesError,
   } = useQuery({
     queryKey: ["expenses", farmId],
     queryFn: () =>
@@ -520,6 +521,7 @@ function FarmDetailsPage() {
             <ExpenseTable
               expenses={expenses}
               loading={expensesLoading}
+              error={expensesError}
               onEdit={(expense) => {
                 setEditingExpense(expense);
                 setOpenExpense(true);

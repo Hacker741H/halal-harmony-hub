@@ -1,29 +1,22 @@
 import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
+import { formatDate, formatNumber, formatXOF } from "@/lib/format";
 
 import type { MotorcycleMaintenance } from "@/lib/motorcycle-maintenances.functions";
 
 type Props = {
   maintenances: MotorcycleMaintenance[];
+  loading?: boolean;
+  error?: boolean;
   onEdit: (maintenance: MotorcycleMaintenance) => void;
   onDelete: (maintenance: MotorcycleMaintenance) => void;
 };
 
-function formatDate(value: string | null) {
-  if (!value) return "-";
-
-  return new Date(value).toLocaleDateString("fr-FR");
-}
-
-function formatMoney(value: number | null) {
-  return new Intl.NumberFormat("fr-FR").format(
-    Number(value ?? 0),
-  );
-}
-
 export function MotorcycleMaintenanceTable({
   maintenances,
+  loading,
+  error,
   onEdit,
   onDelete,
 }: Props) {
@@ -67,7 +60,7 @@ export function MotorcycleMaintenanceTable({
           </p>
 
           <p className="text-xl font-bold">
-            {formatMoney(totalCost)} FCFA
+            {formatXOF(totalCost)}
           </p>
         </div>
 
@@ -115,7 +108,19 @@ export function MotorcycleMaintenanceTable({
 
           <tbody>
 
-            {sortedMaintenances.length === 0 && (
+            {loading ? (
+              <tr>
+                <td colSpan={7} className="py-8 text-center text-muted-foreground">
+                  Chargement des entretiens…
+                </td>
+              </tr>
+            ) : error ? (
+              <tr>
+                <td colSpan={7} className="py-8 text-center text-destructive">
+                  Impossible de charger les entretiens. Réessayez dans un instant.
+                </td>
+              </tr>
+            ) : sortedMaintenances.length === 0 && (
               <tr>
 
                 <td
@@ -128,7 +133,7 @@ export function MotorcycleMaintenanceTable({
               </tr>
             )}
 
-            {sortedMaintenances.map((maintenance) => (
+            {!loading && !error && sortedMaintenances.map((maintenance) => (
               <tr
                 key={maintenance.id}
                 className="border-t"
@@ -146,17 +151,12 @@ export function MotorcycleMaintenanceTable({
 
                 <td className="px-4 py-3 text-right">
                   {maintenance.kilometrage
-                    ? `${maintenance.kilometrage.toLocaleString(
-                        "fr-FR",
-                      )} km`
+                    ? `${formatNumber(maintenance.kilometrage)} km`
                     : "-"}
                 </td>
 
                 <td className="px-4 py-3 text-right font-medium">
-                  {formatMoney(
-                    maintenance.cost,
-                  )}{" "}
-                  FCFA
+                  {formatXOF(maintenance.cost)}
                 </td>
 
                 <td className="px-4 py-3">
@@ -169,9 +169,7 @@ export function MotorcycleMaintenanceTable({
                         maintenance.next_date,
                       )
                     : maintenance.next_kilometrage
-                      ? `${maintenance.next_kilometrage.toLocaleString(
-                          "fr-FR",
-                        )} km`
+                      ? `${formatNumber(maintenance.next_kilometrage)} km`
                       : "-"}
                 </td>
 

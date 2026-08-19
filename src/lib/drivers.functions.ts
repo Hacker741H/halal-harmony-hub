@@ -29,6 +29,14 @@ const driverStatusSchema = z.enum([
   "en_reparation",
 ]);
 
+export const DRIVER_STATUS_LABELS: Record<string, string> = {
+  actif: "Actif",
+  inactif: "Inactif",
+  archive: "Archivé",
+  en_service: "En service",
+  en_reparation: "En réparation",
+};
+
 const driverValuesSchema = z
   .object({
     employee_id: driverIdSchema,

@@ -8,9 +8,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { COURSE_STATUS_LABELS, type CourseListItem } from "@/lib/courses.functions";
+import { formatXOF } from "@/lib/format";
 
 function formatAmount(value: number | null) {
-  return value === null ? "Non renseigné" : `${value.toLocaleString("fr-FR")} FCFA`;
+  return value === null ? "Non renseigné" : formatXOF(value);
 }
 
 function statusVariant(status: CourseListItem["status"]): "outline" | "info" | "warning" | "success" | "danger" {

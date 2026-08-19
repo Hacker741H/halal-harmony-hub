@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import type { Stock } from "@/lib/stocks.functions";
+import { formatNumber } from "@/lib/format";
 
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -210,7 +211,7 @@ export function StockTable({
 
                       <span>
 
-                        {stock.stock_actuel}
+                        {formatNumber(stock.stock_actuel)}
 
                         {stock.unite
                           ? ` ${stock.unite}`

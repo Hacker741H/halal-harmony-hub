@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatNumber } from "@/lib/format";
 import {
   Table,
   TableBody,
@@ -151,7 +152,7 @@ export function VehicleTable({ vehicles, loading, error, onEdit, onDelete }: Pro
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Gauge className="h-4 w-4" />
-                    {vehicle.kilometrage === null ? "-" : `${vehicle.kilometrage.toLocaleString("fr-FR")} km`}
+                    {vehicle.kilometrage === null ? "-" : `${formatNumber(vehicle.kilometrage)} km`}
                   </div>
                 </TableCell>
                 <TableCell>
@@ -162,7 +163,7 @@ export function VehicleTable({ vehicles, loading, error, onEdit, onDelete }: Pro
                 <TableCell onClick={(event) => event.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" aria-label="Actions du véhicule">
+                      <Button variant="ghost" size="icon" aria-label={`Actions pour ${vehicle.registration}`}>
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>

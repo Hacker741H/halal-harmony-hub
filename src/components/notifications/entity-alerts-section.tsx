@@ -59,6 +59,7 @@ export function EntityAlertsSection({
     <NotificationList
       notifications={alertsQuery.data ?? []}
       loading={alertsQuery.isLoading}
+      error={alertsQuery.isError}
       updatingId={statusMutation.variables?.data.id}
       emptyMessage={emptyMessage}
       onUpdateStatus={(id, status, snoozedUntil) =>

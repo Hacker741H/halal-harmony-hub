@@ -65,7 +65,7 @@ import {
 import {
   MotorcycleMaintenanceTable,
 } from "@/components/motorcycles/motorcycle-maintenance-table";
-import { formatNumber, formatXOF } from "@/lib/format";
+import { formatDate, formatNumber, formatXOF } from "@/lib/format";
 
 export const Route = createFileRoute(
   "/_authenticated/motorcycles/$motorcycleId",
@@ -109,6 +109,8 @@ function MotorcycleDetailsPage() {
 
   const {
     data: maintenances = [],
+    isPending: maintenancesLoading,
+    isError: maintenancesError,
   } = useQuery({
     queryKey: [
       "motorcycle-maintenances",
@@ -403,6 +405,8 @@ function MotorcycleDetailsPage() {
 
           <MotorcycleMaintenanceTable
             maintenances={maintenances}
+            loading={maintenancesLoading}
+            error={maintenancesError}
             onEdit={(maintenance) => {
               setSelectedMaintenance(maintenance);
               setDialogOpen(true);
@@ -420,7 +424,7 @@ function MotorcycleDetailsPage() {
                 <p className="py-4 text-sm text-muted-foreground">Aucune opération financière liée.</p>
               ) : financeOperations.map((operation) => (
                 <div key={operation.id} className="grid gap-2 rounded-lg border p-3 md:grid-cols-4">
-                  <span>{operation.operation_date}</span>
+                  <span>{formatDate(operation.operation_date)}</span>
                   <span>{operation.category || operation.type}</span>
                   <span>{operation.wallet_id}</span>
                   <span className="font-medium">{formatXOF(operation.amount)}</span>

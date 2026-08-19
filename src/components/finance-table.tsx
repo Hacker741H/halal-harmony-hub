@@ -17,6 +17,7 @@ import {
   type FinanceOperation,
   type FinanceOperationWithWallets,
 } from "@/lib/finance.functions";
+import { formatDate } from "@/lib/format";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -338,7 +339,7 @@ function OperationRow({ operation, onEdit, onDelete, nested = false }: { operati
     <TableCell>{operation.wallet?.name ?? "-"}</TableCell>
     <TableCell>{operation.category ?? operation.description ?? "-"}</TableCell>
     <TableCell className="font-semibold">{Number(operation.amount).toLocaleString("fr-FR")} FCFA</TableCell>
-    <TableCell>{operation.operation_date}</TableCell>
+    <TableCell>{formatDate(operation.operation_date)}</TableCell>
     <TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Actions de l'opération"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => onEdit?.(operation)}>Modifier</DropdownMenuItem><DropdownMenuItem className="text-red-600" onClick={() => onDelete?.(operation)}>Supprimer</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell>
   </TableRow>;
 }

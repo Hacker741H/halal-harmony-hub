@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatXOF } from "@/lib/format";
 import type { Client, CommercialClientFinancialMetricsBulkEntry } from "@/lib/clients.functions";
 
 type Props = {
@@ -23,10 +24,6 @@ type Props = {
 
 function statusLabel(status: string) {
   return status === "ARCHIVED" ? "Archivé" : "Actif";
-}
-
-function formatAmountDue(value: number) {
-  return `${value.toLocaleString("fr-FR")} FCFA`;
 }
 
 export function ClientTable({ clients, loading, error, canUpdate, canArchive, canReadFinancial, commercialMetricsByClientId, commercialMetricsLoading, onEdit, onArchive, onRestore }: Props) {
@@ -49,8 +46,8 @@ export function ClientTable({ clients, loading, error, canUpdate, canArchive, ca
                 const metrics = commercialMetricsByClientId.get(client.id);
                 if (!metrics || metrics.sale_count === 0) return <span className="text-muted-foreground" title="Aucune vente commerciale enregistrée pour ce client.">—</span>;
                 return metrics.amount_due > 0
-                  ? <span className="font-medium text-warning-foreground">{formatAmountDue(metrics.amount_due)}</span>
-                  : <span className="text-muted-foreground">{formatAmountDue(0)}</span>;
+                  ? <span className="font-medium text-warning-foreground">{formatXOF(metrics.amount_due)}</span>
+                  : <span className="text-muted-foreground">{formatXOF(0)}</span>;
               })()}</TableCell> : null}
               <TableCell><Badge variant={client.status === "ACTIVE" ? "success" : "outline"}>{statusLabel(client.status)}</Badge></TableCell>
               <TableCell>

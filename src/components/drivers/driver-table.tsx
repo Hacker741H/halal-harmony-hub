@@ -28,7 +28,7 @@ import {
   TableRow,
   TableCell,
 } from "@/components/ui/table";
-import type { DriverWithEmployee } from "@/lib/drivers.functions";
+import { DRIVER_STATUS_LABELS, type DriverWithEmployee } from "@/lib/drivers.functions";
 
 type Props = {
   drivers: DriverWithEmployee[];
@@ -198,7 +198,7 @@ export function DriverTable({
                     <Badge
                       variant={badgeVariant(driver.statut)}
                     >
-                      {driver.statut}
+                      {DRIVER_STATUS_LABELS[driver.statut] ?? driver.statut}
                     </Badge>
 
                   </TableCell>
@@ -212,6 +212,7 @@ export function DriverTable({
                         <Button
                           size="icon"
                           variant="ghost"
+                          aria-label={`Actions pour ${driver.employees?.nom ?? ""} ${driver.employees?.prenom ?? ""}`.trim()}
                         >
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>

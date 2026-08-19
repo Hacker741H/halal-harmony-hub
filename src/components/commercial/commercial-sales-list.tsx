@@ -7,9 +7,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { CommercialSaleListItem } from "@/lib/commercial-sales.functions";
+import { formatXOF } from "@/lib/format";
 
 function formatAmount(value: number | null) {
-  return value === null ? "Accès limité" : `${value.toLocaleString("fr-FR")} FCFA`;
+  return value === null ? "Accès limité" : formatXOF(value);
 }
 
 function saleStatus(status: string) {

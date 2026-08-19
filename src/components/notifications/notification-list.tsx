@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 interface NotificationListProps {
   notifications: Notification[];
   loading?: boolean;
+  error?: boolean;
   onUpdateStatus: (id: string, status: NotificationStatus, snoozedUntil?: string) => void;
   updatingId?: string;
   emptyMessage?: string;
@@ -41,6 +42,7 @@ function formatDueDate(value: string | null): string | null {
 export function NotificationList({
   notifications,
   loading = false,
+  error = false,
   onUpdateStatus,
   updatingId,
   emptyMessage = "Aucune notification pour ces critères.",
@@ -52,6 +54,16 @@ export function NotificationList({
       <Card>
         <CardContent className="flex min-h-40 items-center justify-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Chargement des alertes…
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="flex min-h-40 items-center justify-center text-sm text-destructive">
+          Impossible de charger les alertes. Réessayez dans un instant.
         </CardContent>
       </Card>
     );

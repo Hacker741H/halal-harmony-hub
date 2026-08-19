@@ -181,6 +181,7 @@ function NotificationsPage() {
       <NotificationList
         notifications={result?.notifications ?? []}
         loading={notificationsQuery.isLoading}
+        error={notificationsQuery.isError}
         updatingId={statusMutation.variables?.data.id}
         onUpdateStatus={(id, nextStatus, snoozedUntil) => statusMutation.mutate({ data: { id, status: nextStatus, snoozed_until: snoozedUntil ?? null } })}
       />
