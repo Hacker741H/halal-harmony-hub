@@ -658,11 +658,11 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
           : `SYNCHRONISÉ ${syncedOutboxCount} / ${posSession.outboxEvents.length}`;
 
   if (locationsQuery.isPending && !availableLocations.length) return <div className="grid gap-4 lg:grid-cols-3"><Skeleton className="h-72 lg:col-span-2" /><Skeleton className="h-72" /></div>;
-  if (locationsQuery.isError && !availableLocations.length) return <Card variant="information"><CardContent className="p-6">Impossible de charger vos points de vente autorisés. Ouvrez d’abord la caisse une fois avec Internet pour la rendre disponible hors connexion.</CardContent></Card>;
+  if (locationsQuery.isError && !availableLocations.length) return <Card variant="information"><CardContent className="space-y-4 p-6"><p>Impossible de charger vos points de vente autorisés. Ouvrez d’abord la caisse une fois avec Internet pour la rendre disponible hors connexion.</p><Button type="button" variant="outline" size="sm" onClick={() => { void signOut(); }}><DoorOpen className="mr-2 h-4 w-4" />Se déconnecter</Button></CardContent></Card>;
   if (!availableLocations.length) {
     return canManageLocations
       ? <CommerceLocationSetup onDone={handleLocationSaved} />
-      : <Card variant="information"><CardHeader><CardTitle>Aucune caisse disponible</CardTitle></CardHeader><CardContent>Votre compte doit être affecté à un magasin Commerce avant de pouvoir encaisser. Un administrateur doit créer le magasin, associer son wallet puis vous y affecter.</CardContent></Card>;
+      : <Card variant="information"><CardHeader><CardTitle>Aucune caisse disponible</CardTitle></CardHeader><CardContent className="space-y-4"><p>Votre compte doit être affecté à un magasin Commerce avant de pouvoir encaisser. Un administrateur doit créer le magasin, associer son wallet puis vous y affecter.</p><Button type="button" variant="outline" size="sm" onClick={() => { void signOut(); }}><DoorOpen className="mr-2 h-4 w-4" />Se déconnecter</Button></CardContent></Card>;
   }
 
   const cashierInitials = cashierName.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?";
