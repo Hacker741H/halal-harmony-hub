@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { MetricCard } from "@/components/ui/metric-card";
 import { ModuleHero } from "@/components/ui/module-hero";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -60,8 +61,8 @@ const moduleLabels: Record<string, string> = {
 
 function severityClass(severity: string): string {
   if (severity === "CRITICAL") return "border-destructive/30 bg-destructive/10 text-destructive";
-  if (severity === "WARNING") return "border-amber-500/30 bg-amber-500/10 text-amber-700";
-  return "border-sky-500/30 bg-sky-500/10 text-sky-700";
+  if (severity === "WARNING") return "border-warning/30 bg-warning/10 text-warning-foreground";
+  return "border-info/30 bg-info/10 text-info";
 }
 
 const pageSize = 25;
@@ -137,7 +138,7 @@ function ControlCenterPage() {
   }
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-5">
       <ModuleHero
         icon={Radar}
         eyebrow="Pilotage transversal"
@@ -156,24 +157,27 @@ function ControlCenterPage() {
         </TabsList>
 
         <TabsContent value="overview" className="mt-6 space-y-5">
-          <div className="grid gap-4 sm:grid-cols-3">
-            <SeverityCard
+          <div className="grid gap-3 sm:grid-cols-3">
+            <MetricCard
               label="Critiques"
               value={counts?.critical ?? 0}
+              description="À traiter en priorité"
               tone="danger"
               icon={AlertTriangle}
               onClick={() => openTriage("CRITICAL")}
             />
-            <SeverityCard
+            <MetricCard
               label="À surveiller"
               value={counts?.warning ?? 0}
+              description="À planifier bientôt"
               tone="warning"
               icon={AlertTriangle}
               onClick={() => openTriage("WARNING")}
             />
-            <SeverityCard
+            <MetricCard
               label="Informations"
               value={counts?.info ?? 0}
+              description="Pour information"
               tone="info"
               icon={Info}
               onClick={() => openTriage("INFO")}
@@ -298,43 +302,6 @@ function ControlCenterPage() {
         </TabsContent>
       </Tabs>
     </div>
-  );
-}
-
-function SeverityCard({
-  label,
-  value,
-  tone,
-  icon: Icon,
-  onClick,
-}: {
-  label: string;
-  value: number;
-  tone: "danger" | "warning" | "info";
-  icon: typeof AlertTriangle;
-  onClick: () => void;
-}) {
-  const toneClasses: Record<typeof tone, string> = {
-    danger: "border-destructive/25 bg-destructive/5 text-destructive",
-    warning: "border-amber-500/25 bg-amber-500/5 text-amber-700",
-    info: "border-sky-500/25 bg-sky-500/5 text-sky-700",
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group flex items-center gap-4 rounded-xl border p-5 text-left transition-[border-color,box-shadow,transform] transition-ui hover:-translate-y-0.5 hover:shadow-md"
-    >
-      <div className={`grid size-11 shrink-0 place-items-center rounded-xl border ${toneClasses[tone]}`}>
-        <Icon className="size-5" aria-hidden="true" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-2xl font-semibold tabular-nums text-foreground">{value}</p>
-        <p className="text-body-sm text-muted-foreground">{label}</p>
-      </div>
-      <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform transition-ui-fast group-hover:translate-x-0.5" aria-hidden="true" />
-    </button>
   );
 }
 

@@ -102,7 +102,7 @@ function FinancePage() {
 
   return (
     <>
-      <div className="space-y-7">
+      <div className="space-y-5">
         <ModuleHero
           icon={Wallet}
           eyebrow="Finance centrale"

@@ -3,22 +3,33 @@ import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+interface ModuleHeroStat {
+  label: string;
+  value: ReactNode;
+}
+
 interface ModuleHeroProps {
   icon: LucideIcon;
   eyebrow: string;
   title: string;
-  description: string;
+  description?: string;
+  stats?: readonly ModuleHeroStat[];
   actions?: ReactNode;
   children?: ReactNode;
   className?: string;
 }
 
-/** A presentational header shared by operational ERP workspaces. */
+/**
+ * A compact presentational header shared by operational ERP workspaces.
+ * Density is deliberate: this is a title bar with an optional stat strip,
+ * not a decorative banner -- real content should start right below it.
+ */
 export function ModuleHero({
   icon: Icon,
   eyebrow,
   title,
   description,
+  stats,
   actions,
   children,
   className,
@@ -26,54 +37,56 @@ export function ModuleHero({
   return (
     <section
       className={cn(
-        "relative isolate overflow-hidden rounded-[2rem] border border-primary/30 bg-[#042b1d] p-6 text-white shadow-lg shadow-primary/10 sm:p-8",
+        "relative isolate overflow-hidden rounded-2xl border border-sidebar-border/60 bg-sidebar px-5 py-4 text-sidebar-foreground shadow-sm sm:px-6 sm:py-4.5",
         className,
       )}
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_88%_8%,rgba(16,185,129,.42),transparent_30%),radial-gradient(circle_at_3%_100%,rgba(45,212,191,.16),transparent_28%),linear-gradient(115deg,rgba(255,255,255,.07)_1px,transparent_1px),linear-gradient(25deg,rgba(255,255,255,.035)_1px,transparent_1px)] bg-[length:auto,auto,28px_28px,28px_28px]"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald/20 blur-3xl"
-      />
-      <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-        <div className="max-w-3xl space-y-3">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-emerald-200 shadow-xs">
-              <Icon className="h-4 w-4" aria-hidden="true" />
+      <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/70">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-sidebar-foreground/15 bg-sidebar-foreground/10 text-sidebar-foreground">
+              <Icon className="h-3.5 w-3.5" aria-hidden="true" />
             </span>
             {eyebrow}
           </div>
-          <div className="space-y-1.5">
-            <h1 className="text-h1 text-white">{title}</h1>
-            <p className="max-w-2xl text-sm leading-6 text-emerald-50/75 sm:text-base">
-              {description}
-            </p>
-          </div>
+          <h1 className="mt-1.5 truncate text-h2 text-sidebar-foreground sm:text-h1">{title}</h1>
+          {description ? (
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-sidebar-foreground/65">{description}</p>
+          ) : null}
         </div>
+
+        {stats?.length ? (
+          <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-2 border-t border-sidebar-foreground/10 pt-3 lg:border-t-0 lg:border-l lg:pl-5 lg:pt-0">
+            {stats.map((stat, index) => (
+              <div key={index} className="text-right">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-sidebar-foreground/55">{stat.label}</p>
+                <p className="mt-0.5 text-sm font-semibold tabular-nums text-sidebar-foreground">{stat.value}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
         {actions ? (
           <div
             className={cn(
-              "flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.08] p-2 backdrop-blur-sm",
+              "flex shrink-0 flex-wrap items-center gap-2 rounded-xl bg-sidebar-foreground/[0.08] p-1.5",
               // Only recolor buttons that don't already carry their own
               // meaning-bearing variant. Forcing every button to the same
               // white pill made a destructive action (e.g. "Annuler" on a
               // récolte) render identically to the primary action next to
               // it -- the two were indistinguishable at a glance.
               "[&>button:not([data-variant=destructive]):not([data-variant=danger])]:border-transparent",
-              "[&>button:not([data-variant=destructive]):not([data-variant=danger])]:bg-white",
-              "[&>button:not([data-variant=destructive]):not([data-variant=danger])]:text-primary",
+              "[&>button:not([data-variant=destructive]):not([data-variant=danger])]:bg-sidebar-foreground",
+              "[&>button:not([data-variant=destructive]):not([data-variant=danger])]:text-sidebar",
               "[&>button:not([data-variant=destructive]):not([data-variant=danger])]:shadow-sm",
-              "[&>button:not([data-variant=destructive]):not([data-variant=danger]):hover]:bg-emerald-50",
+              "[&>button:not([data-variant=destructive]):not([data-variant=danger]):hover]:opacity-90",
             )}
           >
             {actions}
           </div>
         ) : null}
       </div>
-      {children ? <div className="relative mt-6">{children}</div> : null}
+      {children ? <div className="relative mt-4">{children}</div> : null}
     </section>
   );
 }

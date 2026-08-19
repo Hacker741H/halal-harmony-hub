@@ -83,7 +83,7 @@ function ClientsPage() {
   }
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-5">
       <ModuleHero
         icon={UsersRound}
         eyebrow="Référentiel commercial"

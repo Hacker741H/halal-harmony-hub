@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Banknote, Building2, CalendarDays, CheckCircle2, CircleDollarSign, FileText, Landmark, Pencil, ReceiptText, RotateCcw, Sprout, XCircle } from "lucide-react";
+import { ArrowLeft, Banknote, CheckCircle2, CircleDollarSign, FileText, Landmark, Pencil, ReceiptText, RotateCcw, XCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -13,7 +13,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MetricCard } from "@/components/ui/metric-card";
+import { ModuleHero } from "@/components/ui/module-hero";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -65,13 +68,6 @@ function invoiceStatus(status: string) {
 function paymentStatus(status: string) {
   const labels: Record<string, string> = { PLANNED: "Prévu", RECEIVED: "Reçu", CONFIRMED: "Confirmé", CANCELLED: "Annulé" };
   return labels[status] ?? status;
-}
-
-function saleVariant(status: string): "outline" | "success" | "danger" | "neutral" {
-  if (status === "CONFIRMED") return "success";
-  if (status === "CANCELLED") return "danger";
-  if (status === "ARCHIVED") return "neutral";
-  return "outline";
 }
 
 function invoiceVariant(status: string): "outline" | "info" | "success" | "warning" | "danger" {
@@ -157,23 +153,42 @@ function CommercialSaleDetailsPage() {
     ? Math.max(0, Number(jekoInvoice.total_amount) - payments.filter((payment) => payment.invoice_id === jekoInvoice.id && payment.status === "CONFIRMED").reduce((sum, payment) => sum + Number(payment.amount), 0))
     : 0;
 
-  return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
-    <section className="relative isolate overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/10 via-surface-elevated to-surface p-5 shadow-md sm:p-7">
-      <div className="pointer-events-none absolute -right-16 -top-20 size-60 rounded-full bg-primary/15 blur-3xl" aria-hidden="true" />
-      <div className="relative flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between"><div className="min-w-0"><Button asChild variant="ghost" className="-ml-2 px-2"><Link to="/sales"><ArrowLeft className="size-4" />Ventes</Link></Button><div className="mt-4 flex flex-wrap items-center gap-3"><h1 className="text-h1">{sale.sale_number}</h1><Badge variant={saleVariant(sale.status)} appearance="soft">{saleStatus(sale.status)}</Badge></div><p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-body-sm text-muted-foreground"><span className="inline-flex items-center gap-1.5"><Building2 className="size-4 text-primary" aria-hidden="true" />{detail.clientName ?? "Client non accessible"}</span><span className="inline-flex items-center gap-1.5"><CalendarDays className="size-4 text-primary" aria-hidden="true" />{formatDate(sale.sale_date)}</span>{detail.farmName ? <span className="inline-flex items-center gap-1.5"><Sprout className="size-4 text-success" aria-hidden="true" />{detail.farmName}</span> : null}</p></div>
-        <div className="flex flex-wrap gap-2 xl:justify-end">{canEdit ? <Button variant="outline" onClick={() => setEditOpen(true)}><Pencil className="size-4" />Modifier</Button> : null}{canEdit ? <Button onClick={() => confirmSaleMutation.mutate({ data: { id: sale.id } })} loading={confirmSaleMutation.isPending}>Confirmer la vente</Button> : null}{canInvoice && !activeInvoice ? <Button onClick={() => setInvoiceOpen(true)}><FileText className="size-4" />Créer la facture</Button> : null}{canReturn && returnableLines.length > 0 ? <Button variant="outline" onClick={() => setReturnOpen(true)}><RotateCcw className="size-4" />Enregistrer un retour</Button> : null}{canRefund && (financial?.refundable_credit ?? 0) > 0 ? <Button variant="outline" onClick={() => setRefundOpen(true)}><Banknote className="size-4" />Enregistrer un remboursement</Button> : null}{canCancel && (sale.status === "DRAFT" || (sale.status === "CONFIRMED" && !activeInvoice)) ? <Button variant="danger" onClick={() => setCancelTarget({ kind: "sale", id: sale.id, label: sale.sale_number })}><XCircle className="size-4" />Annuler la vente</Button> : null}</div>
-      </div>
-    </section>
+  const heroStats = [
+    { label: "Client", value: detail.clientName ?? "Non accessible" },
+    { label: "Date", value: formatDate(sale.sale_date) },
+    ...(detail.farmName ? [{ label: "Ferme", value: detail.farmName }] : []),
+  ];
+
+  return <div className="mx-auto max-w-(--ds-content-max-width) space-y-5 p-4 sm:p-6 xl:p-8">
+    <ModuleHero
+      icon={ReceiptText}
+      eyebrow="Détail de la vente"
+      title={sale.sale_number}
+      stats={heroStats}
+      actions={<>
+        <Badge variant={sale.status === "CONFIRMED" ? "success" : sale.status === "CANCELLED" ? "danger" : "neutral"} appearance="solid">{saleStatus(sale.status)}</Badge>
+        {canEdit ? <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}><Pencil className="size-4" />Modifier</Button> : null}
+        {canEdit ? <Button size="sm" onClick={() => confirmSaleMutation.mutate({ data: { id: sale.id } })} loading={confirmSaleMutation.isPending}>Confirmer la vente</Button> : null}
+        {canInvoice && !activeInvoice ? <Button size="sm" onClick={() => setInvoiceOpen(true)}><FileText className="size-4" />Créer la facture</Button> : null}
+        {canReturn && returnableLines.length > 0 ? <Button variant="outline" size="sm" onClick={() => setReturnOpen(true)}><RotateCcw className="size-4" />Enregistrer un retour</Button> : null}
+        {canRefund && (financial?.refundable_credit ?? 0) > 0 ? <Button variant="outline" size="sm" onClick={() => setRefundOpen(true)}><Banknote className="size-4" />Enregistrer un remboursement</Button> : null}
+        {canCancel && (sale.status === "DRAFT" || (sale.status === "CONFIRMED" && !activeInvoice)) ? <Button variant="danger" size="sm" onClick={() => setCancelTarget({ kind: "sale", id: sale.id, label: sale.sale_number })}><XCircle className="size-4" />Annuler la vente</Button> : null}
+      </>}
+    />
 
     {canPayment && activeInvoice && ["ISSUED", "PARTIALLY_PAID"].includes(activeInvoice.status) ? <Card variant="information" className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-foreground">Encaissement en ligne Jèko</p><p className="mt-1 text-sm text-muted-foreground">Créez un lien de paiement sécurisé. Le wallet associé ne sera crédité qu’après confirmation du webhook Jèko.</p></div><Button variant="outline" onClick={() => setJekoInvoice(activeInvoice)}><Landmark className="size-4" />Encaisser avec Jèko</Button></Card> : null}
 
     <Tabs defaultValue="overview" className="space-y-5"><TabsList className="h-auto max-w-full flex-wrap justify-start"><TabsTrigger value="overview">Vue d’ensemble</TabsTrigger><TabsTrigger value="lines">Lignes</TabsTrigger>{canReadFinance ? <><TabsTrigger value="invoices">Factures</TabsTrigger><TabsTrigger value="payments">Encaissements</TabsTrigger></> : null}{canReadReturns ? <><TabsTrigger value="returns">Retours</TabsTrigger><TabsTrigger value="refunds">Remboursements</TabsTrigger></> : null}<TabsTrigger value="notes">Notes</TabsTrigger></TabsList>
       <TabsContent value="overview" className="space-y-5">
-        {canReadFinance ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><MetricCard icon={CircleDollarSign} label="Facturé" value={formatAmount(financial?.total_invoiced)} detail="Total des factures émises" tone="info" /><MetricCard icon={Banknote} label="Encaissé" value={formatAmount(financial?.total_received)} detail="Paiements confirmés" tone="success" /><MetricCard icon={Landmark} label="Reste à encaisser" value={formatAmount(financial?.amount_due)} detail="Solde client actuel, net des retours" tone={Number(financial?.amount_due ?? 0) > 0 ? "warning" : "success"} /><MetricCard icon={ReceiptText} label="Total de vente" value={formatAmount(financial?.subtotal_amount)} detail="Hors taxes configurées" tone="neutral" /></div> : <PermissionPanel />}
-        {canReadFinance && (Number(financial?.total_returned ?? 0) > 0 || Number(financial?.refundable_credit ?? 0) > 0) ? <div className="grid gap-4 sm:grid-cols-2"><MetricCard icon={RotateCcw} label="Retourné" value={formatAmount(financial?.total_returned)} detail="Valeur totale des retours" tone="warning" /><MetricCard icon={Banknote} label="Crédit remboursable" value={formatAmount(financial?.refundable_credit)} detail="Reste à rendre au client" tone={Number(financial?.refundable_credit ?? 0) > 0 ? "warning" : "success"} /></div> : null}
-        <Card variant="section"><CardHeader><CardTitle>Situation de la vente</CardTitle><CardDescription>Les étapes sont protégées : une vente est confirmée avant toute facturation, puis chaque encaissement crédite le wallet choisi uniquement après confirmation.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-3"><Step label="1. Vente" detail={saleStatus(sale.status)} completed={["CONFIRMED", "ARCHIVED"].includes(sale.status)} /><Step label="2. Facture" detail={activeInvoice ? invoiceStatus(activeInvoice.status) : "À créer"} completed={activeInvoice?.status === "ISSUED" || activeInvoice?.status === "PARTIALLY_PAID" || activeInvoice?.status === "PAID"} /><Step label="3. Encaissement" detail={financial?.amount_due === 0 && activeInvoice ? "Soldé" : canReadFinance ? "À suivre" : "Accès financier requis"} completed={canReadFinance && Boolean(activeInvoice) && Number(financial?.amount_due ?? 0) === 0} /></CardContent></Card>
+        {canReadFinance ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><MetricCard icon={CircleDollarSign} label="Facturé" value={formatAmount(financial?.total_invoiced)} description="Total des factures émises" tone="info" /><MetricCard icon={Banknote} label="Encaissé" value={formatAmount(financial?.total_received)} description="Paiements confirmés" tone="success" /><MetricCard icon={Landmark} label="Reste à encaisser" value={formatAmount(financial?.amount_due)} description="Solde client actuel, net des retours" tone={Number(financial?.amount_due ?? 0) > 0 ? "warning" : "success"} /><MetricCard icon={ReceiptText} label="Total de vente" value={formatAmount(financial?.subtotal_amount)} description="Hors taxes configurées" tone="neutral" /></div> : <PermissionPanel />}
+        {canReadFinance && (Number(financial?.total_returned ?? 0) > 0 || Number(financial?.refundable_credit ?? 0) > 0) ? <div className="grid gap-3 sm:grid-cols-2"><MetricCard icon={RotateCcw} label="Retourné" value={formatAmount(financial?.total_returned)} description="Valeur totale des retours" tone="warning" /><MetricCard icon={Banknote} label="Crédit remboursable" value={formatAmount(financial?.refundable_credit)} description="Reste à rendre au client" tone={Number(financial?.refundable_credit ?? 0) > 0 ? "warning" : "success"} /></div> : null}
+        <div>
+          <p className="text-label text-muted-foreground">Situation de la vente</p>
+          <p className="mt-1 text-caption">Les étapes sont protégées : une vente est confirmée avant toute facturation, puis chaque encaissement crédite le wallet choisi uniquement après confirmation.</p>
+          <div className="mt-3 grid gap-3 md:grid-cols-3"><Step label="1. Vente" detail={saleStatus(sale.status)} completed={["CONFIRMED", "ARCHIVED"].includes(sale.status)} /><Step label="2. Facture" detail={activeInvoice ? invoiceStatus(activeInvoice.status) : "À créer"} completed={activeInvoice?.status === "ISSUED" || activeInvoice?.status === "PARTIALLY_PAID" || activeInvoice?.status === "PAID"} /><Step label="3. Encaissement" detail={financial?.amount_due === 0 && activeInvoice ? "Soldé" : canReadFinance ? "À suivre" : "Accès financier requis"} completed={canReadFinance && Boolean(activeInvoice) && Number(financial?.amount_due ?? 0) === 0} /></div>
+        </div>
       </TabsContent>
-      <TabsContent value="lines"><Card variant="section"><CardHeader><CardTitle>Produits et prestations vendus</CardTitle><CardDescription>Les montants proviennent des lignes de vente enregistrées lors de la création.</CardDescription></CardHeader><CardContent>{lines.length ? <div className="overflow-x-auto rounded-xl border border-border/75"><table className="w-full min-w-[620px] text-sm"><thead className="bg-surface-sunken/55 text-left text-caption"><tr><th className="px-4 py-3">Désignation</th><th className="px-4 py-3">Quantité</th><th className="px-4 py-3">Unité</th><th className="px-4 py-3 text-right">Prix unitaire</th><th className="px-4 py-3 text-right">Total</th>{canReadReturns ? <><th className="px-4 py-3 text-right">Déjà retourné</th><th className="px-4 py-3 text-right">Restant retournable</th></> : null}</tr></thead><tbody className="divide-y divide-border/70">{lines.map((line) => { const returned = returnedByLine[line.id] ?? 0; return <tr key={line.id}><td className="px-4 py-3 font-medium text-foreground">{line.description}</td><td className="px-4 py-3 tabular-nums">{Number(line.quantity).toLocaleString("fr-FR")}</td><td className="px-4 py-3">{line.unit}</td><td className="px-4 py-3 text-right tabular-nums">{formatAmount(Number(line.unit_price))}</td><td className="px-4 py-3 text-right font-semibold tabular-nums">{formatAmount(Number(line.line_total))}</td>{canReadReturns ? <><td className="px-4 py-3 text-right tabular-nums">{line.line_type === "ARTICLE" ? Number(returned).toLocaleString("fr-FR") : "—"}</td><td className="px-4 py-3 text-right tabular-nums">{line.line_type === "ARTICLE" ? Number(line.quantity - returned).toLocaleString("fr-FR") : "—"}</td></> : null}</tr>; })}</tbody></table></div> : <EmptyPanel>Aucune ligne de vente n’est disponible.</EmptyPanel>}</CardContent></Card></TabsContent>
+      <TabsContent value="lines"><Card variant="section"><CardHeader><CardTitle>Produits et prestations vendus</CardTitle><CardDescription>Les montants proviennent des lignes de vente enregistrées lors de la création.</CardDescription></CardHeader><CardContent>{lines.length ? <Table><TableHeader><TableRow><TableHead>Désignation</TableHead><TableHead>Quantité</TableHead><TableHead>Unité</TableHead><TableHead className="text-right">Prix unitaire</TableHead><TableHead className="text-right">Total</TableHead>{canReadReturns ? <><TableHead className="text-right">Déjà retourné</TableHead><TableHead className="text-right">Restant retournable</TableHead></> : null}</TableRow></TableHeader><TableBody>{lines.map((line) => { const returned = returnedByLine[line.id] ?? 0; return <TableRow key={line.id}><TableCell className="font-medium text-foreground">{line.description}</TableCell><TableCell className="tabular-nums">{Number(line.quantity).toLocaleString("fr-FR")}</TableCell><TableCell>{line.unit}</TableCell><TableCell className="text-right tabular-nums">{formatAmount(Number(line.unit_price))}</TableCell><TableCell className="text-right font-semibold tabular-nums">{formatAmount(Number(line.line_total))}</TableCell>{canReadReturns ? <><TableCell className="text-right tabular-nums">{line.line_type === "ARTICLE" ? Number(returned).toLocaleString("fr-FR") : "—"}</TableCell><TableCell className="text-right tabular-nums">{line.line_type === "ARTICLE" ? Number(line.quantity - returned).toLocaleString("fr-FR") : "—"}</TableCell></> : null}</TableRow>; })}</TableBody></Table> : <EmptyPanel>Aucune ligne de vente n’est disponible.</EmptyPanel>}</CardContent></Card></TabsContent>
       {canReadFinance ? <TabsContent value="invoices"><InvoicesPanel invoices={invoices} canInvoice={canInvoice} canCancel={canCancel} issuePending={issueInvoiceMutation.isPending} onIssue={(invoiceId) => issueInvoiceMutation.mutate({ data: { id: invoiceId } })} onCreate={() => setInvoiceOpen(true)} onCancel={(invoice) => setCancelTarget({ kind: "invoice", id: invoice.id, label: invoice.invoice_number })} /></TabsContent> : null}
       {canReadFinance ? <TabsContent value="payments"><PaymentsPanel payments={payments} invoices={invoices} canPayment={canPayment} canCancel={canCancel} confirmPending={confirmPaymentMutation.isPending} onNew={(invoice) => setPaymentInvoice(invoice)} onConfirm={(paymentId) => confirmPaymentMutation.mutate({ data: { id: paymentId } })} onCancel={(payment) => setCancelTarget({ kind: "payment", id: payment.id, label: `paiement du ${formatDate(payment.payment_date)}` })} /></TabsContent> : null}
       {canReadReturns ? <TabsContent value="returns"><ReturnsPanel returns={returns} /></TabsContent> : null}
@@ -194,11 +209,6 @@ function CommercialSaleDetailsPage() {
 
 function showError(fallback: string) {
   return (error: Error) => toast.error(error instanceof Error ? error.message : fallback);
-}
-
-function MetricCard({ icon: Icon, label, value, detail, tone }: { icon: typeof CircleDollarSign; label: string; value: string; detail: string; tone: "info" | "success" | "warning" | "neutral" }) {
-  const tones = { info: "bg-info/10 text-info", success: "bg-success/10 text-success", warning: "bg-warning/15 text-warning-foreground", neutral: "bg-muted text-muted-foreground" };
-  return <Card variant="kpi" className="p-5"><div className="flex items-start justify-between gap-3"><p className="text-label text-muted-foreground">{label}</p><div className={`grid size-9 place-items-center rounded-xl ${tones[tone]}`}><Icon className="size-4" aria-hidden="true" /></div></div><p className="mt-6 truncate text-[clamp(1.3rem,2vw,1.9rem)] font-semibold tracking-[-0.03em] tabular-nums" title={value}>{value}</p><p className="mt-2 text-caption">{detail}</p></Card>;
 }
 
 function Step({ label, detail, completed }: { label: string; detail: string; completed: boolean }) {

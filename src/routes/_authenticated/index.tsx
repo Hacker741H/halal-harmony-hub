@@ -13,7 +13,7 @@ import {
   CircleAlert,
   FileWarning,
   Landmark,
-  ShieldCheck,
+  LayoutDashboard,
   Sparkles,
   Sprout,
   TrendingDown,
@@ -27,6 +27,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { MetricCard } from "@/components/ui/metric-card";
+import { ModuleHero } from "@/components/ui/module-hero";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getDashboardStats, type DashboardStats } from "@/lib/dashboard.functions";
 import {
@@ -118,174 +120,54 @@ function Dashboard() {
   const positiveResult = stats.benefice >= 0;
   const greeting = getDashboardGreeting(identity?.fullName, identity?.username);
   const greetingName = getGreetingName(identity?.fullName, identity?.username);
-  const today = new Intl.DateTimeFormat("fr-FR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date());
   const dailySummary = getDailySummary(stats, totalBalance, isLoading);
   const financialCeiling = Math.max(stats.recettesMois, stats.depensesMois, 1);
-  const companyHealthSignals = getCompanyHealthSignals(stats, totalBalance);
 
   if (isError) {
     return <DashboardErrorState onRetry={() => void refetch()} />;
   }
 
+  const heroStats = isLoading ? undefined : [
+    { label: "Trésorerie", value: formatXOFCompact(totalBalance) },
+    { label: "Résultat du mois", value: formatXOFCompact(stats.benefice) },
+    { label: "Alertes critiques", value: formatNumber(stats.alertesERP.critiques) },
+  ];
+
   return (
     <div className="min-h-full bg-background">
-      <div className="mx-auto max-w-(--ds-content-max-width) space-y-7 px-4 py-5 sm:px-6 sm:py-7 lg:space-y-8 xl:px-8">
-        <section className="relative isolate overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/[0.13] via-surface-elevated to-surface px-5 py-6 shadow-md sm:px-7 sm:py-8 lg:px-8 lg:py-9">
-          <div className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full bg-primary/14 blur-3xl" aria-hidden="true" />
-          <div className="pointer-events-none absolute -bottom-32 left-[38%] size-72 rounded-full bg-gold/10 blur-3xl" aria-hidden="true" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[46%] border-l border-primary/10 bg-gradient-to-l from-surface/45 to-transparent lg:block" aria-hidden="true" />
-
-          <div className="relative grid gap-7 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-center xl:gap-10">
-            <div className="max-w-3xl animate-slide-in motion-reduce:animate-none">
-              <div className="flex flex-wrap items-center gap-2 text-caption">
-                <span className="text-overline text-primary">Centre de pilotage</span>
-                <span aria-hidden="true">•</span>
-                <time dateTime={new Date().toISOString().slice(0, 10)}>{today}</time>
-              </div>
-              <h1 className="mt-4 max-w-2xl text-display text-foreground">
-                {greetingName ? (
-                  <>
-                    Bonjour{" "}
-                    <span
-                      className="relative inline-block text-primary animate-welcome-name motion-reduce:animate-none"
-                      style={{ animationDelay: "70ms" }}
-                    >
-                      {greetingName}
-                      <span
-                        className="absolute inset-x-1 -bottom-1 h-px bg-primary/45"
-                        aria-hidden="true"
-                      />
-                    </span>
-                    .
-                  </>
-                ) : (
-                  greeting
-                )}
-              </h1>
-              {isLoading ? (
-                <div className="mt-5 max-w-2xl space-y-2" aria-label="Chargement du résumé du jour">
-                  <Skeleton className="h-4 w-full max-w-xl" />
-                  <Skeleton className="h-4 w-4/5" />
-                </div>
-              ) : (
-                <p className="mt-5 max-w-2xl text-body-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
-                  {dailySummary}
-                </p>
-              )}
-
-              {isLoading ? (
-                <div className="mt-6 flex flex-wrap gap-2" aria-label="Chargement de l'état global">
-                  <Skeleton className="h-8 w-32 rounded-full" />
-                  <Skeleton className="h-8 w-36 rounded-full" />
-                </div>
-              ) : (
-                <div className="mt-6 flex flex-wrap gap-2">
-                  <StatusPill
-                    icon={CircleAlert}
-                    label={stats.alertesERP.critiques > 0 ? "Action requise" : "Situation suivie"}
-                    tone={stats.alertesERP.critiques > 0 ? "critical" : "calm"}
-                  />
-                  <StatusPill
-                    icon={WalletCards}
-                    label={`${formatNumber(stats.wallets.length)} wallet${stats.wallets.length > 1 ? "s" : ""} suivi${stats.wallets.length > 1 ? "s" : ""}`}
-                    tone="calm"
-                  />
-                </div>
-              )}
-            </div>
-
-            <CompanyHealthCard signals={companyHealthSignals} loading={isLoading} />
-          </div>
-
-          <div className="relative mt-7 flex items-center gap-3 border-t border-primary/10 pt-4 text-caption text-muted-foreground">
-            <div className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-              <Sparkles className="size-3.5" aria-hidden="true" />
-            </div>
-            <p>Lecture fondée sur les indicateurs financiers et opérationnels disponibles à cet instant.</p>
-          </div>
-        </section>
+      <div className="mx-auto max-w-(--ds-content-max-width) space-y-5 px-4 py-5 sm:px-6 sm:py-7 xl:px-8">
+        <ModuleHero
+          icon={LayoutDashboard}
+          eyebrow="Centre de pilotage"
+          title={greetingName ? `Bonjour ${greetingName}.` : greeting}
+          description={isLoading ? undefined : dailySummary}
+          stats={heroStats}
+        />
 
         <section aria-labelledby="dashboard-kpis-title">
-          <div className="mb-3 flex items-center justify-between gap-4">
-            <div>
-              <p className="text-overline text-primary">Vue essentielle</p>
-              <h2 id="dashboard-kpis-title" className="mt-1 text-h3 text-foreground">
-                Les indicateurs à lire maintenant
-              </h2>
-            </div>
-            <p className="hidden text-caption sm:block">Période en cours</p>
-          </div>
-
+          <h2 id="dashboard-kpis-title" className="sr-only">Les indicateurs à lire maintenant</h2>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-            <KpiCard
-              label="Trésorerie"
-              value={isLoading ? null : formatXOFCompact(totalBalance)}
-              accessibleValue={isLoading ? undefined : formatXOF(totalBalance)}
-              detail={`${stats.wallets.length} wallet${stats.wallets.length > 1 ? "s" : ""} suivi${stats.wallets.length > 1 ? "s" : ""}`}
-              icon={WalletCards}
-              tone={totalBalance < 0 ? "danger" : "primary"}
-              to="/wallets"
-              animationDelay="0ms"
-            />
-            <KpiCard
-              label="Recettes du mois"
-              value={isLoading ? null : formatXOFCompact(stats.recettesMois)}
-              detail="Encaissements enregistrés"
-              icon={ArrowUpRight}
-              tone="success"
-              to="/revenues"
-              animationDelay="40ms"
-            />
-            <KpiCard
-              label="Dépenses du mois"
-              value={isLoading ? null : formatXOFCompact(stats.depensesMois)}
-              detail="Décaissements enregistrés"
-              icon={ArrowDownRight}
-              tone="danger"
-              to="/expenses"
-              animationDelay="80ms"
-            />
-            <KpiCard
-              label="Résultat du mois"
-              value={isLoading ? null : formatXOFCompact(stats.benefice)}
-              detail={positiveResult ? "Solde positif sur la période" : "À surveiller sur la période"}
-              icon={positiveResult ? TrendingUp : TrendingDown}
-              tone={positiveResult ? "success" : "warning"}
-              to="/finance"
-              animationDelay="120ms"
-            />
-            <KpiCard
-              label="Véhicules"
-              value={isLoading ? null : formatNumber(stats.vehicules)}
-              detail="Parc enregistré"
-              icon={Car}
-              tone="info"
-              to="/vehicles"
-              animationDelay="160ms"
-            />
-            <KpiCard
-              label="Employés"
-              value={isLoading ? null : formatNumber(stats.employes)}
-              detail={`${formatNumber(stats.chauffeursActifs)} chauffeur${stats.chauffeursActifs > 1 ? "s" : ""} actif${stats.chauffeursActifs > 1 ? "s" : ""}`}
-              icon={Users}
-              tone="primary"
-              to="/employees"
-              animationDelay="180ms"
-            />
-            <KpiCard
-              label="Courses actives"
-              value={isLoading ? null : formatNumber(stats.courses.active)}
-              detail={`${formatNumber(stats.courses.completed)} terminée${stats.courses.completed > 1 ? "s" : ""}`}
-              icon={Truck}
-              tone={stats.courses.late > 0 ? "warning" : "info"}
-              to="/courses"
-              animationDelay="180ms"
-            />
+            <Link to="/wallets" className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+              <MetricCard label="Trésorerie" value={isLoading ? "…" : formatXOFCompact(totalBalance)} description={`${formatNumber(stats.wallets.length)} wallet${stats.wallets.length > 1 ? "s" : ""} suivi${stats.wallets.length > 1 ? "s" : ""}`} icon={WalletCards} tone={totalBalance < 0 ? "danger" : "primary"} />
+            </Link>
+            <Link to="/revenues" className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+              <MetricCard label="Recettes du mois" value={isLoading ? "…" : formatXOFCompact(stats.recettesMois)} description="Encaissements enregistrés" icon={ArrowUpRight} tone="success" />
+            </Link>
+            <Link to="/expenses" className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+              <MetricCard label="Dépenses du mois" value={isLoading ? "…" : formatXOFCompact(stats.depensesMois)} description="Décaissements enregistrés" icon={ArrowDownRight} tone="danger" />
+            </Link>
+            <Link to="/finance" className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+              <MetricCard label="Résultat du mois" value={isLoading ? "…" : formatXOFCompact(stats.benefice)} description={positiveResult ? "Solde positif sur la période" : "À surveiller sur la période"} icon={positiveResult ? TrendingUp : TrendingDown} tone={positiveResult ? "success" : "warning"} />
+            </Link>
+            <Link to="/vehicles" className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+              <MetricCard label="Véhicules" value={isLoading ? "…" : formatNumber(stats.vehicules)} description="Parc enregistré" icon={Car} tone="info" />
+            </Link>
+            <Link to="/employees" className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+              <MetricCard label="Employés" value={isLoading ? "…" : formatNumber(stats.employes)} description={`${formatNumber(stats.chauffeursActifs)} chauffeur${stats.chauffeursActifs > 1 ? "s" : ""} actif${stats.chauffeursActifs > 1 ? "s" : ""}`} icon={Users} tone="primary" />
+            </Link>
+            <Link to="/courses" className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+              <MetricCard label="Courses actives" value={isLoading ? "…" : formatNumber(stats.courses.active)} description={`${formatNumber(stats.courses.completed)} terminée${stats.courses.completed > 1 ? "s" : ""}`} icon={Truck} tone={stats.courses.late > 0 ? "warning" : "info"} />
+            </Link>
           </div>
         </section>
 
@@ -536,123 +418,6 @@ function getDailySummary(stats: DashboardStats, totalBalance: number, loading: b
   return `Aujourd’hui, ${priorities.join(", ")}.`;
 }
 
-function StatusPill({
-  icon: Icon,
-  label,
-  tone,
-}: {
-  icon: LucideIcon;
-  label: string;
-  tone: "calm" | "critical";
-}) {
-  return (
-    <Badge variant={tone === "critical" ? "danger" : "success"} appearance="soft" className="h-8 px-3">
-      <Icon className="size-3.5" aria-hidden="true" />
-      {label}
-    </Badge>
-  );
-}
-
-type CompanyHealthSignal = {
-  label: string;
-  value: string;
-  detail: string;
-  accessibleValue?: string;
-  icon: LucideIcon;
-  tone: "positive" | "attention" | "critical";
-};
-
-function getCompanyHealthSignals(stats: DashboardStats, totalBalance: number): CompanyHealthSignal[] {
-  const criticalAlerts = stats.alertesERP.critiques;
-
-  return [
-    {
-      label: "Trésorerie",
-      value: formatXOFCompact(totalBalance),
-      accessibleValue: formatXOF(totalBalance),
-      detail: totalBalance >= 0 ? "Solde consolidé positif" : "Solde consolidé à régulariser",
-      icon: WalletCards,
-      tone: totalBalance >= 0 ? "positive" : "attention",
-    },
-    {
-      label: "Résultat du mois",
-      value: formatXOFCompact(stats.benefice),
-      accessibleValue: formatXOF(stats.benefice),
-      detail: stats.benefice >= 0 ? "Solde positif sur la période" : "Solde à surveiller sur la période",
-      icon: stats.benefice >= 0 ? TrendingUp : TrendingDown,
-      tone: stats.benefice >= 0 ? "positive" : "attention",
-    },
-    {
-      label: "Alertes critiques",
-      value: formatNumber(criticalAlerts),
-      detail: criticalAlerts > 0 ? "À traiter sans attendre" : "Aucune alerte critique",
-      icon: CircleAlert,
-      tone: criticalAlerts > 0 ? "critical" : "positive",
-    },
-  ];
-}
-
-function CompanyHealthCard({
-  signals,
-  loading,
-}: {
-  signals: CompanyHealthSignal[];
-  loading: boolean;
-}) {
-  const toneClasses: Record<CompanyHealthSignal["tone"], string> = {
-    positive: "bg-success/10 text-success",
-    attention: "bg-warning/15 text-warning-foreground",
-    critical: "bg-destructive/10 text-destructive",
-  };
-
-  return (
-    <Card
-      variant="glass"
-      className="relative overflow-hidden border-primary/15 bg-surface/80 p-4 shadow-sm animate-scale-in motion-reduce:animate-none sm:p-5"
-    >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/55 to-transparent" aria-hidden="true" />
-      <div className="flex items-start gap-3">
-        <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-          <ShieldCheck className="size-4" aria-hidden="true" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-overline text-primary">Santé de l’entreprise</p>
-          <h2 className="mt-1 text-h4 text-foreground">Trois signaux essentiels</h2>
-          <p className="mt-1 text-caption">Trésorerie, résultat et alertes critiques.</p>
-        </div>
-      </div>
-
-      <div className="mt-5 space-y-2.5">
-        {loading
-          ? [0, 1, 2].map((item) => (
-              <div key={item} className="rounded-lg border border-border/70 bg-surface/65 px-3 py-2.5">
-                <Skeleton className="h-3 w-2/5" />
-                <Skeleton className="mt-2 h-4 w-3/5" />
-              </div>
-            ))
-          : signals.map((signal) => {
-              const Icon = signal.icon;
-              return (
-                <div key={signal.label} className="flex items-center gap-3 rounded-lg border border-border/70 bg-surface/65 px-3 py-2.5">
-                  <div className={`grid size-7 shrink-0 place-items-center rounded-md ${toneClasses[signal.tone]}`}>
-                    <Icon className="size-3.5" aria-hidden="true" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-caption font-medium text-foreground">{signal.label}</p>
-                    <p className="truncate text-caption">{signal.detail}</p>
-                  </div>
-                  <p className="max-w-24 shrink-0 truncate text-right text-body-sm font-semibold tabular-nums text-foreground" title={signal.accessibleValue}>
-                    {signal.accessibleValue ? <span aria-hidden="true">{signal.value}</span> : signal.value}
-                    {signal.accessibleValue ? <span className="sr-only">{signal.accessibleValue}</span> : null}
-                  </p>
-                </div>
-              );
-            })}
-      </div>
-    </Card>
-  );
-}
-
 function SectionHeading({
   eyebrow,
   title,
@@ -675,69 +440,6 @@ function SectionHeading({
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </div>
-  );
-}
-
-function KpiCard({
-  label,
-  value,
-  accessibleValue,
-  detail,
-  icon: Icon,
-  tone,
-  to,
-  animationDelay,
-}: {
-  label: string;
-  value: string | null;
-  accessibleValue?: string;
-  detail: string;
-  icon: LucideIcon;
-  tone: "primary" | "success" | "danger" | "warning" | "info";
-  to: DashboardRoute;
-  animationDelay: string;
-}) {
-  const iconClasses: Record<typeof tone, string> = {
-    primary: "bg-primary/10 text-primary",
-    success: "bg-success/10 text-success",
-    danger: "bg-destructive/10 text-destructive",
-    warning: "bg-warning/15 text-warning-foreground",
-    info: "bg-info/10 text-info",
-  };
-  const accentClasses: Record<typeof tone, string> = {
-    primary: "from-primary/70 via-primary/20 to-transparent",
-    success: "from-success/75 via-success/20 to-transparent",
-    danger: "from-destructive/75 via-destructive/20 to-transparent",
-    warning: "from-warning/80 via-warning/20 to-transparent",
-    info: "from-info/75 via-info/20 to-transparent",
-  };
-
-  return (
-    <Link
-      to={to}
-      className="group block rounded-xl animate-fade-in motion-reduce:animate-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      style={{ animationDelay }}
-    >
-      <Card variant="kpi" className="relative h-full overflow-hidden border-border/80 p-4 transition-[border-color,box-shadow,transform] transition-ui hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none">
-        <div className={`pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r ${accentClasses[tone]}`} aria-hidden="true" />
-        <div className="flex items-start justify-between gap-3">
-          <p className="pt-1 text-label text-muted-foreground">{label}</p>
-          <div className={`grid size-9 place-items-center rounded-xl ${iconClasses[tone]}`}>
-            <Icon className="size-4" aria-hidden="true" />
-          </div>
-        </div>
-        {value === null ? <Skeleton className="mt-5 h-8 w-3/4" /> : (
-          <p className="mt-5 min-w-0 truncate text-[clamp(1.25rem,1.7vw,1.75rem)] font-semibold leading-none tracking-[-0.03em] tabular-nums text-foreground" title={accessibleValue}>
-            {accessibleValue ? <span aria-hidden="true">{value}</span> : value}
-            {accessibleValue ? <span className="sr-only">{accessibleValue}</span> : null}
-          </p>
-        )}
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <p className="min-w-0 truncate text-caption">{detail}</p>
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform transition-ui-fast group-hover:translate-x-0.5 motion-reduce:transform-none" aria-hidden="true" />
-        </div>
-      </Card>
-    </Link>
   );
 }
 
