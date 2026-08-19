@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
-import { ModuleHero } from "@/components/ui/module-hero";
+import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { runNotificationsManually } from "@/lib/alert-settings.functions";
 import {
@@ -111,9 +111,7 @@ function NotificationsPage() {
 
   return (
     <div className="space-y-7">
-      <ModuleHero
-        icon={Bell}
-        eyebrow="Pilotage"
+      <PageHeader
         title="Centre de notifications"
         description="Priorisez les échéances et anomalies détectées par l’ERP, puis ouvrez directement la donnée qui demande une action."
         actions={

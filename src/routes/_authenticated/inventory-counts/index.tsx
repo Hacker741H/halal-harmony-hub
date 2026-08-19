@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { ModuleHero } from "@/components/ui/module-hero";
+import { MetricCard } from "@/components/ui/metric-card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -66,19 +67,16 @@ function InventoryCountsPage() {
   };
 
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
-    <ModuleHero
-      icon={ClipboardList}
-      eyebrow="Commerce"
+    <PageHeader
       title="Inventaires physiques"
       description="Comptez le stock réel d’un magasin puis validez : chaque écart ajuste le stock au coût moyen courant, sans jamais créer d’écriture financière."
       actions={can("inventory.counts.create") ? <Button onClick={() => setCreateOpen(true)}><Plus className="size-4" />Nouvel inventaire</Button> : undefined}
-    >
-      <div className="grid gap-3 sm:grid-cols-3">
-        <HeroKpi icon={ClipboardList} label="Ouverts" value={countsQuery.isPending ? null : String(overview.open)} detail="Sur la page affichée" />
-        <HeroKpi icon={ClipboardCheck} label="Validés" value={countsQuery.isPending ? null : String(overview.completed)} detail="Sur la page affichée" />
-        <HeroKpi icon={ClipboardX} label="Annulés" value={countsQuery.isPending ? null : String(overview.cancelled)} detail="Sur la page affichée" />
-      </div>
-    </ModuleHero>
+    />
+    <div className="grid gap-3 sm:grid-cols-3">
+      <MetricCard icon={ClipboardList} label="Ouverts" value={countsQuery.isPending ? "…" : overview.open} description="Sur la page affichée" tone="info" />
+      <MetricCard icon={ClipboardCheck} label="Validés" value={countsQuery.isPending ? "…" : overview.completed} description="Sur la page affichée" tone="success" />
+      <MetricCard icon={ClipboardX} label="Annulés" value={countsQuery.isPending ? "…" : overview.cancelled} description="Sur la page affichée" tone="danger" />
+    </div>
 
     <Card variant="section">
       <CardContent className="space-y-4 p-5">
@@ -126,10 +124,6 @@ function InventoryCountsPage() {
 
     <CreateInventoryCountDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={(countId) => void navigate({ to: "/inventory-counts/$countId", params: { countId } })} />
   </div>;
-}
-
-function HeroKpi({ icon: Icon, label, value, detail }: { icon: typeof ClipboardList; label: string; value: string | null; detail: string }) {
-  return <div className="rounded-xl border border-border/60 bg-surface-elevated/60 p-4"><div className="flex items-center gap-2 text-muted-foreground"><Icon className="size-4" aria-hidden="true" /><span className="text-xs font-medium uppercase tracking-wide">{label}</span></div><p className="mt-2 text-xl font-semibold tabular-nums">{value ?? "—"}</p><p className="text-xs text-muted-foreground">{detail}</p></div>;
 }
 
 function CreateInventoryCountDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (open: boolean) => void; onCreated: (countId: string) => void }) {

@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Contact, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { SupplierForm } from "@/components/suppliers/supplier-form";
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { ModuleHero } from "@/components/ui/module-hero";
+import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useConfirm } from "@/hooks/use-confirm";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -65,9 +65,7 @@ function SuppliersPage() {
 
   return (
     <div className="space-y-7">
-      <ModuleHero
-        icon={Contact}
-        eyebrow="Référentiel commercial"
+      <PageHeader
         title="Fournisseurs"
         description="Un référentiel fournisseur unique pour tracer les achats, réceptions et dettes sans dupliquer les coordonnées."
         actions={

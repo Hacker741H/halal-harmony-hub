@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
-import { ModuleHero } from "@/components/ui/module-hero";
+import { PageHeader } from "@/components/ui/page-header";
 import { getEmployees, type Employee } from "@/lib/employees.functions";
 
 export const Route = createFileRoute("/_authenticated/employees/")({
@@ -57,9 +57,7 @@ function EmployeesPage() {
 
   return (
     <div className="space-y-7">
-      <ModuleHero
-        icon={Users}
-        eyebrow="Ressources"
+      <PageHeader
         title="Équipe et rémunérations"
         description="Accédez au référentiel de l’équipe et aux actions de gestion déjà autorisées, dans un espace plus clair et plus serein."
         actions={

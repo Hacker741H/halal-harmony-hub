@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
-import { ModuleHero } from "@/components/ui/module-hero";
+import { PageHeader } from "@/components/ui/page-header";
 import { useConfirm } from "@/hooks/use-confirm";
 import { formatNumber } from "@/lib/format";
 import { deleteVehicle, getVehicles, type Vehicle } from "@/lib/vehicles.functions";
@@ -88,9 +88,7 @@ function VehiclesPage() {
           }
         }}
       >
-        <ModuleHero
-          icon={Truck}
-          eyebrow="Mobilité"
+        <PageHeader
           title="Parc véhicules"
           description="Repérez immédiatement les véhicules prêts à rouler, les immobilisations et les données de kilométrage déjà enregistrées."
           actions={

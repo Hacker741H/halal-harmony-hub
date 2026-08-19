@@ -12,9 +12,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ModuleHero } from "@/components/ui/module-hero";
+import { MetricCard } from "@/components/ui/metric-card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
 import { usePermissions } from "@/hooks/use-permissions";
 import { COMMERCIAL_SALE_STATUSES, getCommercialSales } from "@/lib/commercial-sales.functions";
 
@@ -77,14 +77,13 @@ function SalesPage() {
   }
 
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
-    <ModuleHero icon={ReceiptText} eyebrow="Commerce · Agriculture" title="Ventes & créances" description="Préparez une vente, facturez le client puis enregistrez les encaissements sur le wallet choisi. Les comptes clients restent lisibles sans double saisie." actions={can("sales.create") ? <Button onClick={() => setCreateOpen(true)}><Plus className="size-4" />Nouvelle vente</Button> : undefined}>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <HeroKpi icon={FileText} label="Brouillons" value={summaryUnavailable ? null : String(overview.drafts)} detail="Ventes à compléter" tone="info" />
-        <HeroKpi icon={ReceiptText} label="Ventes confirmées" value={summaryUnavailable ? null : String(overview.confirmed)} detail="Sur la page affichée" tone="success" />
-        <HeroKpi icon={CircleDollarSign} label="Facturé" value={summaryUnavailable || !canReadFinance ? null : formatAmount(overview.invoiced)} detail={canReadFinance ? "Sur la page affichée" : "Accès financier requis"} tone="warning" />
-        <HeroKpi icon={Landmark} label="Reste à encaisser" value={summaryUnavailable || !canReadFinance ? null : formatAmount(overview.due)} detail={canReadFinance ? "Sur la page affichée" : "Accès financier requis"} tone="danger" />
-      </div>
-    </ModuleHero>
+    <PageHeader title="Ventes & créances" description="Préparez une vente, facturez le client puis enregistrez les encaissements sur le wallet choisi. Les comptes clients restent lisibles sans double saisie." actions={can("sales.create") ? <Button onClick={() => setCreateOpen(true)}><Plus className="size-4" />Nouvelle vente</Button> : undefined} />
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <MetricCard icon={FileText} label="Brouillons" value={summaryUnavailable ? "…" : overview.drafts} description="Ventes à compléter" tone="info" />
+      <MetricCard icon={ReceiptText} label="Ventes confirmées" value={summaryUnavailable ? "…" : overview.confirmed} description="Sur la page affichée" tone="success" />
+      <MetricCard icon={CircleDollarSign} label="Facturé" value={summaryUnavailable || !canReadFinance ? "…" : formatAmount(overview.invoiced)} description={canReadFinance ? "Sur la page affichée" : "Accès financier requis"} tone="warning" />
+      <MetricCard icon={Landmark} label="Reste à encaisser" value={summaryUnavailable || !canReadFinance ? "…" : formatAmount(overview.due)} description={canReadFinance ? "Sur la page affichée" : "Accès financier requis"} tone="danger" />
+    </div>
 
     <Card variant="section" className="border-border/80"><CardContent className="space-y-4 p-4 sm:p-5">
       <div className="flex flex-col gap-3 border-b border-border/70 pb-4 lg:flex-row lg:items-center lg:justify-between"><div><p className="text-label text-foreground">Trouver et filtrer</p><p className="mt-1 text-caption">Les filtres sont appliqués à la liste des ventes ci-dessous.</p></div><p className="text-caption tabular-nums text-muted-foreground">{total} vente{total > 1 ? "s" : ""} trouvée{total > 1 ? "s" : ""}</p></div>
@@ -97,9 +96,4 @@ function SalesPage() {
 
     <Dialog open={createOpen} onOpenChange={setCreateOpen}><DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto"><DialogHeader><DialogTitle>Nouvelle vente</DialogTitle></DialogHeader><CommercialSaleForm onSuccess={(saleId) => { setCreateOpen(false); void navigate({ to: "/sales/$saleId", params: { saleId } }); }} /></DialogContent></Dialog>
   </div>;
-}
-
-function HeroKpi({ icon: Icon, label, value, detail, tone }: { icon: typeof FileText; label: string; value: string | null; detail: string; tone: "info" | "success" | "warning" | "danger" }) {
-  const tones = { info: "bg-info/10 text-info", success: "bg-success/10 text-success", warning: "bg-warning/15 text-warning-foreground", danger: "bg-destructive/10 text-destructive" };
-  return <Card variant="glass" className="border-border/70 bg-surface/75 p-4"><div className="flex items-start justify-between gap-3"><p className="text-label text-muted-foreground">{label}</p><div className={`grid size-9 place-items-center rounded-xl ${tones[tone]}`}><Icon className="size-4" aria-hidden="true" /></div></div>{value === null ? <Skeleton className="mt-5 h-7 w-3/4" /> : <p className="mt-5 truncate text-[clamp(1.25rem,1.8vw,1.8rem)] font-semibold leading-none tracking-[-0.03em] tabular-nums text-foreground" title={value}>{value}</p>}<p className="mt-3 truncate text-caption" title={detail}>{detail}</p></Card>;
 }

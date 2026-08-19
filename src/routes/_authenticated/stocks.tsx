@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
-import { ModuleHero } from "@/components/ui/module-hero";
+import { PageHeader } from "@/components/ui/page-header";
 import { useConfirm } from "@/hooks/use-confirm";
 import { cancelStockMovement, getStockMovements } from "@/lib/stock-movements.functions";
 import { deleteStock, getStocks, type Stock } from "@/lib/stocks.functions";
@@ -102,9 +102,7 @@ function StocksPage() {
 
   return (
     <div className="space-y-7">
-      <ModuleHero
-        icon={Package}
-        eyebrow="Agriculture & stocks"
+      <PageHeader
         title="Stocks et mouvements"
         description="Suivez les articles disponibles, les seuils sensibles et les derniers mouvements sans perdre le lien avec les opérations enregistrées."
         actions={

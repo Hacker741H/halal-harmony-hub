@@ -9,7 +9,7 @@ import { FinanceTable } from "@/components/finance-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ModuleHero } from "@/components/ui/module-hero";
+import { PageHeader } from "@/components/ui/page-header";
 import { useConfirm } from "@/hooks/use-confirm";
 import { formatXOF } from "@/lib/format";
 import {
@@ -112,10 +112,8 @@ export function FinanceOperationPage({
 
   return (
     <>
-      <div className="space-y-7">
-        <ModuleHero
-          icon={icon}
-          eyebrow="Finance centrale"
+      <div className="space-y-5">
+        <PageHeader
           title={title}
           description={description}
           actions={

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
-import { ModuleHero } from "@/components/ui/module-hero";
+import { PageHeader } from "@/components/ui/page-header";
 import { useConfirm } from "@/hooks/use-confirm";
 import { deleteFarm, getFarms, type Farm } from "@/lib/farms.functions";
 
@@ -59,12 +59,9 @@ function FarmsPage() {
   return (
     <div className="space-y-7">
       <Dialog open={open} onOpenChange={setOpen}>
-        <ModuleHero
-          icon={Sprout}
-          eyebrow="Agriculture"
+        <PageHeader
           title="Exploitations agricoles"
           description="Visualisez les sites de production, les cultures suivies et la superficie qui soutient votre activité."
-          className="from-success/10 via-surface-elevated to-surface"
           actions={
             <DialogTrigger asChild>
               <Button>

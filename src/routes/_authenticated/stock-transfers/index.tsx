@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ModuleHero } from "@/components/ui/module-hero";
+import { MetricCard } from "@/components/ui/metric-card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -60,19 +61,16 @@ function StockTransfersPage() {
   };
 
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
-    <ModuleHero
-      icon={ArrowLeftRight}
-      eyebrow="Commerce"
+    <PageHeader
       title="Transferts inter-magasins"
       description="Expédiez du stock d’un magasin vers un autre : le coût est figé à l’expédition, la destination recalcule sa propre moyenne. Aucune écriture financière."
       actions={can("transfers.create") ? <Button onClick={() => setCreateOpen(true)}><ArrowLeftRight className="size-4" />Nouveau transfert</Button> : undefined}
-    >
-      <div className="grid gap-3 sm:grid-cols-3">
-        <HeroKpi icon={PackageOpen} label="À préparer" value={transfersQuery.isPending ? null : String(overview.toPrepare)} detail="Sur la page affichée" />
-        <HeroKpi icon={Truck} label="En transit" value={transfersQuery.isPending ? null : String(overview.inTransit)} detail="Sur la page affichée" />
-        <HeroKpi icon={PackageCheck} label="Reçus" value={transfersQuery.isPending ? null : String(overview.received)} detail="Sur la page affichée" />
-      </div>
-    </ModuleHero>
+    />
+    <div className="grid gap-3 sm:grid-cols-3">
+      <MetricCard icon={PackageOpen} label="À préparer" value={transfersQuery.isPending ? "…" : overview.toPrepare} description="Sur la page affichée" tone="warning" />
+      <MetricCard icon={Truck} label="En transit" value={transfersQuery.isPending ? "…" : overview.inTransit} description="Sur la page affichée" tone="info" />
+      <MetricCard icon={PackageCheck} label="Reçus" value={transfersQuery.isPending ? "…" : overview.received} description="Sur la page affichée" tone="success" />
+    </div>
 
     <Card variant="section">
       <CardContent className="space-y-4 p-5">
@@ -126,8 +124,4 @@ function StockTransfersPage() {
       </DialogContent>
     </Dialog>
   </div>;
-}
-
-function HeroKpi({ icon: Icon, label, value, detail }: { icon: typeof ArrowLeftRight; label: string; value: string | null; detail: string }) {
-  return <div className="rounded-xl border border-border/60 bg-surface-elevated/60 p-4"><div className="flex items-center gap-2 text-muted-foreground"><Icon className="size-4" aria-hidden="true" /><span className="text-xs font-medium uppercase tracking-wide">{label}</span></div><p className="mt-2 text-xl font-semibold tabular-nums">{value ?? "—"}</p><p className="text-xs text-muted-foreground">{detail}</p></div>;
 }

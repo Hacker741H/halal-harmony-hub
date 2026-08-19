@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
-import { ModuleHero } from "@/components/ui/module-hero";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatDate, formatXOF } from "@/lib/format";
 import { FINANCE_OPERATION_TYPE_LABELS, getFinanceOperationsByWallet } from "@/lib/finance.functions";
 import { getWallet } from "@/lib/wallet.functions";
@@ -100,35 +100,31 @@ function WalletDetailsPage() {
         </Link>
       </Button>
 
-      <ModuleHero
-        icon={WalletCards}
-        eyebrow="Trésorerie & mouvements"
+      <PageHeader
         title={wallet.name}
         description="Le solde global et les écritures réellement rattachées à ce wallet, sans confondre les flux des autres activités."
-        className={isWave ? "border-info/25" : undefined}
         actions={
           <Badge variant="success" appearance="soft" className="w-fit">
             Wallet actif · {walletTypeLabel}
           </Badge>
         }
-      >
-        <div className="grid gap-3 sm:max-w-xl sm:grid-cols-2">
-          <MetricCard
-            label="Solde disponible"
-            value={format(Number(wallet.balance ?? 0))}
-            description="Toutes les opérations comprises"
-            icon={WalletCards}
-            tone="primary"
-          />
-          <MetricCard
-            label="Mouvements affichés"
-            value={displayedOperations.length}
-            description={isPeriodFiltered ? "Sur la période sélectionnée" : "Depuis l’ouverture du wallet"}
-            icon={ListFilter}
-            tone="info"
-          />
-        </div>
-      </ModuleHero>
+      />
+      <div className="grid gap-3 sm:max-w-xl sm:grid-cols-2">
+        <MetricCard
+          label="Solde disponible"
+          value={format(Number(wallet.balance ?? 0))}
+          description="Toutes les opérations comprises"
+          icon={WalletCards}
+          tone="primary"
+        />
+        <MetricCard
+          label="Mouvements affichés"
+          value={displayedOperations.length}
+          description={isPeriodFiltered ? "Sur la période sélectionnée" : "Depuis l’ouverture du wallet"}
+          icon={ListFilter}
+          tone="info"
+        />
+      </div>
 
       {isWave ? (
         <Card variant="information" className="grid gap-4 p-5 md:grid-cols-3">

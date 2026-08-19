@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
-import { ModuleHero } from "@/components/ui/module-hero";
+import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getAllMotorcycleMaintenances, type MotorcycleMaintenance } from "@/lib/motorcycle-maintenances.functions";
 import { getMotorcycles, type Motorcycle } from "@/lib/motorcycles.functions";
@@ -137,9 +137,7 @@ function MaintenancePage() {
 
   return (
     <div className="space-y-7">
-      <ModuleHero
-        icon={Wrench}
-        eyebrow="Mobilité"
+      <PageHeader
         title="Entretiens des actifs"
         description="Retrouvez les entretiens véhicules et motos dans un seul registre, avec les actions de création déjà disponibles."
         actions={

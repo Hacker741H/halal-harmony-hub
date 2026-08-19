@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState, ErrorState } from "@/components/ui/empty-state";
 import { MetricCard } from "@/components/ui/metric-card";
-import { ModuleHero } from "@/components/ui/module-hero";
+import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getContracts } from "@/lib/contracts.functions";
 
@@ -46,9 +46,7 @@ function ContractsPage() {
 
   return (
     <div className="space-y-7">
-      <ModuleHero
-        icon={FileSignature}
-        eyebrow="Administration"
+      <PageHeader
         title="Contrats et engagements"
         description="Centralisez les contrats, leurs références et les échéances déjà saisies dans l’ERP."
         actions={

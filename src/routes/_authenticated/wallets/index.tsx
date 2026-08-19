@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
-import { ModuleHero } from "@/components/ui/module-hero";
+import { PageHeader } from "@/components/ui/page-header";
 import { useConfirm } from "@/hooks/use-confirm";
 import { deleteWallet, getWallets, getWalletStats, type Wallet as WalletType } from "@/lib/wallet.functions";
 
@@ -61,9 +61,7 @@ function WalletsPage() {
 
   return (
     <div className="space-y-7">
-      <ModuleHero
-        icon={WalletCards}
-        eyebrow="Finance centrale"
+      <PageHeader
         title="Wallets et trésorerie"
         description="Chaque mouvement passe par un wallet. Gardez une lecture fiable des soldes disponibles et des comptes à piloter."
         actions={

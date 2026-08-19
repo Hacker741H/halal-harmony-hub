@@ -10,7 +10,6 @@ import {
   History,
   Pencil,
   ShieldCheck,
-  UserRound,
   Wallet,
 } from "lucide-react";
 
@@ -21,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
-import { ModuleHero } from "@/components/ui/module-hero";
+import { PageHeader } from "@/components/ui/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DriverForm } from "@/components/drivers/driver-form";
 import { getDriverAssignments } from "@/lib/assignments.functions";
@@ -112,9 +111,7 @@ function DriverDetailsContent({ driverId }: { driverId: string }) {
         </Link>
       </Button>
 
-      <ModuleHero
-        icon={UserRound}
-        eyebrow="Profil opérationnel"
+      <PageHeader
         title={driverName}
         description="Une vue unique des affectations, contrats, documents et opérations liés à ce chauffeur."
         actions={
@@ -132,38 +129,37 @@ function DriverDetailsContent({ driverId }: { driverId: string }) {
             </Button>
           </>
         }
-      >
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            label="Véhicules affectés"
-            value={assignments.vehicles.length}
-            description="Affectations enregistrées"
-            icon={Car}
-            tone="info"
-          />
-          <MetricCard
-            label="Motos affectées"
-            value={assignments.motorcycles.length}
-            description="Affectations enregistrées"
-            icon={Bike}
-            tone="primary"
-          />
-          <MetricCard
-            label="Documents liés"
-            value={documents.length}
-            description="Documents accessibles"
-            icon={FileText}
-            tone="success"
-          />
-          <MetricCard
-            label="Opérations liées"
-            value={finance.length}
-            description="Écritures financières associées"
-            icon={CircleDollarSign}
-            tone="warning"
-          />
-        </div>
-      </ModuleHero>
+      />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Véhicules affectés"
+          value={assignments.vehicles.length}
+          description="Affectations enregistrées"
+          icon={Car}
+          tone="info"
+        />
+        <MetricCard
+          label="Motos affectées"
+          value={assignments.motorcycles.length}
+          description="Affectations enregistrées"
+          icon={Bike}
+          tone="primary"
+        />
+        <MetricCard
+          label="Documents liés"
+          value={documents.length}
+          description="Documents accessibles"
+          icon={FileText}
+          tone="success"
+        />
+        <MetricCard
+          label="Opérations liées"
+          value={finance.length}
+          description="Écritures financières associées"
+          icon={CircleDollarSign}
+          tone="warning"
+        />
+      </div>
 
       <Tabs defaultValue="informations" className="space-y-4">
         <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl border bg-surface-elevated/80 p-1.5">

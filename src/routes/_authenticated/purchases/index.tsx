@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { ModuleHero } from "@/components/ui/module-hero";
+import { MetricCard } from "@/components/ui/metric-card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -59,19 +60,16 @@ function PurchasesPage() {
   };
 
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
-    <ModuleHero
-      icon={ShoppingCart}
-      eyebrow="Commerce"
+    <PageHeader
       title="Achats & fournisseurs"
       description="Réceptionnez un achat fournisseur puis réglez la dette au fil de l’eau. La réception ne touche jamais un wallet directement."
       actions={can("purchases.create") ? <Button onClick={() => setCreateOpen(true)}><Plus className="size-4" />Nouvel achat</Button> : undefined}
-    >
-      <div className="grid gap-3 sm:grid-cols-3">
-        <HeroKpi icon={ShoppingCart} label="Achats réceptionnés" value={summaryUnavailable ? null : String(overview.received)} detail="Sur la page affichée" />
-        <HeroKpi icon={CircleDollarSign} label="Total acheté" value={summaryUnavailable || !canReadFinance ? null : formatAmount(overview.total)} detail={canReadFinance ? "Sur la page affichée" : "Accès financier requis"} />
-        <HeroKpi icon={Landmark} label="Reste dû" value={summaryUnavailable || !canReadFinance ? null : formatAmount(overview.due)} detail={canReadFinance ? "Sur la page affichée" : "Accès financier requis"} />
-      </div>
-    </ModuleHero>
+    />
+    <div className="grid gap-3 sm:grid-cols-3">
+      <MetricCard icon={ShoppingCart} label="Achats réceptionnés" value={summaryUnavailable ? "…" : overview.received} description="Sur la page affichée" tone="success" />
+      <MetricCard icon={CircleDollarSign} label="Total acheté" value={summaryUnavailable || !canReadFinance ? "…" : formatAmount(overview.total)} description={canReadFinance ? "Sur la page affichée" : "Accès financier requis"} tone="info" />
+      <MetricCard icon={Landmark} label="Reste dû" value={summaryUnavailable || !canReadFinance ? "…" : formatAmount(overview.due)} description={canReadFinance ? "Sur la page affichée" : "Accès financier requis"} tone="warning" />
+    </div>
 
     <Card variant="section">
       <CardContent className="space-y-4 p-5">
@@ -126,8 +124,4 @@ function PurchasesPage() {
       </DialogContent>
     </Dialog>
   </div>;
-}
-
-function HeroKpi({ icon: Icon, label, value, detail }: { icon: typeof ShoppingCart; label: string; value: string | null; detail: string }) {
-  return <div className="rounded-xl border border-border/60 bg-surface-elevated/60 p-4"><div className="flex items-center gap-2 text-muted-foreground"><Icon className="size-4" aria-hidden="true" /><span className="text-xs font-medium uppercase tracking-wide">{label}</span></div><p className="mt-2 text-xl font-semibold tabular-nums">{value ?? "—"}</p><p className="text-xs text-muted-foreground">{detail}</p></div>;
 }
