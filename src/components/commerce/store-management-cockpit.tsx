@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createCommercePosId } from "@/lib/commerce-pos-session";
+import { formatNumber, formatXOF } from "@/lib/format";
 import {
   cancelCommerceStoreExpense,
   cancelCommerceStorePlannedExpense,
@@ -40,8 +41,8 @@ import {
 // (from) fiable depuis un composant enfant.
 const commerceRouteApi = getRouteApi("/_authenticated/commerce/");
 
-const money = (amount: number | null | undefined) => amount === null || amount === undefined ? "Non certifiable" : `${amount.toLocaleString("fr-FR")} FCFA`;
-const number = (value: number) => value.toLocaleString("fr-FR", { maximumFractionDigits: 3 });
+const money = (amount: number | null | undefined) => amount === null || amount === undefined ? "Non certifiable" : formatXOF(amount);
+const number = formatNumber;
 const day = (value: string) => format(new Date(`${value.slice(0, 10)}T00:00:00`), "d MMM yyyy", { locale: fr });
 const dateTime = (value: string | null) => value ? format(new Date(value), "d MMM yyyy · HH:mm", { locale: fr }) : "Aucune activité";
 
@@ -194,7 +195,13 @@ export function StoreManagementCockpit({
 }
 
 function CockpitSkeleton() { return <div className="space-y-4"><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">{Array.from({ length: 6 }).map((_, index) => <Skeleton key={index} className="h-28" />)}</div><div className="grid gap-4 xl:grid-cols-2"><Skeleton className="h-72" /><Skeleton className="h-72" /></div></div>; }
-function Status({ value }: { value: string }) { return <span className={`rounded-full px-2 py-1 text-xs font-semibold ${value === "ACTIVE" || value === "CONFIRMED" || value === "SYNCED" || value === "PROCESSED" || value === "PAID" || value === "RECEIVED" ? "bg-success/10 text-success" : value === "CANCELLED" ? "bg-muted text-muted-foreground" : value === "REVIEW_REQUIRED" || value === "CONFLICT" || value === "OVERDUE" ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"}`}>{value.replaceAll("_", " ")}</span>; }
+const statusLabels: Record<string, string> = {
+  ACTIVE: "Actif", CANCELLED: "Annulé", CONFIRMED: "Confirmé", CONFLICT: "Conflit",
+  DRAFT: "Brouillon", OVERDUE: "En retard", PAID: "Payé", PARTIALLY_RECEIVED: "Partiellement reçu",
+  PENDING_CONTROL: "En attente de contrôle", PLANNED: "Planifié", PROCESSED: "Traité",
+  RECEIVED: "Reçu", REVIEW_REQUIRED: "À vérifier", SYNCED: "Synchronisé",
+};
+function Status({ value }: { value: string }) { return <span className={`rounded-full px-2 py-1 text-xs font-semibold ${value === "ACTIVE" || value === "CONFIRMED" || value === "SYNCED" || value === "PROCESSED" || value === "PAID" || value === "RECEIVED" ? "bg-success/10 text-success" : value === "CANCELLED" ? "bg-muted text-muted-foreground" : value === "REVIEW_REQUIRED" || value === "CONFLICT" || value === "OVERDUE" ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"}`}>{statusLabels[value] ?? value.replaceAll("_", " ")}</span>; }
 function Empty({ label }: { label: string }) { return <div className="flex min-h-24 items-center justify-center text-center text-sm text-muted-foreground">{label}</div>; }
 function DataRow({ label, value }: { label: string; value: string }) { return <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">{label}</span><span className="text-right font-medium tabular-nums">{value}</span></div>; }
 function Kpi({ label, value, detail, icon: Icon, onClick }: { label: string; value: string; detail: string; icon: typeof Store; onClick: () => void }) { return <button type="button" onClick={onClick} className="rounded-xl border border-border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><div className="flex items-start justify-between gap-2"><span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</span><Icon className="size-4 text-primary" /></div><span className="mt-3 block text-xl font-semibold tabular-nums">{value}</span><span className="mt-1 block truncate text-xs text-muted-foreground" title={detail}>{detail}</span></button>; }
@@ -267,7 +274,7 @@ function ControlReportsSection({ locationId, from, to }: { locationId: string; f
           <StatusFilterChip label="Reçu conforme" count={workspace.counts.received} active={status === "RECEIVED"} onClick={() => toggleStatus("RECEIVED")} tone="success" />
           <StatusFilterChip label="Écart à vérifier" count={workspace.counts.reviewRequired} active={status === "REVIEW_REQUIRED"} onClick={() => toggleStatus("REVIEW_REQUIRED")} tone="destructive" />
         </div>
-        {workspace.reports.length ? <div className="overflow-x-auto rounded-lg border border-border"><table className="w-full min-w-[980px] text-sm"><thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><Th>Session / terminal</Th><Th>Caissier</Th><Th>Clôture</Th><Th right>CA total</Th><Th right>Espèces attendues</Th><Th right>Reçu</Th><Th right>Restant</Th><Th>Statut</Th></tr></thead><tbody className="divide-y divide-border/60">{workspace.reports.map((report) => <tr key={report.id} className="cursor-pointer hover:bg-muted/20" onClick={() => setSelectedReportId(report.id)}><Td><strong>{report.cashSessionId}</strong><span className="block text-xs text-muted-foreground">{report.terminalId}</span></Td><Td>{report.cashier}</Td><Td>{dateTime(report.closedAt)}</Td><Td right strong>{money(report.totalRevenue)}</Td><Td right>{money(report.cashExpected)}</Td><Td right>{money(report.receivedTotal)}</Td><Td right>{money(report.remainingAmount)}</Td><Td><ControlStatusBadge value={report.controlStatus} /></Td></tr>)}</tbody></table></div> : <Empty label="Aucun rapport de clôture sur cette période." />}
+        {workspace.reports.length ? <div className="overflow-x-auto rounded-lg border border-border"><table className="w-full min-w-[980px] text-sm"><thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><Th>Session / terminal</Th><Th>Caissier</Th><Th>Clôture</Th><Th right>CA total</Th><Th right>Espèces attendues</Th><Th right>Reçu</Th><Th right>Restant</Th><Th>Statut</Th></tr></thead><tbody className="divide-y divide-border/60">{workspace.reports.map((report) => <tr key={report.id} className="cursor-pointer hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset" role="button" tabIndex={0} onClick={() => setSelectedReportId(report.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedReportId(report.id); } }}><Td><strong>{report.cashSessionId}</strong><span className="block text-xs text-muted-foreground">{report.terminalId}</span></Td><Td>{report.cashier}</Td><Td>{dateTime(report.closedAt)}</Td><Td right strong>{money(report.totalRevenue)}</Td><Td right>{money(report.cashExpected)}</Td><Td right>{money(report.receivedTotal)}</Td><Td right>{money(report.remainingAmount)}</Td><Td><ControlStatusBadge value={report.controlStatus} /></Td></tr>)}</tbody></table></div> : <Empty label="Aucun rapport de clôture sur cette période." />}
       </> : null}
     </CardContent>
     {selectedReportId ? <ControlReportDetailDialog reportId={selectedReportId} locationId={locationId} onClose={() => setSelectedReportId(null)} /> : null}
