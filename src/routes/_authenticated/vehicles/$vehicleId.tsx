@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { MetricCard } from "@/components/ui/metric-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DriverAssignmentPanel } from "@/components/assignments/driver-assignment-panel";
@@ -27,6 +28,7 @@ import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab"
 import { EntityAlertsSection } from "@/components/notifications/entity-alerts-section";
 import VehicleForm from "@/components/vehicles/vehicle-form";
 import { VehicleMaintenanceForm } from "@/components/vehicles/vehicle-maintenance-form";
+import { useConfirm } from "@/hooks/use-confirm";
 import {
   deleteVehicleMaintenance,
   getVehicle,
@@ -42,15 +44,12 @@ import {
 import { getDocumentsForRelation } from "@/lib/documents.functions";
 import { archiveDocument } from "@/lib/documents.functions";
 import { FINANCE_OPERATION_TYPE_LABELS } from "@/lib/finance.functions";
+import { formatNumber, formatXOF } from "@/lib/format";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/vehicles/$vehicleId")({
   component: VehicleDetailsPage,
 });
-
-function formatAmount(value: number | null) {
-  return `${Number(value ?? 0).toLocaleString("fr-FR")} FCFA`;
-}
 
 function formatDate(value: string | null) {
   if (!value) return "-";
@@ -114,6 +113,8 @@ function VehicleDetailsPage() {
     },
   });
 
+  const { confirm, dialog } = useConfirm();
+
   const archiveDocumentMutation = useMutation({
     mutationFn: archiveDocument,
     onSuccess: async () => {
@@ -129,8 +130,12 @@ function VehicleDetailsPage() {
   });
 
   function removeDocument(documentId: string) {
-    if (!window.confirm("Supprimer ce document ?")) return;
-    archiveDocumentMutation.mutate({ data: { id: documentId } });
+    confirm({
+      title: "Supprimer ce document",
+      description: "Supprimer ce document ?",
+      variant: "destructive",
+      onConfirm: async () => { await archiveDocumentMutation.mutateAsync({ data: { id: documentId } }); },
+    });
   }
 
   async function refreshMaintenances() {
@@ -249,46 +254,35 @@ function VehicleDetailsPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm">Kilométrage</CardTitle>
-            <Gauge className="h-5 w-5 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {(vehicle.kilometrage ?? 0).toLocaleString("fr-FR")} km
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm">Prix d'achat</CardTitle>
-            <CircleDollarSign className="h-5 w-5 text-success" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatAmount(vehicle.purchase_price)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm">Entretiens</CardTitle>
-            <Wrench className="h-5 w-5 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{maintenances.length}</div>
-            <p className="text-xs text-muted-foreground">{formatAmount(maintenanceTotal)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm">Dépenses liées</CardTitle>
-            <CircleDollarSign className="h-5 w-5 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatAmount(expenseTotal)}</div>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          icon={Gauge}
+          label="Kilométrage"
+          value={`${formatNumber(vehicle.kilometrage ?? 0)} km`}
+          description="Compteur relevé"
+          tone="info"
+        />
+        <MetricCard
+          icon={CircleDollarSign}
+          label="Prix d'achat"
+          value={formatXOF(vehicle.purchase_price)}
+          description="Valeur d'acquisition"
+          tone="success"
+        />
+        <MetricCard
+          icon={Wrench}
+          label="Entretiens"
+          value={maintenances.length}
+          description={formatXOF(maintenanceTotal)}
+          tone="warning"
+        />
+        <MetricCard
+          icon={CircleDollarSign}
+          label="Dépenses liées"
+          value={formatXOF(expenseTotal)}
+          description="Opérations financières de type dépense"
+          tone="danger"
+        />
       </div>
 
       <Tabs defaultValue="informations" className="space-y-6">
@@ -377,9 +371,13 @@ function VehicleDetailsPage() {
                         variant="destructive"
                         disabled={deleteMaintenanceMutation.isPending}
                         onClick={() => {
-                          if (window.confirm("Annuler cet entretien et sa dépense liée ?")) {
-                            deleteMaintenanceMutation.mutate({ data: { id: maintenance.id } });
-                          }
+                          confirm({
+                            title: "Annuler cet entretien",
+                            description: "Annuler cet entretien et sa dépense liée ?",
+                            variant: "destructive",
+                            confirmLabel: "Annuler l'entretien",
+                            onConfirm: async () => { await deleteMaintenanceMutation.mutateAsync({ data: { id: maintenance.id } }); },
+                          });
                         }}
                       >
                         Annuler
@@ -399,7 +397,7 @@ function VehicleDetailsPage() {
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Coût</p>
-                      <p>{formatAmount(maintenance.cout)}</p>
+                      <p>{formatXOF(maintenance.cout)}</p>
                     </div>
                     {maintenance.notes && (
                       <p className="text-sm text-muted-foreground md:col-span-4">
@@ -460,7 +458,7 @@ function VehicleDetailsPage() {
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Montant</p>
-                      <p>{formatAmount(operation.amount)}</p>
+                      <p>{formatXOF(operation.amount)}</p>
                     </div>
                     {operation.description && (
                       <p className="text-sm text-muted-foreground md:col-span-4">
@@ -596,21 +594,27 @@ function VehicleDetailsPage() {
         </TabsContent>
 
         <TabsContent value="statistiques">
-          <div className="grid gap-4 md:grid-cols-3">
-            <Statistic
-              icon={<Gauge className="h-5 w-5" />}
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+            <MetricCard
+              icon={Gauge}
               label="Kilométrage"
-              value={`${(vehicle.kilometrage ?? 0).toLocaleString("fr-FR")} km`}
+              value={`${formatNumber(vehicle.kilometrage ?? 0)} km`}
+              description="Compteur relevé"
+              tone="info"
             />
-            <Statistic
-              icon={<Wrench className="h-5 w-5" />}
+            <MetricCard
+              icon={Wrench}
               label="Coût des entretiens"
-              value={formatAmount(maintenanceTotal)}
+              value={formatXOF(maintenanceTotal)}
+              description={`${maintenances.length} entretien${maintenances.length > 1 ? "s" : ""}`}
+              tone="warning"
             />
-            <Statistic
-              icon={<CircleDollarSign className="h-5 w-5" />}
+            <MetricCard
+              icon={CircleDollarSign}
               label="Coût financier"
-              value={formatAmount(expenseTotal)}
+              value={formatXOF(expenseTotal)}
+              description="Opérations financières de type dépense"
+              tone="danger"
             />
           </div>
         </TabsContent>
@@ -629,6 +633,8 @@ function VehicleDetailsPage() {
           />
         </DialogContent>
       </Dialog>
+
+      {dialog}
     </div>
   );
 }
@@ -644,26 +650,4 @@ function Info({ label, value }: { label: string; value: string | null | undefine
 
 function EmptyState({ label }: { label: string }) {
   return <p className="py-8 text-center text-sm text-muted-foreground">{label}</p>;
-}
-
-function Statistic({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm">{label}</CardTitle>
-        {icon}
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-      </CardContent>
-    </Card>
-  );
 }

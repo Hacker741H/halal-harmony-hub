@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
-import { ArrowLeft, Contact, Pencil } from "lucide-react";
+import { ArrowLeft, Clock, Contact, Package, Pencil, Receipt, Wallet } from "lucide-react";
 
 import { SupplierForm } from "@/components/suppliers/supplier-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { MetricCard } from "@/components/ui/metric-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePermissions } from "@/hooks/use-permissions";
+import { formatXOF } from "@/lib/format";
 import { getSupplier, getSupplierFinancialMetrics, type SupplierFinancialMetrics } from "@/lib/suppliers.functions";
 import { getPurchases } from "@/lib/purchases.functions";
 import type { PurchaseListItem } from "@/lib/purchases.functions";
@@ -18,20 +20,12 @@ export const Route = createFileRoute("/_authenticated/suppliers/$supplierId")({
   component: SupplierDetailsPage,
 });
 
-function formatAmount(value: number | null) {
-  return value === null ? "—" : `${Number(value).toLocaleString("fr-FR")} FCFA`;
-}
-
 function EmptyPanel({ children }: { children: string }) {
   return <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">{children}</CardContent></Card>;
 }
 
 function Info({ label, value }: { label: string; value: string | null }) {
   return <div><p className="text-sm font-medium">{label}</p><p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{value || "—"}</p></div>;
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return <Card><CardHeader className="pb-2"><CardTitle className="text-sm">{label}</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{value}</p></CardContent></Card>;
 }
 
 function purchaseStatusLabel(status: string) {
@@ -135,11 +129,11 @@ function SupplierPurchasesPanel({
       ) : metricsQuery.isError || !metrics ? (
         <EmptyPanel>Impossible de charger les indicateurs. Réessayez dans un instant.</EmptyPanel>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Metric label="Achats" value={String(metrics.purchase_count)} />
-          <Metric label="Total acheté" value={formatAmount(metrics.total_purchased)} />
-          <Metric label="Payé" value={formatAmount(metrics.total_paid)} />
-          <Metric label="Dette restante" value={formatAmount(metrics.amount_due)} />
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard icon={Package} label="Achats" value={metrics.purchase_count} description="Achats enregistrés" />
+          <MetricCard icon={Receipt} label="Total acheté" value={formatXOF(metrics.total_purchased)} description="Montant total des achats" />
+          <MetricCard icon={Wallet} label="Payé" value={formatXOF(metrics.total_paid)} description="Total réglé au fournisseur" tone="success" />
+          <MetricCard icon={Clock} label="Dette restante" value={formatXOF(metrics.amount_due)} description="Solde dû au fournisseur" tone="warning" />
         </div>
       )}
 
@@ -166,7 +160,7 @@ function SupplierPurchasesPanel({
                       <p className="text-xs text-muted-foreground">{new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(new Date(`${purchase.purchase_date}T12:00:00`))}</p>
                     </div>
                     <p className="text-sm font-semibold">
-                      {purchase.amountDue !== null && purchase.amountDue > 0 ? `Reste dû : ${formatAmount(purchase.amountDue)}` : formatAmount(purchase.total_amount)}
+                      {purchase.amountDue !== null && purchase.amountDue > 0 ? `Reste dû : ${formatXOF(purchase.amountDue)}` : formatXOF(purchase.total_amount)}
                     </p>
                   </Link>
                 </li>

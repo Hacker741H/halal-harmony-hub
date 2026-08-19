@@ -20,9 +20,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { DriverAssignmentPanel } from "@/components/assignments/driver-assignment-panel";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
-import { DocumentUpload } from "@/components/documents/document-upload";
 import { EntityAlertsSection } from "@/components/notifications/entity-alerts-section";
 import { MotorcycleForm } from "@/components/motorcycles/motorcycle-form";
+import { MetricCard } from "@/components/ui/metric-card";
+import { useConfirm } from "@/hooks/use-confirm";
 
 import {
   Card,
@@ -48,6 +49,7 @@ import {
 import {
   getMotorcycle,
   getMotorcycleFinanceOperations,
+  MOTORCYCLE_STATUS_LABELS,
 } from "@/lib/motorcycles.functions";
 
 import {
@@ -63,7 +65,6 @@ import {
 import {
   MotorcycleMaintenanceTable,
 } from "@/components/motorcycles/motorcycle-maintenance-table";
-import { getDocumentsForRelation } from "@/lib/documents.functions";
 import { formatNumber, formatXOF } from "@/lib/format";
 
 export const Route = createFileRoute(
@@ -123,10 +124,8 @@ function MotorcycleDetailsPage() {
     queryKey: ["motorcycle-finance-operations", motorcycleId],
     queryFn: () => getMotorcycleFinanceOperations({ data: motorcycleId }),
   });
-  const { data: documents = [] } = useQuery({
-    queryKey: ["motorcycle-documents", motorcycleId],
-    queryFn: () => getDocumentsForRelation({ data: { entity_id: motorcycleId, relation: "motorcycle" } }),
-  });
+
+  const { confirm, dialog } = useConfirm();
 
   const deleteMutation = useMutation({
     mutationFn:
@@ -144,6 +143,16 @@ function MotorcycleDetailsPage() {
       });
     },
   });
+
+  function removeMaintenance(maintenance: MotorcycleMaintenance) {
+    confirm({
+      title: "Annuler cet entretien",
+      description: "Annuler cet entretien et sa dépense liée ?",
+      variant: "destructive",
+      confirmLabel: "Annuler l'entretien",
+      onConfirm: async () => { await deleteMutation.mutateAsync({ data: { id: maintenance.id } }); },
+    });
+  }
 
   if (isPending) {
     return <div>Chargement...</div>;
@@ -197,6 +206,10 @@ function MotorcycleDetailsPage() {
     );
   }
 
+  const expenseTotal = financeOperations
+    .filter((operation) => operation.type === "EXPENSE")
+    .reduce((total, operation) => total + Number(operation.amount), 0);
+
   return (
     <div className="space-y-6">
 
@@ -232,91 +245,39 @@ function MotorcycleDetailsPage() {
 
       </div>
 
-      <div className="grid gap-4 md:grid-cols-5">        <Card>
-
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Statut</CardTitle>
-            <Bike className="h-5 w-5" />
-          </CardHeader>
-
-          <CardContent>
-
-            <div className="text-xl font-semibold">
-              {motorcycle.statut}
-            </div>
-
-          </CardContent>
-
-        </Card>
-
-        <Card>
-
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Kilométrage</CardTitle>
-            <Gauge className="h-5 w-5" />
-          </CardHeader>
-
-          <CardContent>
-
-            <div className="text-xl font-semibold">
-              {formatNumber(motorcycle.kilometrage ?? 0)} km
-            </div>
-
-          </CardContent>
-
-        </Card>
-
-        <Card>
-
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Prix d'achat</CardTitle>
-            <Coins className="h-5 w-5" />
-          </CardHeader>
-
-          <CardContent>
-
-            <div className="text-xl font-semibold">
-              {formatXOF(motorcycle.prix_achat ?? 0)}
-            </div>
-
-          </CardContent>
-
-        </Card>
-
-        <Card>
-
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Assurance</CardTitle>
-            <Shield className="h-5 w-5" />
-          </CardHeader>
-
-          <CardContent>
-
-            <div className="text-sm font-medium">
-              {motorcycle.assurance_expiration ?? "-"}
-            </div>
-
-          </CardContent>
-
-        </Card>
-
-        <Card>
-
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Révision</CardTitle>
-            <Wrench className="h-5 w-5" />
-          </CardHeader>
-
-          <CardContent>
-
-            <div className="text-sm font-medium">
-              {motorcycle.prochaine_revision ?? "-"}
-            </div>
-
-          </CardContent>
-
-        </Card>
-
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-5">
+        <MetricCard
+          icon={Bike}
+          label="Statut"
+          value={MOTORCYCLE_STATUS_LABELS[motorcycle.statut] ?? motorcycle.statut}
+          description="État actuel"
+          tone={motorcycle.statut === "en_reparation" ? "warning" : "success"}
+        />
+        <MetricCard
+          icon={Gauge}
+          label="Kilométrage"
+          value={`${formatNumber(motorcycle.kilometrage ?? 0)} km`}
+          description="Compteur relevé"
+          tone="info"
+        />
+        <MetricCard
+          icon={Coins}
+          label="Prix d'achat"
+          value={formatXOF(motorcycle.prix_achat ?? 0)}
+          description="Valeur d'acquisition"
+        />
+        <MetricCard
+          icon={Shield}
+          label="Assurance"
+          value={motorcycle.assurance_expiration ?? "-"}
+          description="Échéance"
+        />
+        <MetricCard
+          icon={Wrench}
+          label="Révision"
+          value={motorcycle.prochaine_revision ?? "-"}
+          description="Prochaine échéance"
+        />
       </div>
 
       <Tabs
@@ -446,34 +407,8 @@ function MotorcycleDetailsPage() {
               setSelectedMaintenance(maintenance);
               setDialogOpen(true);
             }}
-            onDelete={(maintenance) => {
-              if (window.confirm("Annuler cet entretien et sa dépense liée ?")) {
-                deleteMutation.mutate({ data: { id: maintenance.id } });
-              }
-            }}
+            onDelete={removeMaintenance}
           />
-
-          <Card>
-
-            <CardHeader>
-              <CardTitle>
-                Entretiens
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent className="space-y-3">
-              <DocumentUpload entityId={motorcycleId} relation="motorcycle" onSuccess={() => { void queryClient.invalidateQueries({ queryKey: ["motorcycle-documents", motorcycleId] }); }} />
-              {documents.length === 0 ? <p className="text-sm text-muted-foreground">Aucun document lié à cette moto.</p> : documents.map((document) => (
-                <div key={document.id} className="flex items-center justify-between rounded-lg border p-3"><div><p className="font-medium">{document.nom}</p><p className="text-sm text-muted-foreground">{document.type || "Document"}</p></div>{document.url ? <Button asChild size="sm" variant="outline"><a href={document.url} target="_blank" rel="noreferrer">Ouvrir</a></Button> : null}</div>
-              ))}
-              <div className="py-12 text-center text-muted-foreground">
-                Les entretiens de cette moto apparaîtront ici.
-              </div>
-
-            </CardContent>
-
-          </Card>
-
         </TabsContent>
 
         <TabsContent value="expenses">
@@ -488,51 +423,21 @@ function MotorcycleDetailsPage() {
                   <span>{operation.operation_date}</span>
                   <span>{operation.category || operation.type}</span>
                   <span>{operation.wallet_id}</span>
-                  <span className="font-medium">{Number(operation.amount).toLocaleString("fr-FR")} FCFA</span>
+                  <span className="font-medium">{formatXOF(operation.amount)}</span>
                 </div>
               ))}
             </CardContent>
           </Card>
 
-          <Card>
-
-            <CardHeader>
-              <CardTitle>
-                Dépenses
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent>
-
-              <div className="grid gap-4 md:grid-cols-3">
-
-                <Card>
-
-                  <CardHeader>
-                    <CardTitle>
-                      Total des dépenses
-                    </CardTitle>
-                  </CardHeader>
-
-                  <CardContent>
-
-                    <div className="text-3xl font-bold text-red-600">
-                      0 FCFA
-                    </div>
-
-                  </CardContent>
-
-                </Card>
-
-              </div>
-
-              <div className="mt-8 py-12 text-center text-muted-foreground">
-                Les dépenses de cette moto apparaîtront ici.
-              </div>
-
-            </CardContent>
-
-          </Card>
+          <div className="grid gap-4 md:grid-cols-3">
+            <MetricCard
+              icon={Coins}
+              label="Total des dépenses"
+              value={formatXOF(expenseTotal)}
+              description="Somme des opérations de type dépense"
+              tone="danger"
+            />
+          </div>
 
         </TabsContent>
 
@@ -566,79 +471,40 @@ function MotorcycleDetailsPage() {
 
         <TabsContent value="stats">
 
-          <div className="grid gap-4 md:grid-cols-4">
-
-            <Card>
-
-              <CardHeader>
-                <CardTitle>Kilométrage</CardTitle>
-              </CardHeader>              <CardContent>
-
-                <div className="text-3xl font-bold">
-                  {formatNumber(motorcycle.kilometrage ?? 0)}
-                </div>
-
-                <div className="text-muted-foreground">
-                  kilomètres
-                </div>
-
-              </CardContent>
-
-            </Card>
-
-            <Card>
-
-              <CardHeader>
-                <CardTitle>Prix d'achat</CardTitle>
-              </CardHeader>
-
-              <CardContent>
-
-                <div className="text-3xl font-bold text-green-600">
-                  {formatXOF(motorcycle.prix_achat ?? 0)}
-                </div>
-
-              </CardContent>
-
-            </Card>
-
-            <Card>
-
-              <CardHeader>
-                <CardTitle>Assurance</CardTitle>
-              </CardHeader>
-
-              <CardContent>
-
-                <div className="text-lg font-semibold">
-                  {motorcycle.assurance_expiration ?? "-"}
-                </div>
-
-              </CardContent>
-
-            </Card>
-
-            <Card>
-
-              <CardHeader>
-                <CardTitle>Prochaine révision</CardTitle>
-              </CardHeader>
-
-              <CardContent>
-
-                <div className="text-lg font-semibold">
-                  {motorcycle.prochaine_revision ?? "-"}
-                </div>
-
-              </CardContent>
-
-            </Card>
-
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+            <MetricCard
+              icon={Gauge}
+              label="Kilométrage"
+              value={`${formatNumber(motorcycle.kilometrage ?? 0)} km`}
+              description="Compteur relevé"
+              tone="info"
+            />
+            <MetricCard
+              icon={Coins}
+              label="Prix d'achat"
+              value={formatXOF(motorcycle.prix_achat ?? 0)}
+              description="Valeur d'acquisition"
+              tone="success"
+            />
+            <MetricCard
+              icon={Shield}
+              label="Assurance"
+              value={motorcycle.assurance_expiration ?? "-"}
+              description="Échéance"
+            />
+            <MetricCard
+              icon={Wrench}
+              label="Prochaine révision"
+              value={motorcycle.prochaine_revision ?? "-"}
+              description="Échéance"
+            />
           </div>
 
         </TabsContent>
 
       </Tabs>
+
+      {dialog}
 
       <Dialog
         open={dialogOpen}

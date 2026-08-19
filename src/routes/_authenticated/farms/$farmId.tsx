@@ -1,9 +1,10 @@
 import { useState } from "react";
 
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  ArrowLeft,
   Calendar,
   Coins,
   MapPin,
@@ -19,9 +20,10 @@ import { DocumentUpload } from "@/components/documents/document-upload";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { EntityAlertsSection } from "@/components/notifications/entity-alerts-section";
 import { getDocumentsForRelation } from "@/lib/documents.functions";
-import { formatXOF } from "@/lib/format";
+import { formatNumber, formatXOF } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { MetricCard } from "@/components/ui/metric-card";
 
 import {
   Card,
@@ -226,16 +228,34 @@ function FarmDetailsPage() {
 
   if (isError) {
     return (
-      <div className="space-y-3 p-6 text-center">
-        <p className="font-medium text-destructive">Impossible de charger cette exploitation.</p>
-        <p className="text-sm text-muted-foreground">Réessayez dans un instant ou vérifiez votre connexion.</p>
-        <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>Réessayer</Button>
+      <div className="space-y-4 p-6">
+        <Button asChild variant="outline">
+          <Link to="/farms">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Retour aux exploitations
+          </Link>
+        </Button>
+        <div className="space-y-3 text-center">
+          <p className="font-medium text-destructive">Impossible de charger cette exploitation.</p>
+          <p className="text-sm text-muted-foreground">Réessayez dans un instant ou vérifiez votre connexion.</p>
+          <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>Réessayer</Button>
+        </div>
       </div>
     );
   }
 
   if (!farm) {
-    return <div>Exploitation introuvable.</div>;
+    return (
+      <div className="space-y-4 p-6">
+        <Button asChild variant="outline">
+          <Link to="/farms">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Retour aux exploitations
+          </Link>
+        </Button>
+        <p className="text-muted-foreground">Exploitation introuvable.</p>
+      </div>
+    );
   }
 
   return (
@@ -276,10 +296,16 @@ function FarmDetailsPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
 
         <div>
-          <h1 className="text-3xl font-bold">
+          <Button asChild variant="ghost" className="px-0">
+            <Link to="/farms">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Exploitations
+            </Link>
+          </Button>
+          <h1 className="mt-2 text-3xl font-bold">
             {farm.code} — {farm.nom}
           </h1>
 
@@ -295,47 +321,27 @@ function FarmDetailsPage() {
 
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Culture</CardTitle>
-            <Sprout className="h-5 w-5" />
-          </CardHeader>
-
-          <CardContent>
-            <div className="text-xl font-semibold">
-              {farm.type_culture || "-"}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Superficie</CardTitle>
-            <Ruler className="h-5 w-5" />
-          </CardHeader>
-
-          <CardContent>
-            <div className="text-xl font-semibold">
-              {farm.superficie ?? 0} ha
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Prix / kg</CardTitle>
-            <Coins className="h-5 w-5" />
-          </CardHeader>
-
-          <CardContent>
-            <div className="text-xl font-semibold">
-              {farm.prix_kg ?? 0} FCFA
-            </div>
-          </CardContent>
-        </Card>
-
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+        <MetricCard
+          icon={Sprout}
+          label="Culture"
+          value={farm.type_culture || "-"}
+          description="Type de culture suivi"
+          tone="success"
+        />
+        <MetricCard
+          icon={Ruler}
+          label="Superficie"
+          value={`${formatNumber(farm.superficie ?? 0)} ha`}
+          description="Surface déclarée"
+          tone="info"
+        />
+        <MetricCard
+          icon={Coins}
+          label="Prix / kg"
+          value={formatXOF(farm.prix_kg ?? 0)}
+          description="Tarif de référence"
+        />
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Statut</CardTitle>

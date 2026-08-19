@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Pencil, UserCheck } from "lucide-react";
+import { ArrowLeft, Banknote, FileText, Pencil, UserCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { MetricCard } from "@/components/ui/metric-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentUpload } from "@/components/documents/document-upload";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
@@ -13,6 +14,7 @@ import { EmployeeForm } from "@/components/employees/employee-form";
 import { EntityAlertsSection } from "@/components/notifications/entity-alerts-section";
 import { getContractsForRelation } from "@/lib/contracts.functions";
 import { getDocumentsForRelation } from "@/lib/documents.functions";
+import { formatXOF } from "@/lib/format";
 import {
   getEmployee,
   getEmployeeDriver,
@@ -197,7 +199,7 @@ function EmployeeDetailsPage() {
           <List
             title="Paiements de salaire"
             rows={salaries.map((salary) => [
-              `${Number(salary.amount).toLocaleString("fr-FR")} FCFA`,
+              formatXOF(salary.amount),
               `${salary.period_start} · ${salary.status}`,
             ])}
           />
@@ -206,7 +208,7 @@ function EmployeeDetailsPage() {
           <List
             title="Opérations financières"
             rows={finance.map((operation) => [
-              `${operation.type} · ${Number(operation.amount).toLocaleString("fr-FR")} FCFA`,
+              `${operation.type} · ${formatXOF(operation.amount)}`,
               operation.description || operation.operation_date,
             ])}
           />
@@ -225,10 +227,10 @@ function EmployeeDetailsPage() {
           </Card>
         </TabsContent>
         <TabsContent value="statistiques">
-          <div className="grid gap-4 md:grid-cols-3">
-            <Stat label="Total salaires" value={`${paidTotal.toLocaleString("fr-FR")} FCFA`} />
-            <Stat label="Contrats" value={contracts.length} />
-            <Stat label="Documents" value={documents.length} />
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+            <MetricCard icon={Banknote} label="Total salaires" value={formatXOF(paidTotal)} description="Somme versée" tone="success" />
+            <MetricCard icon={UserCheck} label="Contrats" value={contracts.length} description="Contrats liés" />
+            <MetricCard icon={FileText} label="Documents" value={documents.length} description="Documents liés" tone="info" />
           </div>
         </TabsContent>
       </Tabs>
@@ -275,16 +277,6 @@ function List({ title, rows }: { title: string; rows: Array<[string, string]> })
             </div>
           ))
         )}
-      </CardContent>
-    </Card>
-  );
-}
-function Stat({ label, value }: { label: string; value: number | string }) {
-  return (
-    <Card>
-      <CardContent className="p-5">
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <p className="mt-2 text-2xl font-bold">{value}</p>
       </CardContent>
     </Card>
   );
