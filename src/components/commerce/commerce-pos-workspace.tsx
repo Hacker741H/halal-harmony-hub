@@ -192,7 +192,16 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     || (currentUserQuery.isLoading ? "Chargement…" : "Caissier non identifié");
   const [locationId, setLocationId] = useState("");
   const [cachedLocations, setCachedLocations] = useState<CommercePosLocation[]>([]);
-  const availableLocations = locationsQuery.data?.length ? locationsQuery.data : cachedLocations;
+  // isSuccess (not just data.length) is the load-bearing check here: a
+  // pending or errored query legitimately falls back to the last-known
+  // cache (offline resilience), but a *successful* response of zero
+  // locations is an authoritative answer -- e.g. this cashier's location
+  // was deleted -- and must not be masked by a stale cached ghost.
+  const availableLocations = locationsQuery.data?.length
+    ? locationsQuery.data
+    : locationsQuery.isSuccess
+      ? []
+      : cachedLocations;
   const selectedLocationId = locationId || availableLocations[0]?.id || "";
   const workspaceQuery = useQuery({
     queryKey: ["commerce-pos-workspace", selectedLocationId],
@@ -278,13 +287,22 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
       });
       return () => { active = false; };
     }
+    if (locationsQuery.isSuccess) {
+      // Authoritative zero: clear any stale cache instead of leaving a
+      // deleted/unassigned location resurrectable on a future reload.
+      setCachedLocations([]);
+      void cachePosOfflineLocations(currentUserId, []).catch((error: unknown) => {
+        console.warn("Les points de vente hors connexion n’ont pas pu être mémorisés.", error);
+      });
+      return () => { active = false; };
+    }
     void getCachedPosOfflineLocations(currentUserId)
       .then((locations) => {
         if (active && locations.length) setCachedLocations(locations);
       })
       .catch((error: unknown) => console.warn("Les points de vente mémorisés sont indisponibles.", error));
     return () => { active = false; };
-  }, [currentUserId, locationsQuery.data]);
+  }, [currentUserId, locationsQuery.data, locationsQuery.isSuccess]);
 
   useEffect(() => {
     if (locationId || !currentUserId || !availableLocations.length || typeof window === "undefined") return;
