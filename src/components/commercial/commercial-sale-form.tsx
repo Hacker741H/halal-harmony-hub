@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { getCommercePosLocations } from "@/lib/commerce-pos.functions";
+import { formatXOF } from "@/lib/format";
 import {
   createCommercialSale,
   updateCommercialSale,
@@ -219,13 +220,13 @@ export function CommercialSaleForm({
                 <Input type="number" min="0.001" step="0.001" value={line.quantity} onChange={(event) => updateLine(line.key, "quantity", event.target.value)} aria-label="Quantité" disabled={submitting} />
                 <Input value={line.unit} onChange={(event) => updateLine(line.key, "unit", event.target.value)} aria-label="Unité" disabled={submitting} />
                 <Input type="number" min="0" step="0.01" value={line.unitPrice} onChange={(event) => updateLine(line.key, "unitPrice", event.target.value)} aria-label="Prix unitaire" disabled={submitting} />
-                <p className="truncate pt-2 text-body-sm font-semibold tabular-nums text-foreground" title={`${Number.isFinite(total) ? total.toLocaleString("fr-FR") : 0} FCFA`}>{Number.isFinite(total) ? total.toLocaleString("fr-FR") : "0"} FCFA</p>
+                <p className="truncate pt-2 text-body-sm font-semibold tabular-nums text-foreground" title={formatXOF(Number.isFinite(total) ? total : 0)}>{formatXOF(Number.isFinite(total) ? total : 0)}</p>
                 <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeLine(line.key)} disabled={submitting || lines.length === 1} aria-label="Retirer cette ligne"><Minus className="size-4" /></Button>
               </div>;
             })}
           </div>
         </div>
-        <div className="flex justify-end"><p className="rounded-lg bg-primary/10 px-3 py-2 text-body-sm font-semibold tabular-nums text-primary">Total prévisionnel : {estimatedTotal.toLocaleString("fr-FR")} FCFA</p></div>
+        <div className="flex justify-end"><p className="rounded-lg bg-primary/10 px-3 py-2 text-body-sm font-semibold tabular-nums text-primary">Total prévisionnel : {formatXOF(estimatedTotal)}</p></div>
       </section>
 
       <div className="space-y-2">

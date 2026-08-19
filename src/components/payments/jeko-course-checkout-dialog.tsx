@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { formatXOF as formatAmount } from "@/lib/format";
 import {
   configureJekoCourseWallet,
   createJekoCourseInvoiceCheckout,
@@ -32,10 +33,6 @@ type JekoCheckoutDialogProps = {
   canManageSettings: boolean;
   flow?: "COURSE" | "COMMERCIAL";
 };
-
-function formatAmount(value: number) {
-  return `${value.toLocaleString("fr-FR")} FCFA`;
-}
 
 function notificationError(error: unknown) {
   toast.error(error instanceof Error ? error.message : "L’action Jèko n’a pas pu être effectuée.");

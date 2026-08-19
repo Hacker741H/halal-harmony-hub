@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Minus, Plus } from "lucide-react";
+import { toast } from "sonner";
 
 import { SupplierSelect } from "@/components/selects/entity-selects";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { getCommercePosLocations } from "@/lib/commerce-pos.functions";
+import { formatXOF } from "@/lib/format";
 import { createPurchase } from "@/lib/purchases.functions";
 import { getStocks } from "@/lib/stocks.functions";
 
@@ -20,10 +22,6 @@ function today() {
 
 function emptyLine(index: number): LineForm {
   return { key: `line-${index}`, inventoryItemId: "", quantity: "1", unitCost: "" };
-}
-
-function formatAmount(value: number) {
-  return `${value.toLocaleString("fr-FR")} FCFA`;
 }
 
 export function PurchaseForm({ onSuccess }: { onSuccess: (purchaseId: string) => void }) {
@@ -74,6 +72,7 @@ export function PurchaseForm({ onSuccess }: { onSuccess: (purchaseId: string) =>
           lines: parsedLines,
         },
       });
+      toast.success("Achat enregistré.");
       onSuccess(purchase.id);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Impossible d’enregistrer l’achat.");
@@ -115,7 +114,7 @@ export function PurchaseForm({ onSuccess }: { onSuccess: (purchaseId: string) =>
             <Button type="button" variant="ghost" size="icon" disabled={lines.length <= 1} onClick={() => setLines((current) => current.filter((entry) => entry.key !== line.key))} aria-label="Retirer la ligne"><Minus className="h-4 w-4" /></Button>
           </div>
         ))}
-        <p className="text-right text-sm font-semibold">Total : {formatAmount(total)}</p>
+        <p className="text-right text-sm font-semibold">Total : {formatXOF(total)}</p>
       </div>
 
       <div className="space-y-2"><Label htmlFor="purchase-notes">Notes</Label><Textarea id="purchase-notes" value={notes} onChange={(event) => setNotes(event.target.value)} /></div>

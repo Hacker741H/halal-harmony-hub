@@ -96,8 +96,10 @@ export function VehicleMaintenanceForm({
         await updateVehicleMaintenance({
           data: { id: maintenance.id, ...values },
         });
+        toast.success("Entretien mis à jour.");
       } else {
         await createVehicleMaintenance({ data: values });
+        toast.success("Entretien ajouté.");
       }
       onSuccess();
     } catch (error) {

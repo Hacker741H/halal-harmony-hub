@@ -10,9 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import {
   createFinanceOperation,
+  FINANCE_OPERATION_TYPE_LABELS,
   updateFinanceOperation,
   type FinanceOperation,
 } from "@/lib/finance.functions";
+import { formatXOF } from "@/lib/format";
 
 import {
   getWallets,
@@ -241,7 +243,7 @@ export function FinanceForm({
 
           <Input
             id="finance-type"
-            value={form.type}
+            value={FINANCE_OPERATION_TYPE_LABELS[form.type] ?? form.type}
             disabled
             className="bg-muted font-semibold"
           />
@@ -395,7 +397,7 @@ export function FinanceForm({
             </span>
 
             <span className="font-medium">
-              {form.type}
+              {FINANCE_OPERATION_TYPE_LABELS[form.type] ?? form.type}
             </span>
           </div>
 
@@ -419,7 +421,7 @@ export function FinanceForm({
             </span>
 
             <span className="font-bold">
-              {form.amount || 0} FCFA
+              {formatXOF(Number(form.amount) || 0)}
             </span>
           </div>
 

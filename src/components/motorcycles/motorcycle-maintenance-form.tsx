@@ -124,10 +124,12 @@ export function MotorcycleMaintenanceForm({
             ...payload,
           },
         });
+        toast.success("Entretien mis à jour.");
       } else {
         await createMotorcycleMaintenance({
           data: payload,
         });
+        toast.success("Entretien ajouté.");
       }
 
       onSuccess();

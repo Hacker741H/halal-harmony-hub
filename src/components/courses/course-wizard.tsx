@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { COURSE_PRICING_MODES, COURSE_PRICING_MODE_LABELS, createCourse, type CourseValues } from "@/lib/courses.functions";
+import { formatXOF } from "@/lib/format";
 
 type PricingMode = (typeof COURSE_PRICING_MODES)[number];
 type FormState = {
@@ -96,7 +97,7 @@ export function CourseWizard({ onSuccess }: { onSuccess: (courseId: string) => v
         <Field label="Mode de tarification"><Select value={state.pricingMode} onValueChange={(value) => update("pricingMode", value as FormState["pricingMode"])}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="UNKNOWN">Non renseigné</SelectItem>{COURSE_PRICING_MODES.map((mode) => <SelectItem key={mode} value={mode}>{COURSE_PRICING_MODE_LABELS[mode]}</SelectItem>)}</SelectContent></Select></Field>
         {state.pricingMode === "PER_KG" || state.pricingMode === "PER_TONNE" ? <Field label={state.pricingMode === "PER_KG" ? "Tarif (FCFA/kg)" : "Tarif (FCFA/tonne)"}><Input type="number" min="0" value={state.unitRate} onChange={(event) => update("unitRate", event.target.value)} /></Field> : null}
         {state.pricingMode === "FLAT" ? <Field label="Montant forfaitaire (FCFA)"><Input type="number" min="0" value={state.flatAmount} onChange={(event) => update("flatAmount", event.target.value)} /></Field> : null}
-        <div className="self-end rounded-lg bg-muted/50 px-3 py-2 text-sm"><span className="text-muted-foreground">Transport réel : </span><strong>{calculatedAmount === null ? "Non renseigné" : `${calculatedAmount.toLocaleString("fr-FR")} FCFA`}</strong></div>
+        <div className="self-end rounded-lg bg-muted/50 px-3 py-2 text-sm"><span className="text-muted-foreground">Transport réel : </span><strong>{calculatedAmount === null ? "Non renseigné" : formatXOF(calculatedAmount)}</strong></div>
       </div>
     </details>
 

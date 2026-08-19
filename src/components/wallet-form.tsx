@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -70,6 +71,7 @@ export function WalletForm({ onSuccess, wallet }: Props) {
       };
       if (wallet) await updateWallet({ data: { id: wallet.id, values } });
       else await createWallet({ data: values });
+      toast.success(wallet ? "Wallet mis à jour." : "Wallet créé.");
       setForm(emptyForm);
       onSuccess();
     } catch (error) {

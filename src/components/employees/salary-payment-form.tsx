@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -57,7 +59,7 @@ export function SalaryPaymentForm({
     const resolvedEmployeeId = selectedDriver?.employee_id ?? employeeId;
 
     if (!resolvedEmployeeId || !walletId || !periodStart || !paidAt || !Number.isFinite(numericAmount) || numericAmount <= 0) {
-      alert("Renseignez la personne, la période, le wallet et un montant positif.");
+      toast.error("Renseignez la personne, la période, le wallet et un montant positif.");
       return;
     }
 
@@ -77,10 +79,11 @@ export function SalaryPaymentForm({
           description: description.trim() || null,
         },
       });
+      toast.success("Paiement de salaire enregistré.");
       onSuccess();
     } catch (error) {
       console.error(error);
-      alert(error instanceof Error ? error.message : "Impossible d'enregistrer le paiement de salaire.");
+      toast.error(error instanceof Error ? error.message : "Impossible d'enregistrer le paiement de salaire.");
     } finally {
       setLoading(false);
     }
@@ -140,11 +143,9 @@ export function SalaryPaymentForm({
             </SelectContent>
           </Select>
         </div>
-        <div className="md:col-span-2">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={isPartial} onChange={(event) => setIsPartial(event.target.checked)} />
-            Paiement partiel (plusieurs paiements autorisés pour la période)
-          </label>
+        <div className="md:col-span-2 flex items-center gap-2">
+          <Checkbox id="salary-partial" checked={isPartial} onCheckedChange={(checked) => setIsPartial(checked === true)} />
+          <Label htmlFor="salary-partial" className="text-sm font-normal">Paiement partiel (plusieurs paiements autorisés pour la période)</Label>
         </div>
         <div className="md:col-span-2">
           <Label>Référence</Label>
