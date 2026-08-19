@@ -30,7 +30,21 @@ type ShellRoute =
   | "/notifications"
   | "/reports"
   | "/settings"
-  | "/roles";
+  | "/roles"
+  | "/clients"
+  | "/suppliers"
+  | "/courses"
+  | "/sales"
+  | "/purchases"
+  | "/inventory-counts"
+  | "/stock-transfers"
+  | "/commerce"
+  | "/field"
+  | "/control-center"
+  | "/planning"
+  | "/assignments"
+  | "/departures"
+  | "/deliveries";
 
 interface Crumb {
   label: string;
@@ -57,6 +71,20 @@ const routeLabels: Record<string, string> = {
   reports: "Rapports",
   settings: "Paramètres",
   roles: "Rôles & permissions",
+  clients: "Clients",
+  suppliers: "Fournisseurs",
+  courses: "Courses",
+  sales: "Ventes",
+  purchases: "Achats",
+  "inventory-counts": "Inventaires",
+  "stock-transfers": "Transferts",
+  commerce: "Commerce",
+  field: "HALAL Field",
+  "control-center": "Centre de contrôle",
+  planning: "Planning",
+  assignments: "Affectations",
+  departures: "Départs",
+  deliveries: "Livraisons",
 };
 
 const shellRoutes = new Set<ShellRoute>([
@@ -79,6 +107,20 @@ const shellRoutes = new Set<ShellRoute>([
   "/reports",
   "/settings",
   "/roles",
+  "/clients",
+  "/suppliers",
+  "/courses",
+  "/sales",
+  "/purchases",
+  "/inventory-counts",
+  "/stock-transfers",
+  "/commerce",
+  "/field",
+  "/control-center",
+  "/planning",
+  "/assignments",
+  "/departures",
+  "/deliveries",
 ]);
 
 function isShellRoute(value: string): value is ShellRoute {
