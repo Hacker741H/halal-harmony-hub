@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { BellOff, CheckCheck, Clock3, ExternalLink, Loader2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -99,9 +100,9 @@ export function NotificationList({
                 </div>
                 {notification.entity_route && (
                   <Button variant="outline" size="sm" asChild>
-                    <a href={notification.entity_route}>
+                    <Link to={notification.entity_route}>
                       Ouvrir la fiche <ExternalLink className="ml-2 h-4 w-4" />
-                    </a>
+                    </Link>
                   </Button>
                 )}
               </div>

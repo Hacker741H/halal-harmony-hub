@@ -164,7 +164,7 @@ function MotorcycleDetailsPage() {
         <Button asChild variant="outline">
           <Link to="/motorcycles">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Retour
+            Retour aux motos
           </Link>
         </Button>
         <Card>
@@ -188,7 +188,7 @@ function MotorcycleDetailsPage() {
         >
           <Link to="/motorcycles">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Retour
+            Retour aux motos
           </Link>
         </Button>
 

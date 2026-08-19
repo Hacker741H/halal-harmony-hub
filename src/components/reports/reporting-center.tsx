@@ -310,7 +310,7 @@ function AssetsReport({ report }: { report: Json }) {
               const route = getText(asset.route, "/reports");
               const cost = getNullableNumber(asset.costTotal);
               return <tr className="border-t" key={getText(asset.id)}>
-                <td className="px-4 py-3"><a className="font-medium hover:underline" href={route}>{getText(asset.registration)}<span className="block text-xs text-muted-foreground">{getText(asset.label, "")}</span></a></td>
+                <td className="px-4 py-3"><Link className="font-medium hover:underline" to={route}>{getText(asset.registration)}<span className="block text-xs text-muted-foreground">{getText(asset.label, "")}</span></Link></td>
                 <td className="px-4 py-3"><Badge variant="secondary">{getText(asset.status)}</Badge></td>
                 <td className="px-4 py-3">{getText(asset.currentDriver)}</td>
                 <td className="px-4 py-3">{getText(asset.kilometrage)}</td>
@@ -335,7 +335,7 @@ function PeopleReport({ report }: { report: Json }) {
       <CardContent>
         <DataTable headers={["Personne", "Rôle", "Statut", "Affectation", "Alertes", "Salaires versés"]} hasRows={people.length > 0}>
           {people.map((person) => <tr className="border-t" key={getText(person.id)}>
-            <td className="px-4 py-3"><a className="font-medium hover:underline" href={getText(person.route, "/reports")}>{getText(person.name)}</a><span className="block text-xs text-muted-foreground">{getText(person.position, "")}</span></td>
+            <td className="px-4 py-3"><Link className="font-medium hover:underline" to={getText(person.route, "/reports")}>{getText(person.name)}</Link><span className="block text-xs text-muted-foreground">{getText(person.position, "")}</span></td>
             <td className="px-4 py-3">{getText(person.role)}</td>
             <td className="px-4 py-3"><Badge variant="secondary">{getText(person.status)}</Badge></td>
             <td className="px-4 py-3">{getText(person.currentAsset)}</td>
@@ -360,7 +360,7 @@ function FarmsReport({ report }: { report: Json }) {
             const expense = getNullableNumber(farm.expense);
             const margin = revenue === null || expense === null ? null : revenue - expense;
             return <tr className="border-t" key={getText(farm.id)}>
-              <td className="px-4 py-3"><a className="font-medium hover:underline" href={getText(farm.route, "/reports")}>{getText(farm.name)}</a><span className="block text-xs text-muted-foreground">{getText(farm.status)}</span></td>
+              <td className="px-4 py-3"><Link className="font-medium hover:underline" to={getText(farm.route, "/reports")}>{getText(farm.name)}</Link><span className="block text-xs text-muted-foreground">{getText(farm.status)}</span></td>
               <td className="px-4 py-3">{getText(farm.surfaceHa)} ha</td>
               <td className="px-4 py-3">{getNumber(farm.harvestQuantity)} kg</td>
               <td className="px-4 py-3">{revenue === null ? "Montant réservé" : formatXOF(revenue)}</td>
@@ -380,7 +380,7 @@ function MaintenanceReport({ report }: { report: Json }) {
     <DataTable headers={["Date", "Actif", "Type", "Coût"]} hasRows={maintenances.length > 0}>
       {maintenances.map((maintenance) => {
         const cost = getNullableNumber(maintenance.cost);
-        return <tr className="border-t" key={getText(maintenance.id)}><td className="px-4 py-3">{getText(maintenance.date)}</td><td className="px-4 py-3"><a className="font-medium hover:underline" href={getText(maintenance.route, "/reports")}>{getText(maintenance.assetLabel)}</a><span className="block text-xs text-muted-foreground">{getText(maintenance.assetType)}</span></td><td className="px-4 py-3">{getText(maintenance.type)}</td><td className="px-4 py-3 font-medium">{cost === null ? "Montant réservé" : formatXOF(cost)}</td></tr>;
+        return <tr className="border-t" key={getText(maintenance.id)}><td className="px-4 py-3">{getText(maintenance.date)}</td><td className="px-4 py-3"><Link className="font-medium hover:underline" to={getText(maintenance.route, "/reports")}>{getText(maintenance.assetLabel)}</Link><span className="block text-xs text-muted-foreground">{getText(maintenance.assetType)}</span></td><td className="px-4 py-3">{getText(maintenance.type)}</td><td className="px-4 py-3 font-medium">{cost === null ? "Montant réservé" : formatXOF(cost)}</td></tr>;
       })}
     </DataTable>
   </CardContent></Card>;
@@ -393,7 +393,7 @@ function StockReport({ report }: { report: Json }) {
       {items.map((item) => {
         const purchases = getNullableNumber(item.purchases);
         const sales = getNullableNumber(item.sales);
-        return <tr className="border-t" key={getText(item.id)}><td className="px-4 py-3"><a className="font-medium hover:underline" href={getText(item.route, "/stocks")}>{getText(item.name)}</a><span className="block text-xs text-muted-foreground">{getText(item.category, "")}</span></td><td className="px-4 py-3">{getNumber(item.stockCurrent)} {getText(item.unit, "")}{getBoolean(item.isOutOfStock) ? <Badge className="ml-2" variant="destructive">À zéro</Badge> : getBoolean(item.isLowStock) ? <Badge className="ml-2" variant="secondary">Sous seuil</Badge> : null}</td><td className="px-4 py-3">{getText(item.threshold)}</td><td className="px-4 py-3">{getNumber(item.movementCount)}</td><td className="px-4 py-3">{purchases === null ? "Montant réservé" : formatXOF(purchases)}</td><td className="px-4 py-3">{sales === null ? "Montant réservé" : formatXOF(sales)}</td></tr>;
+        return <tr className="border-t" key={getText(item.id)}><td className="px-4 py-3"><Link className="font-medium hover:underline" to={getText(item.route, "/stocks")}>{getText(item.name)}</Link><span className="block text-xs text-muted-foreground">{getText(item.category, "")}</span></td><td className="px-4 py-3">{getNumber(item.stockCurrent)} {getText(item.unit, "")}{getBoolean(item.isOutOfStock) ? <Badge className="ml-2" variant="destructive">À zéro</Badge> : getBoolean(item.isLowStock) ? <Badge className="ml-2" variant="secondary">Sous seuil</Badge> : null}</td><td className="px-4 py-3">{getText(item.threshold)}</td><td className="px-4 py-3">{getNumber(item.movementCount)}</td><td className="px-4 py-3">{purchases === null ? "Montant réservé" : formatXOF(purchases)}</td><td className="px-4 py-3">{sales === null ? "Montant réservé" : formatXOF(sales)}</td></tr>;
       })}
     </DataTable>
   </CardContent></Card>;
@@ -590,7 +590,7 @@ export function ReportingCenter({ search, onSearchChange }: ReportingCenterProps
         {reportType === "COMPLIANCE" && <ComplianceReport report={reportQuery.data} />}
       </> : null}
 
-      {reportType === "FINANCE" && canViewFinance && <Card><CardHeader className="gap-3 md:flex-row md:items-center md:justify-between"><div><CardTitle>Opérations sources</CardTitle><CardDescription>Liste paginée des écritures non annulées correspondant exactement aux filtres actifs.</CardDescription></div><Badge variant="secondary">{totalOperations} opération{totalOperations > 1 ? "s" : ""}</Badge></CardHeader><CardContent className="space-y-4">{operationsQuery.isLoading ? <div className="grid h-40 place-items-center"><Loader2 className="h-5 w-5 animate-spin" /></div> : <DataTable headers={["Date", "Type", "Montant", "Wallet", "Source"]} hasRows={selectedOperations.length > 0}>{selectedOperations.map((operation) => <tr className="border-t" key={operation.id}><td className="px-4 py-3">{operation.operation_date}</td><td className="px-4 py-3"><Badge variant="secondary">{FINANCE_OPERATION_TYPE_LABELS[operation.type as keyof typeof FINANCE_OPERATION_TYPE_LABELS] ?? operation.type}</Badge></td><td className="px-4 py-3 font-medium">{formatXOF(operation.amount)}</td><td className="px-4 py-3">{operation.wallet_name}</td><td className="px-4 py-3"><a className="hover:underline" href={operation.source_route}>{operation.source_label}</a><span className="block text-xs text-muted-foreground">{operation.description ?? operation.category ?? ""}</span></td></tr>)}</DataTable>}<div className="flex items-center justify-end gap-2"><Button disabled={page <= 1 || operationsQuery.isFetching} onClick={() => setPage((current) => current - 1)} variant="outline">Précédent</Button><span className="text-sm text-muted-foreground">Page {page} / {pageCount}</span><Button disabled={page >= pageCount || operationsQuery.isFetching} onClick={() => setPage((current) => current + 1)} variant="outline">Suivant</Button></div></CardContent></Card>}
+      {reportType === "FINANCE" && canViewFinance && <Card><CardHeader className="gap-3 md:flex-row md:items-center md:justify-between"><div><CardTitle>Opérations sources</CardTitle><CardDescription>Liste paginée des écritures non annulées correspondant exactement aux filtres actifs.</CardDescription></div><Badge variant="secondary">{totalOperations} opération{totalOperations > 1 ? "s" : ""}</Badge></CardHeader><CardContent className="space-y-4">{operationsQuery.isLoading ? <div className="grid h-40 place-items-center"><Loader2 className="h-5 w-5 animate-spin" /></div> : <DataTable headers={["Date", "Type", "Montant", "Wallet", "Source"]} hasRows={selectedOperations.length > 0}>{selectedOperations.map((operation) => <tr className="border-t" key={operation.id}><td className="px-4 py-3">{operation.operation_date}</td><td className="px-4 py-3"><Badge variant="secondary">{FINANCE_OPERATION_TYPE_LABELS[operation.type as keyof typeof FINANCE_OPERATION_TYPE_LABELS] ?? operation.type}</Badge></td><td className="px-4 py-3 font-medium">{formatXOF(operation.amount)}</td><td className="px-4 py-3">{operation.wallet_name}</td><td className="px-4 py-3"><Link className="hover:underline" to={operation.source_route}>{operation.source_label}</Link><span className="block text-xs text-muted-foreground">{operation.description ?? operation.category ?? ""}</span></td></tr>)}</DataTable>}<div className="flex items-center justify-end gap-2"><Button disabled={page <= 1 || operationsQuery.isFetching} onClick={() => setPage((current) => current - 1)} variant="outline">Précédent</Button><span className="text-sm text-muted-foreground">Page {page} / {pageCount}</span><Button disabled={page >= pageCount || operationsQuery.isFetching} onClick={() => setPage((current) => current + 1)} variant="outline">Suivant</Button></div></CardContent></Card>}
 
       <p className="text-xs text-muted-foreground"><FileText className="mr-1 inline h-3 w-3" />Les rapports affichent des indicateurs de gestion. Ils ne remplacent pas un bilan ou un compte de résultat comptable légal.</p>
     </div>

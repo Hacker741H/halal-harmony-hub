@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -345,7 +345,7 @@ function ControlCenterRow({ item }: { item: GlobalControlCenterItem }) {
         </p>
       </div>
       <Button variant="outline" size="sm" asChild className="shrink-0">
-        <a href={item.actionRoute}>{item.actionLabel}</a>
+        <Link to={item.actionRoute}>{item.actionLabel}</Link>
       </Button>
     </div>
   );
