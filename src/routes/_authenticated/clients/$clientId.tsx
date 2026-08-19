@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
-import { Archive, ArrowLeft, Building2, Clock, Merge, Pencil, Receipt, RotateCcw, ShoppingCart, TrendingUp, Undo2, Wallet } from "lucide-react";
+import { Archive, ArrowLeft, Clock, Merge, Pencil, Receipt, RotateCcw, ShoppingCart, TrendingUp, Undo2, Wallet } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -13,7 +13,7 @@ import { Callout } from "@/components/ui/callout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
-import { ModuleHero } from "@/components/ui/module-hero";
+import { PageHeader } from "@/components/ui/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -96,13 +96,11 @@ function ClientDetailsPage() {
 
   return (
     <div className="space-y-5 p-4 md:p-6">
-      <ModuleHero
-        icon={Building2}
-        eyebrow="Fiche client"
+      <PageHeader
         title={client.display_name}
         description={`${client.client_number}${client.legal_name ? ` · ${client.legal_name}` : ""}`}
         actions={<>
-          <Badge variant={client.status === "ACTIVE" ? "success" : "neutral"} appearance="solid">{client.status === "ACTIVE" ? "Actif" : "Archivé"}</Badge>
+          <Badge variant={client.status === "ACTIVE" ? "success" : "outline"}>{client.status === "ACTIVE" ? "Actif" : "Archivé"}</Badge>
           {canEdit ? <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}><Pencil className="mr-2 h-4 w-4" />Modifier</Button> : null}
           {canMerge ? <Button variant="outline" size="sm" onClick={() => setMergeOpen(true)}><Merge className="mr-2 h-4 w-4" />Fusionner</Button> : null}
           {canArchive && client.status === "ACTIVE" ? <Button variant="outline" size="sm" onClick={() => confirm({ title: "Archiver ce client", description: `Archiver ${client.display_name} ?`, variant: "destructive", confirmLabel: "Archiver", onConfirm: async () => { await archiveMutation.mutateAsync({ data: { id: client.id } }); } })} disabled={archiveMutation.isPending}><Archive className="mr-2 h-4 w-4" />Archiver</Button> : null}

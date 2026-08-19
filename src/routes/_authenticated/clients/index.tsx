@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, UsersRound } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { ClientForm } from "@/components/clients/client-form";
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { ModuleHero } from "@/components/ui/module-hero";
+import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useConfirm } from "@/hooks/use-confirm";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -84,9 +84,7 @@ function ClientsPage() {
 
   return (
     <div className="space-y-5">
-      <ModuleHero
-        icon={UsersRound}
-        eyebrow="Référentiel commercial"
+      <PageHeader
         title="Clients"
         description="Un référentiel commercial unique pour relier les futurs échanges, courses et documents sans dupliquer les coordonnées."
         actions={

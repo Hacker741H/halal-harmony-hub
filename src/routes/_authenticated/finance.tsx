@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
-import { ModuleHero } from "@/components/ui/module-hero";
+import { PageHeader } from "@/components/ui/page-header";
 import { useConfirm } from "@/hooks/use-confirm";
 import {
   deleteFinanceOperation,
@@ -103,9 +103,7 @@ function FinancePage() {
   return (
     <>
       <div className="space-y-5">
-        <ModuleHero
-          icon={Wallet}
-          eyebrow="Finance centrale"
+        <PageHeader
           title="Journal financier"
           description="Suivez la trésorerie, les recettes et les dépenses à partir du journal unique de l’ERP."
           actions={
