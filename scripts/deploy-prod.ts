@@ -192,6 +192,8 @@ async function main(): Promise<void> {
     throw new Error("Publication bloquée : des fichiers sont déjà indexés. Révisez ou désindexez-les avant de lancer la commande.");
   }
 
+  console.log("\n--- Validation pré-déploiement ---");
+  run(nodeCommand, ["tsx", "scripts/validate-deploy.ts"]);
   console.log("\n--- Typecheck ---");
   run(nodeCommand, ["tsc", "--noEmit"]);
   console.log("\n--- Build de production ---");

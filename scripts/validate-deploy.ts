@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env tsx
 /**
  * HALAL ERP - Script de validation pré-déploiement
  *
@@ -9,13 +9,13 @@
  *   4. Santé RLS : les tables sensibles rejettent bien un accès anonyme
  *
  * Usage :
- *   bun run validate:deploy
- *   bun run scripts/validate-deploy.ts
+ *   npm run validate:deploy
+ *   tsx scripts/validate-deploy.ts
  *
  * Sortie : code 0 si tout est OK, code 1 si un contrôle critique échoue.
  */
 
-import { readdirSync, existsSync } from "node:fs";
+import { readdirSync, existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 type CheckStatus = "ok" | "warn" | "fail";
@@ -38,13 +38,11 @@ const record = (r: CheckResult) => {
 function loadDotEnv() {
   const envPath = resolve(process.cwd(), ".env");
   if (!existsSync(envPath)) return;
-  const content = Bun.file(envPath).text();
-  return content.then((raw) => {
-    for (const line of raw.split("\n")) {
-      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*"?([^"\n]*)"?\s*$/);
-      if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
-    }
-  });
+  const raw = readFileSync(envPath, "utf8");
+  for (const line of raw.split("\n")) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*"?([^"\n]*)"?\s*$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
+  }
 }
 
 // ---------------------------------------------------------------------------
