@@ -3,7 +3,6 @@ import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
-  BarChart3,
   Download,
   FileText,
   Filter,
@@ -21,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate, formatXOF } from "@/lib/format";
@@ -543,12 +543,17 @@ export function ReportingCenter({ search, onSearchChange }: ReportingCenterProps
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div><CardTitle className="flex items-center gap-2"><BarChart3 className="h-5 w-5" />Centre de rapports de gestion</CardTitle><CardDescription>Les bilans parlent fort pour ceux qui savent lire entre les lignes.</CardDescription></div>
-          <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" />Imprimer</Button>{reportType === "FINANCE" && <Button variant="outline" disabled={exportMutation.isPending} onClick={() => exportMutation.mutate()}>{exportMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}Exporter CSV</Button>}</div>
-        </CardHeader>
-      </Card>
+      <PageHeader
+        eyebrow="Finance"
+        title="Rapports"
+        description="Les bilans parlent fort pour ceux qui savent lire entre les lignes."
+        actions={
+          <>
+            <Button variant="outline" onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" />Imprimer</Button>
+            {reportType === "FINANCE" && <Button variant="outline" disabled={exportMutation.isPending} onClick={() => exportMutation.mutate()}>{exportMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}Exporter CSV</Button>}
+          </>
+        }
+      />
 
       <Tabs value={reportType} onValueChange={(value) => isReportType(value) && selectReport(value)}>
         <TabsList className="h-auto w-full justify-start overflow-x-auto">

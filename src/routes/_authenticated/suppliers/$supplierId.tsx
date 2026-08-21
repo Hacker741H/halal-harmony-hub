@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
-import { ArrowLeft, Clock, Contact, Package, Pencil, Receipt, Wallet } from "lucide-react";
+import { ArrowLeft, Clock, Package, Pencil, Receipt, Wallet } from "lucide-react";
 
 import { SupplierForm } from "@/components/suppliers/supplier-form";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePermissions } from "@/hooks/use-permissions";
 import { formatXOF } from "@/lib/format";
@@ -56,19 +57,21 @@ function SupplierDetailsPage() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <Button asChild variant="ghost" className="px-0"><Link to="/suppliers"><ArrowLeft className="mr-2 h-4 w-4" />Fournisseurs</Link></Button>
-          <h1 className="mt-2 flex items-center gap-3 text-3xl font-bold"><Contact className="h-7 w-7" />{supplier.display_name}</h1>
-          <p className="text-muted-foreground">{supplier.supplier_number}{supplier.legal_name ? ` · ${supplier.legal_name}` : ""}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={supplier.status === "ACTIVE" ? "success" : "outline"}>{supplier.status === "ACTIVE" ? "Actif" : "Archivé"}</Badge>
-          {can("suppliers.update") && supplier.status === "ACTIVE" ? (
-            <Button variant="outline" onClick={() => setEditOpen(true)}><Pencil className="mr-2 h-4 w-4" />Modifier</Button>
-          ) : null}
-        </div>
-      </div>
+      <Button asChild variant="ghost" className="-ml-2 px-2"><Link to="/suppliers"><ArrowLeft className="mr-2 h-4 w-4" />Fournisseurs</Link></Button>
+
+      <PageHeader
+        eyebrow="Fournisseur"
+        title={supplier.display_name}
+        description={`${supplier.supplier_number}${supplier.legal_name ? ` · ${supplier.legal_name}` : ""}`}
+        actions={
+          <>
+            <Badge variant={supplier.status === "ACTIVE" ? "success" : "outline"}>{supplier.status === "ACTIVE" ? "Actif" : "Archivé"}</Badge>
+            {can("suppliers.update") && supplier.status === "ACTIVE" ? (
+              <Button variant="outline" onClick={() => setEditOpen(true)}><Pencil className="mr-2 h-4 w-4" />Modifier</Button>
+            ) : null}
+          </>
+        }
+      />
 
       <Tabs defaultValue="informations" className="space-y-5">
         <TabsList className="h-auto flex-wrap justify-start"><TabsTrigger value="informations">Informations</TabsTrigger><TabsTrigger value="achats">Achats & dette</TabsTrigger></TabsList>

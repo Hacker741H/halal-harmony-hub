@@ -3,10 +3,12 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Banknote, FileText, Pencil, UserCheck } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentUpload } from "@/components/documents/document-upload";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
@@ -75,24 +77,34 @@ function EmployeeDetailsPage() {
 
   return (
     <div className="space-y-6">
-      <Button asChild variant="ghost">
+      <Button asChild variant="ghost" className="-ml-2 px-2">
         <Link to="/employees">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Retour aux employés
         </Link>
       </Button>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold">
-            {[employee.nom, employee.prenom].filter(Boolean).join(" ")}
-          </h1>
-          <p className="text-muted-foreground">Fiche employé à 360°</p>
-        </div>
-        <Button variant="outline" onClick={() => setEditOpen(true)}>
-          <Pencil className="mr-2 h-4 w-4" />
-          Modifier
-        </Button>
+
+      <PageHeader
+        eyebrow="Employé"
+        title={[employee.nom, employee.prenom].filter(Boolean).join(" ")}
+        description="Fiche employé à 360°"
+        actions={
+          <>
+            {employee.statut ? <Badge variant="outline">{employee.statut}</Badge> : null}
+            <Button variant="outline" onClick={() => setEditOpen(true)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Modifier
+            </Button>
+          </>
+        }
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+        <MetricCard icon={Banknote} label="Total salaires" value={formatXOF(paidTotal)} description="Somme versée" tone="success" />
+        <MetricCard icon={UserCheck} label="Contrats" value={contracts.length} description="Contrats liés" />
+        <MetricCard icon={FileText} label="Documents" value={documents.length} description="Documents liés" tone="info" />
       </div>
+
       <Tabs defaultValue="informations" className="space-y-4">
         <TabsList className="h-auto flex-wrap justify-start">
           <TabsTrigger value="informations">Informations</TabsTrigger>
@@ -104,7 +116,6 @@ function EmployeeDetailsPage() {
           <TabsTrigger value="finances">Finances</TabsTrigger>
           <TabsTrigger value="alertes">Alertes</TabsTrigger>
           <TabsTrigger value="historique">Historique</TabsTrigger>
-          <TabsTrigger value="statistiques">Statistiques</TabsTrigger>
         </TabsList>
         <TabsContent value="informations">
           <Card>
@@ -225,13 +236,6 @@ function EmployeeDetailsPage() {
               Créé le {new Intl.DateTimeFormat("fr-FR").format(new Date(employee.created_at))}.
             </CardContent>
           </Card>
-        </TabsContent>
-        <TabsContent value="statistiques">
-          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-            <MetricCard icon={Banknote} label="Total salaires" value={formatXOF(paidTotal)} description="Somme versée" tone="success" />
-            <MetricCard icon={UserCheck} label="Contrats" value={contracts.length} description="Contrats liés" />
-            <MetricCard icon={FileText} label="Documents" value={documents.length} description="Documents liés" tone="info" />
-          </div>
         </TabsContent>
       </Tabs>
 

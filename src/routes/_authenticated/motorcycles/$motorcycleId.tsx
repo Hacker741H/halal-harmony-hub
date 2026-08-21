@@ -17,12 +17,14 @@ import {
   Wrench,
 } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DriverAssignmentPanel } from "@/components/assignments/driver-assignment-panel";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { EntityAlertsSection } from "@/components/notifications/entity-alerts-section";
 import { MotorcycleForm } from "@/components/motorcycles/motorcycle-form";
 import { MetricCard } from "@/components/ui/metric-card";
+import { PageHeader } from "@/components/ui/page-header";
 import { useConfirm } from "@/hooks/use-confirm";
 
 import {
@@ -214,47 +216,31 @@ function MotorcycleDetailsPage() {
 
   return (
     <div className="space-y-6">
+      <Button asChild variant="ghost" className="-ml-2 px-2">
+        <Link to="/motorcycles">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Retour aux motos
+        </Link>
+      </Button>
 
-      <div className="flex items-center justify-between">
+      <PageHeader
+        eyebrow="Moto"
+        title={`${motorcycle.marque} ${motorcycle.modele}`}
+        description={motorcycle.immatriculation}
+        actions={
+          <>
+            <Badge variant={motorcycle.statut === "en_reparation" ? "warning" : "success"}>
+              {MOTORCYCLE_STATUS_LABELS[motorcycle.statut] ?? motorcycle.statut}
+            </Badge>
+            <Button variant="outline" onClick={() => setEditOpen(true)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Modifier
+            </Button>
+          </>
+        }
+      />
 
-        <div>
-
-          <Button
-            asChild
-            variant="outline"
-          >
-            <Link to="/motorcycles">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Retour aux motos
-            </Link>
-          </Button>
-
-          <h1 className="mt-4 flex items-center gap-2 text-3xl font-bold">
-            <Bike className="h-8 w-8" />
-            {motorcycle.marque} {motorcycle.modele}
-          </h1>
-
-          <p className="text-muted-foreground">
-            {motorcycle.immatriculation}
-          </p>
-
-        </div>
-
-        <Button variant="outline" onClick={() => setEditOpen(true)}>
-          <Pencil className="mr-2 h-4 w-4" />
-          Modifier
-        </Button>
-
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-5">
-        <MetricCard
-          icon={Bike}
-          label="Statut"
-          value={MOTORCYCLE_STATUS_LABELS[motorcycle.statut] ?? motorcycle.statut}
-          description="État actuel"
-          tone={motorcycle.statut === "en_reparation" ? "warning" : "success"}
-        />
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
         <MetricCard
           icon={Gauge}
           label="Kilométrage"
@@ -282,41 +268,14 @@ function MotorcycleDetailsPage() {
         />
       </div>
 
-      <Tabs
-        defaultValue="infos"
-        className="space-y-6"
-      >
-
-        <TabsList>
-
-          <TabsTrigger value="infos">
-            Informations
-          </TabsTrigger>
-
-          <TabsTrigger value="maintenance">
-            Entretiens
-          </TabsTrigger>
-
-          <TabsTrigger value="expenses">
-            Dépenses
-          </TabsTrigger>
-
-          <TabsTrigger value="assignments">
-            Affectations
-          </TabsTrigger>
-
-          <TabsTrigger value="documents">
-            Documents
-          </TabsTrigger>
-
-          <TabsTrigger value="alertes">
-            Alertes
-          </TabsTrigger>
-
-          <TabsTrigger value="stats">
-            Statistiques
-          </TabsTrigger>
-
+      <Tabs defaultValue="infos" className="space-y-6">
+        <TabsList className="h-auto flex-wrap justify-start">
+          <TabsTrigger value="infos">Informations</TabsTrigger>
+          <TabsTrigger value="maintenance">Entretiens</TabsTrigger>
+          <TabsTrigger value="expenses">Dépenses</TabsTrigger>
+          <TabsTrigger value="assignments">Affectations</TabsTrigger>
+          <TabsTrigger value="documents">Documents</TabsTrigger>
+          <TabsTrigger value="alertes">Alertes</TabsTrigger>
         </TabsList>
 
         <TabsContent value="infos">
@@ -472,40 +431,6 @@ function MotorcycleDetailsPage() {
         <TabsContent value="alertes">
           <EntityAlertsSection entityId={motorcycleId} relation="motorcycle" />
         </TabsContent>
-
-        <TabsContent value="stats">
-
-          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
-            <MetricCard
-              icon={Gauge}
-              label="Kilométrage"
-              value={`${formatNumber(motorcycle.kilometrage ?? 0)} km`}
-              description="Compteur relevé"
-              tone="info"
-            />
-            <MetricCard
-              icon={Coins}
-              label="Prix d'achat"
-              value={formatXOF(motorcycle.prix_achat ?? 0)}
-              description="Valeur d'acquisition"
-              tone="success"
-            />
-            <MetricCard
-              icon={Shield}
-              label="Assurance"
-              value={motorcycle.assurance_expiration ?? "-"}
-              description="Échéance"
-            />
-            <MetricCard
-              icon={Wrench}
-              label="Prochaine révision"
-              value={motorcycle.prochaine_revision ?? "-"}
-              description="Échéance"
-            />
-          </div>
-
-        </TabsContent>
-
       </Tabs>
 
       {dialog}

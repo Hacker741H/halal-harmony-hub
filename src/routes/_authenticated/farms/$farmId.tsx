@@ -4,7 +4,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  ArrowDownRight,
   ArrowLeft,
+  ArrowUpRight,
   Calendar,
   Coins,
   MapPin,
@@ -12,6 +14,8 @@ import {
   Plus,
   Ruler,
   Sprout,
+  TrendingDown,
+  TrendingUp,
   User,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -24,6 +28,7 @@ import { formatNumber, formatXOF } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/ui/metric-card";
+import { PageHeader } from "@/components/ui/page-header";
 
 import {
   Card,
@@ -297,32 +302,31 @@ function FarmDetailsPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+      <Button asChild variant="ghost" className="-ml-2 px-2">
+        <Link to="/farms">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Exploitations
+        </Link>
+      </Button>
 
-        <div>
-          <Button asChild variant="ghost" className="px-0">
-            <Link to="/farms">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Exploitations
-            </Link>
-          </Button>
-          <h1 className="mt-2 text-3xl font-bold">
-            {farm.code} — {farm.nom}
-          </h1>
+      <PageHeader
+        eyebrow="Exploitation"
+        title={`${farm.code} — ${farm.nom}`}
+        description="Tableau de bord de l'exploitation"
+        actions={
+          <>
+            <Badge variant={farmStatusVariant(farm.statut)} className="text-sm">
+              {FARM_STATUS_LABELS[farm.statut] ?? farm.statut}
+            </Badge>
+            <Button onClick={() => setOpenHarvest(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nouvelle récolte
+            </Button>
+          </>
+        }
+      />
 
-          <p className="text-muted-foreground">
-            Tableau de bord de l'exploitation
-          </p>
-        </div>
-
-        <Button onClick={() => setOpenHarvest(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nouvelle récolte
-        </Button>
-
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
         <MetricCard
           icon={Sprout}
           label="Culture"
@@ -343,19 +347,6 @@ function FarmDetailsPage() {
           value={formatXOF(farm.prix_kg ?? 0)}
           description="Tarif de référence"
         />
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Statut</CardTitle>
-            <MapPin className="h-5 w-5" />
-          </CardHeader>
-
-          <CardContent>
-            <Badge variant={farmStatusVariant(farm.statut)} className="text-sm">
-              {FARM_STATUS_LABELS[farm.statut] ?? farm.statut}
-            </Badge>
-          </CardContent>
-        </Card>
-
       </div>
 
       <Card>
@@ -480,31 +471,22 @@ function FarmDetailsPage() {
 
           <div className="space-y-6">
 
-            <div className="flex justify-between items-center">
+            <div className="flex flex-wrap items-center justify-between gap-4">
 
-              <Card className="w-72">
-
-                <CardHeader>
-                  <CardTitle>Total des dépenses</CardTitle>
-                </CardHeader>
-
-                <CardContent>
-
-                  <div className="text-3xl font-bold text-red-600">
-
-                    {formatXOF(
-                      expenses.reduce(
-                        (total: number, expense: Expense) =>
-                          total + Number(expense.amount),
-                        0,
-                      ),
-                    )}
-
-                  </div>
-
-                </CardContent>
-
-              </Card>
+              <MetricCard
+                icon={ArrowDownRight}
+                label="Total des dépenses"
+                value={formatXOF(
+                  expenses.reduce(
+                    (total: number, expense: Expense) =>
+                      total + Number(expense.amount),
+                    0,
+                  ),
+                )}
+                description={`${expenses.length} dépense${expenses.length > 1 ? "s" : ""} enregistrée${expenses.length > 1 ? "s" : ""}`}
+                tone="danger"
+                className="w-72"
+              />
 
               <Button
                 onClick={() => {
@@ -652,102 +634,23 @@ function FarmDetailsPage() {
         </TabsContent>
 
         <TabsContent value="stats">
-
-          <div className="grid gap-4 md:grid-cols-3">
-
-            <Card>
-
-              <CardHeader>
-                <CardTitle>Recettes</CardTitle>
-              </CardHeader>
-
-              <CardContent>
-
-                <div className="text-3xl font-bold text-green-600">
-
-                  {formatXOF(
-                    harvests.reduce(
-                      (total: number, harvest: Harvest) =>
-                        total +
-                        Number(
-                          harvest.montant_total ??
-                            Number(harvest.quantite_kg) *
-                              Number(harvest.prix_kg),
-                        ),
-                      0,
-                    ),
-                  )}
-
-                </div>
-
-              </CardContent>
-
-            </Card>
-
-            <Card>
-
-              <CardHeader>
-                <CardTitle>Dépenses</CardTitle>
-              </CardHeader>
-
-              <CardContent>
-
-                <div className="text-3xl font-bold text-red-600">
-
-                  {formatXOF(
-                    expenses.reduce(
-                      (total: number, expense: Expense) =>
-                        total +
-                        Number(expense.amount),
-                      0,
-                    ),
-                  )}
-
-                </div>
-
-              </CardContent>
-
-            </Card>
-
-            <Card>
-
-              <CardHeader>
-                <CardTitle>Bénéfice</CardTitle>
-              </CardHeader>
-
-              <CardContent>
-
-                <div className="text-3xl font-bold text-blue-600">
-
-                  {formatXOF(
-                    harvests.reduce(
-                      (total: number, harvest: Harvest) =>
-                        total +
-                        Number(
-                          harvest.montant_total ??
-                            Number(harvest.quantite_kg) *
-                              Number(harvest.prix_kg),
-                        ),
-                      0,
-                    ) -
-                    expenses.reduce(
-                      (total: number, expense: Expense) =>
-                        total +
-                        Number(expense.amount),
-                      0,
-                    ),
-                  )}
-
-                </div>
-
-              </CardContent>
-
-            </Card>
-
-          </div>
-
+          {(() => {
+            const revenueTotal = harvests.reduce(
+              (total: number, harvest: Harvest) =>
+                total + Number(harvest.montant_total ?? Number(harvest.quantite_kg) * Number(harvest.prix_kg)),
+              0,
+            );
+            const expenseTotal = expenses.reduce((total: number, expense: Expense) => total + Number(expense.amount), 0);
+            const profit = revenueTotal - expenseTotal;
+            return (
+              <div className="grid gap-4 md:grid-cols-3">
+                <MetricCard icon={ArrowUpRight} label="Recettes" value={formatXOF(revenueTotal)} description="Valeur totale des récoltes" tone="success" />
+                <MetricCard icon={ArrowDownRight} label="Dépenses" value={formatXOF(expenseTotal)} description="Total des dépenses liées" tone="danger" />
+                <MetricCard icon={profit >= 0 ? TrendingUp : TrendingDown} label="Bénéfice" value={formatXOF(profit)} description="Recettes moins dépenses" tone={profit >= 0 ? "success" : "warning"} />
+              </div>
+            );
+          })()}
         </TabsContent>
-
       </Tabs>
 
       {dialog}

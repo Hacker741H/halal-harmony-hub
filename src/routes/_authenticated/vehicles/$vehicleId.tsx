@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   ArrowLeft,
   Calendar,
-  Car,
   CircleDollarSign,
   FileText,
   Gauge,
@@ -20,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DriverAssignmentPanel } from "@/components/assignments/driver-assignment-panel";
@@ -207,52 +207,50 @@ function VehicleDetailsPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <Button asChild variant="outline">
-            <Link to="/vehicles">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Retour aux véhicules
-            </Link>
-          </Button>
-          <h1 className="mt-4 flex items-center gap-2 text-3xl font-bold">
-            <Car className="h-8 w-8" />
-            {[vehicle.brand, vehicle.model].filter(Boolean).join(" ") || "Véhicule"}
-          </h1>
-          <p className="text-muted-foreground">{vehicle.registration}</p>
-        </div>
+      <Button asChild variant="ghost" className="-ml-2 px-2">
+        <Link to="/vehicles">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Retour aux véhicules
+        </Link>
+      </Button>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Badge>{statusLabel(vehicle.status)}</Badge>
-          <Button variant="outline" onClick={() => setEditOpen(true)}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Modifier
-          </Button>
-          <Select
-            value={currentStatus}
-            disabled={statusMutation.isPending}
-            onValueChange={(value) =>
-              statusMutation.mutate({
-                data: {
-                  id: vehicle.id,
-                  status: value as VehicleStatus,
-                },
-              })
-            }
-          >
-            <SelectTrigger aria-label="Modifier le statut du véhicule" className="h-10">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {VEHICLE_STATUSES.map((status) => (
-                <SelectItem key={status} value={status}>
-                  {VEHICLE_STATUS_LABELS[status]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Véhicule"
+        title={[vehicle.brand, vehicle.model].filter(Boolean).join(" ") || "Véhicule"}
+        description={vehicle.registration}
+        actions={
+          <>
+            <Badge>{statusLabel(vehicle.status)}</Badge>
+            <Select
+              value={currentStatus}
+              disabled={statusMutation.isPending}
+              onValueChange={(value) =>
+                statusMutation.mutate({
+                  data: {
+                    id: vehicle.id,
+                    status: value as VehicleStatus,
+                  },
+                })
+              }
+            >
+              <SelectTrigger aria-label="Modifier le statut du véhicule" className="h-10">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {VEHICLE_STATUSES.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {VEHICLE_STATUS_LABELS[status]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={() => setEditOpen(true)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Modifier
+            </Button>
+          </>
+        }
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
@@ -294,7 +292,6 @@ function VehicleDetailsPage() {
           <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="alertes">Alertes</TabsTrigger>
           <TabsTrigger value="historique">Historique</TabsTrigger>
-          <TabsTrigger value="statistiques">Statistiques</TabsTrigger>
         </TabsList>
 
         <TabsContent value="informations">
@@ -591,32 +588,6 @@ function VehicleDetailsPage() {
               />
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="statistiques">
-          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-            <MetricCard
-              icon={Gauge}
-              label="Kilométrage"
-              value={`${formatNumber(vehicle.kilometrage ?? 0)} km`}
-              description="Compteur relevé"
-              tone="info"
-            />
-            <MetricCard
-              icon={Wrench}
-              label="Coût des entretiens"
-              value={formatXOF(maintenanceTotal)}
-              description={`${maintenances.length} entretien${maintenances.length > 1 ? "s" : ""}`}
-              tone="warning"
-            />
-            <MetricCard
-              icon={CircleDollarSign}
-              label="Coût financier"
-              value={formatXOF(expenseTotal)}
-              description="Opérations financières de type dépense"
-              tone="danger"
-            />
-          </div>
         </TabsContent>
       </Tabs>
 

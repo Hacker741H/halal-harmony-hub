@@ -1,11 +1,12 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, FileSignature } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -82,44 +83,44 @@ function ContractDetailsPage() {
 
   return (
     <div className="space-y-6">
-      <Button asChild variant="ghost">
+      <Button asChild variant="ghost" className="-ml-2 px-2">
         <Link to="/contracts">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Retour aux contrats
         </Link>
       </Button>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <FileSignature className="h-7 w-7" />
-            {contract.reference || contract.type || "Contrat"}
-          </h1>
-          <p className="text-muted-foreground">Fiche contrat</p>
-        </div>
-        {can("contracts.manage") ? (
-          <div className="space-y-1">
-            <label htmlFor="contract-status" className="text-sm font-medium">Statut</label>
-            <Select
-              value={currentStatus}
-              disabled={statusMutation.isPending}
-              onValueChange={(value) => statusMutation.mutate({ data: { id: contract.id, statut: value } })}
-            >
-              <SelectTrigger id="contract-status" className="h-10">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {statusOptions.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {statusLabels[status] ?? status}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        ) : (
-          <Badge variant="outline">{statusLabels[currentStatus] ?? currentStatus}</Badge>
-        )}
-      </div>
+
+      <PageHeader
+        eyebrow="Contrat"
+        title={contract.reference || contract.type || "Contrat"}
+        description="Fiche contrat"
+        actions={
+          can("contracts.manage") ? (
+            <div className="space-y-1">
+              <label htmlFor="contract-status" className="text-sm font-medium">Statut</label>
+              <Select
+                value={currentStatus}
+                disabled={statusMutation.isPending}
+                onValueChange={(value) => statusMutation.mutate({ data: { id: contract.id, statut: value } })}
+              >
+                <SelectTrigger id="contract-status" className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {statusLabels[status] ?? status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <Badge variant="outline">{statusLabels[currentStatus] ?? currentStatus}</Badge>
+          )
+        }
+      />
+
       <Card>
         <CardHeader>
           <CardTitle>Informations</CardTitle>
