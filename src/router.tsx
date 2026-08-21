@@ -4,6 +4,21 @@ import { toast } from "sonner";
 
 import { routeTree } from "./routeTree.gen";
 
+// Server functions only reliably forward `error.message` to the client (see
+// requireSupabaseAuth in auth-middleware.ts, and every "if (error) throw
+// error" call site) -- structured Postgres codes don't survive the trip, so
+// classification has to work from message shape rather than a status code.
+// This intentionally stays narrow: pair a specific, human-written message
+// (a validation error, an RPC's own RAISE EXCEPTION text, a permission
+// check) with itself alone, and reserve the "check your connection" advice
+// for when there is actual reason to believe it's a connectivity problem.
+// Saying "vérifiez votre connexion" under "Solde insuffisant : 15 000 FCFA
+// disponible" is actively wrong, regardless of exactly which HTTP status
+// produced it.
+function isLikelyNetworkError(error: Error): boolean {
+  return error instanceof TypeError || /fetch|network|ECONNRESET|ETIMEDOUT/i.test(error.message);
+}
+
 export const getRouter = () => {
   // No global staleTime meant every query defaulted to 0 -- refetching on
   // every mount/focus/reconnect regardless of how volatile its data is.
@@ -41,9 +56,23 @@ export const getRouter = () => {
         // toast would read as a false "something broke" right as the user
         // is intentionally logging out, or during a normal token refresh.
         if (error instanceof Error && error.message.startsWith("Unauthorized")) return;
-        toast.error(error instanceof Error ? error.message : "Certaines données n'ont pas pu être chargées.", {
+        // A query cancelled by navigation or a superseding refetch isn't a
+        // failure the user needs to hear about.
+        if (error instanceof Error && error.name === "AbortError") return;
+
+        if (!(error instanceof Error)) {
+          toast.error("Certaines données n'ont pas pu être chargées.", {
+            id: "query-error",
+            description: "Vérifiez votre connexion et réessayez.",
+          });
+          return;
+        }
+
+        toast.error(error.message, {
           id: "query-error",
-          description: "Vérifiez votre connexion et réessayez.",
+          description: isLikelyNetworkError(error)
+            ? "Vérifiez votre connexion et réessayez."
+            : undefined,
         });
       },
     }),

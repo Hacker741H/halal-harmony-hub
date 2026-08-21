@@ -7357,44 +7357,90 @@ export type Database = {
       wallets: {
         Row: {
           alert_threshold: number | null
+          archived_at: string | null
+          asset_kind: string | null
           balance: number | null
           color: string | null
           created_at: string | null
+          farm_id: string | null
           icon: string | null
           id: string
           initial_balance: number
+          is_archived: boolean
           is_default: boolean | null
+          is_general: boolean
+          module: string | null
+          motorcycle_id: string | null
           name: string
           type: string
           updated_at: string | null
+          vehicle_id: string | null
         }
         Insert: {
           alert_threshold?: number | null
+          archived_at?: string | null
+          asset_kind?: string | null
           balance?: number | null
           color?: string | null
           created_at?: string | null
+          farm_id?: string | null
           icon?: string | null
           id?: string
           initial_balance?: number
+          is_archived?: boolean
           is_default?: boolean | null
+          is_general?: boolean
+          module?: string | null
+          motorcycle_id?: string | null
           name: string
           type: string
           updated_at?: string | null
+          vehicle_id?: string | null
         }
         Update: {
           alert_threshold?: number | null
+          archived_at?: string | null
+          asset_kind?: string | null
           balance?: number | null
           color?: string | null
           created_at?: string | null
+          farm_id?: string | null
           icon?: string | null
           id?: string
           initial_balance?: number
+          is_archived?: boolean
           is_default?: boolean | null
+          is_general?: boolean
+          module?: string | null
+          motorcycle_id?: string | null
           name?: string
           type?: string
           updated_at?: string | null
+          vehicle_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "wallets_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallets_motorcycle_id_fkey"
+            columns: ["motorcycle_id"]
+            isOneToOne: false
+            referencedRelation: "motorcycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallets_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -8259,6 +8305,21 @@ export type Database = {
         Args: { p_vehicle_id: string }
         Returns: boolean
       }
+      _internal_ensure_asset_wallet: {
+        Args: {
+          p_asset_kind: string
+          p_farm_id?: string
+          p_module: string
+          p_motorcycle_id?: string
+          p_name: string
+          p_vehicle_id?: string
+        }
+        Returns: string
+      }
+      _internal_ensure_module_general_wallet: {
+        Args: { p_module: string }
+        Returns: string
+      }
       _internal_next_client_number: { Args: never; Returns: string }
       _internal_next_commerce_inventory_count_number: {
         Args: never
@@ -8457,6 +8518,11 @@ export type Database = {
         Args: { p_mission_id: string }
         Returns: number
       }
+      _internal_require_wallet_hierarchy_manage: {
+        Args: never
+        Returns: undefined
+      }
+      _internal_require_wallet_read: { Args: never; Returns: undefined }
       _internal_reschedule_harvest: {
         Args: { p_harvest_id: string; p_new_date: string }
         Returns: {
@@ -8939,6 +9005,36 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "commerce_suppliers"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      archive_wallet: {
+        Args: { p_archived?: boolean; p_wallet_id: string }
+        Returns: {
+          alert_threshold: number | null
+          archived_at: string | null
+          asset_kind: string | null
+          balance: number | null
+          color: string | null
+          created_at: string | null
+          farm_id: string | null
+          icon: string | null
+          id: string
+          initial_balance: number
+          is_archived: boolean
+          is_default: boolean | null
+          is_general: boolean
+          module: string | null
+          motorcycle_id: string | null
+          name: string
+          type: string
+          updated_at: string | null
+          vehicle_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "wallets"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -11882,6 +11978,32 @@ export type Database = {
         Args: { p_scope: string }
         Returns: boolean
       }
+      get_wallet_module_detail: {
+        Args: { p_module: string }
+        Returns: {
+          asset_kind: string
+          balance: number
+          expense_total: number
+          farm_id: string
+          incoming_total: number
+          is_archived: boolean
+          is_general: boolean
+          motorcycle_id: string
+          name: string
+          vehicle_id: string
+          wallet_id: string
+        }[]
+      }
+      get_wallet_modules_summary: {
+        Args: never
+        Returns: {
+          consolidated_balance: number
+          expense_total: number
+          incoming_total: number
+          module: string
+          sub_wallet_count: number
+        }[]
+      }
       has_any_role: {
         Args: {
           _roles: Database["public"]["Enums"]["app_role"][]
@@ -12211,6 +12333,43 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "payment_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      reassign_wallet_asset: {
+        Args: {
+          p_farm_id?: string
+          p_motorcycle_id?: string
+          p_new_asset_kind: string
+          p_new_module: string
+          p_vehicle_id?: string
+          p_wallet_id: string
+        }
+        Returns: {
+          alert_threshold: number | null
+          archived_at: string | null
+          asset_kind: string | null
+          balance: number | null
+          color: string | null
+          created_at: string | null
+          farm_id: string | null
+          icon: string | null
+          id: string
+          initial_balance: number
+          is_archived: boolean
+          is_default: boolean | null
+          is_general: boolean
+          module: string | null
+          motorcycle_id: string | null
+          name: string
+          type: string
+          updated_at: string | null
+          vehicle_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "wallets"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -12904,16 +13063,24 @@ export type Database = {
         Args: { p_alert_threshold?: number; p_wallet_id: string }
         Returns: {
           alert_threshold: number | null
+          archived_at: string | null
+          asset_kind: string | null
           balance: number | null
           color: string | null
           created_at: string | null
+          farm_id: string | null
           icon: string | null
           id: string
           initial_balance: number
+          is_archived: boolean
           is_default: boolean | null
+          is_general: boolean
+          module: string | null
+          motorcycle_id: string | null
           name: string
           type: string
           updated_at: string | null
+          vehicle_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -13549,16 +13716,24 @@ export type Database = {
         Args: { p_wallet: Json }
         Returns: {
           alert_threshold: number | null
+          archived_at: string | null
+          asset_kind: string | null
           balance: number | null
           color: string | null
           created_at: string | null
+          farm_id: string | null
           icon: string | null
           id: string
           initial_balance: number
+          is_archived: boolean
           is_default: boolean | null
+          is_general: boolean
+          module: string | null
+          motorcycle_id: string | null
           name: string
           type: string
           updated_at: string | null
+          vehicle_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -13572,16 +13747,24 @@ export type Database = {
         Args: { p_values: Json; p_wallet_id: string }
         Returns: {
           alert_threshold: number | null
+          archived_at: string | null
+          asset_kind: string | null
           balance: number | null
           color: string | null
           created_at: string | null
+          farm_id: string | null
           icon: string | null
           id: string
           initial_balance: number
+          is_archived: boolean
           is_default: boolean | null
+          is_general: boolean
+          module: string | null
+          motorcycle_id: string | null
           name: string
           type: string
           updated_at: string | null
+          vehicle_id: string | null
         }
         SetofOptions: {
           from: "*"

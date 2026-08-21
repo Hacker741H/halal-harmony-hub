@@ -116,3 +116,114 @@ export const getWalletStats = createServerFn({ method: "GET" })
       totalBalance,
     };
   });
+
+export const WALLET_MODULES = ["MOTOS", "VEHICULES", "AGRICULTURE", "COMMERCE", "TRANSPORT"] as const;
+export type WalletModule = (typeof WALLET_MODULES)[number];
+
+export const WALLET_MODULE_LABELS: Record<WalletModule, string> = {
+  MOTOS: "Motos",
+  VEHICULES: "Véhicules",
+  AGRICULTURE: "Agriculture",
+  COMMERCE: "Commerce",
+  TRANSPORT: "Transport",
+};
+
+export interface WalletModuleSummary {
+  module: WalletModule;
+  consolidatedBalance: number;
+  incomingTotal: number;
+  expenseTotal: number;
+  subWalletCount: number;
+}
+
+export interface WalletModuleDetailRow {
+  walletId: string;
+  name: string;
+  assetKind: string | null;
+  isGeneral: boolean;
+  isArchived: boolean;
+  balance: number;
+  incomingTotal: number;
+  expenseTotal: number;
+  motorcycleId: string | null;
+  vehicleId: string | null;
+  farmId: string | null;
+}
+
+export const getWalletModulesSummary = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<WalletModuleSummary[]> => {
+    const { data, error } = await context.supabase.rpc("get_wallet_modules_summary");
+    if (error) throw error;
+    return (data ?? []).map((row) => ({
+      module: row.module as WalletModule,
+      consolidatedBalance: Number(row.consolidated_balance),
+      incomingTotal: Number(row.incoming_total),
+      expenseTotal: Number(row.expense_total),
+      subWalletCount: Number(row.sub_wallet_count),
+    }));
+  });
+
+export const getWalletModuleDetail = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator(z.enum(WALLET_MODULES))
+  .handler(async ({ context, data: module }): Promise<WalletModuleDetailRow[]> => {
+    const { data, error } = await context.supabase.rpc("get_wallet_module_detail", { p_module: module });
+    if (error) throw error;
+    return (data ?? []).map((row) => ({
+      walletId: row.wallet_id,
+      name: row.name,
+      assetKind: row.asset_kind,
+      isGeneral: row.is_general,
+      isArchived: row.is_archived,
+      balance: Number(row.balance),
+      incomingTotal: Number(row.incoming_total),
+      expenseTotal: Number(row.expense_total),
+      motorcycleId: row.motorcycle_id,
+      vehicleId: row.vehicle_id,
+      farmId: row.farm_id,
+    }));
+  });
+
+export const archiveWallet = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(z.object({ id: walletIdSchema, archived: z.boolean().default(true) }).strict())
+  .handler(async ({ context, data }) => {
+    const { data: wallet, error } = await context.supabase.rpc("archive_wallet", {
+      p_wallet_id: data.id,
+      p_archived: data.archived,
+    });
+    if (error) throw error;
+    return wallet;
+  });
+
+export const reassignWalletAsset = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(
+    z
+      .object({
+        id: walletIdSchema,
+        module: z.enum(WALLET_MODULES),
+        assetKind: z.enum(["MOTORCYCLE", "VEHICLE", "FARM", "BUSINESS_LOCATION", "GENERAL"]).nullable(),
+        motorcycleId: z.string().uuid().nullable().optional(),
+        vehicleId: z.string().uuid().nullable().optional(),
+        farmId: z.string().uuid().nullable().optional(),
+      })
+      .strict(),
+  )
+  .handler(async ({ context, data }) => {
+    const { data: wallet, error } = await context.supabase.rpc("reassign_wallet_asset", {
+      p_wallet_id: data.id,
+      p_new_module: data.module,
+      // The generated RPC arg type is `string` (no `| null`) because the SQL
+      // parameter has no DEFAULT -- the column and the function body both
+      // accept NULL just fine, this is purely a codegen gap for a required
+      // text arg.
+      p_new_asset_kind: data.assetKind as string,
+      p_motorcycle_id: data.motorcycleId ?? undefined,
+      p_vehicle_id: data.vehicleId ?? undefined,
+      p_farm_id: data.farmId ?? undefined,
+    });
+    if (error) throw error;
+    return wallet;
+  });

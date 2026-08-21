@@ -80,7 +80,19 @@ export function TransferForm({
   }, [operation]);
 
   const isEditing =
-    !!operation;  async function save() {
+    !!operation;
+
+  const sourceWallet = wallets.find((wallet) => wallet.id === form.wallet_id);
+  const availableBalance = Number(sourceWallet?.balance ?? 0);
+  const amountValue = Number(form.amount || 0);
+  const balanceAfter = availableBalance - amountValue;
+  // A wallet already being edited (isEditing) keeps its original amount
+  // debited from the balance shown above, so re-saving the same transfer
+  // unchanged never reads as newly insufficient.
+  const insufficientBalance =
+    !isEditing && form.wallet_id !== "" && amountValue > 0 && amountValue > availableBalance;
+
+  async function save() {
     if (!form.wallet_id) {
       toast.error("Choisissez un wallet source.");
       return;
@@ -105,6 +117,11 @@ export function TransferForm({
       Number(form.amount) <= 0
     ) {
       toast.error("Montant invalide.");
+      return;
+    }
+
+    if (insufficientBalance) {
+      toast.error(`Solde insuffisant. Disponible : ${formatXOF(availableBalance)}.`);
       return;
     }
 
@@ -208,6 +225,11 @@ export function TransferForm({
               )}
             </SelectContent>
           </Select>
+          {sourceWallet ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Solde disponible : <span className="font-medium text-foreground">{formatXOF(availableBalance)}</span>
+            </p>
+          ) : null}
 
         </div>
 
@@ -376,24 +398,41 @@ export function TransferForm({
             <span>Montant</span>
 
             <span className="font-bold">
-              {formatXOF(Number(form.amount || 0))}
+              {formatXOF(amountValue)}
             </span>
 
           </div>
 
+          {sourceWallet ? (
+            <div className="flex justify-between">
+              <span>Solde après transfert</span>
+              <span className={`font-bold ${balanceAfter < 0 ? "text-destructive" : ""}`}>
+                {formatXOF(balanceAfter)}
+              </span>
+            </div>
+          ) : null}
+
         </div>
+
+        {insufficientBalance ? (
+          <p className="mt-3 text-sm font-medium text-destructive">
+            Solde insuffisant. Disponible : {formatXOF(availableBalance)}.
+          </p>
+        ) : null}
 
       </div>
 
       <Button
         className="w-full"
-        disabled={loading}
+        disabled={loading || insufficientBalance}
         onClick={save}
       >
         {loading
           ? isEditing
             ? "Mise à jour..."
             : "Transfert..."
+          : insufficientBalance
+          ? "Solde insuffisant"
           : isEditing
           ? "Mettre à jour le transfert"
           : "Effectuer le transfert"}
