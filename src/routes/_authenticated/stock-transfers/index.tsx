@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -61,9 +61,13 @@ function StockTransfersPage() {
   };
 
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
-    <PageHeader
+    <OperationalHero
+      icon={ArrowLeftRight}
+      eyebrow="Commerce"
       title="Transferts inter-magasins"
       description="Expédiez du stock d’un magasin vers un autre : le coût est figé à l’expédition, la destination recalcule sa propre moyenne. Aucune écriture financière."
+      primaryStat={{ label: "Transferts", value: total }}
+      secondaryStats={[{ label: "En transit", value: overview.inTransit }]}
       actions={can("transfers.create") ? <Button onClick={() => setCreateOpen(true)}><ArrowLeftRight className="size-4" />Nouveau transfert</Button> : undefined}
     />
     <div className="grid gap-3 sm:grid-cols-3">

@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getAllMotorcycleMaintenances, type MotorcycleMaintenance } from "@/lib/motorcycle-maintenances.functions";
 import { getMotorcycles, type Motorcycle } from "@/lib/motorcycles.functions";
@@ -137,9 +137,13 @@ function MaintenancePage() {
 
   return (
     <div className="space-y-7">
-      <PageHeader
+      <OperationalHero
+        icon={Wrench}
+        eyebrow="Mobilité"
         title="Entretiens des actifs"
         description="Retrouvez les entretiens véhicules et motos dans un seul registre, avec les actions de création déjà disponibles."
+        primaryStat={{ label: "Entretiens", value: rows.length }}
+        secondaryStats={[{ label: "Coût total", value: `${totalCost.toLocaleString("fr-FR")} FCFA` }]}
         actions={
           <>
             <Button variant="outline" onClick={() => openCreate("motorcycle")}>

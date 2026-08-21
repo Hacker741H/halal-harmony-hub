@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState, ErrorState } from "@/components/ui/empty-state";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getContracts } from "@/lib/contracts.functions";
 
@@ -46,9 +46,13 @@ function ContractsPage() {
 
   return (
     <div className="space-y-7">
-      <PageHeader
+      <OperationalHero
+        icon={FileSignature}
+        eyebrow="Agriculture"
         title="Contrats et engagements"
         description="Centralisez les contrats, leurs références et les échéances déjà saisies dans l’ERP."
+        primaryStat={{ label: "Contrats", value: contracts.length }}
+        secondaryStats={[{ label: "Actifs", value: activeContracts }]}
         actions={
           <Button onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" />

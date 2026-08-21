@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { runNotificationsManually } from "@/lib/alert-settings.functions";
 import {
@@ -111,9 +111,13 @@ function NotificationsPage() {
 
   return (
     <div className="space-y-7">
-      <PageHeader
+      <OperationalHero
+        icon={Bell}
+        eyebrow="Pilotage"
         title="Centre de notifications"
         description="Priorisez les échéances et anomalies détectées par l’ERP, puis ouvrez directement la donnée qui demande une action."
+        primaryStat={{ label: "Non lues", value: summary?.unread ?? 0 }}
+        secondaryStats={[{ label: "Critiques", value: summary?.critical ?? 0 }]}
         actions={
           <>
             <Button variant="outline" disabled={readAllMutation.isPending} onClick={() => readAllMutation.mutate({ data: undefined })}>

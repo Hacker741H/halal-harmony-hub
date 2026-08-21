@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import {
   deleteMotorcycle,
   getMotorcycles,
@@ -79,9 +79,13 @@ function MotorcyclesPage() {
         </DialogContent>
       </Dialog>
 
-      <PageHeader
+      <OperationalHero
+        icon={Bike}
+        eyebrow="Mobilité"
         title="Parc motos"
         description="Gardez une vue nette sur les deux-roues, leur disponibilité et les interventions à suivre."
+        primaryStat={{ label: "Opérationnelles", value: operationalMotorcycles }}
+        secondaryStats={[{ label: "En réparation", value: motorcyclesInMaintenance }]}
         actions={
           <Button
             onClick={() => {

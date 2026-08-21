@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { useConfirm } from "@/hooks/use-confirm";
 import { formatNumber } from "@/lib/format";
 import { deleteVehicle, getVehicles, type Vehicle } from "@/lib/vehicles.functions";
@@ -88,9 +88,13 @@ function VehiclesPage() {
           }
         }}
       >
-        <PageHeader
+        <OperationalHero
+          icon={Car}
+          eyebrow="Mobilité"
           title="Parc véhicules"
           description="Repérez immédiatement les véhicules prêts à rouler, les immobilisations et les données de kilométrage déjà enregistrées."
+          primaryStat={{ label: "En service", value: serviceVehicles }}
+          secondaryStats={[{ label: "En réparation", value: repairVehicles }]}
           actions={
             <DialogTrigger asChild>
               <Button onClick={() => setEditingVehicle(null)}>

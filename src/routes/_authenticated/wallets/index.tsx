@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { formatXOF } from "@/lib/format";
 import { useConfirm } from "@/hooks/use-confirm";
 import {
@@ -114,9 +114,13 @@ function WalletsPage() {
 
   return (
     <div className="space-y-7">
-      <PageHeader
+      <OperationalHero
+        icon={WalletCards}
+        eyebrow="Finance"
         title="Wallets et trésorerie"
         description="Chaque mouvement passe par un wallet. Motos, véhicules, agriculture et commerce sont regroupés par module ; le solde consolidé se calcule depuis les sous-wallets, jamais en double."
+        primaryStat={{ label: "Trésorerie consolidée", value: formatXOF(totalBalance) }}
+        secondaryStats={[{ label: "Comptes actifs", value: stats?.totalWallets ?? 0 }]}
         actions={
           <Button
             onClick={() => {

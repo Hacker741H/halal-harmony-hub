@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -67,9 +67,13 @@ function InventoryCountsPage() {
   };
 
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
-    <PageHeader
+    <OperationalHero
+      icon={ClipboardList}
+      eyebrow="Commerce"
       title="Inventaires physiques"
       description="Comptez le stock réel d’un magasin puis validez : chaque écart ajuste le stock au coût moyen courant, sans jamais créer d’écriture financière."
+      primaryStat={{ label: "Inventaires", value: total }}
+      secondaryStats={[{ label: "Ouverts", value: overview.open }]}
       actions={can("inventory.counts.create") ? <Button onClick={() => setCreateOpen(true)}><Plus className="size-4" />Nouvel inventaire</Button> : undefined}
     />
     <div className="grid gap-3 sm:grid-cols-3">

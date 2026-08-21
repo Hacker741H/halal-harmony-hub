@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { Building2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { ClientForm } from "@/components/clients/client-form";
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useConfirm } from "@/hooks/use-confirm";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -84,9 +84,12 @@ function ClientsPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
+      <OperationalHero
+        icon={Building2}
+        eyebrow="Commerce"
         title="Clients"
         description="Un référentiel commercial unique pour relier les futurs échanges, courses et documents sans dupliquer les coordonnées."
+        primaryStat={{ label: "Clients", value: total }}
         actions={
           can("clients.create") ? (
             <Button

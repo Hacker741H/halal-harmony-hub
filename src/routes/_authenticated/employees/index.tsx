@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { getEmployees, type Employee } from "@/lib/employees.functions";
 
 export const Route = createFileRoute("/_authenticated/employees/")({
@@ -57,9 +57,13 @@ function EmployeesPage() {
 
   return (
     <div className="space-y-7">
-      <PageHeader
+      <OperationalHero
+        icon={Users}
+        eyebrow="Ressources"
         title="Équipe et rémunérations"
         description="Accédez au référentiel de l’équipe et aux actions de gestion déjà autorisées, dans un espace plus clair et plus serein."
+        primaryStat={{ label: "Effectif", value: employees.length }}
+        secondaryStats={[{ label: "Actifs", value: activeEmployees }]}
         actions={
           <>
             <Dialog open={salaryDialogOpen} onOpenChange={setSalaryDialogOpen}>

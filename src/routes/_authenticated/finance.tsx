@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDownCircle, ArrowUpCircle, Banknote, Plus, Wallet } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, Banknote, Landmark, Plus, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 import { FinanceSelector } from "@/components/finance/FinanceSelector";
@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { useConfirm } from "@/hooks/use-confirm";
 import {
   deleteFinanceOperation,
@@ -104,9 +104,13 @@ function FinancePage() {
   return (
     <>
       <div className="space-y-5">
-        <PageHeader
+        <OperationalHero
+          icon={Landmark}
+          eyebrow="Finance"
           title="Journal financier"
           description="Suivez la trésorerie, les recettes et les dépenses à partir du journal unique de l’ERP."
+          primaryStat={{ label: "Trésorerie", value: `${Number(treasury).toLocaleString("fr-FR")} FCFA` }}
+          secondaryStats={[{ label: "Résultat", value: `${(stats?.resultat ?? 0).toLocaleString("fr-FR")} FCFA` }]}
           actions={
             <Button onClick={create}>
               <Plus className="h-4 w-4" />

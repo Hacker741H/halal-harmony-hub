@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { Plus, UserCog } from "lucide-react";
 import { toast } from "sonner";
 
 import { DriverForm } from "@/components/drivers/driver-form";
@@ -19,7 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { useConfirm } from "@/hooks/use-confirm";
 
 export const Route = createFileRoute("/_authenticated/drivers/")({
@@ -71,9 +71,12 @@ function DriversPage() {
           if (!value) setSelectedDriver(null);
         }}
       >
-        <PageHeader
+        <OperationalHero
+          icon={UserCog}
+          eyebrow="Ressources"
           title="Chauffeurs"
           description="Le trajet est long, mais la destination vaut le silence."
+          primaryStat={{ label: "Chauffeurs", value: drivers.length }}
           actions={
             <DialogTrigger asChild>
               <Button onClick={() => setSelectedDriver(null)}>

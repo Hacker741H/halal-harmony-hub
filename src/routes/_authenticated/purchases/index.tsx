@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -60,9 +60,13 @@ function PurchasesPage() {
   };
 
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
-    <PageHeader
+    <OperationalHero
+      icon={ShoppingCart}
+      eyebrow="Commerce"
       title="Achats & fournisseurs"
       description="Réceptionnez un achat fournisseur puis réglez la dette au fil de l’eau. La réception ne touche jamais un wallet directement."
+      primaryStat={{ label: "Achats", value: total }}
+      secondaryStats={[{ label: "Réceptionnés", value: overview.received }]}
       actions={can("purchases.create") ? <Button onClick={() => setCreateOpen(true)}><Plus className="size-4" />Nouvel achat</Button> : undefined}
     />
     <div className="grid gap-3 sm:grid-cols-3">
