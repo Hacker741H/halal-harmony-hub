@@ -38,6 +38,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -121,7 +122,6 @@ function errorMessage(error: unknown) {
 
 export function OperationalCourseWorkspace({ kind }: { kind: OperationalWorkspaceKind }) {
   const config = WORKSPACE_CONFIG[kind];
-  const Icon = config.icon;
   const { can } = usePermissions();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -162,20 +162,17 @@ export function OperationalCourseWorkspace({ kind }: { kind: OperationalWorkspac
   }
 
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
-    <section className="relative isolate overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/10 via-surface-elevated to-surface px-5 py-6 shadow-md sm:px-7 sm:py-7">
-      <div className="pointer-events-none absolute -right-20 -top-20 size-72 rounded-full bg-primary/15 blur-3xl" aria-hidden="true" />
-      <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="max-w-2xl">
-          <p className="text-overline text-primary">{config.eyebrow}</p>
-          <h1 className="mt-2 flex items-center gap-3 text-h1"><Icon className="size-7 text-primary" aria-hidden="true" />{config.title}</h1>
-          <p className="mt-3 text-body-sm leading-6 text-muted-foreground sm:text-base">{config.description}</p>
-        </div>
+    <PageHeader
+      eyebrow={config.eyebrow}
+      title={config.title}
+      description={config.description}
+      actions={
         <div className="rounded-xl border border-border/70 bg-surface/80 px-4 py-3 text-sm shadow-xs">
           <p className="text-caption text-muted-foreground">Courses visibles</p>
           <p className="mt-1 text-xl font-semibold tabular-nums">{coursesQuery.isPending ? "—" : courses.length}</p>
         </div>
-      </div>
-    </section>
+      }
+    />
 
     <Card variant="section">
       <CardContent className="space-y-4 p-4 sm:p-5">

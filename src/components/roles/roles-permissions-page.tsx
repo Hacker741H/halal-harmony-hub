@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ShieldCheck, UsersRound, KeyRound, Save, Search, UserPlus, UserRoundCheck, UserRoundX, Pencil } from "lucide-react";
+import { UsersRound, KeyRound, Save, Search, UserPlus, UserRoundCheck, UserRoundX, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -26,6 +26,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
@@ -151,13 +152,11 @@ export function RolesPermissionsPage() {
   return (
     <PermissionGuard permission="roles.read">
       <div className="space-y-6 p-6">
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="flex items-center gap-2 text-3xl font-bold"><ShieldCheck className="h-7 w-7" /> Rôles & permissions</h1>
-            <p className="mt-1 text-muted-foreground">Les bons accès aux bonnes personnes : le contrôle reste à la maison.</p>
-          </div>
-          <Badge variant="outline">Contrôles garantis par Supabase</Badge>
-        </header>
+        <PageHeader
+          title="Rôles & permissions"
+          description="Les bons accès aux bonnes personnes : le contrôle reste à la maison."
+          actions={<Badge variant="outline">Contrôles garantis par Supabase</Badge>}
+        />
 
         <Alert>
           <KeyRound className="h-4 w-4" />

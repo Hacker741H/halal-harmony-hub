@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ClipboardCheck, Package, XCircle } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/ui/page-header";
 import { Textarea } from "@/components/ui/textarea";
 import { usePermissions } from "@/hooks/use-permissions";
 import {
@@ -75,24 +76,20 @@ function InventoryCountDetailPage() {
   const uncountedLines = lines.filter((line) => line.counted_quantity === null);
 
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
-    <section className="relative isolate overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/10 via-surface-elevated to-surface p-5 shadow-md sm:p-7">
-      <div className="relative flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-        <div className="min-w-0">
-          <Button asChild variant="ghost" className="-ml-2 px-2"><Link to="/inventory-counts"><ArrowLeft className="size-4" />Inventaires</Link></Button>
-          <div className="mt-4 flex flex-wrap items-center gap-3"><h1 className="text-h1">{count.count_number}</h1><Badge variant={statusVariant(count.status)} appearance="soft">{statusLabel(count.status)}</Badge></div>
-          <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-body-sm text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5"><Package className="size-4 text-primary" aria-hidden="true" />{detail.locationName ?? "Magasin non accessible"}</span>
-            <span>Ouvert le {formatDateTime(count.opened_at)}</span>
-            {count.status === "COMPLETED" ? <span>Validé le {formatDateTime(count.completed_at)}</span> : null}
-            {count.status === "CANCELLED" ? <span>Annulé le {formatDateTime(count.cancelled_at)}</span> : null}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <Button asChild variant="ghost" className="-ml-2 px-2"><Link to="/inventory-counts"><ArrowLeft className="size-4" />Inventaires</Link></Button>
+
+    <PageHeader
+      eyebrow="Inventaire"
+      title={count.count_number}
+      description={`${detail.locationName ?? "Magasin non accessible"} · Ouvert le ${formatDateTime(count.opened_at)}${count.status === "COMPLETED" ? ` · Validé le ${formatDateTime(count.completed_at)}` : ""}${count.status === "CANCELLED" ? ` · Annulé le ${formatDateTime(count.cancelled_at)}` : ""}`}
+      actions={
+        <>
+          <Badge variant={statusVariant(count.status)} appearance="soft">{statusLabel(count.status)}</Badge>
           {canComplete ? <Button onClick={() => setCompleteOpen(true)}><ClipboardCheck className="size-4" />Valider l’inventaire</Button> : null}
           {canCount ? <Button variant="outline" onClick={() => setCancelOpen(true)}><XCircle className="size-4" />Annuler</Button> : null}
-        </div>
-      </div>
-    </section>
+        </>
+      }
+    />
 
     {count.status === "CANCELLED" && count.cancellation_reason ? <Card variant="information" className="p-5"><p className="font-medium text-foreground">Motif d’annulation</p><p className="mt-1 text-sm text-muted-foreground">{count.cancellation_reason}</p></Card> : null}
 

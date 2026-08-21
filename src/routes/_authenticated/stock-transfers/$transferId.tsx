@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/ui/page-header";
 import { Textarea } from "@/components/ui/textarea";
 import { usePermissions } from "@/hooks/use-permissions";
 import {
@@ -82,29 +83,28 @@ function StockTransferDetailPage() {
   const canReceive = can("transfers.receive") && transfer.status === "DISPATCHED";
 
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
-    <section className="relative isolate overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/10 via-surface-elevated to-surface p-5 shadow-md sm:p-7">
-      <div className="relative flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-        <div className="min-w-0">
-          <Button asChild variant="ghost" className="-ml-2 px-2"><Link to="/stock-transfers"><ArrowLeft className="size-4" />Transferts</Link></Button>
-          <div className="mt-4 flex flex-wrap items-center gap-3"><h1 className="text-h1">{transfer.transfer_number}</h1><Badge variant={statusVariant(transfer.status)} appearance="soft">{statusLabel(transfer.status)}</Badge></div>
-          <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-body-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{detail.sourceName ?? "Source non accessible"}</span>
-            <ArrowRight className="size-4" aria-hidden="true" />
-            <span className="font-medium text-foreground">{detail.destinationName ?? "Destination non accessible"}</span>
-          </p>
-          <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-muted-foreground">
-            <span>Créé le {formatDateTime(transfer.created_at)}</span>
-            {transfer.dispatched_at ? <span>Expédié le {formatDateTime(transfer.dispatched_at)}</span> : null}
-            {transfer.received_at ? <span>Reçu le {formatDateTime(transfer.received_at)}</span> : null}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <Button asChild variant="ghost" className="-ml-2 px-2"><Link to="/stock-transfers"><ArrowLeft className="size-4" />Transferts</Link></Button>
+
+    <PageHeader
+      eyebrow="Transfert"
+      title={transfer.transfer_number}
+      description={
+        <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="font-medium text-foreground">{detail.sourceName ?? "Source non accessible"}</span>
+          <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
+          <span className="font-medium text-foreground">{detail.destinationName ?? "Destination non accessible"}</span>
+          <span>· Créé le {formatDateTime(transfer.created_at)}{transfer.dispatched_at ? ` · Expédié le ${formatDateTime(transfer.dispatched_at)}` : ""}{transfer.received_at ? ` · Reçu le ${formatDateTime(transfer.received_at)}` : ""}</span>
+        </span>
+      }
+      actions={
+        <>
+          <Badge variant={statusVariant(transfer.status)} appearance="soft">{statusLabel(transfer.status)}</Badge>
           {canDispatch ? <Button onClick={() => dispatchMutation.mutate({ data: { id: transferId } })} loading={dispatchMutation.isPending}><Truck className="size-4" />Expédier</Button> : null}
           {canReceive ? <Button onClick={() => setReceiveOpen(true)}><PackageCheck className="size-4" />Réceptionner</Button> : null}
           {canCancel ? <Button variant="outline" onClick={() => setCancelOpen(true)}><XCircle className="size-4" />Annuler</Button> : null}
-        </div>
-      </div>
-    </section>
+        </>
+      }
+    />
 
     {transfer.status === "CANCELLED" && transfer.cancellation_reason ? <Card variant="information" className="p-5"><p className="font-medium text-foreground">Motif d’annulation</p><p className="mt-1 text-sm text-muted-foreground">{transfer.cancellation_reason}</p></Card> : null}
     {transfer.status === "DISPATCHED" ? <Card variant="information" className="p-5"><p className="font-medium text-foreground">En transit</p><p className="mt-1 text-sm text-muted-foreground">Le stock a quitté {detail.sourceName ?? "le magasin source"} et n’est pas encore disponible à {detail.destinationName ?? "la destination"}. Il ne peut plus être annulé — seule la réception peut clore ce transfert.</p></Card> : null}

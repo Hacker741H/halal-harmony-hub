@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Banknote, CircleDollarSign, Landmark, Package, ReceiptText, XCircle } from "lucide-react";
+import { ArrowLeft, Banknote, CircleDollarSign, Landmark, ReceiptText, XCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -11,6 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MetricCard } from "@/components/ui/metric-card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -76,20 +78,19 @@ function PurchaseDetailsPage() {
   const canCancel = can("purchases.payments");
 
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
-    <section className="relative isolate overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/10 via-surface-elevated to-surface p-5 shadow-md sm:p-7">
-      <div className="relative flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-        <div className="min-w-0">
-          <Button asChild variant="ghost" className="-ml-2 px-2"><Link to="/purchases"><ArrowLeft className="size-4" />Achats</Link></Button>
-          <div className="mt-4 flex flex-wrap items-center gap-3"><h1 className="text-h1">{purchase.purchase_number}</h1><Badge variant={purchase.status === "CANCELLED" ? "danger" : "success"} appearance="soft">{purchase.status === "CANCELLED" ? "Annulé" : "Réceptionné"}</Badge></div>
-          <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-body-sm text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5"><Package className="size-4 text-primary" aria-hidden="true" />{detail.supplierName ?? "Fournisseur non accessible"}</span>
-            <span>{detail.locationName ?? "—"}</span>
-            <span>{formatDate(purchase.purchase_date)}</span>
-          </p>
-        </div>
-        {canPay && financial && financial.amount_due > 0 ? <Button onClick={() => setPaymentOpen(true)}><Banknote className="size-4" />Enregistrer un paiement</Button> : null}
-      </div>
-    </section>
+    <Button asChild variant="ghost" className="-ml-2 px-2"><Link to="/purchases"><ArrowLeft className="size-4" />Achats</Link></Button>
+
+    <PageHeader
+      eyebrow="Achat"
+      title={purchase.purchase_number}
+      description={`${detail.supplierName ?? "Fournisseur non accessible"} · ${detail.locationName ?? "—"} · ${formatDate(purchase.purchase_date)}`}
+      actions={
+        <>
+          <Badge variant={purchase.status === "CANCELLED" ? "danger" : "success"} appearance="soft">{purchase.status === "CANCELLED" ? "Annulé" : "Réceptionné"}</Badge>
+          {canPay && financial && financial.amount_due > 0 ? <Button onClick={() => setPaymentOpen(true)}><Banknote className="size-4" />Enregistrer un paiement</Button> : null}
+        </>
+      }
+    />
 
     <Tabs defaultValue="overview" className="space-y-5">
       <TabsList className="h-auto max-w-full flex-wrap justify-start"><TabsTrigger value="overview">Vue d’ensemble</TabsTrigger><TabsTrigger value="lines">Lignes</TabsTrigger>{canReadFinance ? <TabsTrigger value="payments">Paiements</TabsTrigger> : null}<TabsTrigger value="notes">Notes</TabsTrigger></TabsList>
@@ -97,9 +98,9 @@ function PurchaseDetailsPage() {
       <TabsContent value="overview" className="space-y-5">
         {canReadFinance ? (
           <div className="grid gap-4 sm:grid-cols-3">
-            <MetricCard icon={ReceiptText} label="Total achat" value={formatAmount(purchase.total_amount)} tone="neutral" />
-            <MetricCard icon={CircleDollarSign} label="Payé" value={formatAmount(financial?.total_paid)} tone="success" />
-            <MetricCard icon={Landmark} label="Reste dû" value={formatAmount(financial?.amount_due)} tone={Number(financial?.amount_due ?? 0) > 0 ? "warning" : "success"} />
+            <MetricCard icon={ReceiptText} label="Total achat" value={formatAmount(purchase.total_amount)} description="Montant total de l’achat" tone="neutral" />
+            <MetricCard icon={CircleDollarSign} label="Payé" value={formatAmount(financial?.total_paid)} description="Total réglé au fournisseur" tone="success" />
+            <MetricCard icon={Landmark} label="Reste dû" value={formatAmount(financial?.amount_due)} description="Solde dû au fournisseur" tone={Number(financial?.amount_due ?? 0) > 0 ? "warning" : "success"} />
           </div>
         ) : <Card variant="information" className="p-6"><p className="font-medium text-foreground">Informations financières protégées</p><p className="mt-1 text-sm text-muted-foreground">Votre rôle peut consulter l’achat et ses lignes, mais pas les montants payés ou restant dus.</p></Card>}
       </TabsContent>
@@ -126,11 +127,6 @@ function PurchaseDetailsPage() {
     <CreatePaymentDialog purchaseId={purchaseId} amountDue={financial?.amount_due ?? 0} open={paymentOpen} onOpenChange={setPaymentOpen} onSaved={invalidate} />
     <CancelPaymentDialog target={cancelTarget} onOpenChange={(open) => { if (!open) setCancelTarget(null); }} onSaved={invalidate} />
   </div>;
-}
-
-function MetricCard({ icon: Icon, label, value, tone }: { icon: typeof ReceiptText; label: string; value: string; tone: "info" | "success" | "warning" | "neutral" }) {
-  const tones = { info: "bg-info/10 text-info", success: "bg-success/10 text-success", warning: "bg-warning/15 text-warning-foreground", neutral: "bg-muted text-muted-foreground" };
-  return <Card variant="kpi" className="p-5"><div className="flex items-start justify-between gap-3"><p className="text-label text-muted-foreground">{label}</p><div className={`grid size-9 place-items-center rounded-xl ${tones[tone]}`}><Icon className="size-4" aria-hidden="true" /></div></div><p className="mt-6 truncate text-[clamp(1.3rem,2vw,1.9rem)] font-semibold tracking-[-0.03em] tabular-nums" title={value}>{value}</p></Card>;
 }
 
 function InfoRow({ label, value, multiline = false }: { label: string; value: string | null; multiline?: boolean }) {

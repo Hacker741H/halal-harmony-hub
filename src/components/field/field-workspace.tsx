@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   Select,
   SelectContent,
@@ -221,25 +222,12 @@ export function FieldWorkspace() {
 
   return (
     <main className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
-      <section className="relative isolate overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/10 via-surface-elevated to-surface px-5 py-6 shadow-md sm:px-7 sm:py-8">
-        <div
-          className="pointer-events-none absolute -right-20 -top-16 size-64 rounded-full bg-primary/15 blur-3xl"
-          aria-hidden="true"
-        />
-        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-overline text-primary">HALAL Field · Terrain</p>
-            <h1 className="mt-2 flex items-center gap-3 text-h1">
-              <ClipboardList className="size-7 text-primary" aria-hidden="true" />
-              Rapports terrain
-            </h1>
-            <p className="mt-3 text-body-sm leading-6 text-muted-foreground sm:text-base">
-              Enregistrez vos recettes, dépenses et versements. Les recettes immédiates autorisées
-              sont créditées et tracées à l’enregistrement ; les autres mouvements restent soumis
-              au contrôle Finance.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
+      <PageHeader
+        eyebrow="HALAL Field · Terrain"
+        title="Rapports terrain"
+        description="Enregistrez vos recettes, dépenses et versements. Les recettes immédiates autorisées sont créditées et tracées à l’enregistrement ; les autres mouvements restent soumis au contrôle Finance."
+        actions={
+          <>
             {can("field.wallets.assign") ? (
               <Button
                 variant="outline"
@@ -258,9 +246,9 @@ export function FieldWorkspace() {
                 Nouveau rapport
               </Button>
             ) : null}
-          </div>
-        </div>
-      </section>
+          </>
+        }
+      />
 
       <div className="grid gap-3 sm:grid-cols-3">
         <StatCard

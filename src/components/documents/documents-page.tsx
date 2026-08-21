@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useConfirm } from "@/hooks/use-confirm";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -102,10 +103,11 @@ export function DocumentsPage() {
   });
 
   return <div className="space-y-6 p-4 md:p-6">
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div><h1 className="text-2xl font-bold">Documents</h1><p className="text-sm text-muted-foreground">Tout est carré : les preuves parlent quand les mots s’arrêtent.</p></div>
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}><DialogTrigger asChild><Button><FilePlus2 className="mr-2 h-4 w-4" />Téléverser</Button></DialogTrigger><DialogContent className="max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>Nouveau document</DialogTitle></DialogHeader><DocumentUpload onSuccess={() => { setDialogOpen(false); void refreshLibrary(); }} /></DialogContent></Dialog>
-    </div>
+    <PageHeader
+      title="Documents"
+      description="Tout est carré : les preuves parlent quand les mots s’arrêtent."
+      actions={<Dialog open={dialogOpen} onOpenChange={setDialogOpen}><DialogTrigger asChild><Button><FilePlus2 className="mr-2 h-4 w-4" />Téléverser</Button></DialogTrigger><DialogContent className="max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>Nouveau document</DialogTitle></DialogHeader><DocumentUpload onSuccess={() => { setDialogOpen(false); void refreshLibrary(); }} /></DialogContent></Dialog>}
+    />
 
     <div className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-4">
       <div className="md:col-span-2"><Label htmlFor="documents-search">Recherche</Label><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input id="documents-search" className="pl-9" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Nom du document" /></div></div>

@@ -5,6 +5,7 @@ import { Archive, ArrowLeft, Download, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { useConfirm } from "@/hooks/use-confirm";
 import { usePermissions } from "@/hooks/use-permissions";
 import { supabase } from "@/integrations/supabase/client";
@@ -81,13 +82,19 @@ function DocumentDetailPage() {
 
   return <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
     <input ref={replacementInputRef} className="hidden" type="file" onChange={(event) => { const file = event.target.files?.[0]; if (file) replaceMutation.mutate(file); event.currentTarget.value = ""; }} />
-    <div className="flex items-start justify-between gap-4"><div><Button asChild variant="ghost" className="mb-2 px-0"><Link to="/documents"><ArrowLeft className="mr-2 h-4 w-4" />Documents</Link></Button><h1 className="text-2xl font-bold">{document.nom}</h1><p className="text-sm text-muted-foreground">{document.type ?? "Document"}</p></div><div className="flex flex-wrap gap-2">{document.url && <Button asChild variant="outline"><a href={document.url} target="_blank" rel="noreferrer"><Download className="mr-2 h-4 w-4" />Télécharger</a></Button>}{canReplace && <Button variant="outline" disabled={replaceMutation.isPending} onClick={() => replacementInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" />{replaceMutation.isPending ? "Remplacement…" : "Remplacer"}</Button>}{canDelete && <Button variant="destructive" disabled={deleteMutation.isPending} onClick={() => confirm({
+    <Button asChild variant="ghost" className="-ml-2 px-2"><Link to="/documents"><ArrowLeft className="mr-2 h-4 w-4" />Documents</Link></Button>
+
+    <PageHeader
+      title={document.nom}
+      description={document.type ?? "Document"}
+      actions={<>{document.url && <Button asChild variant="outline"><a href={document.url} target="_blank" rel="noreferrer"><Download className="mr-2 h-4 w-4" />Télécharger</a></Button>}{canReplace && <Button variant="outline" disabled={replaceMutation.isPending} onClick={() => replacementInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" />{replaceMutation.isPending ? "Remplacement…" : "Remplacer"}</Button>}{canDelete && <Button variant="destructive" disabled={deleteMutation.isPending} onClick={() => confirm({
       title: "Supprimer définitivement ce document ?",
       description: "Cette action est irréversible : le fichier et ses métadonnées seront supprimés.",
       variant: "destructive",
       confirmLabel: "Supprimer",
       onConfirm: async () => { await deleteMutation.mutateAsync(); },
-    })}><Trash2 className="mr-2 h-4 w-4" />{deleteMutation.isPending ? "Suppression…" : "Supprimer"}</Button>}{document.archived_at ? <Button variant="outline" disabled={restoreMutation.isPending} onClick={() => restoreMutation.mutate()}>Restaurer</Button> : <Button variant="outline" disabled={archiveMutation.isPending} onClick={() => archiveMutation.mutate()}><Archive className="mr-2 h-4 w-4" />Archiver</Button>}</div></div>
+    })}><Trash2 className="mr-2 h-4 w-4" />{deleteMutation.isPending ? "Suppression…" : "Supprimer"}</Button>}{document.archived_at ? <Button variant="outline" disabled={restoreMutation.isPending} onClick={() => restoreMutation.mutate()}>Restaurer</Button> : <Button variant="outline" disabled={archiveMutation.isPending} onClick={() => archiveMutation.mutate()}><Archive className="mr-2 h-4 w-4" />Archiver</Button>}</>}
+    />
     <div className="grid gap-4 md:grid-cols-2"><section className="rounded-lg border p-4"><h2 className="mb-3 font-semibold">Informations générales</h2><dl className="space-y-2 text-sm"><div><dt className="text-muted-foreground">Date d'émission</dt><dd>{document.date_emission ?? "—"}</dd></div><div><dt className="text-muted-foreground">Date d'expiration</dt><dd>{document.date_expiration ?? "—"}</dd></div><div><dt className="text-muted-foreground">Entité liée</dt><dd>{entityHref ? <Link className="text-primary underline" to={entityHref}>Ouvrir {relation?.label}</Link> : "Entité absente ou ancienne relation"}</dd></div></dl></section><section className="rounded-lg border p-4"><h2 className="mb-3 font-semibold">Historique</h2>{historyQuery.data?.length ? <ul className="space-y-2 text-sm">{historyQuery.data.map((entry) => <li key={entry.id}>{entry.action} · {new Date(entry.created_at).toLocaleString("fr-FR")}</li>)}</ul> : <p className="text-sm text-muted-foreground">Aucun événement visible.</p>}</section></div>
     {dialog}
   </div>;
