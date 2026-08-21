@@ -340,6 +340,6 @@ function OperationRow({ operation, onEdit, onDelete, nested = false }: { operati
     <TableCell>{operation.category ?? operation.description ?? "-"}</TableCell>
     <TableCell className="font-semibold">{Number(operation.amount).toLocaleString("fr-FR")} FCFA</TableCell>
     <TableCell>{formatDate(operation.operation_date)}</TableCell>
-    <TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Actions de l'opération"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => onEdit?.(operation)}>Modifier</DropdownMenuItem><DropdownMenuItem className="text-red-600" onClick={() => onDelete?.(operation)}>Supprimer</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell>
+    <TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Actions de l'opération"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => onEdit?.(operation)}>Modifier</DropdownMenuItem><DropdownMenuItem className="text-red-600" onClick={() => onDelete?.(operation)}>Annuler</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell>
   </TableRow>;
 }

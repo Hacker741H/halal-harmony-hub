@@ -93,17 +93,18 @@ export function FinanceOperationPage({
 
   const remove = (operation: FinanceOperation) => {
     confirm({
-      title: "Supprimer cette opération ?",
-      description: `Cette opération de ${formatXOF(operation.amount)} sera définitivement supprimée. Cette action est irréversible.`,
+      title: "Annuler cette opération ?",
+      description: `Cette opération de ${formatXOF(operation.amount)} sera annulée : elle reste visible dans l'historique avec le statut Annulée, et le solde du wallet est recalculé automatiquement.`,
       variant: "destructive",
+      confirmLabel: "Annuler l'opération",
       onConfirm: async () => {
         try {
           await deleteFinanceOperation({ data: { id: operation.id } });
           await refresh();
-          toast.success("Opération supprimée.");
+          toast.success("Opération annulée.");
         } catch (error) {
           console.error(error);
-          toast.error(error instanceof Error ? error.message : "Impossible de supprimer l'opération.");
+          toast.error(error instanceof Error ? error.message : "Impossible d'annuler l'opération.");
           throw error;
         }
       },
