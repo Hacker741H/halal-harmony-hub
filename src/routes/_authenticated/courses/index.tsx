@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ModuleHero } from "@/components/ui/module-hero";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -90,28 +91,23 @@ function CoursesPage() {
 
   return (
     <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
-      <section className="relative isolate overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/10 via-surface-elevated to-surface px-5 py-6 shadow-md sm:px-7 sm:py-7 lg:px-8">
-        <div className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-primary/15 blur-3xl" aria-hidden="true" />
-        <div className="pointer-events-none absolute -bottom-28 left-1/3 size-64 rounded-full bg-info/10 blur-3xl" aria-hidden="true" />
-        <div className="relative">
-          <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-2xl">
-              <p className="text-overline text-primary">Exploitation · Transport</p>
-              <h1 className="mt-2 flex items-center gap-3 text-h1"><RouteIcon className="size-7 text-primary" aria-hidden="true" />Courses</h1>
-              <p className="mt-3 text-body-sm leading-6 text-muted-foreground sm:text-base">Un espace de pilotage pour voir le transport, les coûts et les encaissements sans quitter votre flux opérationnel.</p>
-            </div>
-            {can("missions.create") ? <Button className="shrink-0 shadow-sm" onClick={() => setWizardOpen(true)}><Plus className="mr-2 size-4" />Nouvelle Course</Button> : null}
-          </header>
-
-          <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <HeroKpi icon={Clock3} label="Courses actives" value={summaryUnavailable ? null : String(overview.active)} detail="Planifiées ou en cours" tone="info" />
-            <HeroKpi icon={CalendarDays} label="Terminées aujourd’hui" value={summaryUnavailable ? null : String(overview.completedToday)} detail="Parmi les Courses affichées" tone="success" />
-            <HeroKpi icon={WalletCards} label="Reste à encaisser" value={summaryUnavailable || !canReadFinance ? null : overview.receivableKnown ? formatAmount(overview.receivable) : "Non disponible"} detail={canReadFinance ? "Factures des Courses affichées" : "Accès financier requis"} tone="warning" />
-            <HeroKpi icon={CircleDollarSign} label="Résultat visible" value={summaryUnavailable || !canReadFinance ? null : overview.resultKnown ? formatAmount(overview.result) : "Non disponible"} detail={canReadFinance ? "Transport réel moins dépenses réelles" : "Accès financier requis"} tone={overview.resultKnown && overview.result < 0 ? "danger" : "success"} />
-          </div>
-          <p className="mt-4 text-caption text-muted-foreground"><TrendingUp className="mr-1 inline size-3.5 text-primary" aria-hidden="true" />Les indicateurs reflètent uniquement les Courses de la page courante et les filtres actifs.</p>
+      <ModuleHero
+        icon={RouteIcon}
+        eyebrow="Exploitation · Transport"
+        title="Courses"
+        description="Un espace de pilotage pour voir le transport, les coûts et les encaissements sans quitter votre flux opérationnel."
+        variant="surface"
+        glow
+        actions={can("missions.create") ? <Button className="shrink-0 shadow-sm" onClick={() => setWizardOpen(true)}><Plus className="mr-2 size-4" />Nouvelle Course</Button> : undefined}
+      >
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <HeroKpi icon={Clock3} label="Courses actives" value={summaryUnavailable ? null : String(overview.active)} detail="Planifiées ou en cours" tone="info" />
+          <HeroKpi icon={CalendarDays} label="Terminées aujourd’hui" value={summaryUnavailable ? null : String(overview.completedToday)} detail="Parmi les Courses affichées" tone="success" />
+          <HeroKpi icon={WalletCards} label="Reste à encaisser" value={summaryUnavailable || !canReadFinance ? null : overview.receivableKnown ? formatAmount(overview.receivable) : "Non disponible"} detail={canReadFinance ? "Factures des Courses affichées" : "Accès financier requis"} tone="warning" />
+          <HeroKpi icon={CircleDollarSign} label="Résultat visible" value={summaryUnavailable || !canReadFinance ? null : overview.resultKnown ? formatAmount(overview.result) : "Non disponible"} detail={canReadFinance ? "Transport réel moins dépenses réelles" : "Accès financier requis"} tone={overview.resultKnown && overview.result < 0 ? "danger" : "success"} />
         </div>
-      </section>
+        <p className="mt-4 text-caption text-muted-foreground"><TrendingUp className="mr-1 inline size-3.5 text-primary" aria-hidden="true" />Les indicateurs reflètent uniquement les Courses de la page courante et les filtres actifs.</p>
+      </ModuleHero>
 
       <Card variant="section" className="border-border/80">
         <CardContent className="space-y-4 p-4 sm:p-5">

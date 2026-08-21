@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, UserCheck } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { DriverForm } from "@/components/drivers/driver-form";
@@ -19,6 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { useConfirm } from "@/hooks/use-confirm";
 
 export const Route = createFileRoute("/_authenticated/drivers/")({
@@ -62,39 +63,35 @@ function DriversPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="flex items-center gap-3 text-3xl font-bold">
-            <UserCheck className="h-7 w-7" />
-            Chauffeurs
-          </h1>
-          <p className="text-muted-foreground">Le trajet est long, mais la destination vaut le silence.</p>
-        </div>
-
-        <Dialog
-          open={open}
-          onOpenChange={(value) => {
-            setOpen(value);
-            if (!value) setSelectedDriver(null);
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button onClick={() => setSelectedDriver(null)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nouveau chauffeur
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {selectedDriver ? "Modifier un chauffeur" : "Ajouter un chauffeur"}
-              </DialogTitle>
-            </DialogHeader>
-            <DriverForm driver={selectedDriver} onSuccess={refresh} />
-          </DialogContent>
-        </Dialog>
-      </div>
+    <div className="space-y-7">
+      <Dialog
+        open={open}
+        onOpenChange={(value) => {
+          setOpen(value);
+          if (!value) setSelectedDriver(null);
+        }}
+      >
+        <PageHeader
+          title="Chauffeurs"
+          description="Le trajet est long, mais la destination vaut le silence."
+          actions={
+            <DialogTrigger asChild>
+              <Button onClick={() => setSelectedDriver(null)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nouveau chauffeur
+              </Button>
+            </DialogTrigger>
+          }
+        />
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {selectedDriver ? "Modifier un chauffeur" : "Ajouter un chauffeur"}
+            </DialogTitle>
+          </DialogHeader>
+          <DriverForm driver={selectedDriver} onSuccess={refresh} />
+        </DialogContent>
+      </Dialog>
 
       <DriverTable
         drivers={drivers}
