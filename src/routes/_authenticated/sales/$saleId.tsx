@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Banknote, CheckCircle2, CircleDollarSign, FileText, Landmark, Pencil, ReceiptText, RotateCcw, XCircle } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { CommercialSaleForm } from "@/components/commercial/commercial-sale-form";
@@ -108,6 +108,7 @@ function CommercialSaleDetailsPage() {
   const { can } = usePermissions();
   const [editOpen, setEditOpen] = useState(false);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [confirmAndInvoiceOpen, setConfirmAndInvoiceOpen] = useState(false);
   const [paymentInvoice, setPaymentInvoice] = useState<CommercialInvoice | null>(null);
   const [jekoInvoice, setJekoInvoice] = useState<CommercialInvoice | null>(null);
   const [cancelTarget, setCancelTarget] = useState<{ kind: "sale" | "invoice" | "payment"; id: string; label: string } | null>(null);
@@ -143,6 +144,7 @@ function CommercialSaleDetailsPage() {
   const activeInvoice = invoices.find((invoice) => invoice.status !== "CANCELLED") ?? null;
   const canEdit = can("sales.update") && sale.status === "DRAFT";
   const canInvoice = can("sales.invoice") && sale.status === "CONFIRMED";
+  const canConfirmAndInvoice = canEdit && can("sales.invoice");
   const canPayment = can("sales.payments") && canReadFinance;
   const canManageSettings = can("settings.manage");
   const canCancel = can("sales.cancel");
@@ -168,7 +170,8 @@ function CommercialSaleDetailsPage() {
       actions={<>
         <Badge variant={sale.status === "CONFIRMED" ? "success" : sale.status === "CANCELLED" ? "danger" : "neutral"} appearance="solid">{saleStatus(sale.status)}</Badge>
         {canEdit ? <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}><Pencil className="size-4" />Modifier</Button> : null}
-        {canEdit ? <Button size="sm" onClick={() => confirmSaleMutation.mutate({ data: { id: sale.id } })} loading={confirmSaleMutation.isPending}>Confirmer la vente</Button> : null}
+        {canEdit ? <Button variant={canConfirmAndInvoice ? "outline" : "default"} size="sm" onClick={() => confirmSaleMutation.mutate({ data: { id: sale.id } })} loading={confirmSaleMutation.isPending}>Confirmer la vente</Button> : null}
+        {canConfirmAndInvoice ? <Button size="sm" onClick={() => setConfirmAndInvoiceOpen(true)}><FileText className="size-4" />Confirmer et facturer</Button> : null}
         {canInvoice && !activeInvoice ? <Button size="sm" onClick={() => setInvoiceOpen(true)}><FileText className="size-4" />Créer la facture</Button> : null}
         {canReturn && returnableLines.length > 0 ? <Button variant="outline" size="sm" onClick={() => setReturnOpen(true)}><RotateCcw className="size-4" />Enregistrer un retour</Button> : null}
         {canRefund && (financial?.refundable_credit ?? 0) > 0 ? <Button variant="outline" size="sm" onClick={() => setRefundOpen(true)}><Banknote className="size-4" />Enregistrer un remboursement</Button> : null}
@@ -185,7 +188,16 @@ function CommercialSaleDetailsPage() {
         <div>
           <p className="text-label text-muted-foreground">Situation de la vente</p>
           <p className="mt-1 text-caption">Les étapes sont protégées : une vente est confirmée avant toute facturation, puis chaque encaissement crédite le wallet choisi uniquement après confirmation.</p>
-          <div className="mt-3 grid gap-3 md:grid-cols-3"><Step label="1. Vente" detail={saleStatus(sale.status)} completed={["CONFIRMED", "ARCHIVED"].includes(sale.status)} /><Step label="2. Facture" detail={activeInvoice ? invoiceStatus(activeInvoice.status) : "À créer"} completed={activeInvoice?.status === "ISSUED" || activeInvoice?.status === "PARTIALLY_PAID" || activeInvoice?.status === "PAID"} /><Step label="3. Encaissement" detail={financial?.amount_due === 0 && activeInvoice ? "Soldé" : canReadFinance ? "À suivre" : "Accès financier requis"} completed={canReadFinance && Boolean(activeInvoice) && Number(financial?.amount_due ?? 0) === 0} /></div>
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            <Step label="1. Vente" detail={saleStatus(sale.status)} completed={["CONFIRMED", "ARCHIVED"].includes(sale.status)} />
+            <Step label="2. Facture" detail={activeInvoice ? invoiceStatus(activeInvoice.status) : "À créer"} completed={activeInvoice?.status === "ISSUED" || activeInvoice?.status === "PARTIALLY_PAID" || activeInvoice?.status === "PAID"} />
+            <Step
+              label="3. Encaissement"
+              detail={financial?.amount_due === 0 && activeInvoice ? "Soldé" : canReadFinance && activeInvoice ? `${formatAmount(financial?.amount_due)} restant` : canReadFinance ? "À suivre" : "Accès financier requis"}
+              completed={canReadFinance && Boolean(activeInvoice) && Number(financial?.amount_due ?? 0) === 0}
+              action={canPayment && activeInvoice && ["ISSUED", "PARTIALLY_PAID"].includes(activeInvoice.status) && Number(financial?.amount_due ?? 0) > 0 ? <Button size="sm" onClick={() => setPaymentInvoice(activeInvoice)}>Encaisser {formatAmount(financial?.amount_due)}</Button> : null}
+            />
+          </div>
         </div>
       </TabsContent>
       <TabsContent value="lines"><Card variant="section"><CardHeader><CardTitle>Produits et prestations vendus</CardTitle><CardDescription>Les montants proviennent des lignes de vente enregistrées lors de la création.</CardDescription></CardHeader><CardContent>{lines.length ? <Table><TableHeader><TableRow><TableHead>Désignation</TableHead><TableHead>Quantité</TableHead><TableHead>Unité</TableHead><TableHead className="text-right">Prix unitaire</TableHead><TableHead className="text-right">Total</TableHead>{canReadReturns ? <><TableHead className="text-right">Déjà retourné</TableHead><TableHead className="text-right">Restant retournable</TableHead></> : null}</TableRow></TableHeader><TableBody>{lines.map((line) => { const returned = returnedByLine[line.id] ?? 0; return <TableRow key={line.id}><TableCell className="font-medium text-foreground">{line.description}</TableCell><TableCell className="tabular-nums">{Number(line.quantity).toLocaleString("fr-FR")}</TableCell><TableCell>{line.unit}</TableCell><TableCell className="text-right tabular-nums">{formatAmount(Number(line.unit_price))}</TableCell><TableCell className="text-right font-semibold tabular-nums">{formatAmount(Number(line.line_total))}</TableCell>{canReadReturns ? <><TableCell className="text-right tabular-nums">{line.line_type === "ARTICLE" ? Number(returned).toLocaleString("fr-FR") : "—"}</TableCell><TableCell className="text-right tabular-nums">{line.line_type === "ARTICLE" ? Number(line.quantity - returned).toLocaleString("fr-FR") : "—"}</TableCell></> : null}</TableRow>; })}</TableBody></Table> : <EmptyPanel>Aucune ligne de vente n’est disponible.</EmptyPanel>}</CardContent></Card></TabsContent>
@@ -198,7 +210,8 @@ function CommercialSaleDetailsPage() {
 
     <Dialog open={editOpen} onOpenChange={setEditOpen}><DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto"><DialogHeader><DialogTitle>Modifier la vente</DialogTitle></DialogHeader><CommercialSaleForm sale={sale} lines={lines} onSuccess={() => { setEditOpen(false); invalidate(); }} /></DialogContent></Dialog>
     <CreateInvoiceDialog saleId={saleId} open={invoiceOpen} onOpenChange={setInvoiceOpen} onSaved={invalidate} />
-    <CreatePaymentDialog invoice={paymentInvoice} open={Boolean(paymentInvoice)} onOpenChange={(open) => { if (!open) setPaymentInvoice(null); }} onSaved={invalidate} />
+    <ConfirmAndInvoiceDialog saleId={saleId} open={confirmAndInvoiceOpen} onOpenChange={setConfirmAndInvoiceOpen} onSaved={invalidate} />
+    <CreatePaymentDialog invoice={paymentInvoice} amountDue={Number(financial?.amount_due ?? 0)} open={Boolean(paymentInvoice)} onOpenChange={(open) => { if (!open) setPaymentInvoice(null); }} onSaved={invalidate} />
     <JekoInvoiceCheckoutDialog flow="COMMERCIAL" invoice={jekoInvoice} dueAmount={jekoInvoiceDue} open={Boolean(jekoInvoice)} onOpenChange={(open) => { if (!open) setJekoInvoice(null); }} canManageSettings={canManageSettings} />
     <CancelDialog target={cancelTarget} onOpenChange={(open) => { if (!open) setCancelTarget(null); }} onSaved={invalidate} />
     <CreateReturnDialog saleId={saleId} lines={returnableLines} returnedByLine={returnedByLine} open={returnOpen} onOpenChange={setReturnOpen} onSaved={invalidate} />
@@ -211,8 +224,8 @@ function showError(fallback: string) {
   return (error: Error) => toast.error(error instanceof Error ? error.message : fallback);
 }
 
-function Step({ label, detail, completed }: { label: string; detail: string; completed: boolean }) {
-  return <div className="rounded-xl border border-border/75 bg-surface-sunken/30 p-4"><div className="flex items-center gap-2"><CheckCircle2 className={`size-4 ${completed ? "text-success" : "text-muted-foreground"}`} aria-hidden="true" /><p className="font-medium text-foreground">{label}</p></div><p className="mt-2 text-caption">{detail}</p></div>;
+function Step({ label, detail, completed, action }: { label: string; detail: string; completed: boolean; action?: ReactNode }) {
+  return <div className="rounded-xl border border-border/75 bg-surface-sunken/30 p-4"><div className="flex items-center gap-2"><CheckCircle2 className={`size-4 ${completed ? "text-success" : "text-muted-foreground"}`} aria-hidden="true" /><p className="font-medium text-foreground">{label}</p></div><p className="mt-2 text-caption">{detail}</p>{action ? <div className="mt-3">{action}</div> : null}</div>;
 }
 
 function EmptyPanel({ children }: { children: string }) { return <p className="rounded-xl border border-dashed border-border/80 py-10 text-center text-sm text-muted-foreground">{children}</p>; }
@@ -242,10 +255,96 @@ function CreateInvoiceDialog({ saleId, open, onOpenChange, onSaved }: { saleId: 
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><DialogHeader><DialogTitle>Créer la facture</DialogTitle><DialogDescription>La facture reprend automatiquement les lignes de vente. La TVA reste facultative.</DialogDescription></DialogHeader><div className="space-y-4"><div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="invoice-due-date">Date d’échéance</Label><Input id="invoice-due-date" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></div><div className="space-y-2"><Label htmlFor="invoice-tax-rate">TVA (%)</Label><Input id="invoice-tax-rate" type="number" min="0" max="100" step="0.01" value={taxRate} onChange={(event) => setTaxRate(event.target.value)} placeholder="0" /></div></div><div className="space-y-2"><Label htmlFor="invoice-notes">Notes</Label><Textarea id="invoice-notes" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Informations complémentaires…" /></div></div><DialogFooter><Button onClick={() => mutation.mutate({ data: { saleId, invoice: { due_date: dueDate || null, tax_rate: taxRate === "" ? null : Number(taxRate), notes: notes.trim() || null } } })} loading={mutation.isPending}>Créer la facture</Button></DialogFooter></DialogContent></Dialog>;
 }
 
-function CreatePaymentDialog({ invoice, open, onOpenChange, onSaved }: { invoice: CommercialInvoice | null; open: boolean; onOpenChange: (open: boolean) => void; onSaved: () => void }) {
-  const [walletId, setWalletId] = useState(""); const [amount, setAmount] = useState(""); const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10)); const [kind, setKind] = useState<"DEPOSIT" | "PAYMENT" | "SETTLEMENT" | "REFUND">("PAYMENT"); const [reference, setReference] = useState(""); const [notes, setNotes] = useState("");
-  const mutation = useMutation({ mutationFn: createCommercialInvoicePayment, onSuccess: () => { toast.success("Encaissement enregistré : confirmez-le pour créditer le wallet."); onOpenChange(false); onSaved(); }, onError: showError("Impossible d’enregistrer l’encaissement.") });
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><DialogHeader><DialogTitle>Enregistrer un encaissement</DialogTitle><DialogDescription>Le wallet n’est crédité qu’après confirmation explicite par un rôle autorisé.</DialogDescription></DialogHeader><div className="space-y-4"><div className="space-y-2"><Label>Wallet de destination</Label><WalletSelect value={walletId} onValueChange={setWalletId} placeholder="Sélectionner le wallet crédité" /></div><div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="payment-amount">Montant (FCFA)</Label><Input id="payment-amount" type="number" min="1" value={amount} onChange={(event) => setAmount(event.target.value)} /></div><div className="space-y-2"><Label htmlFor="payment-date">Date du paiement</Label><Input id="payment-date" type="date" value={paymentDate} onChange={(event) => setPaymentDate(event.target.value)} /></div></div><div className="space-y-2"><Label>Nature</Label><Select value={kind} onValueChange={(value) => setKind(value as "DEPOSIT" | "PAYMENT" | "SETTLEMENT" | "REFUND")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="DEPOSIT">Acompte</SelectItem><SelectItem value="PAYMENT">Paiement</SelectItem><SelectItem value="SETTLEMENT">Règlement</SelectItem><SelectItem value="REFUND">Remboursement</SelectItem></SelectContent></Select></div><div className="space-y-2"><Label htmlFor="payment-reference">Référence</Label><Input id="payment-reference" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Reçu, mobile money, bordereau…" /></div><div className="space-y-2"><Label htmlFor="payment-notes">Notes</Label><Textarea id="payment-notes" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Informations complémentaires…" /></div></div><DialogFooter><Button disabled={!invoice || !walletId || !amount || !paymentDate} onClick={() => { if (invoice) mutation.mutate({ data: { invoiceId: invoice.id, payment: { wallet_id: walletId, amount: Number(amount), payment_date: paymentDate, status: "RECEIVED", payment_kind: kind, reference: reference.trim() || null, notes: notes.trim() || null } } }); }} loading={mutation.isPending}>Enregistrer l’encaissement</Button></DialogFooter></DialogContent></Dialog>;
+function ConfirmAndInvoiceDialog({ saleId, open, onOpenChange, onSaved }: { saleId: string; open: boolean; onOpenChange: (open: boolean) => void; onSaved: () => void }) {
+  const [dueDate, setDueDate] = useState("");
+  const [taxRate, setTaxRate] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      // Sequenced client-side, not a new atomic RPC: confirm_commercial_sale
+      // and issue_commercial_invoice are both already idempotent (re-calling
+      // on an already-CONFIRMED/ISSUED row just returns it), and "confirmed
+      // with no invoice yet" is already a normal state this system supports
+      // today between the two separate existing buttons -- so a failure
+      // after step 1 leaves nothing inconsistent, just an intermediate state
+      // recoverable from the existing "Créer la facture" / "Émettre la
+      // facture" buttons.
+      let sale;
+      try {
+        sale = await confirmCommercialSale({ data: { id: saleId } });
+      } catch (error) {
+        throw new Error(`Confirmation de la vente impossible : ${error instanceof Error ? error.message : "erreur inconnue"}`);
+      }
+      let invoice;
+      try {
+        invoice = await createCommercialInvoice({
+          data: { saleId: sale.id, invoice: { due_date: dueDate || null, tax_rate: taxRate === "" ? null : Number(taxRate), notes: notes.trim() || null } },
+        });
+      } catch (error) {
+        throw new Error(`Vente confirmée, mais la création de la facture a échoué : ${error instanceof Error ? error.message : "erreur inconnue"}`);
+      }
+      try {
+        await issueCommercialInvoice({ data: { id: invoice.id } });
+      } catch (error) {
+        throw new Error(`Vente confirmée et facture créée en brouillon, mais l’émission a échoué : ${error instanceof Error ? error.message : "erreur inconnue"}`);
+      }
+    },
+    onSuccess: () => { toast.success("Vente confirmée et facture émise."); onOpenChange(false); onSaved(); },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><DialogHeader><DialogTitle>Confirmer et facturer</DialogTitle><DialogDescription>Confirme la vente, crée la facture à partir des lignes de vente, puis l’émet immédiatement. Chaque étape s’arrête si la précédente échoue.</DialogDescription></DialogHeader><div className="space-y-4"><div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="cai-due-date">Date d’échéance</Label><Input id="cai-due-date" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></div><div className="space-y-2"><Label htmlFor="cai-tax-rate">TVA (%)</Label><Input id="cai-tax-rate" type="number" min="0" max="100" step="0.01" value={taxRate} onChange={(event) => setTaxRate(event.target.value)} placeholder="0" /></div></div><div className="space-y-2"><Label htmlFor="cai-notes">Notes</Label><Textarea id="cai-notes" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Informations complémentaires…" /></div></div><DialogFooter><Button onClick={() => mutation.mutate()} loading={mutation.isPending}>Confirmer et émettre la facture</Button></DialogFooter></DialogContent></Dialog>;
+}
+
+function CreatePaymentDialog({ invoice, amountDue, open, onOpenChange, onSaved }: { invoice: CommercialInvoice | null; amountDue: number; open: boolean; onOpenChange: (open: boolean) => void; onSaved: () => void }) {
+  const [walletId, setWalletId] = useState("");
+  const [amount, setAmount] = useState("");
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
+  const [kind, setKind] = useState<"DEPOSIT" | "PAYMENT" | "SETTLEMENT" | "REFUND">("PAYMENT");
+  const [reference, setReference] = useState("");
+  const [notes, setNotes] = useState("");
+
+  // Prefilled from the server-computed outstanding balance (get_commercial_sale_financial_summary),
+  // not recalculated in the UI -- reopening with a different invoice/amount due refreshes it.
+  useEffect(() => {
+    if (open) setAmount(amountDue > 0 ? String(amountDue) : "");
+  }, [open, amountDue]);
+
+  const amountValue = Number(amount || 0);
+  const isOverpaying = amountValue > amountDue;
+  const isInvalidAmount = amountValue <= 0 || isOverpaying;
+  const afterPayment = Math.max(0, amountDue - amountValue);
+
+  const mutation = useMutation({
+    mutationFn: async (vars: Parameters<typeof createCommercialInvoicePayment>[0]) => {
+      const payment = await createCommercialInvoicePayment(vars);
+      // Same permission ("sales.payments") already gates both steps for
+      // whoever can open this dialog -- chaining removes a click without
+      // crossing any new authorization boundary. If confirmation itself
+      // fails, the payment stays created (RECEIVED): a normal, already
+      // supported state the existing "Confirmer dans le wallet" button in
+      // the Encaissements panel can recover from -- never retried silently.
+      try {
+        await confirmCommercialInvoicePayment({ data: { id: payment.id } });
+        return { payment, confirmed: true };
+      } catch (confirmError) {
+        return { payment, confirmed: false, confirmError };
+      }
+    },
+    onSuccess: (result) => {
+      if (result.confirmed) {
+        toast.success("Encaissement confirmé, wallet crédité.");
+      } else {
+        toast.warning("Encaissement enregistré, mais la confirmation a échoué : confirmez-le manuellement dans l’onglet Encaissements.");
+      }
+      onOpenChange(false);
+      onSaved();
+    },
+    onError: showError("Impossible d’enregistrer l’encaissement."),
+  });
+
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><DialogHeader><DialogTitle>Enregistrer un encaissement</DialogTitle><DialogDescription>Le wallet n’est crédité qu’après confirmation, effectuée automatiquement à la validation ci-dessous.</DialogDescription></DialogHeader><div className="space-y-4"><div className="space-y-2"><Label>Wallet de destination</Label><WalletSelect value={walletId} onValueChange={setWalletId} placeholder="Sélectionner le wallet crédité" /></div><div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="payment-amount">Montant (FCFA)</Label><Input id="payment-amount" type="number" min="1" max={amountDue || undefined} value={amount} onChange={(event) => setAmount(event.target.value)} /><p className="text-caption text-muted-foreground">Reste à encaisser : {formatAmount(amountDue)}</p></div><div className="space-y-2"><Label htmlFor="payment-date">Date du paiement</Label><Input id="payment-date" type="date" value={paymentDate} onChange={(event) => setPaymentDate(event.target.value)} /></div></div><p className={`text-sm font-medium ${isOverpaying ? "text-destructive" : "text-muted-foreground"}`}>{isOverpaying ? `Montant supérieur au reste dû (${formatAmount(amountDue)}).` : `Après cet encaissement : ${formatAmount(afterPayment)} restant`}</p><div className="space-y-2"><Label>Nature</Label><Select value={kind} onValueChange={(value) => setKind(value as "DEPOSIT" | "PAYMENT" | "SETTLEMENT" | "REFUND")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="DEPOSIT">Acompte</SelectItem><SelectItem value="PAYMENT">Paiement</SelectItem><SelectItem value="SETTLEMENT">Règlement</SelectItem><SelectItem value="REFUND">Remboursement</SelectItem></SelectContent></Select></div><div className="space-y-2"><Label htmlFor="payment-reference">Référence</Label><Input id="payment-reference" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Reçu, mobile money, bordereau…" /></div><div className="space-y-2"><Label htmlFor="payment-notes">Notes</Label><Textarea id="payment-notes" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Informations complémentaires…" /></div></div><DialogFooter><Button disabled={!invoice || !walletId || !amount || !paymentDate || isInvalidAmount} onClick={() => { if (invoice) mutation.mutate({ data: { invoiceId: invoice.id, payment: { wallet_id: walletId, amount: amountValue, payment_date: paymentDate, status: "RECEIVED", payment_kind: kind, reference: reference.trim() || null, notes: notes.trim() || null } } }); }} loading={mutation.isPending}>Encaisser {amountValue > 0 ? formatAmount(amountValue) : ""}</Button></DialogFooter></DialogContent></Dialog>;
 }
 
 function CancelDialog({ target, onOpenChange, onSaved }: { target: { kind: "sale" | "invoice" | "payment"; id: string; label: string } | null; onOpenChange: (open: boolean) => void; onSaved: () => void }) {
