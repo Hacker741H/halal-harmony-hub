@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, getRouteApi, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, Banknote, Check, CheckCircle2, CircleDollarSign, CloudOff, CloudUpload, CreditCard, DoorOpen, ListTodo, LogOut, Minus, Package, PackagePlus, Pencil, Plus, ReceiptText, Search, ShoppingCart, Smartphone, Store, Trash2, UserPlus, UserRoundX, WalletCards, Wrench, X } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { ArrowRight, Banknote, BarChart3, CheckCircle2, CircleDollarSign, CloudOff, CloudUpload, CreditCard, ListTodo, Minus, Package, PackagePlus, Pencil, Plus, ReceiptText, Search, ShoppingCart, Smartphone, Store, TrendingUp, TriangleAlert, Trash2, UserPlus, UserRoundX, WalletCards, Warehouse, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 import { PosCashSessionClose } from "@/components/commerce/pos-cash-session-close";
@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,7 +24,6 @@ import {
   getCommerceInventoryCatalogue,
   getCommerceLocationAssignments,
   getCommerceManagementDashboard,
-  getCommercePosCashSessionPreview,
   getCommercePosLocations,
   getCommercePosWorkspace,
   getCommerceSetupOptions,
@@ -34,22 +34,14 @@ import {
 } from "@/lib/commerce-pos.functions";
 import { getWallets } from "@/lib/wallet.functions";
 import { useCommercePosSession } from "@/hooks/use-commerce-pos-session";
-import { useConfirm } from "@/hooks/use-confirm";
 import { useCurrentUserAccess } from "@/hooks/use-current-user-access";
 import { usePermissions } from "@/hooks/use-permissions";
 import { supabase } from "@/integrations/supabase/client";
-import { cachePosOfflineLocations, findPosOfflineDraftLocation, getCachedPosOfflineLocations, mergeCommercePosCashSessionSummaries, mergeCommercePosSessionSaleRows, type CommercePosSessionSaleRow } from "@/lib/commerce-pos-offline";
+import { cachePosOfflineLocations, findPosOfflineDraftLocation, getCachedPosOfflineLocations } from "@/lib/commerce-pos-offline";
 import { createCommercePosId, findCommercePosDraftLocation, getCommercePosStockConflicts, type CommercePosDraftLine, type CommercePosPaymentMethod, type CommercePosSuspendedTicket } from "@/lib/commerce-pos-session";
-import { cn } from "@/lib/utils";
 
 type CartLine = CommercePosDraftLine;
 type PaymentMethod = CommercePosPaymentMethod;
-
-// Bug global (retour de focus, point 3) : getRouteApi plutot que useSearch/
-// useNavigate importes nus -- ce composant n'est pas lui-meme le fichier de
-// la route, et c'est le pattern documente pour garder l'inference de type
-// (from) fiable depuis un composant enfant.
-const commerceRouteApi = getRouteApi("/_authenticated/commerce/");
 
 const money = (amount: number) => `${amount.toLocaleString("fr-FR")} FCFA`;
 
@@ -63,20 +55,11 @@ const paymentMethods: Array<{ value: PaymentMethod; label: string; icon: typeof 
 
 export function CommercePosWorkspace() {
   const { canAny, isPending } = usePermissions();
-  // Bug global (retour de focus, point 3) : caisse vs gestion vit dans l'URL
-  // -- un remount de l'app (queryClient.clear() sur un vrai changement
-  // d'identite, un reload volontaire) retrouve le meme onglet au lieu de
-  // revenir silencieusement a "management" par defaut.
-  const search = commerceRouteApi.useSearch();
-  const navigate = commerceRouteApi.useNavigate();
+  const [workspaceMode, setWorkspaceMode] = useState<"management" | "cashier">("management");
   const canUseManagementWorkspace = canAny(["locations.manage", "commerce.stock.receive", "sales.finance.read", "store.financial.read", "store.stock_valuation.read", "store.expenses.read"]);
-  const workspaceMode: "management" | "cashier" = canUseManagementWorkspace && search.view !== "caisse" ? "management" : "cashier";
-  const setWorkspaceMode = (mode: "management" | "cashier") => {
-    void navigate({ search: (prev) => ({ ...prev, view: mode === "cashier" ? "caisse" : undefined }) });
-  };
 
   if (isPending) return <div className="grid gap-4 lg:grid-cols-3"><Skeleton className="h-48 lg:col-span-2" /><Skeleton className="h-48" /></div>;
-  if (workspaceMode === "management") {
+  if (canUseManagementWorkspace && workspaceMode === "management") {
     return <CommerceManagementWorkspace onOpenCashier={() => setWorkspaceMode("cashier")} />;
   }
   return <CommerceCashierWorkspace onBackToManagement={canUseManagementWorkspace ? () => setWorkspaceMode("management") : undefined} />;
@@ -140,6 +123,170 @@ function CommerceManagementWorkspace({ onOpenCashier }: { onOpenCashier: () => v
     </>}
   />;
 
+  /* STORE-03 replaces the legacy presentation below while its setup dialogs remain reusable. */
+  /*
+  return (
+    <div className="space-y-5">
+      <Card variant="glass" className="relative overflow-hidden rounded-[2rem] border-primary/20 bg-[#042b1d] text-white shadow-xl shadow-primary/10">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_5%,rgba(16,185,129,.38),transparent_32%),linear-gradient(115deg,rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(25deg,rgba(255,255,255,.04)_1px,transparent_1px)] bg-[length:auto,28px_28px,28px_28px]" aria-hidden="true" />
+        <CardContent className="relative flex flex-col gap-8 p-6 sm:p-8 xl:flex-row xl:items-end xl:justify-between xl:p-10">
+          <div className="min-w-0 max-w-3xl space-y-5">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200"><span className="grid size-8 place-items-center rounded-full bg-emerald-300/15"><BarChart3 className="size-4" /></span> Commerce · centre de contrôle</div>
+            <div><h1 className="max-w-2xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">Le magasin, <span className="text-emerald-300">en temps réel.</span></h1><p className="mt-4 max-w-2xl text-base leading-7 text-emerald-50/75 sm:text-lg">{dashboard?.financialAccess ? "Ventes, encaissements et disponibilité en rayon réunis dans un seul pilotage." : "Disponibilité en rayon et alertes stock réunies dans un seul pilotage."} Gardez la caisse rapide, le stock net et les décisions simples.</p></div>
+            <div className="flex flex-wrap gap-2 text-sm font-medium text-emerald-50/90"><span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5">Point de vente sécurisé</span><span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5">Stock en direct</span>{dashboard?.cashDrawer ? <span className="rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1.5">Caisse liée</span> : null}</div>
+          </div>
+          <div className="w-full shrink-0 space-y-3 rounded-2xl border border-white/15 bg-white/[0.09] p-4 backdrop-blur-sm xl:w-[27rem]">
+            <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-100/75">Point de vente suivi</Label><Select value={selectedLocationId} onValueChange={setLocationId}><SelectTrigger className="h-12 border-white/15 bg-white text-foreground font-semibold"><SelectValue /></SelectTrigger><SelectContent>{locationsQuery.data.map((location) => <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>)}</SelectContent></Select></div>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {canManageLocations ? <><CommerceLocationDialog mode="create" onDone={handleLocationSaved} /><CommerceLocationDialog mode="edit" location={dashboard?.location} primaryWalletId={dashboard?.cashDrawer?.id ?? ""} onDone={handleLocationSaved} /></> : null}
+              {canReceiveCommerceInventory ? <CommerceQuickInventoryReceipt locationId={selectedLocationId} locationName={dashboard?.location.name ?? locationsQuery.data.find((location) => location.id === selectedLocationId)?.name ?? "ce magasin"} onSaved={refreshDashboard} /> : null}
+              {canManageStock ? <CommerceInventorySetup locationId={selectedLocationId} onSaved={refreshDashboard} /> : null}
+              <Button type="button" className="ml-auto bg-emerald-300 text-emerald-950 hover:bg-emerald-200" onClick={onOpenCashier}><Store /> Ouvrir la caisse <ArrowRight /></Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {dashboardQuery.isPending ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><Skeleton className="h-36" /><Skeleton className="h-36" /><Skeleton className="h-36" /><Skeleton className="h-36" /></div> : null}
+      {dashboardQuery.isError ? <Card variant="information"><CardHeader><CardTitle>Le pilotage ne peut pas être chargé</CardTitle></CardHeader><CardContent className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Les ventes et les indicateurs restent inchangés. Réessayez ou vérifiez votre affectation au magasin.</p><Button type="button" variant="outline" onClick={() => void dashboardQuery.refetch()}>Réessayer</Button></CardContent></Card> : null}
+      {dashboard ? (
+        <>
+          {dashboard.financialAccess && dashboard.today && dashboard.week && dashboard.month ? <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4" aria-label="Indicateurs financiers du magasin">
+            <CommerceMetric icon={CircleDollarSign} label="Encaissements du jour" value={money(dashboard.today.received)} detail={`${dashboard.today.salesCount} vente${dashboard.today.salesCount > 1 ? "s" : ""} confirmée${dashboard.today.salesCount > 1 ? "s" : ""}`} tone="success" />
+            <CommerceMetric icon={TrendingUp} label="Encaissements de la semaine" value={money(dashboard.week.received)} detail={`${dashboard.week.salesCount} vente${dashboard.week.salesCount > 1 ? "s" : ""} confirmée${dashboard.week.salesCount > 1 ? "s" : ""}`} tone="info" />
+            <CommerceMetric icon={BarChart3} label="Encaissements du mois" value={money(dashboard.month.received)} detail={`${dashboard.month.salesCount} vente${dashboard.month.salesCount > 1 ? "s" : ""} confirmée${dashboard.month.salesCount > 1 ? "s" : ""}`} tone="primary" />
+            <CommerceMetric icon={WalletCards} label="Caisse du magasin" value={dashboard.cashDrawer ? money(dashboard.cashDrawer.balance) : "À configurer"} detail={dashboard.cashDrawer?.name ?? "Aucun wallet de caisse principal"} tone="neutral" />
+          </section> : <Card variant="information"><CardContent className="flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="font-semibold">Pilotage stock disponible</p><p className="mt-1 text-sm text-muted-foreground">Les montants de vente et le solde de caisse restent masqués tant que la permission financière Commerce n’est pas accordée.</p></div><span className="rounded-full bg-muted px-3 py-1.5 text-sm font-semibold">Accès financier restreint</span></CardContent></Card>}
+
+          <section className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,.8fr)]">
+            <Card variant="section" className="overflow-hidden">
+              <CardHeader className="border-b border-border/70 pb-4"><div className="flex items-start justify-between gap-4"><div><CardTitle>Dernières ventes confirmées</CardTitle><p className="mt-1 text-sm text-muted-foreground">{dashboard.financialAccess ? "Encaissements réellement enregistrés dans le magasin suivi." : "Cette liste est réservée aux utilisateurs autorisés à consulter les montants commerciaux."}</p></div><Button type="button" variant="ghost" size="sm" onClick={onOpenCashier}>Caisse <ArrowRight /></Button></div></CardHeader>
+              <CardContent className="p-0">
+                {!dashboard.financialAccess ? <div className="flex min-h-52 flex-col items-center justify-center gap-2 px-6 text-center"><CircleDollarSign className="size-7 text-muted-foreground" /><p className="font-semibold">Accès aux ventes restreint</p><p className="max-w-md text-sm text-muted-foreground">Votre rôle peut piloter le stock, mais ne peut pas afficher les montants ni l’historique des ventes.</p></div> : dashboard.recentSales.length ? <div className="divide-y divide-border/70">{dashboard.recentSales.map((sale) => <div key={sale.saleNumber} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4"><div className="min-w-0"><p className="font-semibold">{sale.saleNumber}</p><p className="mt-1 text-sm text-muted-foreground">{new Date(`${sale.saleDate}T00:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })} · Confirmée</p></div><p className="font-semibold tabular-nums text-success">{money(sale.amount)}</p></div>)}</div> : <div className="flex min-h-52 flex-col items-center justify-center gap-2 px-6 text-center"><Store className="size-7 text-primary" /><p className="font-semibold">Aucune vente confirmée pour le moment</p><p className="max-w-md text-sm text-muted-foreground">Les tickets encaissés depuis la caisse apparaîtront ici automatiquement.</p><Button type="button" size="sm" onClick={onOpenCashier}>Ouvrir la caisse</Button></div>}
+              </CardContent>
+            </Card>
+
+            <div className="space-y-5">
+              <Card variant="information"><CardHeader><CardTitle className="flex items-center gap-2"><Package className="size-5 text-primary" /> État du stock</CardTitle></CardHeader><CardContent className="space-y-3"><div className="flex items-center justify-between rounded-xl border border-border/70 bg-muted/[0.18] px-3 py-3"><span className="text-sm text-muted-foreground">Articles en rayon</span><span className="font-semibold tabular-nums">{dashboard.inventory.itemsCount}</span></div><div className="flex items-center justify-between rounded-xl border border-warning/20 bg-warning/[0.08] px-3 py-3"><span className="flex items-center gap-2 text-sm text-warning"><TriangleAlert className="size-4" /> Sous le seuil</span><span className="font-semibold tabular-nums text-warning">{dashboard.inventory.lowStockCount}</span></div><div className="flex items-center justify-between rounded-xl border border-destructive/20 bg-destructive/[0.07] px-3 py-3"><span className="flex items-center gap-2 text-sm text-destructive"><TriangleAlert className="size-4" /> Ruptures</span><span className="font-semibold tabular-nums text-destructive">{dashboard.inventory.outOfStockCount}</span></div></CardContent></Card>
+              <Card variant="information"><CardHeader><CardTitle>Rentabilité du magasin</CardTitle></CardHeader><CardContent><p className="text-sm leading-6 text-muted-foreground">Le prix d’achat est conservé à chaque réception et le prix de vente est défini à la mise en rayon. Le bénéfice net n’est pas encore affiché : les dépenses générales ne sont pas liées explicitement à ce magasin. Aucun zéro trompeur n’est présenté.</p></CardContent></Card>
+            </div>
+          </section>
+        </>
+      ) : null}
+
+      <CommerceSalesJourney
+        locationId={selectedLocationId}
+        canManageStock={canManageStock}
+        canReceiveCommerceInventory={canReceiveCommerceInventory}
+        locationName={dashboard?.location.name ?? locationsQuery.data.find((location) => location.id === selectedLocationId)?.name ?? "ce magasin"}
+        onInventorySaved={refreshDashboard}
+        onOpenCashier={onOpenCashier}
+      />
+    </div>
+  );
+  */
+}
+
+function CommerceMetric({ icon: Icon, label, value, detail, tone }: { icon: typeof CircleDollarSign; label: string; value: string; detail: string; tone: "success" | "info" | "primary" | "neutral" }) {
+  const tones = {
+    success: "bg-success/[0.10] text-success",
+    info: "bg-info/[0.10] text-info",
+    primary: "bg-primary/[0.10] text-primary",
+    neutral: "bg-muted text-foreground",
+  };
+  return <Card variant="kpi" className="min-w-0"><CardContent className="p-5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-sm font-medium text-muted-foreground">{label}</p><p className="mt-4 truncate text-2xl font-semibold tracking-tight tabular-nums" title={value}>{value}</p><p className="mt-2 truncate text-sm text-muted-foreground" title={detail}>{detail}</p></div><span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${tones[tone]}`}><Icon className="size-5" /></span></div></CardContent></Card>;
+}
+
+function CommerceSalesJourneyLegacy({ locationId, canManageStock, onInventorySaved, onOpenCashier }: { locationId: string; canManageStock: boolean; onInventorySaved: () => void; onOpenCashier: () => void }) {
+  return (
+    <Card variant="section" className="overflow-hidden">
+      <CardHeader className="border-b border-border/70 pb-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Parcours de vente</p>
+            <CardTitle className="mt-1">De l’achat à l’encaissement</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">Suivez ces trois étapes dans cet ordre : chaque montant est alors enregistré une seule fois.</p>
+          </div>
+          <span className="rounded-full border border-primary/15 bg-primary/[0.08] px-3 py-1.5 text-xs font-semibold text-primary">Stock · Rayon · Caisse</span>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-4 p-5 pt-5 lg:grid-cols-3">
+        <CommerceJourneyStep
+          index="1"
+          icon={Warehouse}
+          title="Réceptionner l’achat"
+          detail="Enregistrez la quantité, le prix d’achat et le wallet qui paie le fournisseur."
+          action={<Button asChild variant="outline" size="sm"><Link to="/stocks">Ouvrir les Stocks <ArrowRight /></Link></Button>}
+        />
+        <CommerceJourneyStep
+          index="2"
+          icon={PackagePlus}
+          title="Mettre en rayon"
+          detail="Affectez les articles au magasin et définissez leur prix de vente. Aucun wallet ne bouge ici."
+          action={canManageStock ? <CommerceInventorySetup locationId={locationId} onSaved={onInventorySaved} /> : <span className="text-xs font-medium text-muted-foreground">Réservé au gestionnaire de stock</span>}
+        />
+        <CommerceJourneyStep
+          index="3"
+          icon={ReceiptText}
+          title="Encaisser à la caisse"
+          detail="Le ticket réduit le stock et crédite automatiquement le wallet principal du magasin."
+          action={<Button type="button" size="sm" onClick={onOpenCashier}>Ouvrir la caisse <ArrowRight /></Button>}
+        />
+      </CardContent>
+      <div className="border-t border-warning/20 bg-warning/[0.06] px-5 py-3 text-sm text-muted-foreground">
+        <span className="font-semibold text-warning">À éviter :</span> n’utilisez pas « Vente client » dans Stocks pour une vente déjà encaissée à la caisse, sinon la recette et la sortie de stock peuvent être enregistrées deux fois.
+      </div>
+    </Card>
+  );
+}
+
+function CommerceSalesJourney({ locationId, locationName, canManageStock, canReceiveCommerceInventory, onInventorySaved, onOpenCashier }: { locationId: string; locationName: string; canManageStock: boolean; canReceiveCommerceInventory: boolean; onInventorySaved: () => void; onOpenCashier: () => void }) {
+  return (
+    <Card variant="section" className="overflow-hidden">
+      <CardHeader className="border-b border-border/70 pb-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Parcours de vente simplifie</p>
+            <CardTitle className="mt-1">Du fournisseur a la caisse</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">Un seul formulaire suffit pour creer le produit, l acheter, le mettre en rayon et definir son prix de vente.</p>
+          </div>
+          <span className="rounded-full border border-primary/15 bg-primary/[0.08] px-3 py-1.5 text-xs font-semibold text-primary">Produit · Achat · Rayon · Caisse</span>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-4 p-5 pt-5 lg:grid-cols-3">
+        <CommerceJourneyStep
+          index="1"
+          icon={Warehouse}
+          title="Ajouter un produit au magasin"
+          detail="Nom, quantite recue, prix d achat, prix de vente, wallet debite et magasin sont reunis dans une seule action."
+          action={canReceiveCommerceInventory
+            ? <CommerceQuickInventoryReceipt locationId={locationId} locationName={locationName} onSaved={onInventorySaved} triggerVariant="outline" />
+            : <span className="text-xs font-medium text-muted-foreground">Necessite les droits Stock et achat</span>}
+        />
+        <CommerceJourneyStep
+          index="2"
+          icon={PackagePlus}
+          title="Ajuster un article existant"
+          detail="Utilisez cette action seulement pour modifier la quantite en rayon, le prix de vente ou le seuil d alerte d un article deja cree."
+          action={canManageStock ? <CommerceInventorySetup locationId={locationId} onSaved={onInventorySaved} /> : <span className="text-xs font-medium text-muted-foreground">Reserve au gestionnaire de stock</span>}
+        />
+        <CommerceJourneyStep
+          index="3"
+          icon={ReceiptText}
+          title="Encaisser a la caisse"
+          detail="Le ticket reduit le stock et credite automatiquement le wallet principal du magasin."
+          action={<Button type="button" size="sm" onClick={onOpenCashier}>Ouvrir la caisse <ArrowRight /></Button>}
+        />
+      </CardContent>
+      <div className="border-t border-warning/20 bg-warning/[0.06] px-5 py-3 text-sm text-muted-foreground">
+        <span className="font-semibold text-warning">A eviter :</span> n utilisez pas Vente client dans Stocks pour une vente deja encaissee a la caisse, sinon la recette et la sortie de stock peuvent etre enregistrees deux fois.
+      </div>
+    </Card>
+  );
+}
+
+function CommerceJourneyStep({ index, icon: Icon, title, detail, action }: { index: string; icon: typeof Warehouse; title: string; detail: string; action: ReactNode }) {
+  return <div className="rounded-2xl border border-border/75 bg-muted/[0.14] p-4"><div className="flex items-start gap-3"><span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/[0.10] text-sm font-bold text-primary">{index}</span><span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface text-primary shadow-xs"><Icon className="size-4" /></span><div className="min-w-0"><p className="font-semibold">{title}</p><p className="mt-1 text-sm leading-5 text-muted-foreground">{detail}</p></div></div><div className="mt-4 pl-12">{action}</div></div>;
 }
 
 type CashierDraftAction =
@@ -172,36 +319,15 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
   const { can } = usePermissions();
   const canManageStock = can("commerce.stock.receive");
   const canManageLocations = can("locations.manage") && can("locations.wallets.manage") && can("locations.assign");
-  const canSeeTodayRevenue = can("store.financial.read");
-  const [cashierTab, setCashierTab] = useState<"CAISSE" | "VENTES" | "SESSION">("CAISSE");
-  const navigate = useNavigate();
   const locationsQuery = useQuery({ queryKey: ["commerce-pos-locations"], queryFn: () => getCommercePosLocations() });
   const currentUserQuery = useCurrentUserAccess();
   const currentUserId = useCommerceCashierUserId();
-  // A cashier-only account has no ERP product header, so this workspace's own
-  // app bar is the only place sign-out can live. A manager who opens this
-  // same workspace from the management cockpit still has the product header,
-  // so the extra control would just be redundant clutter for them.
-  const isCashierOnlyShell = currentUserQuery.isCashierOnly;
-  const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
-  }, [navigate]);
   const cashierName = currentUserQuery.data?.fullName?.trim()
     || currentUserQuery.data?.username
     || (currentUserQuery.isLoading ? "Chargement…" : "Caissier non identifié");
   const [locationId, setLocationId] = useState("");
   const [cachedLocations, setCachedLocations] = useState<CommercePosLocation[]>([]);
-  // isSuccess (not just data.length) is the load-bearing check here: a
-  // pending or errored query legitimately falls back to the last-known
-  // cache (offline resilience), but a *successful* response of zero
-  // locations is an authoritative answer -- e.g. this cashier's location
-  // was deleted -- and must not be masked by a stale cached ghost.
-  const availableLocations = locationsQuery.data?.length
-    ? locationsQuery.data
-    : locationsQuery.isSuccess
-      ? []
-      : cachedLocations;
+  const availableLocations = locationsQuery.data?.length ? locationsQuery.data : cachedLocations;
   const selectedLocationId = locationId || availableLocations[0]?.id || "";
   const workspaceQuery = useQuery({
     queryKey: ["commerce-pos-workspace", selectedLocationId],
@@ -215,38 +341,11 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     catalogue: workspace?.items,
     catalogueRevision: workspaceQuery.dataUpdatedAt,
   });
-  // Server-authoritative half of the pre-closure summary: every confirmed
-  // sale already in commercial_sales, online or offline-then-synced. The
-  // local half (posSession.cashSessionSummary) now only ever carries sales
-  // NOT yet known to be synced -- merging the two never double-counts, and
-  // an online-only session (the common case) is no longer stuck at zero.
-  const sessionPreviewQuery = useQuery({
-    queryKey: ["commerce-pos-session-preview", posSession.cashSession?.id],
-    queryFn: () => getCommercePosCashSessionPreview({ data: {
-      cashSessionId: posSession.cashSession!.id,
-      terminalId: posSession.cashSession!.terminalId,
-      businessLocationId: selectedLocationId,
-    } }),
-    enabled: Boolean(posSession.cashSession?.id) && Boolean(selectedLocationId),
-  });
-  const cashSessionSummary = useMemo(
-    () => mergeCommercePosCashSessionSummaries(posSession.cashSessionSummary, sessionPreviewQuery.data ?? null),
-    [posSession.cashSessionSummary, sessionPreviewQuery.data],
-  );
-  // Same server source as the summary above, row-level: the "Ventes" tab
-  // used to read posSession.outboxEvents only, so an online-direct sale
-  // (never written to that local outbox) never appeared there even though
-  // it was fully confirmed server-side.
-  const sessionSaleRows = useMemo(
-    () => mergeCommercePosSessionSaleRows(posSession.outboxEvents, sessionPreviewQuery.data?.sales ?? null),
-    [posSession.outboxEvents, sessionPreviewQuery.data?.sales],
-  );
   const [search, setSearch] = useState("");
   const [quickQuantity, setQuickQuantity] = useState("1");
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [editingPriceLineId, setEditingPriceLineId] = useState<string | null>(null);
-  const [priceDraft, setPriceDraft] = useState("");
-  const [priceError, setPriceError] = useState<string | null>(null);
+  const [catalogueOpen, setCatalogueOpen] = useState(false);
+  const [catalogueSearch, setCatalogueSearch] = useState("");
+  const [catalogueSelectedIndex, setCatalogueSelectedIndex] = useState(0);
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
   const [serviceName, setServiceName] = useState("");
   const [servicePrice, setServicePrice] = useState("");
@@ -254,6 +353,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
   const [suspendedTicketsOpen, setSuspendedTicketsOpen] = useState(false);
   const [pendingSuspendedDeletion, setPendingSuspendedDeletion] = useState<CommercePosSuspendedTicket | null>(null);
   const [showClient, setShowClient] = useState(false);
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [pendingDraftAction, setPendingDraftAction] = useState<CashierDraftAction | null>(null);
   const quickEntryRef = useRef<HTMLInputElement>(null);
   const draft = posSession.draft;
@@ -270,13 +370,9 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     void Promise.all([
       queryClient.invalidateQueries({ queryKey: ["commerce-pos-workspace", selectedLocationId] }),
       queryClient.invalidateQueries({ queryKey: ["commerce-management-dashboard", selectedLocationId] }),
-      // A sale just finished syncing: it now counts on the server side of the
-      // preview, and getPosOfflineCashSessionSummary will stop counting it
-      // locally on its next read (its outbox event is now SYNCED) -- refetch
-      // so the merged total reflects that handover instead of a stale split.
-      queryClient.invalidateQueries({ queryKey: ["commerce-pos-session-preview", posSession.cashSession?.id] }),
     ]);
-  }, [posSession.cashSession?.id, posSession.syncRevision, queryClient, selectedLocationId]);
+  }, [posSession.syncRevision, queryClient, selectedLocationId]);
+
   useEffect(() => {
     if (!currentUserId) return;
     let active = true;
@@ -287,22 +383,13 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
       });
       return () => { active = false; };
     }
-    if (locationsQuery.isSuccess) {
-      // Authoritative zero: clear any stale cache instead of leaving a
-      // deleted/unassigned location resurrectable on a future reload.
-      setCachedLocations([]);
-      void cachePosOfflineLocations(currentUserId, []).catch((error: unknown) => {
-        console.warn("Les points de vente hors connexion n’ont pas pu être mémorisés.", error);
-      });
-      return () => { active = false; };
-    }
     void getCachedPosOfflineLocations(currentUserId)
       .then((locations) => {
         if (active && locations.length) setCachedLocations(locations);
       })
       .catch((error: unknown) => console.warn("Les points de vente mémorisés sont indisponibles.", error));
     return () => { active = false; };
-  }, [currentUserId, locationsQuery.data, locationsQuery.isSuccess]);
+  }, [currentUserId, locationsQuery.data]);
 
   useEffect(() => {
     if (locationId || !currentUserId || !availableLocations.length || typeof window === "undefined") return;
@@ -344,17 +431,13 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     () => activeCatalogue.filter((item) => `${item.name} ${item.sku ?? ""}`.toLowerCase().includes(search.toLowerCase())),
     [activeCatalogue, search],
   );
-  const categories = useMemo(() => {
-    const set = new Set<string>();
-    for (const item of activeCatalogue) {
-      const trimmed = item.category?.trim();
-      if (trimmed) set.add(trimmed);
-    }
-    return Array.from(set).sort((left, right) => left.localeCompare(right, "fr"));
-  }, [activeCatalogue]);
-  const gridItems = useMemo(
-    () => activeCategory ? items.filter((item) => (item.category?.trim() || null) === activeCategory) : items,
-    [items, activeCategory],
+  const catalogueItems = useMemo(
+    () => activeCatalogue.filter((item) => `${item.name} ${item.sku ?? ""}`.toLowerCase().includes(catalogueSearch.toLowerCase())),
+    [activeCatalogue, catalogueSearch],
+  );
+  const enrichedCart = useMemo(
+    () => cart.map((line) => ({ ...line, item: line.lineType === "ARTICLE" ? activeCatalogue.find((entry) => entry.id === line.itemId) ?? null : null })),
+    [activeCatalogue, cart],
   );
   const total = cart.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
   const stockConflicts = useMemo(
@@ -362,6 +445,8 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     [activeCatalogue, cart],
   );
   const cashChange = method === "CASH" && cashReceived !== null ? Math.max(cashReceived - total, 0) : 0;
+  const ticketReference = draft ? `POS-${draft.sessionId.slice(-8).toUpperCase()}` : "—";
+  const ticketDate = draft ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(draft.updatedAt)) : "—";
   const refreshWorkspace = () => queryClient.invalidateQueries({ queryKey: ["commerce-pos-workspace", selectedLocationId] });
   const updateDraft = useCallback((updater: (current: NonNullable<typeof draft>) => NonNullable<typeof draft>) => {
     if (!posSession.isReady) return;
@@ -377,28 +462,15 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     if (action.type === "CHANGE_LOCATION") setLocationId(action.locationId);
     if (action.type === "RETURN_TO_MANAGEMENT") onBackToManagement?.();
   }, [onBackToManagement, pendingDraftAction, posSession]);
-  const closeCashSession = async () => {
-    await posSession.closeCashSession();
-    toast.success(posSession.networkStatus === "ONLINE"
-      ? "Session cl\u00f4tur\u00e9e. Rapport de contr\u00f4le g\u00e9n\u00e9r\u00e9, synchronis\u00e9."
-      : "Session cl\u00f4tur\u00e9e. Rapport enregistr\u00e9 sur cet appareil, synchronisation automatique d\u00e8s le retour d\u2019Internet.");
-    // The offline-first cash session hook has no TanStack Query awareness by
-    // design (it's driven entirely by IndexedDB), so a same-session switch to
-    // the management cockpit needs an explicit nudge here -- otherwise the
-    // just-created control report/remittance stay invisible there for the
-    // rest of the global staleTime window.
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["commerce-pos-control-reports", selectedLocationId] }),
-      queryClient.invalidateQueries({ queryKey: ["commerce-store-cockpit", selectedLocationId] }),
-      queryClient.invalidateQueries({ queryKey: ["commerce-cash-remittances", selectedLocationId] }),
-    ]);
+  const closeCashSession = async (input: { countedCash: number; note: string | null }) => {
+    const result = await posSession.closeCashSession(input);
+    setMobileCartOpen(false);
+    toast.success(`Cl\u00f4ture locale enregistr\u00e9e : ${money(result.summary.countedCash)} compt\u00e9s. La synchronisation suivra les ventes de cette session.`);
   };
-
   const startNewCashSession = async () => {
     await posSession.startNewCashSession();
     toast.success("Nouvelle session de caisse ouverte.");
   };
-
   const requestLocationChange = (nextLocationId: string) => {
     if (nextLocationId === selectedLocationId) return;
     if (hasDraftInProgress) {
@@ -420,14 +492,8 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
       toast.success(`Vente ${receipt.saleNumber} comptabilisée : ${money(receipt.amount)}.`);
       posSession.clearDraft();
       setShowClient(false);
-      await Promise.all([
-        refreshWorkspace(),
-        // The sale just landed in commercial_sales -- the server half of the
-        // pre-closure summary must reflect it right away, since this online
-        // path never writes a local ticket for getPosOfflineCashSessionSummary
-        // to pick up (that gap was the root cause of the modal reading zero).
-        queryClient.invalidateQueries({ queryKey: ["commerce-pos-session-preview", posSession.cashSession?.id] }),
-      ]);
+      setMobileCartOpen(false);
+      await refreshWorkspace();
     },
     onError: (error) => {
       const requiresReconciliation = isIndeterminateCheckoutError(error);
@@ -486,7 +552,9 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
       return;
     }
     if (items.length !== 1) {
-      toast.info(items.length === 0 ? "Aucun article ne correspond à cette recherche." : "Plusieurs articles correspondent : choisissez-en un dans le rayon.");
+      setCatalogueSearch(search);
+      setCatalogueSelectedIndex(0);
+      setCatalogueOpen(true);
       return;
     }
     const item = items[0];
@@ -495,31 +563,23 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     setQuickQuantity("1");
     refocusQuickEntry();
   };
-  const catalogFloorFor = (line: CartLine): number | null =>
-    line.lineType === "ARTICLE" ? activeCatalogue.find((entry) => entry.id === line.itemId)?.salePrice ?? null : null;
-  const startEditPrice = (line: CartLine) => {
-    setEditingPriceLineId(line.lineId);
-    setPriceDraft(String(line.unitPrice));
-    setPriceError(null);
+  const openCatalogue = () => {
+    setCatalogueSearch(search);
+    setCatalogueSelectedIndex(0);
+    setCatalogueOpen(true);
   };
-  const cancelEditPrice = () => {
-    setEditingPriceLineId(null);
-    setPriceError(null);
-  };
-  const commitEditPrice = (line: CartLine) => {
-    const parsed = Number(priceDraft);
-    if (!Number.isFinite(parsed) || parsed < 0) {
-      setPriceError("Saisissez un prix valide.");
+  const addFromCatalogue = (itemIndex: number) => {
+    const item = catalogueItems[itemIndex];
+    if (!item) return;
+    if (item.quantity <= 0) {
+      toast.error("Cet article n’est plus disponible dans ce magasin.");
       return;
     }
-    const floor = catalogFloorFor(line);
-    if (floor !== null && parsed < floor) {
-      setPriceError(`Le prix de vente ne peut pas être inférieur au prix catalogue de ${money(floor)}.`);
-      return;
-    }
-    update(line.lineId, { unitPrice: parsed });
-    setEditingPriceLineId(null);
-    setPriceError(null);
+    addArticle(item.id, item.salePrice, item.name);
+    setCatalogueOpen(false);
+    setSearch("");
+    setCatalogueSearch("");
+    refocusQuickEntry();
   };
   useEffect(() => {
     const addFromCashierSidebar = (event: Event) => {
@@ -576,6 +636,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
       void posSession.completeOfflineCashSale()
         .then((eventId) => {
           setShowClient(false);
+          setMobileCartOpen(false);
           toast.success(`Vente enregistrée localement. Elle reste en attente de synchronisation contrôlée (événement ${eventId.slice(-8).toUpperCase()}).`);
         })
         .catch((error: unknown) => {
@@ -658,192 +719,127 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
           : `SYNCHRONISÉ ${syncedOutboxCount} / ${posSession.outboxEvents.length}`;
 
   if (locationsQuery.isPending && !availableLocations.length) return <div className="grid gap-4 lg:grid-cols-3"><Skeleton className="h-72 lg:col-span-2" /><Skeleton className="h-72" /></div>;
-  if (locationsQuery.isError && !availableLocations.length) return <Card variant="information"><CardContent className="space-y-4 p-6"><p>Impossible de charger vos points de vente autorisés. Ouvrez d’abord la caisse une fois avec Internet pour la rendre disponible hors connexion.</p><Button type="button" variant="outline" size="sm" onClick={() => { void signOut(); }}><DoorOpen className="mr-2 h-4 w-4" />Se déconnecter</Button></CardContent></Card>;
+  if (locationsQuery.isError && !availableLocations.length) return <Card variant="information"><CardContent className="p-6">Impossible de charger vos points de vente autorisés. Ouvrez d’abord la caisse une fois avec Internet pour la rendre disponible hors connexion.</CardContent></Card>;
   if (!availableLocations.length) {
     return canManageLocations
       ? <CommerceLocationSetup onDone={handleLocationSaved} />
-      : <Card variant="information"><CardHeader><CardTitle>Aucune caisse disponible</CardTitle></CardHeader><CardContent className="space-y-4"><p>Votre compte doit être affecté à un magasin Commerce avant de pouvoir encaisser. Un administrateur doit créer le magasin, associer son wallet puis vous y affecter.</p><Button type="button" variant="outline" size="sm" onClick={() => { void signOut(); }}><DoorOpen className="mr-2 h-4 w-4" />Se déconnecter</Button></CardContent></Card>;
+      : <Card variant="information"><CardHeader><CardTitle>Aucune caisse disponible</CardTitle></CardHeader><CardContent>Votre compte doit être affecté à un magasin Commerce avant de pouvoir encaisser. Un administrateur doit créer le magasin, associer son wallet puis vous y affecter.</CardContent></Card>;
   }
 
-  const cashierInitials = cashierName.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?";
-  const sessionOpenedLabel = posSession.cashSession?.openedAtDevice
-    ? new Date(posSession.cashSession.openedAtDevice).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
-    : "—";
-  const syncPillTone = conflictOutboxCount > 0
-    ? "bg-destructive/15 text-destructive-foreground"
-    : posSession.networkStatus !== "ONLINE" || posSession.pendingOutboxCount > 0
-      ? "bg-warning/20 text-warning-foreground"
-      : "bg-success/20 text-success-foreground";
-
   return (
-    <div className={cn("flex min-h-0 flex-col gap-3", isCashierOnlyShell ? "lg:h-[calc(100dvh-1.5rem)]" : "lg:h-[calc(100dvh-6.4rem)]")}>
-      {/* Distinct cashier shell identity: a dedicated app bar, not the admin cockpit's card grid. */}
-      <header className="shrink-0 rounded-2xl bg-foreground text-background shadow-md">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">{cashierInitials}</span>
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-background/55">Caisse</p>
-              <p className="truncate text-sm font-bold" title={currentLocationName}>{currentLocationName}</p>
-            </div>
+    <div className="grid min-h-0 gap-3 lg:h-[calc(100dvh-6.4rem)] lg:grid-rows-[auto_minmax(0,1fr)_auto]">
+      <Card variant="section" className="shrink-0 overflow-hidden border-primary/20 bg-surface shadow-sm">
+        <CardContent className="grid gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div className="grid gap-x-5 gap-y-2 sm:grid-cols-2 xl:grid-cols-4">
+            <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Ticket en cours</p><p className="mt-1 font-mono text-sm font-bold tracking-wide text-primary">{ticketReference}</p></div>
+            <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Point de vente</p><p className="mt-1 truncate text-sm font-semibold" title={currentLocationName}>{currentLocationName}</p></div>
+            <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Caissier</p><p className="mt-1 truncate text-sm font-medium" title={cashierName}>{cashierName}</p></div>
+            <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Client · date</p><p className="mt-1 truncate text-sm font-medium">{clientId ? "Ticket nominatif" : "Client comptoir"} · {ticketDate}</p></div>
           </div>
-          <div className="flex flex-wrap items-center gap-4 text-xs">
-            <div className="text-right"><p className="text-background/55">Caissier</p><p className="max-w-32 truncate font-semibold" title={cashierName}>{cashierName}</p></div>
-            <div className="text-right"><p className="text-background/55">Session ouverte</p><p className="font-semibold tabular-nums">{sessionOpenedLabel}</p></div>
-            {canSeeTodayRevenue ? <div className="text-right"><p className="text-background/55">CA du jour</p><p className="font-semibold tabular-nums">{money(workspace?.today.received ?? 0)}</p></div> : null}
-            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold ${syncPillTone}`}>{posSession.networkStatus !== "ONLINE" ? <CloudOff className="size-3.5" aria-hidden="true" /> : <CloudUpload className="size-3.5" aria-hidden="true" />}{syncStatusLabel}</span>
+          <div className="rounded-xl bg-foreground px-5 py-3 text-right text-background shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-background/65">Total à encaisser</p>
+            <p className="mt-1 text-2xl font-bold tracking-tight tabular-nums">{money(total)}</p>
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {onBackToManagement ? <Button type="button" size="sm" variant="ghost" className="text-background hover:bg-background/10 hover:text-background" onClick={onBackToManagement}><LogOut />Gestion</Button> : null}
-            {isCashierOnlyShell ? <Button type="button" size="icon" variant="ghost" className="text-background hover:bg-background/10 hover:text-background" onClick={() => { void signOut(); }} aria-label="Déconnexion"><DoorOpen className="size-4" /></Button> : null}
-            <PosCashSessionClose
-              session={posSession.cashSession}
-              summary={cashSessionSummary}
-              disabled={hasDraftInProgress || posSession.suspendedTickets.length > 0}
-              onClose={closeCashSession}
-              onStartNew={startNewCashSession}
-            />
-          </div>
+          <PosCashSessionClose
+            session={posSession.cashSession}
+            summary={posSession.cashSessionSummary}
+            disabled={hasDraftInProgress || posSession.suspendedTickets.length > 0}
+            onClose={closeCashSession}
+            onStartNew={startNewCashSession}
+          />
+        </CardContent>
+      </Card>
+
+      <details className={`group shrink-0 rounded-xl border px-4 py-2.5 text-sm ${conflictOutboxCount > 0 ? "border-destructive/30 bg-destructive/[0.07] text-destructive" : posSession.networkStatus !== "ONLINE" || posSession.pendingOutboxCount > 0 ? "border-warning/30 bg-warning/[0.08] text-warning" : "border-success/25 bg-success/[0.07] text-success"}`}>
+        <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+          <span className="flex items-center gap-2 font-semibold">
+            {posSession.networkStatus !== "ONLINE" ? <CloudOff className="size-4" aria-hidden="true" /> : <CloudUpload className="size-4" aria-hidden="true" />}
+            {syncStatusLabel}
+          </span>
+          <span>{lastSuccessfulSyncAt ? `Dernière synchronisation : ${new Date(lastSuccessfulSyncAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}` : posSession.pendingOutboxCount ? "Conservé dans l’outbox locale" : "Aucune opération locale en attente"}</span>
+        </summary>
+        {posSession.outboxEvents.length ? <div className="mt-3 grid gap-1 border-t border-current/15 pt-2 text-xs">
+          {posSession.outboxEvents.slice(0, 4).map((event) => <div key={event.eventId} className="flex items-center justify-between gap-3"><span className="truncate font-mono">{event.eventId.slice(-8).toUpperCase()}</span><span className="shrink-0 font-medium">{event.status === "SYNCED" ? "Synchronisé" : event.status === "CONFLICT" ? "À contrôler" : event.status === "SYNCING" ? "Synchronisation" : event.status === "FAILED" ? "Nouvel essai programmé" : "En attente"}</span></div>)}
+        </div> : null}
+      </details>
+
+      <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-sm">
+        <div className="grid shrink-0 gap-3 border-b border-border/75 bg-muted/[0.16] p-3 lg:grid-cols-[minmax(0,1fr)_7rem_auto_auto_auto_auto] lg:items-end">
+          <form className="space-y-1" onSubmit={(event) => { event.preventDefault(); addQuickResult(); }}>
+            <Label htmlFor="commerce-pos-quick-entry" className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Saisie rapide · F2</Label>
+            <div className="relative"><Search className="absolute left-3 top-3 size-5 text-primary" /><Input ref={quickEntryRef} id="commerce-pos-quick-entry" className="h-11 bg-surface pl-10 text-base" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Référence, SKU ou désignation" autoComplete="off" /></div>
+          </form>
+          <div className="space-y-1"><Label htmlFor="commerce-pos-quantity" className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Quantité</Label><Input id="commerce-pos-quantity" className="h-11 bg-surface text-right tabular-nums" type="number" min="1" step="1" value={quickQuantity} onChange={(event) => setQuickQuantity(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addQuickResult(); } }} /></div>
+          <Button type="button" className="h-11" disabled={checkoutState !== "READY"} onClick={addQuickResult}><Plus />Ajouter <span className="hidden 2xl:inline">· Entrée</span></Button>
+          <Button type="button" variant="outline" className="h-11" onClick={openCatalogue}><Package />Articles</Button>
+          <Button type="button" variant="outline" className="h-11" disabled={checkoutState !== "READY"} onClick={() => setServiceDialogOpen(true)}><Wrench />Service</Button>
+          <Button type="button" variant="outline" className="h-11" onClick={() => setSuspendedTicketsOpen(true)}><ListTodo />Tickets ({posSession.suspendedTickets.length})</Button>
         </div>
-      </header>
 
-      {/* CAISSE / VENTES / SESSION -- the cashier's entire world, three tabs, nothing else. */}
-      <div className="flex shrink-0 gap-1 rounded-xl border border-border/80 bg-muted/[0.18] p-1">
-        {([["CAISSE", ShoppingCart], ["VENTES", ReceiptText], ["SESSION", CircleDollarSign]] as const).map(([value, Icon]) => (
-          <button key={value} type="button" onClick={() => setCashierTab(value)} className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold transition-colors ${cashierTab === value ? "bg-surface text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
-            <Icon className="size-4" />{value === "CAISSE" ? "Caisse" : value === "VENTES" ? "Ventes" : "Session"}
-          </button>
-        ))}
-      </div>
+        {posSession.isRestored ? <div className="shrink-0 border-b border-info/20 bg-info/[0.06] px-4 py-2 text-sm text-info">Brouillon restauré sur ce poste : aucune ligne n’a été perdue.</div> : null}
+        {stockConflicts.length ? <div className="shrink-0 border-b border-warning/25 bg-warning/[0.08] px-4 py-2 text-sm text-warning">Stock modifié : {stockConflicts.map((conflict) => `${conflict.label} — ${conflict.availableQuantity} disponible${conflict.availableQuantity > 1 ? "s" : ""} au lieu de ${conflict.requestedQuantity}`).join(" · ")}. Ajustez le ticket avant l’encaissement.</div> : null}
+        {checkoutState === "RECONCILIATION_REQUIRED" ? <div className="shrink-0 border-b border-warning/25 bg-warning/[0.08] px-4 py-2 text-sm text-warning">Encaissement à vérifier : le brouillon est protégé afin d’éviter un double encaissement.</div> : null}
 
-      {cashierTab === "SESSION" ? (
-        <CashierSessionTab
-          locationName={currentLocationName}
-          cashierName={cashierName}
-          sessionOpenedLabel={sessionOpenedLabel}
-          session={posSession.cashSession}
-          summary={cashSessionSummary}
-          syncStatusLabel={syncStatusLabel}
-          lastSuccessfulSyncAt={lastSuccessfulSyncAt}
-          disabled={hasDraftInProgress || posSession.suspendedTickets.length > 0}
-          onClose={closeCashSession}
-          onStartNew={startNewCashSession}
-        />
-      ) : cashierTab === "VENTES" ? (
-        <CashierSalesTab sales={sessionSaleRows} />
-      ) : (
-      <>
-      {posSession.isRestored ? <div className="shrink-0 rounded-xl border border-info/20 bg-info/[0.06] px-4 py-2 text-sm text-info">Brouillon restauré sur ce poste : aucune ligne n’a été perdue.</div> : null}
-      {stockConflicts.length ? <div className="shrink-0 rounded-xl border border-warning/25 bg-warning/[0.08] px-4 py-2 text-sm text-warning">Stock modifié : {stockConflicts.map((conflict) => `${conflict.label} — ${conflict.availableQuantity} disponible${conflict.availableQuantity > 1 ? "s" : ""} au lieu de ${conflict.requestedQuantity}`).join(" · ")}. Ajustez le ticket avant l’encaissement.</div> : null}
-      {checkoutState === "RECONCILIATION_REQUIRED" ? <div className="shrink-0 rounded-xl border border-warning/25 bg-warning/[0.08] px-4 py-2 text-sm text-warning">Encaissement à vérifier : le brouillon est protégé afin d’éviter un double encaissement.</div> : null}
+        <div className="min-h-0 flex-1 overflow-auto">
+          {workspaceQuery.isPending && !isUsingOfflineCatalogue ? <div className="space-y-2 p-3"><Skeleton className="h-12" /><Skeleton className="h-12" /><Skeleton className="h-12" /></div> : null}
+          {workspaceQuery.isError && !isUsingOfflineCatalogue ? <div className="p-6"><Card variant="information"><CardContent className="p-6">La caisse ne peut pas être ouverte pour ce point de vente. Réessayez dans un instant ou contactez un responsable.</CardContent></Card></div> : null}
+          {isUsingOfflineCatalogue ? <div className="border-b border-warning/20 bg-warning/[0.06] px-4 py-2 text-sm text-warning">Catalogue et stock local affichés. Les ventes en espèces sont conservées localement ; aucun envoi financier n’est effectué dans cette version.</div> : null}
+          {(!workspaceQuery.isPending || isUsingOfflineCatalogue) && (!workspaceQuery.isError || isUsingOfflineCatalogue) ? <>
+            <table className="hidden w-full min-w-[760px] border-collapse text-sm lg:table">
+              <thead className="sticky top-0 z-10 border-b border-border/80 bg-muted/[0.88] text-left text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground backdrop-blur">
+                <tr><th className="px-4 py-3">Référence</th><th className="px-4 py-3">Désignation</th><th className="px-4 py-3 text-right">Prix unitaire</th><th className="px-4 py-3 text-center">Quantité</th><th className="px-4 py-3 text-right">Montant</th><th className="w-16 px-4 py-3 text-right">Action</th></tr>
+              </thead>
+              <tbody>
+                {enrichedCart.map((line) => {
+                  const lineLabel = line.item?.name ?? line.label;
+                  const isService = line.lineType === "SERVICE";
+                  const availableQuantity = isService ? Number.POSITIVE_INFINITY : line.item?.quantity ?? 0;
+                  const availabilityLabel = isService
+                    ? "Prestation sans mouvement de stock"
+                    : `${availableQuantity} ${line.item?.unit ?? "unité"}${availableQuantity > 1 ? "s" : ""} disponible${availableQuantity > 1 ? "s" : ""}`;
 
-      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]">
-        {/* LEFT ~60% -- catalogue: search/scan, categories, product grid. */}
-        <section className="order-2 flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-sm lg:order-1">
-          <div className="shrink-0 space-y-2.5 border-b border-border/75 bg-muted/[0.16] p-3">
-            <div className="flex gap-2">
-              <form className="relative flex-1" onSubmit={(event) => { event.preventDefault(); addQuickResult(); }}>
-                <Search className="absolute left-3 top-1/2 size-5 -translate-y-1/2 text-primary" />
-                <Input ref={quickEntryRef} className="h-11 bg-surface pl-10 text-base" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher ou scanner · F2" autoComplete="off" />
-              </form>
-              <Input className="h-11 w-16 bg-surface text-center tabular-nums" type="number" min="1" step="1" aria-label="Quantité" value={quickQuantity} onChange={(event) => setQuickQuantity(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addQuickResult(); } }} />
-              <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0" title="Ajouter un service" aria-label="Ajouter un service" disabled={checkoutState !== "READY"} onClick={() => setServiceDialogOpen(true)}><Wrench /></Button>
-              <Button type="button" variant="outline" size="icon" className="relative h-11 w-11 shrink-0" title="Tickets en attente" aria-label={`Tickets en attente${posSession.suspendedTickets.length ? ` (${posSession.suspendedTickets.length})` : ""}`} onClick={() => setSuspendedTicketsOpen(true)}><ListTodo />{posSession.suspendedTickets.length ? <span className="absolute -right-1.5 -top-1.5 flex size-4.5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">{posSession.suspendedTickets.length}</span> : null}</Button>
+                  return <tr key={line.lineId} className="border-b border-border/60 transition-colors hover:bg-primary/[0.035]">
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{isService ? "SERVICE" : line.item?.sku ?? "—"}</td>
+                    <td className="max-w-80 px-4 py-3"><p className="truncate font-semibold">{lineLabel}</p><p className="mt-0.5 text-xs text-muted-foreground">{availabilityLabel}</p></td>
+                    <td className="px-4 py-3 text-right font-medium tabular-nums">{money(line.unitPrice)}</td>
+                    <td className="px-4 py-3"><div className="mx-auto flex w-fit items-center rounded-lg border border-border bg-surface"><Button type="button" variant="ghost" size="icon-sm" aria-label={`Diminuer la quantité de ${lineLabel}`} disabled={checkoutState !== "READY"} onClick={() => update(line.lineId, { quantity: line.quantity - 1 })}><Minus /></Button><span className="min-w-9 text-center text-sm font-bold tabular-nums">{line.quantity}</span><Button type="button" variant="ghost" size="icon-sm" aria-label={`Augmenter la quantité de ${lineLabel}`} disabled={checkoutState !== "READY" || (!isService && line.quantity >= availableQuantity)} onClick={() => isService ? update(line.lineId, { quantity: line.quantity + 1 }) : addArticle(line.itemId, line.item?.salePrice ?? line.unitPrice, lineLabel)}><Plus /></Button></div></td>
+                    <td className="px-4 py-3 text-right font-bold tabular-nums">{money(line.quantity * line.unitPrice)}</td>
+                    <td className="px-4 py-3 text-right"><Button type="button" size="icon-sm" variant="ghost" aria-label={`Retirer ${lineLabel} du ticket`} title="Retirer du ticket" disabled={checkoutState !== "READY"} onClick={() => update(line.lineId, { quantity: 0 })}><Trash2 className="text-destructive" /></Button></td>
+                  </tr>;
+                })}
+                {enrichedCart.length === 0 ? <tr><td colSpan={6} className="px-5 py-16 text-center"><ShoppingCart className="mx-auto size-7 text-muted-foreground" /><p className="mt-3 font-semibold">Le ticket est prêt</p><p className="mt-1 text-sm text-muted-foreground">Saisissez une référence, utilisez Entrée ou ouvrez le catalogue Articles.</p></td></tr> : null}
+              </tbody>
+            </table>
+            <div className="space-y-2 p-3 lg:hidden">
+              {enrichedCart.map((line) => {
+                const lineLabel = line.item?.name ?? line.label;
+                const isService = line.lineType === "SERVICE";
+                const availableQuantity = isService ? Number.POSITIVE_INFINITY : line.item?.quantity ?? 0;
+                return <div key={line.lineId} className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate font-semibold">{lineLabel}</p><p className="mt-1 font-mono text-xs text-muted-foreground">{isService ? "Service sans stock" : line.item?.sku ?? "Sans référence"} · {money(line.unitPrice)}</p></div><p className="shrink-0 font-bold tabular-nums">{money(line.quantity * line.unitPrice)}</p></div><div className="mt-3 flex items-center justify-between gap-3"><div className="flex items-center rounded-lg border border-border bg-surface"><Button type="button" variant="ghost" size="icon-sm" aria-label={`Diminuer la quantité de ${lineLabel}`} disabled={checkoutState !== "READY"} onClick={() => update(line.lineId, { quantity: line.quantity - 1 })}><Minus /></Button><span className="min-w-9 text-center text-sm font-bold tabular-nums">{line.quantity}</span><Button type="button" variant="ghost" size="icon-sm" aria-label={`Augmenter la quantité de ${lineLabel}`} disabled={checkoutState !== "READY" || (!isService && line.quantity >= availableQuantity)} onClick={() => isService ? update(line.lineId, { quantity: line.quantity + 1 }) : addArticle(line.itemId, line.item?.salePrice ?? line.unitPrice, lineLabel)}><Plus /></Button></div><Button type="button" size="sm" variant="ghost" disabled={checkoutState !== "READY"} onClick={() => update(line.lineId, { quantity: 0 })}><Trash2 className="text-destructive" />Retirer</Button></div></div>;
+              })}
+              {enrichedCart.length === 0 ? <div className="rounded-xl border border-dashed border-border/90 px-5 py-12 text-center"><ShoppingCart className="mx-auto size-6 text-muted-foreground" /><p className="mt-3 font-semibold">Le ticket est prêt</p><p className="mt-1 text-sm text-muted-foreground">Ajoutez un article pour commencer.</p></div> : null}
             </div>
-            <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-              <button type="button" onClick={() => setActiveCategory(null)} className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${activeCategory === null ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface text-muted-foreground hover:border-primary/35 hover:text-foreground"}`}>Tous</button>
-              {categories.map((category) => (
-                <button key={category} type="button" onClick={() => setActiveCategory(category)} className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${activeCategory === category ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface text-muted-foreground hover:border-primary/35 hover:text-foreground"}`}>{category}</button>
-              ))}
-            </div>
-          </div>
+          </> : null}
+        </div>
+      </section>
 
-          <div className="min-h-0 flex-1 overflow-auto p-3">
-            {workspaceQuery.isPending && !isUsingOfflineCatalogue ? <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4"><Skeleton className="h-32" /><Skeleton className="h-32" /><Skeleton className="h-32" /><Skeleton className="h-32" /></div> : null}
-            {workspaceQuery.isError && !isUsingOfflineCatalogue ? <Card variant="information"><CardContent className="p-6">La caisse ne peut pas être ouverte pour ce point de vente. Réessayez dans un instant ou contactez un responsable.</CardContent></Card> : null}
-            {isUsingOfflineCatalogue ? <div className="mb-3 rounded-xl border border-warning/20 bg-warning/[0.06] px-3 py-2 text-sm text-warning">Catalogue et stock local affichés.</div> : null}
-            {(!workspaceQuery.isPending || isUsingOfflineCatalogue) && (!workspaceQuery.isError || isUsingOfflineCatalogue) ? (
-              gridItems.length ? (
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4">
-                  {gridItems.map((item) => {
-                    const outOfStock = item.quantity <= 0;
-                    return (
-                      <button key={item.id} type="button" disabled={outOfStock || checkoutState !== "READY"} onClick={() => addArticle(item.id, item.salePrice, item.name)}
-                        className="flex flex-col items-stretch gap-1.5 rounded-xl border border-border bg-surface p-2.5 text-left shadow-sm transition-colors hover:border-primary/40 hover:shadow disabled:cursor-not-allowed disabled:opacity-50">
-                        <div className="flex aspect-square w-full items-center justify-center rounded-lg bg-primary/[0.07] text-primary"><Package className="size-8" /></div>
-                        <p className="line-clamp-2 text-xs font-semibold leading-tight" title={item.name}>{item.name}</p>
-                        <div className="mt-auto flex items-center justify-between gap-1">
-                          <span className="text-sm font-bold tabular-nums">{item.salePrice !== null ? money(item.salePrice) : "—"}</span>
-                          <span className={`shrink-0 text-[10px] font-semibold ${outOfStock ? "text-destructive" : "text-muted-foreground"}`}>{outOfStock ? "Rupture" : `${item.quantity} ${item.unit ?? ""}`.trim()}</span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : <div className="flex min-h-56 flex-col items-center justify-center gap-2 text-center"><Package className="size-8 text-muted-foreground" /><p className="font-semibold">Aucun article ne correspond</p><p className="text-sm text-muted-foreground">Essayez une autre recherche ou une autre catégorie.</p></div>
-            ) : null}
-          </div>
-        </section>
+      <Card variant="section" className="hidden shrink-0 overflow-hidden border-primary/20 bg-surface shadow-md lg:block">
+        <div className="grid gap-3 p-3 xl:grid-cols-[minmax(280px,.8fr)_minmax(390px,1.2fr)_auto] xl:items-end">
+          <div className="min-w-0">{showClient ? <div className="flex items-center gap-2"><ClientSelect value={clientId} onValueChange={(value) => updateDraft((current) => ({ ...current, clientId: value || null }))} placeholder="Client facultatif" /><Button type="button" size="sm" variant="ghost" onClick={() => { updateDraft((current) => ({ ...current, clientId: null })); setShowClient(false); }}>Comptoir</Button></div> : <button type="button" onClick={() => setShowClient(true)} className="flex w-full items-center justify-between rounded-xl border border-dashed border-border/90 bg-surface/75 px-3 py-2.5 text-left text-sm transition-colors hover:border-primary/35 hover:bg-primary/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"><span><span className="font-semibold">Vente comptoir</span><span className="ml-2 text-xs text-muted-foreground">Client non requis</span></span><span className="text-xs font-semibold text-primary">F4 · + Client</span></button>}</div>
+          <div className="grid gap-2 md:grid-cols-[auto_minmax(160px,1fr)_auto] md:items-end"><div className="space-y-1"><Label className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Paiement</Label><div className="flex items-center gap-1" role="radiogroup" aria-label="Moyen de paiement">{paymentMethods.map(({ value, label, icon: Icon }) => { const selected = method === value; const jekoDisabled = value === "JEKO"; const offlineUnavailable = posSession.networkStatus !== "ONLINE" && value !== "CASH"; return <button key={value} type="button" role="radio" aria-checked={selected} onClick={() => setPaymentMethod(value)} disabled={checkoutState !== "READY" || jekoDisabled || offlineUnavailable} title={jekoDisabled ? "Jèko sera disponible lorsque l’encaissement transactionnel POS sera relié." : offlineUnavailable ? "Paiement indisponible hors connexion." : value === "WAVE" ? "Saisie mobile manuelle : aucune API Wave directe" : label} className={`flex h-10 min-w-10 items-center justify-center gap-1 rounded-lg border px-2 text-xs font-semibold transition-[background-color,border-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55 ${selected ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-surface text-muted-foreground hover:border-primary/35 hover:text-foreground"}`}><Icon className="size-4" /><span className="hidden 2xl:inline">{jekoDisabled ? "Jèko bientôt" : value === "WAVE" ? "Mobile" : label}</span></button>; })}</div></div>{method === "CASH" ? <div className="space-y-1"><Label htmlFor="commerce-pos-cash-received" className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Montant reçu</Label><Input id="commerce-pos-cash-received" className="h-10 text-right tabular-nums" type="number" min={total} step="1" disabled={checkoutState !== "READY"} placeholder={money(total)} value={cashReceived ?? ""} onChange={(event) => updateDraft((current) => ({ ...current, cashReceived: event.target.value === "" ? null : Number(event.target.value) }))} /></div> : <div className="text-sm text-muted-foreground">Règlement manuel sélectionné.</div>}<div className="rounded-xl border border-success/20 bg-success/[0.07] px-3 py-2 text-sm"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-success">{posSession.networkStatus === "ONLINE" ? "Wallet automatique" : "Aucune écriture financière hors ligne"}</p><p className="mt-1 truncate font-semibold text-success" title={primaryCashDrawerWallet?.name}>{primaryCashDrawerWallet?.name ?? "Vente locale en attente"}</p></div></div>
+          <div className="flex items-end justify-between gap-4 xl:justify-end"><div className="text-right"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{method === "CASH" && cashReceived !== null ? "Monnaie à rendre" : "Total à encaisser"}</p><p className="mt-1 text-xl font-bold tabular-nums">{method === "CASH" && cashReceived !== null ? money(cashChange) : money(total)}</p></div><Button className="h-12 min-w-56" loading={saleMutation.isPending} loadingLabel="Comptabilisation" disabled={!canCheckout} onClick={checkout}><WalletCards />{saleMutation.isPending || checkoutState === "PROCESSING" ? "Comptabilisation…" : posSession.networkStatus !== "ONLINE" ? `Conserver ${money(total)}` : `Encaisser ${money(total)}`}<span className="ml-1 hidden 2xl:inline">· F10</span></Button></div>
+        </div>
+        {hasDraftInProgress ? <div className="flex border-t border-border/70 px-3 py-2 text-right"><div className="ml-auto flex gap-2"><Button type="button" size="sm" variant="outline" disabled={checkoutState !== "READY" || cart.length === 0} onClick={() => { if (posSession.suspendDraft()) { setShowClient(false); toast.success("Ticket suspendu : aucune opération n’a été comptabilisée."); } }}>Suspendre</Button><Button type="button" size="sm" variant="ghost" disabled={checkoutState !== "READY"} onClick={() => setPendingDraftAction({ type: "DISCARD" })}>Abandonner le brouillon</Button></div></div> : null}
+      </Card>
 
-        {/* RIGHT ~40% -- cart: lines, payment, ENCAISSER. Always visible, never a hidden drawer. */}
-        <aside className="order-1 flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-sm lg:order-2">
-          <div className="shrink-0 border-b border-border/75 p-3">
-            {showClient ? <div className="flex items-center gap-2"><ClientSelect value={clientId} onValueChange={(value) => updateDraft((current) => ({ ...current, clientId: value || null }))} placeholder="Client facultatif" /><Button type="button" size="sm" variant="ghost" onClick={() => { updateDraft((current) => ({ ...current, clientId: null })); setShowClient(false); }}>Comptoir</Button></div> : <button type="button" onClick={() => setShowClient(true)} className="flex w-full items-center justify-between rounded-xl border border-dashed border-border/90 bg-surface/75 px-3 py-2 text-left text-sm transition-colors hover:border-primary/35 hover:bg-primary/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"><span className="font-semibold">{clientId ? "Ticket nominatif" : "Vente comptoir"}</span><span className="text-xs font-semibold text-primary">F4 · Client</span></button>}
-          </div>
-
-          <div className="min-h-0 flex-1 space-y-2 overflow-auto p-3">
-            {cart.map((line) => {
-              const isService = line.lineType === "SERVICE";
-              const catalogItem = !isService ? activeCatalogue.find((entry) => entry.id === line.itemId) : null;
-              const availableQuantity = isService ? Number.POSITIVE_INFINITY : catalogItem?.quantity ?? 0;
-              const isEditingPrice = editingPriceLineId === line.lineId;
-              const floor = catalogFloorFor(line);
-              const surcharge = floor !== null && line.unitPrice > floor ? line.unitPrice - floor : 0;
-              return (
-                <div key={line.lineId} className="rounded-xl border border-border/70 bg-muted/[0.12] p-2.5">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold" title={line.label}>{line.label}</p>
-                      {isEditingPrice ? (
-                        <div className="mt-1 flex items-center gap-1">
-                          <Input autoFocus type="number" min="0" step="1" className="h-7 w-24 text-sm" value={priceDraft} onChange={(event) => setPriceDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") commitEditPrice(line); if (event.key === "Escape") cancelEditPrice(); }} />
-                          <Button type="button" size="icon-sm" variant="ghost" aria-label="Valider le prix" onClick={() => commitEditPrice(line)}><Check className="size-3.5" /></Button>
-                          <Button type="button" size="icon-sm" variant="ghost" aria-label="Annuler" onClick={cancelEditPrice}><X className="size-3.5" /></Button>
-                        </div>
-                      ) : (
-                        <button type="button" disabled={checkoutState !== "READY"} onClick={() => startEditPrice(line)} className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary disabled:pointer-events-none">
-                          <span className="font-semibold tabular-nums text-foreground">{money(line.unitPrice)}</span>
-                          <span className="underline">modifier</span>
-                          {surcharge > 0 ? <span className="rounded-full bg-success/15 px-1.5 py-0.5 font-semibold text-success">+{money(surcharge)}</span> : null}
-                        </button>
-                      )}
-                      {isEditingPrice && priceError ? <p className="mt-1 text-xs text-destructive">{priceError}</p> : null}
-                    </div>
-                    <Button type="button" size="icon-sm" variant="ghost" aria-label={`Retirer ${line.label} du ticket`} disabled={checkoutState !== "READY"} onClick={() => update(line.lineId, { quantity: 0 })}><Trash2 className="text-destructive" /></Button>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <div className="flex items-center rounded-lg border border-border bg-surface"><Button type="button" variant="ghost" size="icon-sm" aria-label={`Diminuer la quantité de ${line.label}`} disabled={checkoutState !== "READY"} onClick={() => update(line.lineId, { quantity: line.quantity - 1 })}><Minus /></Button><span className="min-w-8 text-center text-sm font-bold tabular-nums">{line.quantity}</span><Button type="button" variant="ghost" size="icon-sm" aria-label={`Augmenter la quantité de ${line.label}`} disabled={checkoutState !== "READY" || (!isService && line.quantity >= availableQuantity)} onClick={() => isService ? update(line.lineId, { quantity: line.quantity + 1 }) : addArticle(line.itemId, line.unitPrice, line.label)}><Plus /></Button></div>
-                    <p className="font-bold tabular-nums">{money(line.quantity * line.unitPrice)}</p>
-                  </div>
-                </div>
-              );
-            })}
-            {cart.length === 0 ? <div className="flex min-h-40 flex-col items-center justify-center gap-2 text-center"><ShoppingCart className="size-6 text-muted-foreground" /><p className="text-sm font-semibold">Le panier est vide</p><p className="text-xs text-muted-foreground">Touchez un article du rayon pour commencer.</p></div> : null}
-          </div>
-
-          <div className="shrink-0 space-y-2.5 border-t border-border/75 bg-muted/[0.10] p-3">
-            <div className="flex flex-wrap items-center gap-1" role="radiogroup" aria-label="Moyen de paiement">
-              {paymentMethods.map(({ value, label, icon: Icon }) => { const selected = method === value; const jekoDisabled = value === "JEKO"; const offlineUnavailable = posSession.networkStatus !== "ONLINE" && value !== "CASH"; return <button key={value} type="button" role="radio" aria-checked={selected} onClick={() => setPaymentMethod(value)} disabled={checkoutState !== "READY" || jekoDisabled || offlineUnavailable} title={jekoDisabled ? "Jèko sera disponible lorsque l’encaissement transactionnel POS sera relié." : offlineUnavailable ? "Paiement indisponible hors connexion." : value === "WAVE" ? "Saisie mobile manuelle : aucune API Wave directe" : label} className={`flex h-9 min-w-[4.5rem] flex-1 items-center justify-center gap-1 rounded-lg border text-xs font-semibold transition-[background-color,border-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55 ${selected ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-surface text-muted-foreground hover:border-primary/35 hover:text-foreground"}`}><Icon className="size-3.5" /><span className="hidden sm:inline">{jekoDisabled ? "Jèko" : value === "WAVE" ? "Mobile" : label}</span></button>; })}
-            </div>
-            {method === "CASH" ? <div className="flex items-center gap-2"><Label htmlFor="commerce-pos-cash-received" className="shrink-0 text-xs font-semibold text-muted-foreground">Reçu</Label><Input id="commerce-pos-cash-received" className="h-9 text-right tabular-nums" type="number" min={total} step="1" disabled={checkoutState !== "READY"} placeholder={money(total)} value={cashReceived ?? ""} onChange={(event) => updateDraft((current) => ({ ...current, cashReceived: event.target.value === "" ? null : Number(event.target.value) }))} />{cashReceived !== null ? <span className="shrink-0 text-xs font-semibold text-muted-foreground">Rendu {money(cashChange)}</span> : null}</div> : null}
-            <div className="flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Total</p><p className="text-xl font-bold tabular-nums">{money(total)}</p></div>
-            <Button className="h-14 w-full text-base" loading={saleMutation.isPending} loadingLabel="Comptabilisation" disabled={!canCheckout} onClick={checkout}><WalletCards />{saleMutation.isPending || checkoutState === "PROCESSING" ? "Comptabilisation…" : posSession.networkStatus !== "ONLINE" ? `Conserver ${money(total)}` : `Encaisser ${money(total)}`}<span className="ml-1 hidden text-xs font-normal opacity-75 2xl:inline">· F10</span></Button>
-            {hasDraftInProgress ? <div className="flex justify-end gap-2 pt-1"><Button type="button" size="sm" variant="outline" disabled={checkoutState !== "READY" || cart.length === 0} onClick={() => { if (posSession.suspendDraft()) { setShowClient(false); toast.success("Ticket suspendu : aucune opération n’a été comptabilisée."); } }}>Suspendre</Button><Button type="button" size="sm" variant="ghost" disabled={checkoutState !== "READY"} onClick={() => setPendingDraftAction({ type: "DISCARD" })}>Abandonner</Button></div> : null}
-          </div>
-        </aside>
-      </div>
-      </>
-      )}
+      <Dialog open={catalogueOpen} onOpenChange={setCatalogueOpen}>
+        <DialogContent className="max-w-5xl overflow-hidden p-0">
+          <DialogHeader className="border-b border-border/70 px-5 py-4 text-left"><DialogTitle>Articles disponibles · {currentLocationName}</DialogTitle><DialogDescription>Flèches pour choisir, Entrée pour ajouter, Échap pour fermer. Les prix d’achat et les codes-barres ne sont pas disponibles dans cette caisse.</DialogDescription></DialogHeader>
+          <div className="border-b border-border/70 bg-muted/[0.16] p-4"><div className="relative"><Search className="absolute left-3 top-3 size-5 text-primary" /><Input autoFocus className="h-11 pl-10" value={catalogueSearch} onChange={(event) => { setCatalogueSearch(event.target.value); setCatalogueSelectedIndex(0); }} onKeyDown={(event) => { if (event.key === "ArrowDown") { event.preventDefault(); setCatalogueSelectedIndex((current) => Math.min(current + 1, Math.max(catalogueItems.length - 1, 0))); } if (event.key === "ArrowUp") { event.preventDefault(); setCatalogueSelectedIndex((current) => Math.max(current - 1, 0)); } if (event.key === "Enter") { event.preventDefault(); addFromCatalogue(catalogueSelectedIndex); } }} placeholder="Rechercher une référence, un SKU ou une désignation" /></div></div>
+          <div className="max-h-[60dvh] overflow-auto"><table className="w-full min-w-[620px] border-collapse text-sm"><thead className="sticky top-0 z-10 bg-surface text-left text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground"><tr><th className="px-5 py-3">Référence</th><th className="px-5 py-3">Désignation</th><th className="px-5 py-3 text-right">Prix de vente</th><th className="px-5 py-3 text-right">Stock</th><th className="w-24 px-5 py-3" /></tr></thead><tbody>{catalogueItems.map((item, index) => { const unavailable = item.quantity <= 0; return <tr key={item.id} onMouseEnter={() => setCatalogueSelectedIndex(index)} onDoubleClick={() => addFromCatalogue(index)} className={`border-t border-border/60 ${catalogueSelectedIndex === index ? "bg-primary/[0.08]" : "hover:bg-muted/[0.24]"} ${unavailable ? "opacity-55" : "cursor-pointer"}`}><td className="px-5 py-3 font-mono text-xs text-muted-foreground">{item.sku ?? "—"}</td><td className="px-5 py-3 font-semibold">{item.name}</td><td className="px-5 py-3 text-right font-medium tabular-nums">{item.salePrice === null ? "Prix à saisir" : money(item.salePrice)}</td><td className="px-5 py-3 text-right tabular-nums">{item.quantity} {item.unit ?? "unité"}{item.quantity > 1 ? "s" : ""}</td><td className="px-5 py-3 text-right"><Button type="button" size="sm" variant="outline" disabled={unavailable || checkoutState !== "READY"} onClick={() => addFromCatalogue(index)}>{unavailable ? "Rupture" : "Ajouter"}</Button></td></tr>; })}{catalogueItems.length === 0 ? <tr><td colSpan={5} className="px-5 py-12 text-center text-muted-foreground">Aucun article ne correspond à cette recherche.</td></tr> : null}</tbody></table></div>
+          <DialogFooter className="border-t border-border/70 bg-muted/[0.10] px-5 py-3"><p className="mr-auto text-xs text-muted-foreground">{catalogueItems.length} article{catalogueItems.length > 1 ? "s" : ""} chargé{catalogueItems.length > 1 ? "s" : ""} pour ce magasin.</p><Button type="button" variant="outline" onClick={() => setCatalogueOpen(false)}>Fermer</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={serviceDialogOpen} onOpenChange={setServiceDialogOpen}>
         <DialogContent className="max-w-lg">
@@ -870,6 +866,46 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
         </DialogContent>
       </Dialog>
 
+      <div className="sticky bottom-3 z-20 lg:hidden">
+        <Drawer open={mobileCartOpen} onOpenChange={setMobileCartOpen}>
+          <DrawerTrigger asChild>
+            <Button type="button" className="h-14 w-full justify-between rounded-2xl px-4 text-left shadow-lg">
+              <span className="flex min-w-0 items-center gap-3"><ShoppingCart className="size-5 shrink-0" /><span className="min-w-0"><span className="block text-xs font-medium text-primary-foreground/75">Panier de caisse · {cart.length} article{cart.length > 1 ? "s" : ""}</span><span className="block truncate text-base font-semibold">{clientId ? "Ticket nominatif" : "Vente comptoir"}</span></span></span>
+              <span className="shrink-0 text-lg font-bold tabular-nums">{money(total)}</span>
+            </Button>
+          </DrawerTrigger>
+          <DrawerContent className="max-h-[92dvh]">
+            <DrawerHeader className="flex-row items-start justify-between gap-4 text-left">
+              <div><DrawerTitle className="flex items-center gap-2"><ShoppingCart className="size-5 text-primary" /> Panier de caisse</DrawerTitle><DrawerDescription className="mt-1">Le panier reste identique lorsque l’affichage change.</DrawerDescription></div>
+              <DrawerClose asChild><Button type="button" variant="ghost" size="sm">Fermer</Button></DrawerClose>
+            </DrawerHeader>
+            {posSession.isRestored ? <div className="border-y border-info/20 bg-info/[0.06] px-4 py-2 text-sm text-info">Une vente non terminée a été restaurée sur ce poste.</div> : null}
+            {stockConflicts.length ? <div className="border-y border-warning/25 bg-warning/[0.08] px-4 py-2 text-sm text-warning">Stock modifié : ajustez le panier avant d’encaisser.</div> : null}
+            {checkoutState === "RECONCILIATION_REQUIRED" ? <div className="border-y border-warning/25 bg-warning/[0.08] px-4 py-2 text-sm text-warning">Encaissement à vérifier avant toute nouvelle tentative.</div> : null}
+            <div className="min-h-0 space-y-4 overflow-y-auto px-4 pb-4">
+              {showClient ? <div className="flex items-center gap-2"><ClientSelect value={clientId} onValueChange={(value) => updateDraft((current) => ({ ...current, clientId: value || null }))} placeholder="Client facultatif" /><Button type="button" size="sm" variant="ghost" onClick={() => { updateDraft((current) => ({ ...current, clientId: null })); setShowClient(false); }}>Comptoir</Button></div> : <button type="button" onClick={() => setShowClient(true)} className="flex w-full items-center justify-between rounded-xl border border-dashed border-border/90 bg-surface/75 px-3 py-3 text-left text-sm transition-colors hover:border-primary/35 hover:bg-primary/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"><span><span className="font-semibold">Vente comptoir</span><span className="ml-2 text-xs text-muted-foreground">Client non requis</span></span><span className="text-xs font-semibold text-primary">+ Client</span></button>}
+              <div className="flex gap-2 overflow-x-auto pb-1" role="radiogroup" aria-label="Moyen de paiement">
+                {paymentMethods.map(({ value, label, icon: Icon }) => { const selected = method === value; const jekoDisabled = value === "JEKO"; const offlineUnavailable = posSession.networkStatus !== "ONLINE" && value !== "CASH"; return <button key={value} type="button" role="radio" aria-checked={selected} onClick={() => setPaymentMethod(value)} disabled={checkoutState !== "READY" || jekoDisabled || offlineUnavailable} title={jekoDisabled ? "Jèko sera disponible lorsque l’encaissement transactionnel POS sera relié." : offlineUnavailable ? "Paiement indisponible hors connexion." : value === "WAVE" ? "Saisie mobile manuelle : aucune API Wave directe" : label} className={`flex h-12 min-w-24 shrink-0 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-[background-color,border-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55 ${selected ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-surface text-muted-foreground hover:border-primary/35 hover:text-foreground"}`}><Icon className="size-4" /><span>{jekoDisabled ? "Jèko bientôt" : value === "WAVE" ? "Mobile" : label}</span></button>; })}
+              </div>
+              <div className="flex items-center gap-2 rounded-xl border border-success/20 bg-success/[0.07] px-3 py-2"><WalletCards className="size-4 shrink-0 text-success" /><span className="min-w-0 truncate text-sm font-semibold text-success" title={primaryCashDrawerWallet?.name}>{primaryCashDrawerWallet?.name ?? "Wallet de caisse à configurer"}</span></div>
+              <div className="space-y-2">
+                {enrichedCart.map((line) => {
+                  const lineLabel = line.item?.name ?? line.label;
+                  const isService = line.lineType === "SERVICE";
+                  const availableQuantity = isService ? Number.POSITIVE_INFINITY : line.item?.quantity ?? 0;
+                  return <div key={line.lineId} className="rounded-xl border border-border/70 bg-muted/[0.18] p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate font-semibold">{lineLabel}</p><p className="mt-1 text-xs text-muted-foreground">{isService ? "Service sans stock" : line.item?.sku ?? "Sans référence"}</p></div><p className="shrink-0 font-bold tabular-nums">{money(line.quantity * line.unitPrice)}</p></div><div className="mt-3 grid grid-cols-[auto_1fr_auto] items-center gap-2"><div className="flex items-center rounded-lg border border-border bg-surface"><Button type="button" variant="ghost" size="icon-sm" aria-label={`Diminuer la quantité de ${lineLabel}`} disabled={checkoutState !== "READY"} onClick={() => update(line.lineId, { quantity: line.quantity - 1 })}><Minus /></Button><span className="min-w-9 text-center text-sm font-bold tabular-nums">{line.quantity}</span><Button type="button" variant="ghost" size="icon-sm" aria-label={`Augmenter la quantité de ${lineLabel}`} disabled={checkoutState !== "READY" || (!isService && line.quantity >= availableQuantity)} onClick={() => isService ? update(line.lineId, { quantity: line.quantity + 1 }) : addArticle(line.itemId, line.item?.salePrice ?? line.unitPrice, lineLabel)}><Plus /></Button></div><Input aria-label={`Prix unitaire de ${lineLabel}`} className="h-8 min-w-0 text-right text-sm" type="number" min="0" step="1" disabled={checkoutState !== "READY"} value={line.unitPrice} onChange={(event) => update(line.lineId, { unitPrice: Number(event.target.value) })} /><Button type="button" size="icon-sm" variant="ghost" aria-label={`Retirer ${lineLabel}`} disabled={checkoutState !== "READY"} onClick={() => update(line.lineId, { quantity: 0 })}><Trash2 className="text-destructive" /></Button></div></div>;
+                })}
+                {enrichedCart.length === 0 ? <div className="rounded-xl border border-dashed border-border/90 bg-muted/[0.12] px-5 py-8 text-center"><ShoppingCart className="mx-auto size-5 text-muted-foreground" /><p className="mt-2 text-sm font-semibold">Votre panier est vide</p><p className="mt-1 text-xs text-muted-foreground">Sélectionnez un article dans le rayon.</p></div> : null}
+              </div>
+            </div>
+            <DrawerFooter className="border-t border-border/70 bg-surface">
+              <div className="flex items-end justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Total à encaisser</p><p className="mt-1 text-2xl font-bold tracking-tight tabular-nums">{money(total)}</p></div>{method === "CASH" ? <div className="w-44 space-y-1"><Label className="text-xs">Montant reçu</Label><Input aria-label="Montant reçu en espèces" className="h-9 text-right" type="number" min={total} step="1" disabled={checkoutState !== "READY"} placeholder={money(total)} value={cashReceived ?? ""} onChange={(event) => updateDraft((current) => ({ ...current, cashReceived: event.target.value === "" ? null : Number(event.target.value) }))} />{cashReceived !== null ? <p className="text-xs text-muted-foreground">À rendre : <span className="font-semibold text-foreground">{money(cashChange)}</span></p> : null}</div> : null}</div>
+              <Button className="h-12 w-full" loading={saleMutation.isPending} loadingLabel="Comptabilisation" disabled={!canCheckout} onClick={checkout}><WalletCards />{saleMutation.isPending || checkoutState === "PROCESSING" ? "Comptabilisation…" : posSession.networkStatus !== "ONLINE" ? `Conserver ${money(total)}` : `Encaisser ${money(total)}`}</Button>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+      </div>
+
       <AlertDialog open={pendingDraftAction !== null} onOpenChange={(open) => { if (!open) setPendingDraftAction(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -893,91 +929,6 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
           <AlertDialogFooter><AlertDialogCancel>Conserver</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (pendingSuspendedDeletion) posSession.removeSuspendedTicket(pendingSuspendedDeletion.id); setPendingSuspendedDeletion(null); toast.success("Ticket suspendu supprimé."); }}>Supprimer</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
-}
-
-/** Mission caisse-UX: a dedicated, always-legible "où en est ma session ?"
- * screen -- no Finance vocabulary, no wallet, nothing the cashier has to
- * interpret beyond what they already see in the header at a glance. */
-function CashierSessionTab({ locationName, cashierName, sessionOpenedLabel, session, summary, syncStatusLabel, lastSuccessfulSyncAt, disabled, onClose, onStartNew }: {
-  locationName: string;
-  cashierName: string;
-  sessionOpenedLabel: string;
-  session: ReturnType<typeof useCommercePosSession>["cashSession"];
-  summary: ReturnType<typeof useCommercePosSession>["cashSessionSummary"];
-  syncStatusLabel: string;
-  lastSuccessfulSyncAt: string | null;
-  disabled: boolean;
-  onClose: () => Promise<void>;
-  onStartNew: () => Promise<void>;
-}) {
-  return (
-    <div className="flex-1 space-y-3 overflow-auto">
-      <Card variant="section">
-        <CardHeader className="pb-3"><CardTitle className="text-lg">Cette session</CardTitle></CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Caisse</p><p className="mt-1 font-semibold">{locationName}</p></div>
-          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Caissier</p><p className="mt-1 font-semibold">{cashierName}</p></div>
-          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Session ouverte</p><p className="mt-1 font-semibold tabular-nums">{sessionOpenedLabel}</p></div>
-          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Synchronisation</p><p className="mt-1 font-semibold">{syncStatusLabel}</p>{lastSuccessfulSyncAt ? <p className="mt-0.5 text-xs text-muted-foreground">{new Date(lastSuccessfulSyncAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p> : null}</div>
-        </CardContent>
-      </Card>
-      {summary ? <Card variant="section">
-        <CardHeader className="pb-3"><CardTitle className="text-lg">Depuis l’ouverture</CardTitle></CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Tickets</p><p className="mt-1 text-lg font-bold tabular-nums">{summary.ticketCount}</p></div>
-          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Articles</p><p className="mt-1 text-lg font-bold tabular-nums">{money(summary.articleTotal)}</p></div>
-          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Services</p><p className="mt-1 text-lg font-bold tabular-nums">{money(summary.serviceTotal)}</p></div>
-          <div className="rounded-xl border border-primary/25 bg-primary/[0.06] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Espèces (théorique)</p><p className="mt-1 text-lg font-bold tabular-nums text-primary">{money(summary.theoreticalCash)}</p></div>
-          {/* Toujours affiches, meme a 0 : un montant Mobile Money ou Autres
-              ne doit jamais disparaitre silencieusement de ce recap. */}
-          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Mobile Money</p><p className="mt-1 text-lg font-bold tabular-nums">{money(summary.mobileMoneyTotal)}</p></div>
-          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Autres moyens</p><p className="mt-1 text-lg font-bold tabular-nums">{money(summary.otherPaymentTotal)}</p></div>
-        </CardContent>
-      </Card> : null}
-      <Card variant="section">
-        <CardHeader className="pb-3"><CardTitle className="text-lg">Fin de journée</CardTitle><p className="text-sm text-muted-foreground">Clôturez lorsque vous avez terminé de vendre. Le contrôle et la réception des espèces se font ensuite côté gestion.</p></CardHeader>
-        <CardContent><PosCashSessionClose session={session} summary={summary} disabled={disabled} onClose={onClose} onStartNew={onStartNew} /></CardContent>
-      </Card>
-    </div>
-  );
-}
-
-const paymentMethodLabel = (method: string | null) => method === "CASH" ? "Espèces" : method === "WAVE" || method === "JEKO" ? "Mobile Money" : method === null ? "—" : "Autre";
-
-/** Mission caisse-UX: the cashier's own ticket history for this session --
- * time, ticket, content, amount, payment method, sync status. No net
- * result, no CMV, no Finance -- that belongs to the manager's control
- * center, not this screen.
- *
- * Mission maitre, Blocker A: sales is the merge of confirmed server sales
- * (online-direct or offline-then-synced -- see
- * mergeCommercePosSessionSaleRows) and not-yet-synced local outbox events,
- * never the local outbox alone. */
-function CashierSalesTab({ sales }: { sales: CommercePosSessionSaleRow[] }) {
-  const syncLabel = (status: string) => status === "SYNCED" ? "Synchronisé" : status === "CONFLICT" ? "À contrôler" : status === "SYNCING" ? "Synchronisation…" : status === "FAILED" ? "Nouvel essai" : "En attente";
-  return (
-    <div className="flex-1 overflow-auto">
-      <Card variant="section">
-        <CardHeader className="pb-3"><CardTitle className="text-lg">Mes ventes</CardTitle><p className="text-sm text-muted-foreground">{sales.length} ticket{sales.length > 1 ? "s" : ""} sur cette session.</p></CardHeader>
-        <CardContent className="p-0">
-          {sales.length ? <div className="divide-y divide-border/60">
-            {sales.map((sale) => {
-              return <div key={sale.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                <div className="min-w-0">
-                  <p className="font-semibold">{new Date(sale.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} · {sale.label}</p>
-                  <p className="mt-0.5 text-sm text-muted-foreground">{sale.articleCount ? `${sale.articleCount} article${sale.articleCount > 1 ? "s" : ""}` : ""}{sale.articleCount && sale.serviceCount ? " · " : ""}{sale.serviceCount ? `${sale.serviceCount} service${sale.serviceCount > 1 ? "s" : ""}` : ""} · {paymentMethodLabel(sale.paymentMethod)}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <p className="font-bold tabular-nums">{money(sale.total)}</p>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${sale.syncStatus === "SYNCED" ? "bg-success/10 text-success" : sale.syncStatus === "CONFLICT" ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"}`}>{syncLabel(sale.syncStatus)}</span>
-                </div>
-              </div>;
-            })}
-          </div> : <div className="flex min-h-40 flex-col items-center justify-center gap-2 p-6 text-center"><ReceiptText className="size-6 text-muted-foreground" /><p className="text-sm font-semibold">Aucune vente pour l’instant</p></div>}
-        </CardContent>
-      </Card>
     </div>
   );
 }
@@ -1085,7 +1036,6 @@ const commerceAssignmentRoles: Array<{ value: CommerceAssignmentRole; label: str
 
 function CommerceLocationAssignments({ locationId }: { locationId: string }) {
   const queryClient = useQueryClient();
-  const { confirm, dialog } = useConfirm();
   const [userId, setUserId] = useState("");
   const [assignmentRole, setAssignmentRole] = useState<CommerceAssignmentRole>("CASHIER");
   const assignmentsQuery = useQuery({
@@ -1119,13 +1069,9 @@ function CommerceLocationAssignments({ locationId }: { locationId: string }) {
     if (selectedRole) setAssignmentRole(selectedRole.value);
   };
   const remove = (assignmentId: string, userName: string) => {
-    confirm({
-      title: `Retirer l’accès de ${userName} à ce magasin ?`,
-      description: "Ses ventes et son historique seront conservés. Le changement sera immédiatement appliqué côté base de données.",
-      variant: "destructive",
-      confirmLabel: "Retirer",
-      onConfirm: async () => { await endMutation.mutateAsync({ data: { assignmentId } }); },
-    });
+    if (window.confirm(`Retirer l’accès de ${userName} à ce magasin ? Ses ventes et son historique seront conservés.`)) {
+      endMutation.mutate({ data: { assignmentId } });
+    }
   };
 
   return (
@@ -1154,7 +1100,6 @@ function CommerceLocationAssignments({ locationId }: { locationId: string }) {
         <div className="flex items-end"><Button type="button" disabled={assignMutation.isPending || !userId} onClick={() => assignMutation.mutate({ data: { locationId, userId, assignmentRole, notes: null } })}><UserPlus />{assignMutation.isPending ? "Affectation…" : "Affecter"}</Button></div>
       </div>
       <p className="text-caption">Réaffecter un collaborateur met à jour son rôle tout en conservant son historique d’affectation.</p>
-      {dialog}
     </div>
   );
 }
