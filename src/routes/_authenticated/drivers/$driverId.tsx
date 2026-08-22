@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DriverForm } from "@/components/drivers/driver-form";
 import { getDriverAssignments } from "@/lib/assignments.functions";
@@ -111,9 +111,14 @@ function DriverDetailsContent({ driverId }: { driverId: string }) {
         </Link>
       </Button>
 
-      <PageHeader
+      <OperationalHero
+        variant="deep"
+        icon={Car}
+        eyebrow="Chauffeur"
         title={driverName}
         description="Une vue unique des affectations, contrats, documents et opérations liés à ce chauffeur."
+        primaryStat={{ label: "Véhicules affectés", value: assignments.vehicles.length, tone: "info" }}
+        secondaryStats={[{ label: "Motos affectées", value: assignments.motorcycles.length }]}
         actions={
           <>
             <Badge variant="info" appearance="soft">{driver.statut || "Statut non renseigné"}</Badge>

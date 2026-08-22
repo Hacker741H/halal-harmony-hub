@@ -13,6 +13,7 @@ function SettingsPage() {
   return (
     <div className="space-y-7">
       <OperationalHero
+        variant="deep"
         icon={Settings}
         eyebrow="Système"
         title="Paramètres"

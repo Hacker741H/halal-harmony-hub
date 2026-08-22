@@ -38,7 +38,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PageHeader } from "@/components/ui/page-header";
+import { ModuleHero } from "@/components/ui/module-hero";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -162,16 +162,14 @@ export function OperationalCourseWorkspace({ kind }: { kind: OperationalWorkspac
   }
 
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
-    <PageHeader
+    <ModuleHero
+      variant="surface"
+      glow
+      icon={config.icon}
       eyebrow={config.eyebrow}
       title={config.title}
       description={config.description}
-      actions={
-        <div className="rounded-xl border border-border/70 bg-surface/80 px-4 py-3 text-sm shadow-xs">
-          <p className="text-caption text-muted-foreground">Courses visibles</p>
-          <p className="mt-1 text-xl font-semibold tabular-nums">{coursesQuery.isPending ? "—" : courses.length}</p>
-        </div>
-      }
+      stats={[{ label: "Courses visibles", value: coursesQuery.isPending ? "—" : courses.length }]}
     />
 
     <Card variant="section">

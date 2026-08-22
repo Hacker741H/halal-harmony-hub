@@ -62,12 +62,13 @@ function StockTransfersPage() {
 
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
     <OperationalHero
+      variant="deep"
       icon={ArrowLeftRight}
       eyebrow="Commerce"
       title="Transferts inter-magasins"
       description="Expédiez du stock d’un magasin vers un autre : le coût est figé à l’expédition, la destination recalcule sa propre moyenne. Aucune écriture financière."
       primaryStat={{ label: "Transferts", value: total }}
-      secondaryStats={[{ label: "En transit", value: overview.inTransit }]}
+      secondaryStats={[{ label: "En transit", value: overview.inTransit, tone: "info" }]}
       actions={can("transfers.create") ? <Button onClick={() => setCreateOpen(true)}><ArrowLeftRight className="size-4" />Nouveau transfert</Button> : undefined}
     />
     <div className="grid gap-3 sm:grid-cols-3">

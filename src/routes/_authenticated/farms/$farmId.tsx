@@ -28,7 +28,7 @@ import { formatNumber, formatXOF } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 
 import {
   Card,
@@ -309,10 +309,14 @@ function FarmDetailsPage() {
         </Link>
       </Button>
 
-      <PageHeader
+      <OperationalHero
+        variant="deep"
+        icon={Sprout}
         eyebrow="Exploitation"
         title={`${farm.code} — ${farm.nom}`}
         description="Tableau de bord de l'exploitation"
+        primaryStat={{ label: "Récoltes", value: harvests.length }}
+        secondaryStats={[{ label: "Dépenses liées", value: expenses.length }]}
         actions={
           <>
             <Badge variant={farmStatusVariant(farm.statut)} className="text-sm">

@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate, formatXOF } from "@/lib/format";
@@ -543,10 +543,13 @@ export function ReportingCenter({ search, onSearchChange }: ReportingCenterProps
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <OperationalHero
+        variant="deep"
+        icon={FileText}
         eyebrow="Finance"
         title="Rapports"
         description="Les bilans parlent fort pour ceux qui savent lire entre les lignes."
+        primaryStat={{ label: "Résultats", value: totalOperations }}
         actions={
           <>
             <Button variant="outline" onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" />Imprimer</Button>

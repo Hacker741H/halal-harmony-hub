@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Eye, FileImage, FilePlus2, Search, Trash2, Upload } from "lucide-react";
+import { Eye, FileImage, FilePlus2, FileText, Search, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { DocumentUpload } from "@/components/documents/document-upload";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useConfirm } from "@/hooks/use-confirm";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -103,9 +103,13 @@ export function DocumentsPage() {
   });
 
   return <div className="space-y-6 p-4 md:p-6">
-    <PageHeader
+    <OperationalHero
+      variant="deep"
+      icon={FileText}
+      eyebrow="Documents"
       title="Documents"
       description="Tout est carré : les preuves parlent quand les mots s’arrêtent."
+      primaryStat={{ label: "Documents", value: result.total }}
       actions={<Dialog open={dialogOpen} onOpenChange={setDialogOpen}><DialogTrigger asChild><Button><FilePlus2 className="mr-2 h-4 w-4" />Téléverser</Button></DialogTrigger><DialogContent className="max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>Nouveau document</DialogTitle></DialogHeader><DocumentUpload onSuccess={() => { setDialogOpen(false); void refreshLibrary(); }} /></DialogContent></Dialog>}
     />
 

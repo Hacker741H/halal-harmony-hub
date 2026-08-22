@@ -1,16 +1,18 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Landmark, Leaf, MapPin, Plus, Sprout } from "lucide-react";
+import { Landmark, Leaf, MapPin, Plus, Search, Sprout } from "lucide-react";
 
 import { FarmForm } from "@/components/farms/farm-form";
 import { FarmTable } from "@/components/farms/farm-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
 import { OperationalHero } from "@/components/ui/operational-hero";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useConfirm } from "@/hooks/use-confirm";
 import { deleteFarm, getFarms, type Farm } from "@/lib/farms.functions";
 
@@ -53,19 +55,37 @@ function FarmsPage() {
   }
 
   const superficie = farms.reduce((sum, farm) => sum + Number(farm.superficie ?? 0), 0);
-  const cultures = new Set(farms.map((farm) => farm.type_culture)).size;
+  const cultureTypes = useMemo(
+    () => Array.from(new Set(farms.map((farm) => farm.type_culture).filter((type): type is string => Boolean(type)))),
+    [farms],
+  );
   const activeFarms = farms.filter((farm) => farm.statut === "actif").length;
+
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "actif" | "inactif">("ALL");
+  const [cultureFilter, setCultureFilter] = useState("ALL");
+
+  const filteredFarms = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return farms.filter((farm) => {
+      const matchesSearch = !term || farm.nom?.toLowerCase().includes(term);
+      const matchesStatus = statusFilter === "ALL" || farm.statut === statusFilter;
+      const matchesCulture = cultureFilter === "ALL" || farm.type_culture === cultureFilter;
+      return matchesSearch && matchesStatus && matchesCulture;
+    });
+  }, [farms, search, statusFilter, cultureFilter]);
 
   return (
     <div className="space-y-7">
       <Dialog open={open} onOpenChange={setOpen}>
         <OperationalHero
+          variant="deep"
           icon={Sprout}
           eyebrow="Agriculture"
           title="Exploitations agricoles"
           description="Visualisez les sites de production, les cultures suivies et la superficie qui soutient votre activité."
           primaryStat={{ label: "Superficie suivie", value: `${superficie} ha` }}
-          secondaryStats={[{ label: "Exploitations actives", value: activeFarms }]}
+          secondaryStats={[{ label: "Exploitations actives", value: activeFarms, tone: "success" }]}
           actions={
             <DialogTrigger asChild>
               <Button>
@@ -101,7 +121,7 @@ function FarmsPage() {
         />
         <MetricCard
           label="Cultures"
-          value={cultures}
+          value={cultureTypes.length}
           description="Types de culture renseignés"
           icon={Sprout}
           tone="primary"
@@ -114,6 +134,36 @@ function FarmsPage() {
           tone="success"
         />
       </div>
+
+      <Card variant="section" className="p-3">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_170px_170px]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input
+              className="pl-9"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Rechercher une exploitation…"
+              aria-label="Rechercher une exploitation"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Tous les statuts</SelectItem>
+              <SelectItem value="actif">Actif</SelectItem>
+              <SelectItem value="inactif">Inactif</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={cultureFilter} onValueChange={setCultureFilter}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Toutes les cultures</SelectItem>
+              {cultureTypes.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </Card>
 
       <Card variant="section" className="overflow-hidden">
         <CardHeader className="border-b border-border/70">
@@ -128,7 +178,7 @@ function FarmsPage() {
           </div>
         </CardHeader>
         <CardContent className="p-5 sm:p-6">
-          <FarmTable farms={farms} loading={isPending} error={isError} onEdit={handleEdit} onDelete={handleDelete} />
+          <FarmTable farms={filteredFarms} loading={isPending} error={isError} onEdit={handleEdit} onDelete={handleDelete} />
         </CardContent>
       </Card>
 

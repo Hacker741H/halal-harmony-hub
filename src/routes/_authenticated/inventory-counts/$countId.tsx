@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ClipboardCheck, XCircle } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, ClipboardList, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { Textarea } from "@/components/ui/textarea";
 import { usePermissions } from "@/hooks/use-permissions";
 import {
@@ -78,10 +78,14 @@ function InventoryCountDetailPage() {
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
     <Button asChild variant="ghost" className="-ml-2 px-2"><Link to="/inventory-counts"><ArrowLeft className="size-4" />Inventaires</Link></Button>
 
-    <PageHeader
+    <OperationalHero
+      variant="deep"
+      icon={ClipboardList}
       eyebrow="Inventaire"
       title={count.count_number}
       description={`${detail.locationName ?? "Magasin non accessible"} · Ouvert le ${formatDateTime(count.opened_at)}${count.status === "COMPLETED" ? ` · Validé le ${formatDateTime(count.completed_at)}` : ""}${count.status === "CANCELLED" ? ` · Annulé le ${formatDateTime(count.cancelled_at)}` : ""}`}
+      primaryStat={{ label: "Articles", value: lines.length }}
+      secondaryStats={[{ label: "Écarts", value: variantLines.length, tone: variantLines.length > 0 ? "warning" : "success" }]}
       actions={
         <>
           <Badge variant={statusVariant(count.status)} appearance="soft">{statusLabel(count.status)}</Badge>

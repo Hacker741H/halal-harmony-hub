@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Boxes, Hash, Package, Plus } from "lucide-react";
+import { AlertTriangle, Boxes, Hash, Package, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { StockForm } from "@/components/stocks/stock-form";
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
 import { OperationalHero } from "@/components/ui/operational-hero";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -100,15 +101,23 @@ function StocksPage() {
       item.stock_actuel <= item.seuil_alerte,
   ).length;
 
+  const [search, setSearch] = useState("");
+  const filteredStocks = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return stocks;
+    return stocks.filter((stock) => stock.nom?.toLowerCase().includes(term));
+  }, [stocks, search]);
+
   return (
     <div className="space-y-7">
       <OperationalHero
+        variant="deep"
         icon={Package}
         eyebrow="Agriculture"
         title="Stocks et mouvements"
         description="Suivez les articles disponibles, les seuils sensibles et les derniers mouvements sans perdre le lien avec les opérations enregistrées."
         primaryStat={{ label: "Articles", value: totalItems }}
-        secondaryStats={[{ label: "Sous le seuil", value: lowStock }]}
+        secondaryStats={[{ label: "Sous le seuil", value: lowStock, tone: lowStock > 0 ? "warning" : "success" }]}
         actions={
           <>
             <Dialog
@@ -175,6 +184,19 @@ function StocksPage() {
         />
       </div>
 
+      <Card variant="section" className="p-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input
+            className="pl-9"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Rechercher un article…"
+            aria-label="Rechercher un article"
+          />
+        </div>
+      </Card>
+
       <Card variant="section" className="overflow-hidden">
         <CardHeader className="border-b border-border/70">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -188,7 +210,7 @@ function StocksPage() {
           </div>
         </CardHeader>
         <CardContent className="p-5 sm:p-6">
-          <StockTable stocks={stocks} loading={isPending} error={isError} onEdit={handleEdit} onDelete={handleDelete} />
+          <StockTable stocks={filteredStocks} loading={isPending} error={isError} onEdit={handleEdit} onDelete={handleDelete} />
         </CardContent>
       </Card>
 

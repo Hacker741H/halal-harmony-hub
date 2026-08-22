@@ -138,12 +138,13 @@ function MaintenancePage() {
   return (
     <div className="space-y-7">
       <OperationalHero
+        variant="deep"
         icon={Wrench}
         eyebrow="Mobilité"
         title="Entretiens des actifs"
         description="Retrouvez les entretiens véhicules et motos dans un seul registre, avec les actions de création déjà disponibles."
         primaryStat={{ label: "Entretiens", value: rows.length }}
-        secondaryStats={[{ label: "Coût total", value: `${totalCost.toLocaleString("fr-FR")} FCFA` }]}
+        secondaryStats={[{ label: "Coût total", value: `${totalCost.toLocaleString("fr-FR")} FCFA`, tone: "warning" }]}
         actions={
           <>
             <Button variant="outline" onClick={() => openCreate("motorcycle")}>

@@ -112,12 +112,13 @@ function NotificationsPage() {
   return (
     <div className="space-y-7">
       <OperationalHero
+        variant="deep"
         icon={Bell}
         eyebrow="Pilotage"
         title="Centre de notifications"
         description="Priorisez les échéances et anomalies détectées par l’ERP, puis ouvrez directement la donnée qui demande une action."
-        primaryStat={{ label: "Non lues", value: summary?.unread ?? 0 }}
-        secondaryStats={[{ label: "Critiques", value: summary?.critical ?? 0 }]}
+        primaryStat={{ label: "Non lues", value: summary?.unread ?? 0, tone: "info" }}
+        secondaryStats={[{ label: "Critiques", value: summary?.critical ?? 0, tone: (summary?.critical ?? 0) > 0 ? "danger" : "neutral" }]}
         actions={
           <>
             <Button variant="outline" disabled={readAllMutation.isPending} onClick={() => readAllMutation.mutate({ data: undefined })}>

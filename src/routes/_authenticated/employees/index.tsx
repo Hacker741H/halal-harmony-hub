@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, UserCheck, UserMinus, Users, Wallet } from "lucide-react";
+import { Plus, Search, UserCheck, UserMinus, Users, Wallet } from "lucide-react";
 import { z } from "zod";
 
 import { EmployeeForm } from "@/components/employees/employee-form";
@@ -11,8 +11,10 @@ import { SalaryPaymentForm } from "@/components/employees/salary-payment-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
 import { OperationalHero } from "@/components/ui/operational-hero";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getEmployees, type Employee } from "@/lib/employees.functions";
 
 export const Route = createFileRoute("/_authenticated/employees/")({
@@ -27,6 +29,8 @@ function EmployeesPage() {
   const [employeeDialogOpen, setEmployeeDialogOpen] = useState(false);
   const [salaryDialogOpen, setSalaryDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "actif" | "inactif">("ALL");
 
   const { data: employees = [], isPending, isError } = useQuery({
     queryKey: ["employees"],
@@ -36,6 +40,19 @@ function EmployeesPage() {
   const activeEmployees = employees.filter((employee) => employee.statut === "actif").length;
   const inactiveEmployees = employees.filter((employee) => employee.statut === "inactif").length;
   const totalPayroll = employees.reduce((total, employee) => total + Number(employee.salaire_base ?? 0), 0);
+
+  const filteredEmployees = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return employees.filter((employee) => {
+      const matchesSearch =
+        !term ||
+        [employee.nom, employee.prenom, employee.poste, employee.telephone, employee.email].some((field) =>
+          field?.toLowerCase().includes(term),
+        );
+      const matchesStatus = statusFilter === "ALL" || employee.statut === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [employees, search, statusFilter]);
 
   useEffect(() => {
     if (create === "true") {
@@ -58,12 +75,16 @@ function EmployeesPage() {
   return (
     <div className="space-y-7">
       <OperationalHero
+        variant="deep"
         icon={Users}
         eyebrow="Ressources"
         title="Équipe et rémunérations"
-        description="Accédez au référentiel de l’équipe et aux actions de gestion déjà autorisées, dans un espace plus clair et plus serein."
-        primaryStat={{ label: "Effectif", value: employees.length }}
-        secondaryStats={[{ label: "Actifs", value: activeEmployees }]}
+        description="Vue d'ensemble de l'effectif, des statuts et de la masse salariale."
+        primaryStat={{ label: "Effectif total", value: employees.length }}
+        secondaryStats={[
+          { label: "Actifs", value: activeEmployees, tone: "success" },
+          { label: "Masse salariale", value: `${totalPayroll.toLocaleString("fr-FR")} FCFA`, tone: "info" },
+        ]}
         actions={
           <>
             <Dialog open={salaryDialogOpen} onOpenChange={setSalaryDialogOpen}>
@@ -117,6 +138,29 @@ function EmployeesPage() {
         }
       />
 
+      <Card variant="section" className="p-3">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_180px]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input
+              className="pl-9"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Rechercher une personne, poste, contact…"
+              aria-label="Rechercher un employé"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Tous les statuts</SelectItem>
+              <SelectItem value="actif">Actif</SelectItem>
+              <SelectItem value="inactif">Inactif</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </Card>
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Employés" value={employees.length} description="Personnes enregistrées" icon={Users} />
         <MetricCard label="Actifs" value={activeEmployees} description="En activité" icon={UserCheck} tone="success" />
@@ -150,7 +194,7 @@ function EmployeesPage() {
         </CardHeader>
         <CardContent className="p-5 sm:p-6">
           <EmployeeTable
-            employees={employees}
+            employees={filteredEmployees}
             loading={isPending}
             error={isError}
             onEdit={(employee) => {

@@ -1,12 +1,12 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileSignature } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -90,10 +90,13 @@ function ContractDetailsPage() {
         </Link>
       </Button>
 
-      <PageHeader
+      <OperationalHero
+        variant="deep"
+        icon={FileSignature}
         eyebrow="Contrat"
         title={contract.reference || contract.type || "Contrat"}
         description="Fiche contrat"
+        primaryStat={contract.montant === null ? undefined : { label: "Montant", value: `${Number(contract.montant).toLocaleString("fr-FR")} FCFA` }}
         actions={
           can("contracts.manage") ? (
             <div className="space-y-1">
