@@ -152,7 +152,7 @@ const commerceCashRemittanceWorkspaceSchema = z.object({
   }),
   closures: z.array(z.object({
     id: z.string().uuid(), cashSessionId: z.string(), closedAt: z.string(), cashierId: z.string().uuid(), cashier: z.string(),
-    theoreticalCash: z.number(), countedCash: z.number(), cashDifference: z.number(), status: z.enum(["SYNCED", "REVIEW_REQUIRED"]), remainingAmount: z.number(),
+    theoreticalCash: z.number(), countedCash: z.number().nullable(), cashDifference: z.number().nullable(), status: z.enum(["SYNCED", "REVIEW_REQUIRED"]), remainingAmount: z.number().nullable(),
   })),
   destinationWallets: z.array(z.object({ id: z.string().uuid(), name: z.string(), purpose: z.enum(["COLLECTION", "OPERATING"]) })),
   remittances: z.array(z.object({

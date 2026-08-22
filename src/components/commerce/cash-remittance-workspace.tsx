@@ -17,7 +17,7 @@ import {
 } from "@/lib/commerce-pos.functions";
 import { createCommercePosId } from "@/lib/commerce-pos-session";
 
-const money = (amount: number) => `${amount.toLocaleString("fr-FR")} FCFA`;
+const money = (amount: number | null) => amount === null ? "Non contrôlé" : `${amount.toLocaleString("fr-FR")} FCFA`;
 const when = (value: string | null) => value ? new Date(value).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" }) : "—";
 
 export function CashRemittanceWorkspace({ locationId, mode = "management", online = true }: {
@@ -46,7 +46,7 @@ function RemittanceContent({ workspace, locationId, cashier = false }: { workspa
   const [receivedAmount, setReceivedAmount] = useState("");
   const [destinationWalletId, setDestinationWalletId] = useState("");
   const [confirmationNote, setConfirmationNote] = useState("");
-  const availableClosures = workspace.closures.filter((closure) => closure.remainingAmount > 0.009);
+  const availableClosures = workspace.closures.filter((closure) => closure.remainingAmount !== null && closure.remainingAmount > 0.009);
   const selectedAllocations = Object.entries(allocations).filter(([, amount]) => amount > 0);
   const selectedTotal = selectedAllocations.reduce((sum, [, amount]) => sum + amount, 0);
   const pendingRemittances = workspace.remittances.filter((remittance) => remittance.status === "DECLARED");
@@ -98,7 +98,8 @@ function RemittanceContent({ workspace, locationId, cashier = false }: { workspa
       <div><h3 className="font-semibold">Déclarer une remise</h3><p className="mt-1 text-sm text-muted-foreground">Sélectionnez uniquement l’argent physiquement remis. Une clôture partielle conserve son solde restant.</p></div>
       {availableClosures.length ? <div className="space-y-2">{availableClosures.map((closure) => {
         const selected = (allocations[closure.id] ?? 0) > 0;
-        return <div key={closure.id} className="grid gap-2 rounded-lg border border-border/70 p-3 sm:grid-cols-[auto_minmax(0,1fr)_10rem] sm:items-center"><input type="checkbox" checked={selected} onChange={(event) => setAllocations((current) => ({ ...current, [closure.id]: event.target.checked ? closure.remainingAmount : 0 }))} aria-label={`Sélectionner ${closure.cashSessionId}`} /><div><p className="font-medium">{when(closure.closedAt)} · {closure.cashSessionId}</p><p className="text-xs text-muted-foreground">Théorique {money(closure.theoreticalCash)} · compté {money(closure.countedCash)} · restant {money(closure.remainingAmount)}</p></div><Input type="number" min="0" max={closure.remainingAmount} step="1" disabled={!selected} value={selected ? allocations[closure.id] : ""} onChange={(event) => setAllocations((current) => ({ ...current, [closure.id]: Math.min(closure.remainingAmount, Math.max(0, Number(event.target.value))) }))} /></div>;
+        const remainingAmount = closure.remainingAmount ?? 0;
+        return <div key={closure.id} className="grid gap-2 rounded-lg border border-border/70 p-3 sm:grid-cols-[auto_minmax(0,1fr)_10rem] sm:items-center"><input type="checkbox" checked={selected} onChange={(event) => setAllocations((current) => ({ ...current, [closure.id]: event.target.checked ? remainingAmount : 0 }))} aria-label={`Sélectionner ${closure.cashSessionId}`} /><div><p className="font-medium">{when(closure.closedAt)} · {closure.cashSessionId}</p><p className="text-xs text-muted-foreground">Théorique {money(closure.theoreticalCash)} · compté {money(closure.countedCash)} · restant {money(closure.remainingAmount)}</p></div><Input type="number" min="0" max={remainingAmount} step="1" disabled={!selected} value={selected ? allocations[closure.id] : ""} onChange={(event) => setAllocations((current) => ({ ...current, [closure.id]: Math.min(remainingAmount, Math.max(0, Number(event.target.value))) }))} /></div>;
       })}</div> : <p className="rounded-lg bg-muted/30 p-4 text-sm text-muted-foreground">Aucune clôture synchronisée ne possède de montant encore remisable.</p>}
       <div className="grid gap-3 sm:grid-cols-2"><div><Label>Référence (optionnelle)</Label><Input value={reference} maxLength={160} onChange={(event) => setReference(event.target.value)} /></div><div><Label>Note (optionnelle)</Label><Input value={declarationNote} maxLength={1000} onChange={(event) => setDeclarationNote(event.target.value)} /></div></div>
       <div className="flex flex-wrap items-center justify-between gap-3"><p className="font-semibold">Déclaré remis : {money(selectedTotal)}</p><Button disabled={selectedTotal <= 0 || declareMutation.isPending} onClick={() => declareMutation.mutate()}>{declareMutation.isPending ? "Déclaration…" : "Déclarer la remise"}</Button></div>
