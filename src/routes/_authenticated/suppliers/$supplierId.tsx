@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
-import { ArrowLeft, Clock, Package, Pencil, Receipt, Wallet } from "lucide-react";
+import { ArrowLeft, Clock, Contact, Package, Pencil, Receipt, Wallet } from "lucide-react";
 
 import { SupplierForm } from "@/components/suppliers/supplier-form";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePermissions } from "@/hooks/use-permissions";
 import { formatXOF } from "@/lib/format";
@@ -59,7 +59,9 @@ function SupplierDetailsPage() {
     <div className="space-y-6 p-4 md:p-6">
       <Button asChild variant="ghost" className="-ml-2 px-2"><Link to="/suppliers"><ArrowLeft className="mr-2 h-4 w-4" />Fournisseurs</Link></Button>
 
-      <PageHeader
+      <OperationalHero
+        variant="deep"
+        icon={Contact}
         eyebrow="Fournisseur"
         title={supplier.display_name}
         description={`${supplier.supplier_number}${supplier.legal_name ? ` · ${supplier.legal_name}` : ""}`}

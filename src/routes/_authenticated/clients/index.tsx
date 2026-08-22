@@ -85,6 +85,7 @@ function ClientsPage() {
   return (
     <div className="space-y-5">
       <OperationalHero
+        variant="deep"
         icon={Building2}
         eyebrow="Commerce"
         title="Clients"

@@ -61,12 +61,13 @@ function PurchasesPage() {
 
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
     <OperationalHero
+      variant="deep"
       icon={ShoppingCart}
       eyebrow="Commerce"
       title="Achats & fournisseurs"
       description="Réceptionnez un achat fournisseur puis réglez la dette au fil de l’eau. La réception ne touche jamais un wallet directement."
       primaryStat={{ label: "Achats", value: total }}
-      secondaryStats={[{ label: "Réceptionnés", value: overview.received }]}
+      secondaryStats={[{ label: "Réceptionnés", value: overview.received, tone: "success" }]}
       actions={can("purchases.create") ? <Button onClick={() => setCreateOpen(true)}><Plus className="size-4" />Nouvel achat</Button> : undefined}
     />
     <div className="grid gap-3 sm:grid-cols-3">

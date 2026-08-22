@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -80,10 +80,14 @@ function PurchaseDetailsPage() {
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
     <Button asChild variant="ghost" className="-ml-2 px-2"><Link to="/purchases"><ArrowLeft className="size-4" />Achats</Link></Button>
 
-    <PageHeader
+    <OperationalHero
+      variant="deep"
+      icon={ReceiptText}
       eyebrow="Achat"
       title={purchase.purchase_number}
       description={`${detail.supplierName ?? "Fournisseur non accessible"} · ${detail.locationName ?? "—"} · ${formatDate(purchase.purchase_date)}`}
+      primaryStat={canReadFinance ? { label: "Total achat", value: formatAmount(purchase.total_amount) } : undefined}
+      secondaryStats={canReadFinance ? [{ label: "Reste dû", value: formatAmount(financial?.amount_due), tone: Number(financial?.amount_due ?? 0) > 0 ? "warning" : "success" }] : undefined}
       actions={
         <>
           <Badge variant={purchase.status === "CANCELLED" ? "danger" : "success"} appearance="soft">{purchase.status === "CANCELLED" ? "Annulé" : "Réceptionné"}</Badge>

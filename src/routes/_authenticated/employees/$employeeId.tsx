@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentUpload } from "@/components/documents/document-upload";
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
@@ -84,10 +84,17 @@ function EmployeeDetailsPage() {
         </Link>
       </Button>
 
-      <PageHeader
+      <OperationalHero
+        variant="deep"
+        icon={Banknote}
         eyebrow="Employé"
         title={[employee.nom, employee.prenom].filter(Boolean).join(" ")}
         description="Fiche employé à 360°"
+        primaryStat={{ label: "Total salaires", value: formatXOF(paidTotal), tone: "success" }}
+        secondaryStats={[
+          { label: "Contrats", value: contracts.length },
+          { label: "Documents", value: documents.length, tone: "info" },
+        ]}
         actions={
           <>
             {employee.statut ? <Badge variant="outline">{employee.statut}</Badge> : null}

@@ -115,11 +115,12 @@ function WalletsPage() {
   return (
     <div className="space-y-7">
       <OperationalHero
+        variant="deep"
         icon={WalletCards}
         eyebrow="Finance"
         title="Wallets et trésorerie"
-        description="Chaque mouvement passe par un wallet. Motos, véhicules, agriculture et commerce sont regroupés par module ; le solde consolidé se calcule depuis les sous-wallets, jamais en double."
-        primaryStat={{ label: "Trésorerie consolidée", value: formatXOF(totalBalance) }}
+        description="Solde consolidé en temps réel, tous modules confondus."
+        primaryStat={{ label: "Trésorerie consolidée", value: formatXOF(totalBalance), tone: totalBalance < 0 ? "danger" : "neutral" }}
         secondaryStats={[{ label: "Comptes actifs", value: stats?.totalWallets ?? 0 }]}
         actions={
           <Button

@@ -1,11 +1,11 @@
 import { useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Archive, ArrowLeft, Download, Trash2, Upload } from "lucide-react";
+import { Archive, ArrowLeft, Download, FileText, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { useConfirm } from "@/hooks/use-confirm";
 import { usePermissions } from "@/hooks/use-permissions";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,7 +84,10 @@ function DocumentDetailPage() {
     <input ref={replacementInputRef} className="hidden" type="file" onChange={(event) => { const file = event.target.files?.[0]; if (file) replaceMutation.mutate(file); event.currentTarget.value = ""; }} />
     <Button asChild variant="ghost" className="-ml-2 px-2"><Link to="/documents"><ArrowLeft className="mr-2 h-4 w-4" />Documents</Link></Button>
 
-    <PageHeader
+    <OperationalHero
+      variant="deep"
+      icon={FileText}
+      eyebrow="Document"
       title={document.nom}
       description={document.type ?? "Document"}
       actions={<>{document.url && <Button asChild variant="outline"><a href={document.url} target="_blank" rel="noreferrer"><Download className="mr-2 h-4 w-4" />Télécharger</a></Button>}{canReplace && <Button variant="outline" disabled={replaceMutation.isPending} onClick={() => replacementInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" />{replaceMutation.isPending ? "Remplacement…" : "Remplacer"}</Button>}{canDelete && <Button variant="destructive" disabled={deleteMutation.isPending} onClick={() => confirm({

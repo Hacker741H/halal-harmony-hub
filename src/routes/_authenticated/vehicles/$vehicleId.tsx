@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DriverAssignmentPanel } from "@/components/assignments/driver-assignment-panel";
@@ -214,10 +214,14 @@ function VehicleDetailsPage() {
         </Link>
       </Button>
 
-      <PageHeader
+      <OperationalHero
+        variant="deep"
+        icon={Gauge}
         eyebrow="Véhicule"
         title={[vehicle.brand, vehicle.model].filter(Boolean).join(" ") || "Véhicule"}
         description={vehicle.registration}
+        primaryStat={{ label: "Kilométrage", value: `${formatNumber(vehicle.kilometrage ?? 0)} km` }}
+        secondaryStats={[{ label: "Entretiens", value: maintenances.length, tone: maintenances.length > 0 ? "warning" : "neutral" }]}
         actions={
           <>
             <Badge>{statusLabel(vehicle.status)}</Badge>

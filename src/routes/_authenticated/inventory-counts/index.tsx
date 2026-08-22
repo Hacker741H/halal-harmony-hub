@@ -68,12 +68,13 @@ function InventoryCountsPage() {
 
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
     <OperationalHero
+      variant="deep"
       icon={ClipboardList}
       eyebrow="Commerce"
       title="Inventaires physiques"
       description="Comptez le stock réel d’un magasin puis validez : chaque écart ajuste le stock au coût moyen courant, sans jamais créer d’écriture financière."
       primaryStat={{ label: "Inventaires", value: total }}
-      secondaryStats={[{ label: "Ouverts", value: overview.open }]}
+      secondaryStats={[{ label: "Ouverts", value: overview.open, tone: "info" }]}
       actions={can("inventory.counts.create") ? <Button onClick={() => setCreateOpen(true)}><Plus className="size-4" />Nouvel inventaire</Button> : undefined}
     />
     <div className="grid gap-3 sm:grid-cols-3">

@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, CircleCheck, FileSignature, Files, Plus } from "lucide-react";
+import { CalendarDays, CircleCheck, FileSignature, Files, Plus, Search } from "lucide-react";
 import { z } from "zod";
 
 import { ContractForm } from "@/components/contracts/contract-form";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState, ErrorState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
 import { OperationalHero } from "@/components/ui/operational-hero";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -44,15 +45,27 @@ function ContractsPage() {
   }).length;
   const datedContracts = contracts.filter((contract) => Boolean(contract.date_fin)).length;
 
+  const [search, setSearch] = useState("");
+  const filteredContracts = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return contracts;
+    return contracts.filter((contract) =>
+      [contract.reference, contract.partie, contract.type, contract.statut].some((field) =>
+        field?.toLowerCase().includes(term),
+      ),
+    );
+  }, [contracts, search]);
+
   return (
     <div className="space-y-7">
       <OperationalHero
+        variant="deep"
         icon={FileSignature}
         eyebrow="Agriculture"
         title="Contrats et engagements"
         description="Centralisez les contrats, leurs références et les échéances déjà saisies dans l’ERP."
         primaryStat={{ label: "Contrats", value: contracts.length }}
-        secondaryStats={[{ label: "Actifs", value: activeContracts }]}
+        secondaryStats={[{ label: "Actifs", value: activeContracts, tone: "success" }]}
         actions={
           <Button onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" />
@@ -66,6 +79,19 @@ function ContractsPage() {
         <MetricCard label="Actifs" value={activeContracts} description="Statut actif renseigné" icon={CircleCheck} tone="success" />
         <MetricCard label="Avec échéance" value={datedContracts} description="Une date de fin est renseignée" icon={CalendarDays} tone="info" />
       </div>
+
+      <Card variant="section" className="p-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input
+            className="pl-9"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Rechercher par référence, partie, type…"
+            aria-label="Rechercher un contrat"
+          />
+        </div>
+      </Card>
 
       <Card variant="section" className="overflow-hidden">
         <CardHeader className="border-b border-border/70">
@@ -88,10 +114,14 @@ function ContractsPage() {
             </div>
           ) : isError ? (
             <ErrorState title="Impossible de charger les contrats." onRetry={() => void refetch()} />
-          ) : contracts.length === 0 ? (
-            <EmptyState icon={FileSignature} title="Aucun contrat enregistré" description="Créez le premier contrat pour le voir apparaître ici." />
+          ) : filteredContracts.length === 0 ? (
+            <EmptyState
+              icon={FileSignature}
+              title={contracts.length === 0 ? "Aucun contrat enregistré" : "Aucun contrat ne correspond"}
+              description={contracts.length === 0 ? "Créez le premier contrat pour le voir apparaître ici." : "Essayez un autre terme de recherche."}
+            />
           ) : (
-            contracts.map((contract) => (
+            filteredContracts.map((contract) => (
               <Link
                 key={contract.id}
                 to="/contracts/$contractId"

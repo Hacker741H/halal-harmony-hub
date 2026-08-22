@@ -26,7 +26,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
@@ -152,7 +152,10 @@ export function RolesPermissionsPage() {
   return (
     <PermissionGuard permission="roles.read">
       <div className="space-y-6 p-6">
-        <PageHeader
+        <OperationalHero
+          variant="deep"
+          icon={UsersRound}
+          eyebrow="Système"
           title="Rôles & permissions"
           description="Les bons accès aux bonnes personnes : le contrôle reste à la maison."
           actions={<Badge variant="outline">Contrôles garantis par Supabase</Badge>}

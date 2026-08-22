@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
-import { Archive, ArrowLeft, Clock, Merge, Pencil, Receipt, RotateCcw, ShoppingCart, TrendingUp, Undo2, Wallet } from "lucide-react";
+import { Archive, ArrowLeft, Building2, Clock, Merge, Pencil, Receipt, RotateCcw, ShoppingCart, TrendingUp, Undo2, Wallet } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -13,7 +13,7 @@ import { Callout } from "@/components/ui/callout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -96,7 +96,10 @@ function ClientDetailsPage() {
 
   return (
     <div className="space-y-5 p-4 md:p-6">
-      <PageHeader
+      <OperationalHero
+        variant="deep"
+        icon={Building2}
+        eyebrow="Client"
         title={client.display_name}
         description={`${client.client_number}${client.legal_name ? ` · ${client.legal_name}` : ""}`}
         actions={<>

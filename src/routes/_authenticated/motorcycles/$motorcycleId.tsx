@@ -24,7 +24,7 @@ import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab"
 import { EntityAlertsSection } from "@/components/notifications/entity-alerts-section";
 import { MotorcycleForm } from "@/components/motorcycles/motorcycle-form";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { useConfirm } from "@/hooks/use-confirm";
 
 import {
@@ -223,10 +223,14 @@ function MotorcycleDetailsPage() {
         </Link>
       </Button>
 
-      <PageHeader
+      <OperationalHero
+        variant="deep"
+        icon={Gauge}
         eyebrow="Moto"
         title={`${motorcycle.marque} ${motorcycle.modele}`}
         description={motorcycle.immatriculation}
+        primaryStat={{ label: "Kilométrage", value: `${formatNumber(motorcycle.kilometrage ?? 0)} km` }}
+        secondaryStats={[{ label: "Entretiens", value: maintenances.length, tone: maintenances.length > 0 ? "warning" : "neutral" }]}
         actions={
           <>
             <Badge variant={motorcycle.statut === "en_reparation" ? "warning" : "success"}>

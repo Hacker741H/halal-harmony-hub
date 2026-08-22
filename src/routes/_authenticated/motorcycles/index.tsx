@@ -1,19 +1,22 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bike, CircleCheck, Plus, Wrench } from "lucide-react";
+import { Bike, CircleCheck, Plus, Search, Wrench } from "lucide-react";
 
 import { MotorcycleForm } from "@/components/motorcycles/motorcycle-form";
 import { MotorcycleTable } from "@/components/motorcycles/motorcycle-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
 import { OperationalHero } from "@/components/ui/operational-hero";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   deleteMotorcycle,
   getMotorcycles,
+  MOTORCYCLE_STATUS_LABELS,
   type Motorcycle,
 } from "@/lib/motorcycles.functions";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -62,6 +65,18 @@ function MotorcyclesPage() {
     (motorcycle) => motorcycle.statut === "en_reparation",
   ).length;
 
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const filteredMotorcycles = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return motorcycles.filter((motorcycle) => {
+      const matchesSearch =
+        !term || [motorcycle.immatriculation, motorcycle.marque, motorcycle.modele].some((field) => field?.toLowerCase().includes(term));
+      const matchesStatus = statusFilter === "ALL" || motorcycle.statut === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [motorcycles, search, statusFilter]);
+
   return (
     <div className="space-y-7">
       <Dialog
@@ -80,12 +95,13 @@ function MotorcyclesPage() {
       </Dialog>
 
       <OperationalHero
+        variant="deep"
         icon={Bike}
         eyebrow="Mobilité"
         title="Parc motos"
         description="Gardez une vue nette sur les deux-roues, leur disponibilité et les interventions à suivre."
-        primaryStat={{ label: "Opérationnelles", value: operationalMotorcycles }}
-        secondaryStats={[{ label: "En réparation", value: motorcyclesInMaintenance }]}
+        primaryStat={{ label: "Opérationnelles", value: operationalMotorcycles, tone: "success" }}
+        secondaryStats={[{ label: "En réparation", value: motorcyclesInMaintenance, tone: motorcyclesInMaintenance > 0 ? "warning" : "neutral" }]}
         actions={
           <Button
             onClick={() => {
@@ -122,6 +138,30 @@ function MotorcyclesPage() {
         />
       </div>
 
+      <Card variant="section" className="p-3">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_180px]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input
+              className="pl-9"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Rechercher une moto, immatriculation, marque…"
+              aria-label="Rechercher une moto"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Tous les statuts</SelectItem>
+              {Object.entries(MOTORCYCLE_STATUS_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </Card>
+
       <Card variant="section" className="overflow-hidden">
         <CardHeader className="border-b border-border/70">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -132,13 +172,13 @@ function MotorcyclesPage() {
             <p className="text-sm text-muted-foreground">
               {isPending
                 ? "Chargement du parc…"
-                : `${motorcycles.length} moto${motorcycles.length > 1 ? "s" : ""} affichée${motorcycles.length > 1 ? "s" : ""}`}
+                : `${filteredMotorcycles.length} moto${filteredMotorcycles.length > 1 ? "s" : ""} affichée${filteredMotorcycles.length > 1 ? "s" : ""}`}
             </p>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           <MotorcycleTable
-            motorcycles={motorcycles}
+            motorcycles={filteredMotorcycles}
             loading={isPending}
             error={isError}
             onEdit={(motorcycle) => {

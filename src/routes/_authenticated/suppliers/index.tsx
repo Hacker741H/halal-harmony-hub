@@ -66,6 +66,7 @@ function SuppliersPage() {
   return (
     <div className="space-y-7">
       <OperationalHero
+        variant="deep"
         icon={Contact}
         eyebrow="Commerce"
         title="Fournisseurs"

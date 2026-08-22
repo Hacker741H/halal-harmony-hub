@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { formatDate, formatXOF } from "@/lib/format";
 import { FINANCE_OPERATION_TYPE_LABELS, getFinanceOperationsByWallet } from "@/lib/finance.functions";
 import { getWallet } from "@/lib/wallet.functions";
@@ -100,9 +100,14 @@ function WalletDetailsPage() {
         </Link>
       </Button>
 
-      <PageHeader
+      <OperationalHero
+        variant="deep"
+        icon={WalletCards}
+        eyebrow="Wallet"
         title={wallet.name}
         description="Le solde global et les écritures réellement rattachées à ce wallet, sans confondre les flux des autres activités."
+        primaryStat={{ label: "Solde disponible", value: format(Number(wallet.balance ?? 0)), tone: Number(wallet.balance ?? 0) < 0 ? "danger" : "neutral" }}
+        secondaryStats={[{ label: "Mouvements affichés", value: displayedOperations.length }]}
         actions={
           <Badge variant="success" appearance="soft" className="w-fit">
             Wallet actif · {walletTypeLabel}

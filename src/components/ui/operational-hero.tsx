@@ -3,23 +3,50 @@ import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+type OperationalHeroStatTone = "neutral" | "success" | "warning" | "danger" | "info";
+
 interface OperationalHeroStat {
   label: string;
   value: ReactNode;
+  /** Only rendered on the "deep" variant, where each stat gets its own tinted pill. */
+  tone?: OperationalHeroStatTone;
 }
 
 interface OperationalHeroProps {
   icon: LucideIcon;
-  eyebrow: string;
-  title: string;
-  description?: string;
+  eyebrow: ReactNode;
+  title: ReactNode;
+  description?: ReactNode;
   /** The single most useful existing number for this module -- shown large, first. */
   primaryStat?: OperationalHeroStat;
   /** 0-2 supporting numbers, shown smaller next to the primary stat. */
   secondaryStats?: readonly OperationalHeroStat[];
   actions?: ReactNode;
   className?: string;
+  /**
+   * "tinted" (default) is the original light, primary-tinted banner -- unchanged.
+   * "deep" reuses the exact dark sidebar-green surface ModuleHero uses for
+   * Dashboard/Control Center, with each stat rendered as its own tone-tinted
+   * pill. Reserved for screens validated against the real product reference.
+   */
+  variant?: "tinted" | "deep";
 }
+
+const deepPillClasses: Record<OperationalHeroStatTone, string> = {
+  neutral: "border-sidebar-foreground/10 bg-sidebar-foreground/[0.06]",
+  success: "border-sidebar-primary/30 bg-sidebar-primary/15",
+  warning: "border-warning/30 bg-warning/15",
+  danger: "border-destructive/30 bg-destructive/15",
+  info: "border-info/30 bg-info/15",
+};
+
+const deepLabelClasses: Record<OperationalHeroStatTone, string> = {
+  neutral: "text-sidebar-foreground/70",
+  success: "text-sidebar-primary",
+  warning: "text-warning",
+  danger: "text-destructive",
+  info: "text-info",
+};
 
 /**
  * A light, primary-tinted identity banner for standard operational screens
@@ -39,7 +66,56 @@ export function OperationalHero({
   secondaryStats,
   actions,
   className,
+  variant = "tinted",
 }: OperationalHeroProps) {
+  if (variant === "deep") {
+    const stats = [primaryStat, ...(secondaryStats ?? [])].filter((stat): stat is OperationalHeroStat => Boolean(stat));
+
+    return (
+      <section
+        className={cn(
+          "relative overflow-hidden rounded-2xl border border-sidebar-border/60 bg-sidebar px-5 py-4 text-sidebar-foreground shadow-sm sm:px-6 sm:py-4.5",
+          className,
+        )}
+      >
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/70">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-sidebar-foreground/15 bg-sidebar-foreground/10 text-sidebar-foreground">
+                <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+              </span>
+              {eyebrow}
+            </div>
+            <h1 className="mt-1.5 truncate text-h2 text-sidebar-foreground sm:text-h1">{title}</h1>
+            {description ? (
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-sidebar-foreground/65">{description}</p>
+            ) : null}
+          </div>
+
+          {stats.length ? (
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {stats.map((stat, index) => (
+                <div
+                  key={index}
+                  className={cn("rounded-xl border px-3.5 py-2 text-right", deepPillClasses[stat.tone ?? "neutral"])}
+                >
+                  <p className={cn("text-[11px] font-semibold uppercase tracking-wide", deepLabelClasses[stat.tone ?? "neutral"])}>
+                    {stat.label}
+                  </p>
+                  <p className="mt-0.5 text-xl font-bold tabular-nums text-sidebar-foreground sm:text-2xl">{stat.value}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {actions ? (
+            <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
+          ) : null}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
       className={cn(

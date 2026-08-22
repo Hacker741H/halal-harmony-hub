@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import {
   Select,
   SelectContent,
@@ -222,10 +222,14 @@ export function FieldWorkspace() {
 
   return (
     <main className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
-      <PageHeader
+      <OperationalHero
+        variant="deep"
+        icon={ClipboardList}
         eyebrow="HALAL Field · Terrain"
         title="Rapports terrain"
         description="Enregistrez vos recettes, dépenses et versements. Les recettes immédiates autorisées sont créditées et tracées à l’enregistrement ; les autres mouvements restent soumis au contrôle Finance."
+        primaryStat={{ label: "Rapports", value: reports.length }}
+        secondaryStats={[{ label: "Soumis", value: submittedCount, tone: "success" }]}
         actions={
           <>
             {can("field.wallets.assign") ? (

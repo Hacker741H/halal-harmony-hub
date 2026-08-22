@@ -105,12 +105,13 @@ function FinancePage() {
     <>
       <div className="space-y-5">
         <OperationalHero
+          variant="deep"
           icon={Landmark}
           eyebrow="Finance"
           title="Journal financier"
           description="Suivez la trésorerie, les recettes et les dépenses à partir du journal unique de l’ERP."
           primaryStat={{ label: "Trésorerie", value: `${Number(treasury).toLocaleString("fr-FR")} FCFA` }}
-          secondaryStats={[{ label: "Résultat", value: `${(stats?.resultat ?? 0).toLocaleString("fr-FR")} FCFA` }]}
+          secondaryStats={[{ label: "Résultat", value: `${(stats?.resultat ?? 0).toLocaleString("fr-FR")} FCFA`, tone: (stats?.resultat ?? 0) < 0 ? "danger" : "success" }]}
           actions={
             <Button onClick={create}>
               <Plus className="h-4 w-4" />

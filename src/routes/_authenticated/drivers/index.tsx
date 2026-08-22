@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, UserCog } from "lucide-react";
+import { Plus, Search, UserCog } from "lucide-react";
 import { toast } from "sonner";
 
 import { DriverForm } from "@/components/drivers/driver-form";
@@ -19,6 +19,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { OperationalHero } from "@/components/ui/operational-hero";
 import { useConfirm } from "@/hooks/use-confirm";
 
@@ -36,6 +38,17 @@ function DriversPage() {
     queryFn: () => getDrivers(),
   });
   const { confirm, dialog } = useConfirm();
+  const [search, setSearch] = useState("");
+
+  const filteredDrivers = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return drivers;
+    return drivers.filter((driver) =>
+      [driver.employees?.nom, driver.employees?.prenom, driver.employees?.telephone, driver.numero_permis].some((field) =>
+        field?.toLowerCase().includes(term),
+      ),
+    );
+  }, [drivers, search]);
 
   function refresh() {
     void queryClient.invalidateQueries({ queryKey: ["drivers"] });
@@ -72,6 +85,7 @@ function DriversPage() {
         }}
       >
         <OperationalHero
+          variant="deep"
           icon={UserCog}
           eyebrow="Ressources"
           title="Chauffeurs"
@@ -96,8 +110,21 @@ function DriversPage() {
         </DialogContent>
       </Dialog>
 
+      <Card variant="section" className="p-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input
+            className="pl-9"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Rechercher un chauffeur, permis…"
+            aria-label="Rechercher un chauffeur"
+          />
+        </div>
+      </Card>
+
       <DriverTable
-        drivers={drivers}
+        drivers={filteredDrivers}
         loading={isPending}
         error={isError}
         onEdit={(driver) => {

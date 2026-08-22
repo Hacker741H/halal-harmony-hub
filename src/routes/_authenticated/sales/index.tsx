@@ -77,7 +77,7 @@ function SalesPage() {
   }
 
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
-    <OperationalHero icon={PackageCheck} eyebrow="Commerce" title="Ventes & créances" description="Préparez une vente, facturez le client puis enregistrez les encaissements sur le wallet choisi. Les comptes clients restent lisibles sans double saisie." primaryStat={{ label: "Ventes", value: total }} secondaryStats={[{ label: "Confirmées", value: overview.confirmed }]} actions={can("sales.create") ? <Button onClick={() => setCreateOpen(true)}><Plus className="size-4" />Nouvelle vente</Button> : undefined} />
+    <OperationalHero variant="deep" icon={PackageCheck} eyebrow="Commerce" title="Ventes & créances" description="Préparez une vente, facturez le client puis enregistrez les encaissements sur le wallet choisi. Les comptes clients restent lisibles sans double saisie." primaryStat={{ label: "Ventes", value: total }} secondaryStats={[{ label: "Confirmées", value: overview.confirmed, tone: "success" }]} actions={can("sales.create") ? <Button onClick={() => setCreateOpen(true)}><Plus className="size-4" />Nouvelle vente</Button> : undefined} />
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <MetricCard icon={FileText} label="Brouillons" value={summaryUnavailable ? "…" : overview.drafts} description="Ventes à compléter" tone="info" />
       <MetricCard icon={ReceiptText} label="Ventes confirmées" value={summaryUnavailable ? "…" : overview.confirmed} description="Sur la page affichée" tone="success" />

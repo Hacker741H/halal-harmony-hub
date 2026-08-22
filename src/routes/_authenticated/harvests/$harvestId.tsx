@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Sprout } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ClientSelect } from "@/components/selects/entity-selects";
@@ -134,7 +134,10 @@ function HarvestDetailPage() {
         <ArrowLeft className="h-4 w-4" /> Retour à {farmName}
       </Link>
 
-      <PageHeader
+      <OperationalHero
+        variant="deep"
+        icon={Sprout}
+        eyebrow="Récolte"
         title={harvest.produit}
         description={`${farmName} · Récolte ${statusLabels[status] ?? status}${harvest.parcelle ? ` — ${harvest.parcelle}` : ""}`}
         actions={

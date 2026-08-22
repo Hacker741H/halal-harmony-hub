@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PageHeader } from "@/components/ui/page-header";
+import { OperationalHero } from "@/components/ui/operational-hero";
 import { Textarea } from "@/components/ui/textarea";
 import { usePermissions } from "@/hooks/use-permissions";
 import {
@@ -85,9 +85,12 @@ function StockTransferDetailPage() {
   return <div className="mx-auto max-w-(--ds-content-max-width) space-y-6 p-4 sm:p-6 xl:p-8">
     <Button asChild variant="ghost" className="-ml-2 px-2"><Link to="/stock-transfers"><ArrowLeft className="size-4" />Transferts</Link></Button>
 
-    <PageHeader
+    <OperationalHero
+      variant="deep"
+      icon={Truck}
       eyebrow="Transfert"
       title={transfer.transfer_number}
+      primaryStat={{ label: "Articles", value: lines.length }}
       description={
         <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="font-medium text-foreground">{detail.sourceName ?? "Source non accessible"}</span>
