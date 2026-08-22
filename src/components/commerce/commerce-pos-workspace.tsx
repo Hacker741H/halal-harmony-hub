@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { ArrowRight, Banknote, BarChart3, CheckCircle2, CircleDollarSign, CloudOff, CloudUpload, CreditCard, ListTodo, Minus, Package, PackagePlus, Pencil, Plus, ReceiptText, Search, ShoppingCart, Smartphone, Store, TrendingUp, TriangleAlert, Trash2, UserPlus, UserRoundX, WalletCards, Warehouse, Wrench } from "lucide-react";
+import { Link, getRouteApi, useNavigate } from "@tanstack/react-router";
+import { ArrowRight, Banknote, BarChart3, CheckCircle2, CircleDollarSign, CloudOff, CloudUpload, CreditCard, DoorOpen, ListTodo, LogOut, Minus, Package, PackagePlus, Pencil, Plus, ReceiptText, Search, ShoppingCart, Smartphone, Store, TrendingUp, TriangleAlert, Trash2, UserPlus, UserRoundX, WalletCards, Warehouse, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 import { PosCashSessionClose } from "@/components/commerce/pos-cash-session-close";
@@ -24,6 +24,7 @@ import {
   getCommerceInventoryCatalogue,
   getCommerceLocationAssignments,
   getCommerceManagementDashboard,
+  getCommercePosCashSessionPreview,
   getCommercePosLocations,
   getCommercePosWorkspace,
   getCommerceSetupOptions,
@@ -37,11 +38,13 @@ import { useCommercePosSession } from "@/hooks/use-commerce-pos-session";
 import { useCurrentUserAccess } from "@/hooks/use-current-user-access";
 import { usePermissions } from "@/hooks/use-permissions";
 import { supabase } from "@/integrations/supabase/client";
-import { cachePosOfflineLocations, findPosOfflineDraftLocation, getCachedPosOfflineLocations } from "@/lib/commerce-pos-offline";
+import { cachePosOfflineLocations, findPosOfflineDraftLocation, getCachedPosOfflineLocations, mergeCommercePosCashSessionSummaries, mergeCommercePosSessionSaleRows, type CommercePosSessionSaleRow } from "@/lib/commerce-pos-offline";
 import { createCommercePosId, findCommercePosDraftLocation, getCommercePosStockConflicts, type CommercePosDraftLine, type CommercePosPaymentMethod, type CommercePosSuspendedTicket } from "@/lib/commerce-pos-session";
 
 type CartLine = CommercePosDraftLine;
 type PaymentMethod = CommercePosPaymentMethod;
+
+const commerceRouteApi = getRouteApi("/_authenticated/commerce/");
 
 const money = (amount: number) => `${amount.toLocaleString("fr-FR")} FCFA`;
 
@@ -55,11 +58,16 @@ const paymentMethods: Array<{ value: PaymentMethod; label: string; icon: typeof 
 
 export function CommercePosWorkspace() {
   const { canAny, isPending } = usePermissions();
-  const [workspaceMode, setWorkspaceMode] = useState<"management" | "cashier">("management");
+  const search = commerceRouteApi.useSearch();
+  const navigate = commerceRouteApi.useNavigate();
   const canUseManagementWorkspace = canAny(["locations.manage", "commerce.stock.receive", "sales.finance.read", "store.financial.read", "store.stock_valuation.read", "store.expenses.read"]);
+  const workspaceMode: "management" | "cashier" = canUseManagementWorkspace && search.view !== "caisse" ? "management" : "cashier";
+  const setWorkspaceMode = (mode: "management" | "cashier") => {
+    void navigate({ search: (previous) => ({ ...previous, view: mode === "cashier" ? "caisse" : undefined }) });
+  };
 
   if (isPending) return <div className="grid gap-4 lg:grid-cols-3"><Skeleton className="h-48 lg:col-span-2" /><Skeleton className="h-48" /></div>;
-  if (canUseManagementWorkspace && workspaceMode === "management") {
+  if (workspaceMode === "management") {
     return <CommerceManagementWorkspace onOpenCashier={() => setWorkspaceMode("cashier")} />;
   }
   return <CommerceCashierWorkspace onBackToManagement={canUseManagementWorkspace ? () => setWorkspaceMode("management") : undefined} />;
@@ -319,15 +327,25 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
   const { can } = usePermissions();
   const canManageStock = can("commerce.stock.receive");
   const canManageLocations = can("locations.manage") && can("locations.wallets.manage") && can("locations.assign");
+  const navigate = useNavigate();
   const locationsQuery = useQuery({ queryKey: ["commerce-pos-locations"], queryFn: () => getCommercePosLocations() });
   const currentUserQuery = useCurrentUserAccess();
   const currentUserId = useCommerceCashierUserId();
+  const isCashierOnlyShell = currentUserQuery.isCashierOnly;
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut();
+    navigate({ to: "/auth", replace: true });
+  }, [navigate]);
   const cashierName = currentUserQuery.data?.fullName?.trim()
     || currentUserQuery.data?.username
     || (currentUserQuery.isLoading ? "Chargement…" : "Caissier non identifié");
   const [locationId, setLocationId] = useState("");
   const [cachedLocations, setCachedLocations] = useState<CommercePosLocation[]>([]);
-  const availableLocations = locationsQuery.data?.length ? locationsQuery.data : cachedLocations;
+  const availableLocations = locationsQuery.data?.length
+    ? locationsQuery.data
+    : locationsQuery.isSuccess
+      ? []
+      : cachedLocations;
   const selectedLocationId = locationId || availableLocations[0]?.id || "";
   const workspaceQuery = useQuery({
     queryKey: ["commerce-pos-workspace", selectedLocationId],
@@ -341,6 +359,23 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     catalogue: workspace?.items,
     catalogueRevision: workspaceQuery.dataUpdatedAt,
   });
+  const sessionPreviewQuery = useQuery({
+    queryKey: ["commerce-pos-session-preview", posSession.cashSession?.id],
+    queryFn: () => getCommercePosCashSessionPreview({ data: {
+      cashSessionId: posSession.cashSession!.id,
+      terminalId: posSession.cashSession!.terminalId,
+      businessLocationId: selectedLocationId,
+    } }),
+    enabled: Boolean(posSession.cashSession?.id) && Boolean(selectedLocationId),
+  });
+  const cashSessionSummary = useMemo(
+    () => mergeCommercePosCashSessionSummaries(posSession.cashSessionSummary, sessionPreviewQuery.data ?? null),
+    [posSession.cashSessionSummary, sessionPreviewQuery.data],
+  );
+  const sessionSaleRows = useMemo(
+    () => mergeCommercePosSessionSaleRows(posSession.outboxEvents, sessionPreviewQuery.data?.sales ?? null),
+    [posSession.outboxEvents, sessionPreviewQuery.data?.sales],
+  );
   const [search, setSearch] = useState("");
   const [quickQuantity, setQuickQuantity] = useState("1");
   const [catalogueOpen, setCatalogueOpen] = useState(false);
@@ -351,6 +386,8 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
   const [servicePrice, setServicePrice] = useState("");
   const [serviceNote, setServiceNote] = useState("");
   const [suspendedTicketsOpen, setSuspendedTicketsOpen] = useState(false);
+  const [sessionSalesOpen, setSessionSalesOpen] = useState(false);
+  const [sessionOverviewOpen, setSessionOverviewOpen] = useState(false);
   const [pendingSuspendedDeletion, setPendingSuspendedDeletion] = useState<CommercePosSuspendedTicket | null>(null);
   const [showClient, setShowClient] = useState(false);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
@@ -370,8 +407,9 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
     void Promise.all([
       queryClient.invalidateQueries({ queryKey: ["commerce-pos-workspace", selectedLocationId] }),
       queryClient.invalidateQueries({ queryKey: ["commerce-management-dashboard", selectedLocationId] }),
+      queryClient.invalidateQueries({ queryKey: ["commerce-pos-session-preview", posSession.cashSession?.id] }),
     ]);
-  }, [posSession.syncRevision, queryClient, selectedLocationId]);
+  }, [posSession.cashSession?.id, posSession.syncRevision, queryClient, selectedLocationId]);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -383,13 +421,20 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
       });
       return () => { active = false; };
     }
+    if (locationsQuery.isSuccess) {
+      setCachedLocations([]);
+      void cachePosOfflineLocations(currentUserId, []).catch((error: unknown) => {
+        console.warn("Les points de vente hors connexion n’ont pas pu être mémorisés.", error);
+      });
+      return () => { active = false; };
+    }
     void getCachedPosOfflineLocations(currentUserId)
       .then((locations) => {
         if (active && locations.length) setCachedLocations(locations);
       })
       .catch((error: unknown) => console.warn("Les points de vente mémorisés sont indisponibles.", error));
     return () => { active = false; };
-  }, [currentUserId, locationsQuery.data]);
+  }, [currentUserId, locationsQuery.data, locationsQuery.isSuccess]);
 
   useEffect(() => {
     if (locationId || !currentUserId || !availableLocations.length || typeof window === "undefined") return;
@@ -465,9 +510,15 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
   const closeCashSession = async () => {
     const result = await posSession.closeCashSession();
     setMobileCartOpen(false);
+    setSessionOverviewOpen(false);
     toast.success(result.summary.countedCash === null
       ? "Cl\u00f4ture locale enregistr\u00e9e. La synchronisation suivra les ventes de cette session."
       : `Cl\u00f4ture locale enregistr\u00e9e : ${money(result.summary.countedCash)} compt\u00e9s. La synchronisation suivra les ventes de cette session.`);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["commerce-pos-control-reports", selectedLocationId] }),
+      queryClient.invalidateQueries({ queryKey: ["commerce-store-cockpit", selectedLocationId] }),
+      queryClient.invalidateQueries({ queryKey: ["commerce-cash-remittances", selectedLocationId] }),
+    ]);
   };
   const startNewCashSession = async () => {
     await posSession.startNewCashSession();
@@ -495,7 +546,10 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
       posSession.clearDraft();
       setShowClient(false);
       setMobileCartOpen(false);
-      await refreshWorkspace();
+      await Promise.all([
+        refreshWorkspace(),
+        queryClient.invalidateQueries({ queryKey: ["commerce-pos-session-preview", posSession.cashSession?.id] }),
+      ]);
     },
     onError: (error) => {
       const requiresReconciliation = isIndeterminateCheckoutError(error);
@@ -719,17 +773,20 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
         : posSession.pendingOutboxCount > 0
           ? `${posSession.pendingOutboxCount} EN ATTENTE`
           : `SYNCHRONISÉ ${syncedOutboxCount} / ${posSession.outboxEvents.length}`;
+  const sessionOpenedLabel = posSession.cashSession?.openedAtDevice
+    ? new Date(posSession.cashSession.openedAtDevice).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+    : "—";
 
   if (locationsQuery.isPending && !availableLocations.length) return <div className="grid gap-4 lg:grid-cols-3"><Skeleton className="h-72 lg:col-span-2" /><Skeleton className="h-72" /></div>;
-  if (locationsQuery.isError && !availableLocations.length) return <Card variant="information"><CardContent className="p-6">Impossible de charger vos points de vente autorisés. Ouvrez d’abord la caisse une fois avec Internet pour la rendre disponible hors connexion.</CardContent></Card>;
+  if (locationsQuery.isError && !availableLocations.length) return <Card variant="information"><CardContent className="space-y-4 p-6"><p>Impossible de charger vos points de vente autorisés. Ouvrez d’abord la caisse une fois avec Internet pour la rendre disponible hors connexion.</p><Button type="button" variant="outline" size="sm" onClick={() => { void signOut(); }}><DoorOpen />Se déconnecter</Button></CardContent></Card>;
   if (!availableLocations.length) {
     return canManageLocations
       ? <CommerceLocationSetup onDone={handleLocationSaved} />
-      : <Card variant="information"><CardHeader><CardTitle>Aucune caisse disponible</CardTitle></CardHeader><CardContent>Votre compte doit être affecté à un magasin Commerce avant de pouvoir encaisser. Un administrateur doit créer le magasin, associer son wallet puis vous y affecter.</CardContent></Card>;
+      : <Card variant="information"><CardHeader><CardTitle>Aucune caisse disponible</CardTitle></CardHeader><CardContent className="space-y-4"><p>Votre compte doit être affecté à un magasin Commerce avant de pouvoir encaisser. Un administrateur doit créer le magasin, associer son wallet puis vous y affecter.</p><Button type="button" variant="outline" size="sm" onClick={() => { void signOut(); }}><DoorOpen />Se déconnecter</Button></CardContent></Card>;
   }
 
   return (
-    <div className="grid min-h-0 gap-3 lg:h-[calc(100dvh-6.4rem)] lg:grid-rows-[auto_minmax(0,1fr)_auto]">
+    <div className={`grid min-h-0 gap-3 lg:grid-rows-[auto_minmax(0,1fr)_auto] ${isCashierOnlyShell ? "lg:h-[calc(100dvh-1.5rem)]" : "lg:h-[calc(100dvh-6.4rem)]"}`}>
       <Card variant="section" className="shrink-0 overflow-hidden border-primary/20 bg-surface shadow-sm">
         <CardContent className="grid gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div className="grid gap-x-5 gap-y-2 sm:grid-cols-2 xl:grid-cols-4">
@@ -738,17 +795,23 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
             <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Caissier</p><p className="mt-1 truncate text-sm font-medium" title={cashierName}>{cashierName}</p></div>
             <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Client · date</p><p className="mt-1 truncate text-sm font-medium">{clientId ? "Ticket nominatif" : "Client comptoir"} · {ticketDate}</p></div>
           </div>
-          <div className="rounded-xl bg-foreground px-5 py-3 text-right text-background shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-background/65">Total à encaisser</p>
-            <p className="mt-1 text-2xl font-bold tracking-tight tabular-nums">{money(total)}</p>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="rounded-xl bg-foreground px-5 py-3 text-right text-background shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-background/65">Total à encaisser</p>
+              <p className="mt-1 text-2xl font-bold tracking-tight tabular-nums">{money(total)}</p>
+            </div>
+            <Button type="button" size="sm" variant="outline" onClick={() => setSessionSalesOpen(true)}><ReceiptText />Ventes ({sessionSaleRows.length})</Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => setSessionOverviewOpen(true)}><CircleDollarSign />Session</Button>
+            {onBackToManagement ? <Button type="button" size="sm" variant="outline" onClick={onBackToManagement}><LogOut />Gestion</Button> : null}
+            {isCashierOnlyShell ? <Button type="button" size="icon-sm" variant="outline" aria-label="Se déconnecter" onClick={() => { void signOut(); }}><DoorOpen /></Button> : null}
+            <PosCashSessionClose
+              session={posSession.cashSession}
+              summary={cashSessionSummary}
+              disabled={hasDraftInProgress || posSession.suspendedTickets.length > 0}
+              onClose={closeCashSession}
+              onStartNew={startNewCashSession}
+            />
           </div>
-          <PosCashSessionClose
-            session={posSession.cashSession}
-            summary={posSession.cashSessionSummary}
-            disabled={hasDraftInProgress || posSession.suspendedTickets.length > 0}
-            onClose={closeCashSession}
-            onStartNew={startNewCashSession}
-          />
         </CardContent>
       </Card>
 
@@ -865,6 +928,31 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
             {posSession.suspendedTickets.map((ticket) => <SuspendedTicketRow key={ticket.id} ticket={ticket} onResume={() => { if (posSession.resumeSuspendedTicket(ticket.id)) { setShowClient(Boolean(ticket.draft.clientId)); setSuspendedTicketsOpen(false); toast.success("Ticket repris dans la caisse."); } }} onDelete={() => setPendingSuspendedDeletion(ticket)} />)}
             {!posSession.suspendedTickets.length ? <div className="rounded-xl border border-dashed border-border px-5 py-10 text-center text-sm text-muted-foreground">Aucun ticket n’est en attente sur ce poste.</div> : null}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={sessionSalesOpen} onOpenChange={setSessionSalesOpen}>
+        <DialogContent className="max-h-[86dvh] max-w-4xl overflow-hidden">
+          <DialogHeader><DialogTitle>Ventes de la session</DialogTitle><DialogDescription>Ventes confirmées côté serveur et tickets locaux encore en attente de synchronisation, sans double comptage.</DialogDescription></DialogHeader>
+          <CashierSalesTab sales={sessionSaleRows} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={sessionOverviewOpen} onOpenChange={setSessionOverviewOpen}>
+        <DialogContent className="max-h-[90dvh] max-w-5xl overflow-y-auto">
+          <DialogHeader><DialogTitle>Session de caisse</DialogTitle><DialogDescription>Résumé consolidé de la session courante, ventes en ligne et tickets locaux non synchronisés compris.</DialogDescription></DialogHeader>
+          <CashierSessionTab
+            locationName={currentLocationName}
+            cashierName={cashierName}
+            sessionOpenedLabel={sessionOpenedLabel}
+            session={posSession.cashSession}
+            summary={cashSessionSummary}
+            syncStatusLabel={syncStatusLabel}
+            lastSuccessfulSyncAt={lastSuccessfulSyncAt}
+            disabled={hasDraftInProgress || posSession.suspendedTickets.length > 0}
+            onClose={closeCashSession}
+            onStartNew={startNewCashSession}
+          />
         </DialogContent>
       </Dialog>
 
@@ -1010,6 +1098,67 @@ function CommerceLocationForm({ mode, location, primaryWalletId = "", onDone }: 
         <p className="mt-3 text-caption">Cette configuration ne modifie jamais le solde d’un wallet.</p>
       </div>
     </div>
+  );
+}
+
+function CashierSessionTab({ locationName, cashierName, sessionOpenedLabel, session, summary, syncStatusLabel, lastSuccessfulSyncAt, disabled, onClose, onStartNew }: {
+  locationName: string;
+  cashierName: string;
+  sessionOpenedLabel: string;
+  session: ReturnType<typeof useCommercePosSession>["cashSession"];
+  summary: ReturnType<typeof useCommercePosSession>["cashSessionSummary"];
+  syncStatusLabel: string;
+  lastSuccessfulSyncAt: string | null;
+  disabled: boolean;
+  onClose: () => Promise<void>;
+  onStartNew: () => Promise<void>;
+}) {
+  return (
+    <div className="space-y-3 overflow-auto">
+      <Card variant="section">
+        <CardHeader className="pb-3"><CardTitle className="text-lg">Cette session</CardTitle></CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Caisse</p><p className="mt-1 font-semibold">{locationName}</p></div>
+          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Caissier</p><p className="mt-1 font-semibold">{cashierName}</p></div>
+          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Session ouverte</p><p className="mt-1 font-semibold tabular-nums">{sessionOpenedLabel}</p></div>
+          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Synchronisation</p><p className="mt-1 font-semibold">{syncStatusLabel}</p>{lastSuccessfulSyncAt ? <p className="mt-0.5 text-xs text-muted-foreground">{new Date(lastSuccessfulSyncAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p> : null}</div>
+        </CardContent>
+      </Card>
+      {summary ? <Card variant="section">
+        <CardHeader className="pb-3"><CardTitle className="text-lg">Depuis l’ouverture</CardTitle></CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Tickets</p><p className="mt-1 text-lg font-bold tabular-nums">{summary.ticketCount}</p></div>
+          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Articles</p><p className="mt-1 text-lg font-bold tabular-nums">{money(summary.articleTotal)}</p></div>
+          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Services</p><p className="mt-1 text-lg font-bold tabular-nums">{money(summary.serviceTotal)}</p></div>
+          <div className="rounded-xl border border-primary/25 bg-primary/[0.06] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Espèces théoriques</p><p className="mt-1 text-lg font-bold tabular-nums text-primary">{money(summary.theoreticalCash)}</p></div>
+          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Mobile Money</p><p className="mt-1 text-lg font-bold tabular-nums">{money(summary.mobileMoneyTotal)}</p></div>
+          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Autres moyens</p><p className="mt-1 text-lg font-bold tabular-nums">{money(summary.otherPaymentTotal)}</p></div>
+        </CardContent>
+      </Card> : null}
+      <Card variant="section">
+        <CardHeader className="pb-3"><CardTitle className="text-lg">Fin de journée</CardTitle><p className="text-sm text-muted-foreground">La clôture reste locale et sera synchronisée automatiquement au retour du réseau.</p></CardHeader>
+        <CardContent><PosCashSessionClose session={session} summary={summary} disabled={disabled} onClose={onClose} onStartNew={onStartNew} /></CardContent>
+      </Card>
+    </div>
+  );
+}
+
+const paymentMethodLabel = (method: string | null) => method === "CASH" ? "Espèces" : method === "WAVE" || method === "JEKO" ? "Mobile Money" : method === null ? "—" : "Autre";
+
+function CashierSalesTab({ sales }: { sales: CommercePosSessionSaleRow[] }) {
+  const syncLabel = (status: string) => status === "SYNCED" ? "Synchronisé" : status === "CONFLICT" ? "À contrôler" : status === "SYNCING" ? "Synchronisation…" : status === "FAILED" ? "Nouvel essai" : "En attente";
+  return (
+    <Card variant="section" className="min-h-0 overflow-auto">
+      <CardHeader className="pb-3"><CardTitle className="text-lg">Mes ventes</CardTitle><p className="text-sm text-muted-foreground">{sales.length} ticket{sales.length > 1 ? "s" : ""} sur cette session.</p></CardHeader>
+      <CardContent className="p-0">
+        {sales.length ? <div className="divide-y divide-border/60">
+          {sales.map((sale) => <div key={sale.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <div className="min-w-0"><p className="font-semibold">{new Date(sale.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} · {sale.label}</p><p className="mt-0.5 text-sm text-muted-foreground">{sale.articleCount ? `${sale.articleCount} article${sale.articleCount > 1 ? "s" : ""}` : ""}{sale.articleCount && sale.serviceCount ? " · " : ""}{sale.serviceCount ? `${sale.serviceCount} service${sale.serviceCount > 1 ? "s" : ""}` : ""} · {paymentMethodLabel(sale.paymentMethod)}</p></div>
+            <div className="flex items-center gap-3"><p className="font-bold tabular-nums">{money(sale.total)}</p><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${sale.syncStatus === "SYNCED" ? "bg-success/10 text-success" : sale.syncStatus === "CONFLICT" ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"}`}>{syncLabel(sale.syncStatus)}</span></div>
+          </div>)}
+        </div> : <div className="flex min-h-40 flex-col items-center justify-center gap-2 p-6 text-center"><ReceiptText className="size-6 text-muted-foreground" /><p className="text-sm font-semibold">Aucune vente pour l’instant</p></div>}
+      </CardContent>
+    </Card>
   );
 }
 
