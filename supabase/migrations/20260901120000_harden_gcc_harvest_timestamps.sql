@@ -1,0 +1,437 @@
+-- Durcissement preventif (pas un crash reproduit) : la meme classe de bug
+-- que celle qui a deja casse le centre de controle en production
+-- (itemSchema.action_route non-nullable cote Zod alors que
+-- notifications.entity_route est nullable en base -- voir
+-- 20260901110000 pour le bug jumeau sur get_commerce_pos_control_report_detail)
+-- existe potentiellement ici aussi : harvest_not_delivered.occurred_at =
+-- h.harvested_at et harvest_delivery_gap.occurred_at = h.delivered_at
+-- lisent deux colonnes de public.harvests qui n'ont ni NOT NULL ni DEFAULT
+-- (supabase/migrations/20260822100000_add_harvest_workflow.sql), alors que
+-- itemSchema.occurred_at est z.string() non-nullable cote TS
+-- (src/lib/global-control-center.functions.ts).
+--
+-- Aujourd'hui, chaque fonction qui pose status='HARVESTED'/'DELIVERED' pose
+-- systematiquement harvested_at/delivered_at dans le meme UPDATE
+-- (_internal_record_harvest, _internal_record_harvest_delivery) -- rien ne
+-- prouve que ca casse actuellement. Mais rien en base (aucune contrainte
+-- CHECK) ne garantit que cette discipline survivra a un futur appel direct
+-- ou une correction manuelle. Comme pour transport_transfer_transit
+-- (COALESCE(t.dispatched_at, t.created_at), meme fichier, ligne 258) et
+-- field_pending (coalesce(d.submitted_at, d.occurred_at), ligne 273), on
+-- securise avec un repli sur created_at (harvests.created_at timestamptz
+-- NOT NULL DEFAULT now(), garanti par 20260723000100_create_harvests_table.sql).
+-- Zero autre changement par rapport a 20260822160000.
+CREATE OR REPLACE FUNCTION public.get_global_control_center(p_module text DEFAULT NULL::text, p_severity text DEFAULT NULL::text, p_status text DEFAULT NULL::text, p_business_location_id uuid DEFAULT NULL::uuid, p_from date DEFAULT NULL::date, p_to date DEFAULT NULL::date, p_page integer DEFAULT 1, p_page_size integer DEFAULT 25)
+ RETURNS TABLE(item_id text, source_module text, source_type text, source_id uuid, business_location_id uuid, severity text, status text, title text, description text, amount numeric, occurred_at timestamp with time zone, actor text, action_label text, action_route text, metadata jsonb, total_count bigint)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'auth', 'pg_temp'
+AS $function$
+DECLARE
+  v_actor uuid := auth.uid();
+  v_page integer := GREATEST(1, COALESCE(p_page, 1));
+  v_page_size integer := LEAST(100, GREATEST(1, COALESCE(p_page_size, 25)));
+BEGIN
+  IF v_actor IS NULL THEN
+    RAISE EXCEPTION 'Authentification requise.' USING ERRCODE = '42501';
+  END IF;
+  IF p_severity IS NOT NULL AND p_severity NOT IN ('INFO', 'WARNING', 'CRITICAL') THEN
+    RAISE EXCEPTION 'Severite invalide.' USING ERRCODE = '22023';
+  END IF;
+
+  RETURN QUERY
+  WITH
+  notif AS (
+    SELECT
+      'NOTIFICATIONS:' || n.type || ':' || n.id::text AS item_id,
+      'NOTIFICATIONS'::text AS source_module,
+      n.type AS source_type,
+      n.id AS source_id,
+      NULL::uuid AS business_location_id,
+      n.severity,
+      CASE WHEN n.status = 'SNOOZED' AND n.snoozed_until <= now() THEN 'UNREAD' ELSE n.status END AS status,
+      n.titre AS title,
+      n.message AS description,
+      NULL::numeric AS amount,
+      n.created_at AS occurred_at,
+      NULL::text AS actor,
+      'Ouvrir'::text AS action_label,
+      n.entity_route AS action_route,
+      '{}'::jsonb AS metadata
+    FROM public.notifications n
+    WHERE (n.user_id = v_actor OR public.has_any_role(v_actor, ARRAY['super_admin', 'admin']::public.app_role[]))
+      AND (n.status IN ('UNREAD', 'READ') OR (n.status = 'SNOOZED' AND n.snoozed_until <= now()))
+      AND NOT (n.type = 'NEGATIVE_WALLET' AND EXISTS (
+        SELECT 1 FROM public.notification_wallet_links wl
+        JOIN public.business_location_wallets blw ON blw.wallet_id = wl.wallet_id
+        WHERE wl.notification_id = n.id
+      ))
+      AND NOT (n.type = 'LOW_STOCK' AND EXISTS (
+        SELECT 1 FROM public.notification_inventory_links il
+        JOIN public.business_location_inventory_items blii ON blii.inventory_item_id = il.inventory_item_id
+        WHERE il.notification_id = n.id
+      ))
+  ),
+
+  cash_received AS (
+    SELECT
+      link.closure_id,
+      sum(r.received_amount) AS total_received,
+      bool_or(coalesce(r.is_final, false)) AS is_finalized
+    FROM public.commerce_cash_remittances r
+    JOIN public.commerce_cash_remittance_closures link ON link.remittance_id = r.id
+    WHERE r.status = 'CONFIRMED'
+    GROUP BY link.closure_id
+  ),
+  cash_scored AS (
+    SELECT
+      report.*,
+      coalesce(cash_received.total_received, 0) AS received_total,
+      CASE
+        WHEN report.flagged_for_review THEN 'REVIEW_REQUIRED'
+        WHEN report.cash_expected <= 0 THEN 'RECEIVED'
+        WHEN coalesce(cash_received.is_finalized, false) THEN
+          CASE WHEN round(coalesce(cash_received.total_received, 0), 2) = round(report.cash_expected, 2)
+            THEN 'RECEIVED' ELSE 'REVIEW_REQUIRED' END
+        WHEN coalesce(cash_received.total_received, 0) = 0 THEN 'PENDING_CONTROL'
+        ELSE 'PARTIALLY_RECEIVED'
+      END AS control_status
+    FROM public.commerce_pos_control_reports report
+    LEFT JOIN cash_received ON cash_received.closure_id = report.closure_id
+  ),
+  commerce_cash AS (
+    SELECT
+      'COMMERCE_CASH:' || cash_scored.control_status || ':' || cash_scored.id::text AS item_id,
+      'COMMERCE_CASH'::text, cash_scored.control_status::text, cash_scored.id, cash_scored.business_location_id,
+      CASE WHEN cash_scored.control_status = 'REVIEW_REQUIRED' THEN 'CRITICAL' ELSE 'WARNING' END::text,
+      'UNREAD'::text,
+      CASE cash_scored.control_status
+        WHEN 'REVIEW_REQUIRED' THEN 'Ecart de caisse a verifier'
+        WHEN 'PARTIALLY_RECEIVED' THEN 'Reception de caisse partielle'
+        ELSE 'Rapport de caisse a confirmer'
+      END::text,
+      ('Session ' || cash_scored.cash_session_id || ' -- attendu ' || cash_scored.cash_expected::text
+        || ' FCFA, recu ' || cash_scored.received_total::text || ' FCFA')::text,
+      cash_scored.cash_expected,
+      cash_scored.closed_at_device,
+      NULL::text,
+      'Ouvrir le rapport'::text,
+      ('/commerce?report=' || cash_scored.id::text)::text,
+      '{}'::jsonb
+    FROM cash_scored
+    WHERE public.user_has_permission('commerce.cash.reports.control')
+      AND public.commerce_location_access_allowed(cash_scored.business_location_id)
+      AND cash_scored.control_status IN ('PENDING_CONTROL', 'PARTIALLY_RECEIVED', 'REVIEW_REQUIRED')
+  ),
+
+  receivable_invoiced AS (
+    SELECT ci.client_id, sum(ci.total_amount) AS total_invoiced
+    FROM public.commercial_invoices ci
+    WHERE ci.status <> 'CANCELLED' AND ci.client_id IS NOT NULL
+    GROUP BY ci.client_id
+  ),
+  receivable_paid AS (
+    SELECT i.client_id, sum(p.amount) AS total_paid
+    FROM public.commercial_invoice_payments p
+    JOIN public.commercial_invoices i ON i.id = p.invoice_id
+    WHERE p.status = 'CONFIRMED' AND i.status <> 'CANCELLED' AND i.client_id IS NOT NULL
+    GROUP BY i.client_id
+  ),
+  receivable_returned AS (
+    SELECT s.client_id, sum(rl.quantity_returned * rl.historical_unit_sale_price) AS total_returned
+    FROM public.commerce_sale_return_lines rl
+    JOIN public.commerce_sale_returns r ON r.id = rl.return_id
+    JOIN public.commercial_sales s ON s.id = r.sale_id
+    WHERE s.client_id IS NOT NULL
+    GROUP BY s.client_id
+  ),
+  receivable_last_sale AS (
+    SELECT cs.client_id, max(cs.created_at) AS last_sale_at
+    FROM public.commercial_sales cs
+    WHERE cs.status <> 'CANCELLED' AND cs.client_id IS NOT NULL
+    GROUP BY cs.client_id
+  ),
+  commerce_receivables AS (
+    SELECT
+      'COMMERCE_CREDIT:CLIENT_RECEIVABLE:' || inv.client_id::text,
+      'COMMERCE_CREDIT'::text, 'CLIENT_RECEIVABLE'::text, inv.client_id, NULL::uuid,
+      'WARNING'::text, 'UNREAD'::text,
+      'Creance client'::text,
+      (c.display_name || ' doit ' || GREATEST(0, inv.total_invoiced - coalesce(paid.total_paid, 0) - coalesce(ret.total_returned, 0))::text || ' FCFA')::text,
+      GREATEST(0, inv.total_invoiced - coalesce(paid.total_paid, 0) - coalesce(ret.total_returned, 0)),
+      last_sale.last_sale_at, NULL::text,
+      'Ouvrir la fiche client'::text, ('/clients/' || inv.client_id::text)::text, '{}'::jsonb
+    FROM receivable_invoiced inv
+    JOIN public.transport_clients c ON c.id = inv.client_id
+    LEFT JOIN receivable_paid paid ON paid.client_id = inv.client_id
+    LEFT JOIN receivable_returned ret ON ret.client_id = inv.client_id
+    LEFT JOIN receivable_last_sale last_sale ON last_sale.client_id = inv.client_id
+    WHERE public.user_has_permission('sales.finance.read')
+      AND GREATEST(0, inv.total_invoiced - coalesce(paid.total_paid, 0) - coalesce(ret.total_returned, 0)) > 0
+  ),
+
+  payable_paid AS (
+    SELECT csp.purchase_id, sum(csp.amount) AS total_paid
+    FROM public.commerce_supplier_payments csp
+    WHERE csp.status = 'CONFIRMED'
+    GROUP BY csp.purchase_id
+  ),
+  commerce_payables AS (
+    SELECT
+      'COMMERCE_CREDIT:SUPPLIER_PAYABLE:' || p.id::text,
+      'COMMERCE_CREDIT'::text, 'SUPPLIER_PAYABLE'::text, p.id, p.business_location_id,
+      'WARNING'::text, 'UNREAD'::text,
+      'Dette fournisseur'::text,
+      (s.display_name || ' -- achat ' || p.purchase_number || ' : ' || GREATEST(0, p.total_amount - coalesce(paid.total_paid, 0))::text || ' FCFA restant')::text,
+      GREATEST(0, p.total_amount - coalesce(paid.total_paid, 0)), p.purchase_date, NULL::text,
+      'Ouvrir l''achat'::text, ('/purchases/' || p.id::text)::text, '{}'::jsonb
+    FROM public.commerce_purchases p
+    JOIN public.commerce_suppliers s ON s.id = p.supplier_id
+    LEFT JOIN payable_paid paid ON paid.purchase_id = p.id
+    WHERE public.user_has_permission('purchases.finance.read')
+      AND public.commerce_location_access_allowed(p.business_location_id)
+      AND GREATEST(0, p.total_amount - coalesce(paid.total_paid, 0)) > 0
+  ),
+
+  commerce_refundable AS (
+    SELECT
+      'COMMERCE_CREDIT:REFUNDABLE_CREDIT:' || s.id::text,
+      'COMMERCE_CREDIT'::text, 'REFUNDABLE_CREDIT'::text, s.id, s.business_location_id,
+      'WARNING'::text, 'UNREAD'::text,
+      'Credit client a rembourser'::text,
+      (s.sale_number || ' : ' || refundable.amount::text || ' FCFA')::text,
+      refundable.amount, s.sale_date, NULL::text,
+      'Ouvrir la vente'::text, ('/sales/' || s.id::text)::text, '{}'::jsonb
+    FROM public.commercial_sales s
+    JOIN LATERAL (SELECT public._internal_commerce_sale_refundable_credit(s.id) AS amount) refundable ON true
+    WHERE public.user_has_permission('sales.refunds.read')
+      AND s.status = 'CONFIRMED'
+      AND EXISTS (SELECT 1 FROM public.commerce_sale_returns r WHERE r.sale_id = s.id)
+      AND refundable.amount > 0
+      AND (s.business_location_id IS NULL OR public.commerce_location_access_allowed(s.business_location_id))
+  ),
+
+  commerce_low_stock AS (
+    SELECT
+      'COMMERCE_STOCK:LOW_STOCK:' || bli.id::text,
+      'COMMERCE_STOCK'::text, 'LOW_STOCK'::text, bli.inventory_item_id, bli.business_location_id,
+      CASE WHEN bli.quantity <= 0 THEN 'CRITICAL' ELSE 'WARNING' END::text, 'UNREAD'::text,
+      'Stock faible'::text,
+      (item.nom || ' : ' || bli.quantity::text || ' ' || coalesce(item.unite, 'unite'))::text,
+      NULL::numeric, now(), NULL::text,
+      'Ouvrir les stocks'::text, '/stocks'::text, '{}'::jsonb
+    FROM public.business_location_inventory_items bli
+    JOIN public.inventory_items item ON item.id = bli.inventory_item_id
+    WHERE public.user_has_permission('commerce.stock.read')
+      AND public.commerce_location_access_allowed(bli.business_location_id)
+      AND bli.reorder_level IS NOT NULL AND bli.quantity <= bli.reorder_level
+  ),
+
+  commerce_wallet AS (
+    SELECT
+      'COMMERCE_STOCK:WALLET_NEGATIVE:' || w.id::text,
+      'COMMERCE_STOCK'::text, 'WALLET_NEGATIVE'::text, w.id, mapping.business_location_id,
+      'CRITICAL'::text, 'UNREAD'::text,
+      CASE WHEN w.balance < 0 THEN 'Wallet negatif' ELSE 'Wallet vide' END::text,
+      (w.name || ' : ' || w.balance::text || ' FCFA')::text,
+      w.balance, now(), NULL::text,
+      'Ouvrir le wallet'::text, ('/wallets/' || w.id::text)::text, '{}'::jsonb
+    FROM public.business_location_wallets mapping
+    JOIN public.wallets w ON w.id = mapping.wallet_id
+    WHERE public.user_has_permission('store.financial.read')
+      AND public.commerce_location_access_allowed(mapping.business_location_id)
+      AND mapping.is_active
+      AND w.balance <= 0
+  ),
+
+  commerce_inventory_open AS (
+    SELECT
+      'COMMERCE_STOCK:INVENTORY_OPEN:' || ic.id::text,
+      'COMMERCE_STOCK'::text, 'INVENTORY_OPEN'::text, ic.id, ic.business_location_id,
+      'WARNING'::text, 'UNREAD'::text,
+      'Inventaire ouvert'::text,
+      (ic.count_number || ' a completer')::text,
+      NULL::numeric, ic.opened_at, NULL::text,
+      'Ouvrir l''inventaire'::text, ('/inventory-counts/' || ic.id::text)::text, '{}'::jsonb
+    FROM public.commerce_inventory_counts ic
+    WHERE public.user_has_permission('inventory.counts.read')
+      AND public.commerce_location_access_allowed(ic.business_location_id)
+      AND ic.status = 'OPEN'
+  ),
+
+  commerce_transfer_transit AS (
+    SELECT
+      'COMMERCE_STOCK:TRANSFER_TRANSIT:' || t.id::text,
+      'COMMERCE_STOCK'::text, 'TRANSFER_TRANSIT'::text, t.id, t.destination_location_id,
+      'WARNING'::text, 'UNREAD'::text,
+      'Transfert en transit'::text,
+      (t.transfer_number || ' a receptionner')::text,
+      NULL::numeric, COALESCE(t.dispatched_at, t.created_at), NULL::text,
+      'Ouvrir le transfert'::text, ('/stock-transfers/' || t.id::text)::text, '{}'::jsonb
+    FROM public.commerce_stock_transfers t
+    WHERE public.user_has_permission('transfers.read')
+      AND public.commerce_location_access_allowed(t.destination_location_id)
+      AND t.status = 'DISPATCHED'
+  ),
+
+  field_pending AS (
+    SELECT
+      'FIELD:DECLARATION_PENDING:' || d.id::text,
+      'FIELD'::text, 'DECLARATION_PENDING'::text, d.id, NULL::uuid,
+      'WARNING'::text, 'UNREAD'::text,
+      'Declaration terrain a traiter'::text,
+      (coalesce(fr.report_number, '') || ' -- ' || d.category || ' : ' || d.amount::text || ' FCFA')::text,
+      d.amount, coalesce(d.submitted_at, d.occurred_at), NULL::text,
+      'Ouvrir le rapport'::text, ('/field/' || d.report_id::text)::text, '{}'::jsonb
+    FROM public.field_declarations d
+    JOIN public.field_reports fr ON fr.id = d.report_id
+    WHERE (public.user_has_permission('field.reports.confirm') OR public.user_has_permission('field.reports.review'))
+      AND d.status = 'SUBMITTED'
+  ),
+
+  transport_not_departed AS (
+    SELECT
+      'TRANSPORT:NOT_DEPARTED:' || m.id::text,
+      'TRANSPORT'::text, 'NOT_DEPARTED'::text, m.id, NULL::uuid,
+      'WARNING'::text, 'UNREAD'::text,
+      'Course jamais partie'::text,
+      (m.mission_number || ' -- depart prevu le ' || to_char(m.planned_departure_at, 'DD/MM/YYYY HH24:MI'))::text,
+      NULL::numeric, m.planned_departure_at, NULL::text,
+      'Ouvrir les departs'::text, ('/courses/' || m.id::text)::text, '{}'::jsonb
+    FROM public.transport_missions m
+    WHERE public.user_has_permission('departures.read')
+      AND m.status = 'PLANNED' AND m.planned_departure_at IS NOT NULL AND m.planned_departure_at < now()
+  ),
+  transport_late_delivery AS (
+    SELECT
+      'TRANSPORT:LATE_DELIVERY:' || m.id::text,
+      'TRANSPORT'::text, 'LATE_DELIVERY'::text, m.id, NULL::uuid,
+      'WARNING'::text, 'UNREAD'::text,
+      'Livraison en retard'::text,
+      (m.mission_number || ' -- arrivee prevue le ' || to_char(m.planned_arrival_at, 'DD/MM/YYYY HH24:MI'))::text,
+      NULL::numeric, m.planned_arrival_at, NULL::text,
+      'Ouvrir les livraisons'::text, ('/courses/' || m.id::text)::text, '{}'::jsonb
+    FROM public.transport_missions m
+    WHERE public.user_has_permission('deliveries.read')
+      AND m.status = 'IN_PROGRESS' AND m.planned_arrival_at IS NOT NULL AND m.planned_arrival_at < now() AND m.delivery_status IS NULL
+  ),
+  transport_override AS (
+    SELECT
+      'TRANSPORT:PLANNING_OVERRIDE:' || m.id::text,
+      'TRANSPORT'::text, 'PLANNING_OVERRIDE'::text, m.id, NULL::uuid,
+      'INFO'::text, 'UNREAD'::text,
+      'Derogation planning'::text,
+      m.overlap_exception_reason,
+      NULL::numeric, m.updated_at, NULL::text,
+      'Ouvrir la course'::text, ('/courses/' || m.id::text)::text, '{}'::jsonb
+    FROM public.transport_missions m
+    WHERE public.user_has_permission('missions.read')
+      AND m.status IN ('PLANNED', 'IN_PROGRESS')
+      AND m.overlap_exception_reason IS NOT NULL
+  ),
+
+  harvest_due AS (
+    SELECT
+      'HALAL_FIELD:HARVEST_DUE:' || h.id::text,
+      'HALAL_FIELD'::text, 'HARVEST_DUE'::text, h.id, NULL::uuid,
+      CASE WHEN h.planned_date < current_date THEN 'CRITICAL' ELSE 'WARNING' END::text,
+      'UNREAD'::text,
+      CASE WHEN h.planned_date < current_date THEN 'Récolte en retard de démarrage' ELSE 'Récolte prévue aujourd''hui' END::text,
+      (h.produit || ' -- ' || f.nom || ' -- prévue le ' || to_char(h.planned_date, 'DD/MM/YYYY'))::text,
+      NULL::numeric, h.planned_date::timestamptz, NULL::text,
+      'Ouvrir la récolte'::text, ('/harvests/' || h.id::text)::text, '{}'::jsonb
+    FROM public.harvests h
+    JOIN public.farms f ON f.id = h.farm_id
+    WHERE public.user_has_any_permission(ARRAY['harvests.manage', 'farms.finance.read']::text[])
+      AND h.status = 'PLANNED' AND h.planned_date <= current_date
+  ),
+  harvest_not_delivered AS (
+    SELECT
+      'HALAL_FIELD:HARVEST_NOT_DELIVERED:' || h.id::text,
+      'HALAL_FIELD'::text, 'HARVEST_NOT_DELIVERED'::text, h.id, NULL::uuid,
+      'WARNING'::text, 'UNREAD'::text,
+      'Récolte enregistrée, livraison à confirmer'::text,
+      (h.produit || ' -- ' || f.nom || ' -- ' || coalesce(h.poids_recolte_kg::text, '0') || ' kg récoltés')::text,
+      h.poids_recolte_kg, COALESCE(h.harvested_at, h.created_at), NULL::text,
+      'Ouvrir la récolte'::text, ('/harvests/' || h.id::text)::text, '{}'::jsonb
+    FROM public.harvests h
+    JOIN public.farms f ON f.id = h.farm_id
+    WHERE public.user_has_any_permission(ARRAY['harvests.manage', 'farms.finance.read']::text[])
+      AND h.status = 'HARVESTED'
+  ),
+  harvest_delivery_gap AS (
+    SELECT
+      'HALAL_FIELD:HARVEST_DELIVERY_GAP:' || h.id::text,
+      'HALAL_FIELD'::text, 'HARVEST_DELIVERY_GAP'::text, h.id, NULL::uuid,
+      'WARNING'::text, 'UNREAD'::text,
+      'Écart entre poids récolté et poids livré'::text,
+      (h.produit || ' -- ' || f.nom || ' -- écart de ' || h.ecart_livraison_kg::text || ' kg')::text,
+      h.ecart_livraison_kg, COALESCE(h.delivered_at, h.created_at), NULL::text,
+      'Ouvrir la récolte'::text, ('/harvests/' || h.id::text)::text, '{}'::jsonb
+    FROM public.harvests h
+    JOIN public.farms f ON f.id = h.farm_id
+    WHERE public.user_has_any_permission(ARRAY['harvests.manage', 'farms.finance.read']::text[])
+      AND h.status IN ('DELIVERED', 'CLOSED')
+      AND h.ecart_livraison_kg IS NOT NULL AND h.ecart_livraison_kg <> 0
+  ),
+  harvest_recurrence_reminder AS (
+    SELECT
+      'HALAL_FIELD:HARVEST_RECURRENCE_DUE:' || r.id::text,
+      'HALAL_FIELD'::text, 'HARVEST_RECURRENCE_DUE'::text, r.id, NULL::uuid,
+      CASE WHEN r.next_expected_date < current_date THEN 'CRITICAL' ELSE 'WARNING' END::text,
+      'UNREAD'::text,
+      'Prochaine récolte à confirmer'::text,
+      (r.produit || ' -- ' || f.nom || ' -- prévue autour du ' || to_char(r.next_expected_date, 'DD/MM/YYYY'))::text,
+      NULL::numeric, r.next_expected_date::timestamptz, NULL::text,
+      'Confirmer la programmation'::text, ('/farms/' || r.farm_id::text)::text, '{}'::jsonb
+    FROM public.harvest_recurrence_rules r
+    JOIN public.farms f ON f.id = r.farm_id
+    WHERE public.user_has_any_permission(ARRAY['harvests.manage', 'farms.finance.read']::text[])
+      AND r.enabled AND r.cycle_status = 'PENDING'
+      AND r.next_expected_date IS NOT NULL
+      AND r.next_expected_date - r.reminder_days_before <= current_date
+  ),
+
+  items AS (
+    SELECT * FROM notif
+    UNION ALL SELECT * FROM commerce_cash
+    UNION ALL SELECT * FROM commerce_receivables
+    UNION ALL SELECT * FROM commerce_payables
+    UNION ALL SELECT * FROM commerce_refundable
+    UNION ALL SELECT * FROM commerce_low_stock
+    UNION ALL SELECT * FROM commerce_wallet
+    UNION ALL SELECT * FROM commerce_inventory_open
+    UNION ALL SELECT * FROM commerce_transfer_transit
+    UNION ALL SELECT * FROM field_pending
+    UNION ALL SELECT * FROM transport_not_departed
+    UNION ALL SELECT * FROM transport_late_delivery
+    UNION ALL SELECT * FROM transport_override
+    UNION ALL SELECT * FROM harvest_due
+    UNION ALL SELECT * FROM harvest_not_delivered
+    UNION ALL SELECT * FROM harvest_delivery_gap
+    UNION ALL SELECT * FROM harvest_recurrence_reminder
+  ),
+
+  filtered AS (
+    SELECT items.*, count(*) OVER() AS total_count
+    FROM items
+    WHERE (p_module IS NULL OR items.source_module = p_module)
+      AND (p_severity IS NULL OR items.severity = p_severity)
+      AND (p_status IS NULL OR items.status = p_status)
+      AND (p_business_location_id IS NULL OR items.business_location_id = p_business_location_id)
+      AND (p_from IS NULL OR items.occurred_at::date >= p_from)
+      AND (p_to IS NULL OR items.occurred_at::date <= p_to)
+  )
+  SELECT
+    filtered.item_id, filtered.source_module, filtered.source_type, filtered.source_id,
+    filtered.business_location_id, filtered.severity, filtered.status, filtered.title,
+    filtered.description, filtered.amount, filtered.occurred_at, filtered.actor,
+    filtered.action_label, filtered.action_route, filtered.metadata, filtered.total_count
+  FROM filtered
+  ORDER BY
+    CASE filtered.severity WHEN 'CRITICAL' THEN 1 WHEN 'WARNING' THEN 2 ELSE 3 END,
+    filtered.occurred_at ASC
+  LIMIT v_page_size
+  OFFSET (v_page - 1) * v_page_size;
+END;
+$function$;
