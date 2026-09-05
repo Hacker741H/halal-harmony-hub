@@ -6,7 +6,14 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", ".output", ".vinxi"] },
+  // Audit pré-push : `eslint .` restait bloqué sans la moindre sortie
+  // (confirmé deux fois, 5h+ à chaque fois) alors qu'un seul fichier
+  // lint en quelques secondes. Cause trouvée : `.vercel` (le dossier de
+  // build que `nitro.preset: "vercel"` régénère à chaque `npm run
+  // build`) n'était pas ignoré, et contient même un `node_modules`
+  // imbriqué (.vercel/output/functions/__server.func/node_modules) --
+  // jamais un artefact source à lint.
+  { ignores: ["dist", ".output", ".vinxi", ".vercel"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
