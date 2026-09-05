@@ -14,6 +14,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { getDocumentsForRelation } from "@/lib/documents.functions";
+import { formatDateTimeMedium as formatDateTime } from "@/lib/format";
 import {
   assignCourse,
   confirmCourseDelivery,
@@ -84,11 +85,6 @@ const WORKSPACE_CONFIG: Record<OperationalWorkspaceKind, WorkspaceConfig> = {
   },
 };
 
-function formatDateTime(value: string | null) {
-  return value
-    ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
-    : "Non renseignée";
-}
 
 function toDateInput(value: string | null) {
   return value ? value.slice(0, 10) : "";

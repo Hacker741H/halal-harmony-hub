@@ -152,7 +152,13 @@ const commerceCashRemittanceWorkspaceSchema = z.object({
   }),
   closures: z.array(z.object({
     id: z.string().uuid(), cashSessionId: z.string(), closedAt: z.string(), cashierId: z.string().uuid(), cashier: z.string(),
-    theoreticalCash: z.number(), countedCash: z.number(), cashDifference: z.number(), status: z.enum(["SYNCED", "REVIEW_REQUIRED"]), remainingAmount: z.number(),
+    // Nullable : une clôture pas encore comptée physiquement par le
+    // caissier n'a ni compté ni écart -- même réalité déjà gérée pour la
+    // liste de clôtures du cockpit (voir countedCash plus haut dans ce
+    // fichier). remainingAmount reste un number : la RPC applique déjà
+    // GREATEST(NULL - x, 0) = 0 pour une clôture non comptée, donc elle
+    // n'est jamais proposée comme remisable.
+    theoreticalCash: z.number(), countedCash: z.number().nullable(), cashDifference: z.number().nullable(), status: z.enum(["SYNCED", "REVIEW_REQUIRED"]), remainingAmount: z.number(),
   })),
   destinationWallets: z.array(z.object({ id: z.string().uuid(), name: z.string(), purpose: z.enum(["COLLECTION", "OPERATING"]) })),
   remittances: z.array(z.object({
@@ -304,7 +310,7 @@ const assignCommerceLocationUserSchema = z.object({
   assignmentRole: commerceAssignmentRoleSchema,
   notes: z.string().trim().max(500).nullable(),
 }).strict();
-const catalogueItemSchema = z.object({ id: z.string().uuid(), name: z.string(), sku: z.string().nullable(), unit: z.string().nullable(), globalQuantity: z.number(), locationQuantity: z.number(), availableToAllocate: z.number(), salePrice: z.number().nullable(), reorderLevel: z.number().nullable() });
+const catalogueItemSchema = z.object({ id: z.string().uuid(), name: z.string(), sku: z.string().nullable(), unit: z.string().nullable(), globalQuantity: z.number(), locationQuantity: z.number(), availableToAllocate: z.number(), salePrice: z.number().nullable(), reorderLevel: z.number().nullable(), lastUnitCost: z.number().nullable().optional() });
 const catalogueInputSchema = z.object({ businessLocationId: z.string().uuid(), inventoryItemId: z.string().uuid(), quantity: z.number().nonnegative(), salePrice: z.number().nonnegative(), reorderLevel: z.number().nonnegative().nullable() }).strict();
 const nullableOptionalTextSchema = z.string().trim().max(160).nullable();
 const commerceInventoryReceiptSchema = z.object({
@@ -873,5 +879,38 @@ export const receiveCommerceInventoryItem = createServerFn({ method: "POST" })
       locationInventoryId: z.string().uuid(),
       quantity: z.number(),
       salePrice: z.number(),
+    }).parse(result);
+  });
+
+// Standalone stock write-off (perte/casse/peremption) -- deliberately the
+// mirror-image of a receipt with no price/wallet fields at all: nothing was
+// paid, so nothing financial happens (see write_off_commerce_inventory_item).
+const commerceInventoryWriteOffSchema = z.object({
+  businessLocationId: z.string().uuid(),
+  inventoryItemId: z.string().uuid(),
+  quantity: z.number().finite().positive(),
+  reason: z.string().trim().min(3).max(500),
+}).strict();
+export type CommerceInventoryWriteOffInput = z.infer<typeof commerceInventoryWriteOffSchema>;
+
+export const writeOffCommerceInventoryItem = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(commerceInventoryWriteOffSchema)
+  .handler(async ({ context, data }) => {
+    const { data: result, error } = await context.supabase.rpc("write_off_commerce_inventory_item", {
+      p_writeoff: {
+        business_location_id: data.businessLocationId,
+        inventory_item_id: data.inventoryItemId,
+        quantity: data.quantity,
+        reason: data.reason,
+      },
+    });
+    if (error) throw error;
+    return z.object({
+      inventoryItemId: z.string().uuid(),
+      stockMovementId: z.string().uuid(),
+      locationInventoryId: z.string().uuid(),
+      quantity: z.number(),
+      reason: z.string(),
     }).parse(result);
   });

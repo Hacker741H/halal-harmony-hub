@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { OperationalHero } from "@/components/ui/operational-hero";
 import { Textarea } from "@/components/ui/textarea";
 import { usePermissions } from "@/hooks/use-permissions";
+import { formatDateTimeMedium as formatDateTime } from "@/lib/format";
 import {
   cancelInventoryCount,
   completeInventoryCount,
@@ -32,10 +33,6 @@ function statusVariant(status: string): "info" | "success" | "danger" {
   if (status === "COMPLETED") return "success";
   if (status === "CANCELLED") return "danger";
   return "info";
-}
-
-function formatDateTime(value: string | null) {
-  return value ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "—";
 }
 
 function formatQuantity(value: number | string | null) {

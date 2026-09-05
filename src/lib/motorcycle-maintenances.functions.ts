@@ -192,36 +192,3 @@ export const getMotorcycleMaintenanceFinanceOperation = createServerFn({
 
     return operation;
   });
-
-export const getMotorcycleMaintenanceStats = createServerFn({
-  method: "GET",
-})
-  .middleware([requireSupabaseAuth])
-  .validator(motorcycleIdSchema)
-  .handler(async ({ context, data }) => {
-    const { supabase } = context;
-
-    const { data: maintenances, error } = await supabase
-      .from("motorcycle_maintenances")
-      .select("*")
-      .eq("motorcycle_id", data);
-
-    if (error) throw error;
-
-    const entries = maintenances ?? [];
-    const totalCost = entries.reduce(
-      (sum, item) => sum + Number(item.cost ?? 0),
-      0,
-    );
-    const lastMaintenance = [...entries].sort(
-      (a, b) =>
-        new Date(b.maintenance_date).getTime() -
-        new Date(a.maintenance_date).getTime(),
-    )[0] ?? null;
-
-    return {
-      totalMaintenances: entries.length,
-      totalCost,
-      lastMaintenance,
-    };
-  });

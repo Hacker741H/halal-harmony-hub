@@ -23,13 +23,12 @@ import {
   getPurchase,
   type SupplierPaymentWithWallet,
 } from "@/lib/purchases.functions";
+import { formatXOF as formatAmount } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/purchases/$purchaseId")({ component: PurchaseDetailsPage });
 
-function formatAmount(value: number | null | undefined) {
-  return `${Number(value ?? 0).toLocaleString("fr-FR")} FCFA`;
-}
-
+// formatDate reste locale (dateStyle "medium", ancrage midi) -- style
+// différent de src/lib/format.ts, propre à cet écran.
 function formatDate(value: string | null) {
   return value ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(new Date(`${value}T12:00:00`)) : "—";
 }

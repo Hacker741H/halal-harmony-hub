@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { WalletSelect } from "@/components/selects/entity-selects";
 import { formatXOF } from "@/lib/format";
 
 import {
@@ -16,10 +16,7 @@ import {
   type FinanceOperationValues,
 } from "@/lib/finance.functions";
 
-import {
-  getWallets,
-  type Wallet,
-} from "@/lib/wallet.functions";
+import { getWallets } from "@/lib/wallet.functions";
 
 type Props = {
   operation?: FinanceOperation | null;
@@ -200,31 +197,13 @@ export function TransferForm({
             Wallet source
           </Label>
 
-          <Select
-            value={form.wallet_id || undefined}
-            onValueChange={(value) =>
-              setForm({
-                ...form,
-                wallet_id: value,
-              })
-            }
-          >
-            <SelectTrigger id="transfer-source-wallet">
-              <SelectValue placeholder="Choisir..." />
-            </SelectTrigger>
-            <SelectContent>
-              {wallets.map(
-                (wallet: Wallet) => (
-                  <SelectItem
-                    key={wallet.id}
-                    value={wallet.id}
-                  >
-                    {wallet.name}
-                  </SelectItem>
-                ),
-              )}
-            </SelectContent>
-          </Select>
+          <WalletSelect
+            id="transfer-source-wallet"
+            value={form.wallet_id}
+            onValueChange={(value) => setForm({ ...form, wallet_id: value })}
+            excludeWalletId={form.destination_wallet_id || undefined}
+            placeholder="Choisir..."
+          />
           {sourceWallet ? (
             <p className="mt-1 text-xs text-muted-foreground">
               Solde disponible : <span className="font-medium text-foreground">{formatXOF(availableBalance)}</span>
@@ -239,39 +218,13 @@ export function TransferForm({
             Wallet destination
           </Label>
 
-          <Select
-            value={form.destination_wallet_id || undefined}
-            onValueChange={(value) =>
-              setForm({
-                ...form,
-                destination_wallet_id: value,
-              })
-            }
-          >
-            <SelectTrigger id="transfer-destination-wallet">
-              <SelectValue placeholder="Choisir..." />
-            </SelectTrigger>
-            <SelectContent>
-              {wallets
-                .filter(
-                  (wallet) =>
-                    wallet.id !==
-                    form.wallet_id,
-                )
-                .map(
-                  (
-                    wallet: Wallet,
-                  ) => (
-                    <SelectItem
-                      key={wallet.id}
-                      value={wallet.id}
-                    >
-                      {wallet.name}
-                    </SelectItem>
-                  ),
-                )}
-            </SelectContent>
-          </Select>
+          <WalletSelect
+            id="transfer-destination-wallet"
+            value={form.destination_wallet_id}
+            onValueChange={(value) => setForm({ ...form, destination_wallet_id: value })}
+            excludeWalletId={form.wallet_id || undefined}
+            placeholder="Choisir..."
+          />
 
         </div>
 

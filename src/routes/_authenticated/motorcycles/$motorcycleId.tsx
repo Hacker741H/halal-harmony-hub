@@ -227,7 +227,7 @@ function MotorcycleDetailsPage() {
         variant="deep"
         icon={Gauge}
         eyebrow="Moto"
-        title={`${motorcycle.marque} ${motorcycle.modele}`}
+        title={[motorcycle.marque, motorcycle.modele].filter(Boolean).join(" ") || "Moto"}
         description={motorcycle.immatriculation}
         primaryStat={{ label: "Kilométrage", value: `${formatNumber(motorcycle.kilometrage ?? 0)} km` }}
         secondaryStats={[{ label: "Entretiens", value: maintenances.length, tone: maintenances.length > 0 ? "warning" : "neutral" }]}
@@ -464,15 +464,17 @@ function MotorcycleDetailsPage() {
             motorcycleId={motorcycleId}
             maintenance={selectedMaintenance}
             onSuccess={async () => {
-              await queryClient.invalidateQueries({
-                queryKey: [
-                  "motorcycle-maintenances",
-                  motorcycleId,
-                ],
-              });
-              await queryClient.invalidateQueries({
-                queryKey: ["motorcycle-finance-operations", motorcycleId],
-              });
+              // Une maintenance avec coût débite un wallet -- même
+              // correction que vehicles/$vehicleId.tsx et le paiement de
+              // salaire (employees/index.tsx), qui l'avaient déjà.
+              await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ["motorcycle-maintenances", motorcycleId] }),
+                queryClient.invalidateQueries({ queryKey: ["motorcycle-finance-operations", motorcycleId] }),
+                queryClient.invalidateQueries({ queryKey: ["wallets"] }),
+                queryClient.invalidateQueries({ queryKey: ["wallet-stats"] }),
+                queryClient.invalidateQueries({ queryKey: ["finance-operations"] }),
+                queryClient.invalidateQueries({ queryKey: ["treasury"] }),
+              ]);
 
               setDialogOpen(false);
               setSelectedMaintenance(null);

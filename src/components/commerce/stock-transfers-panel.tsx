@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePermissions } from "@/hooks/use-permissions";
 import { STOCK_TRANSFER_STATUSES, getStockTransfers } from "@/lib/stock-transfers.functions";
+import { formatDateTimeMedium as formatDateTime } from "@/lib/format";
 
 // Contenu extrait de l'ancienne route /stock-transfers (désormais une
 // redirection vers /stock-operations) pour vivre comme onglet "Transferts"
@@ -32,9 +33,6 @@ function statusVariant(status: string): "outline" | "info" | "success" | "danger
   return "outline";
 }
 
-function formatDateTime(value: string | null) {
-  return value ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "—";
-}
 
 export function StockTransfersPanel() {
   const navigate = useNavigate();

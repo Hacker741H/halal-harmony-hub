@@ -17,6 +17,8 @@ const walletValuesSchema = z
     color: z.string(),
     icon: z.string(),
     is_default: z.boolean(),
+    /** Sets this wallet as a sub-wallet of an existing parent (single level -- see convert_wallet_to_parent for turning an existing wallet WITH a balance into a parent). */
+    parent_wallet_id: z.string().uuid().nullable(),
   })
   .strict();
 
@@ -31,7 +33,7 @@ const updateWalletSchema = z
     "Au moins une propriété doit être mise à jour.",
   );
 
-function toWalletJson(values: Record<string, string | number | boolean | undefined>): Json {
+function toWalletJson(values: Record<string, string | number | boolean | null | undefined>): Json {
   const payload: { [key: string]: Json | undefined } = {};
   for (const [key, value] of Object.entries(values)) {
     if (value !== undefined) payload[key] = value;
@@ -63,6 +65,21 @@ export const getWallet = createServerFn({ method: "GET" })
       .maybeSingle();
     if (error) throw error;
     return wallet;
+  });
+
+// Plain SELECT, permitted by the existing wallets_read RLS policy -- no RPC
+// needed, children are just ordinary wallets rows with parent_wallet_id set.
+export const getWalletChildren = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator(walletIdSchema)
+  .handler(async ({ context, data: parentWalletId }) => {
+    const { data, error } = await context.supabase
+      .from("wallets")
+      .select("*")
+      .eq("parent_wallet_id", parentWalletId)
+      .order("name", { ascending: true });
+    if (error) throw error;
+    return data ?? [];
   });
 
 export const createWallet = createServerFn({ method: "POST" })
@@ -197,33 +214,143 @@ export const archiveWallet = createServerFn({ method: "POST" })
     return wallet;
   });
 
-export const reassignWalletAsset = createServerFn({ method: "POST" })
+// ---------------------------------------------------------------------
+// Explicit, controlled conversion of an existing wallet (e.g. "Marasse")
+// into a parent: the user allocates its current balance across existing
+// and/or brand-new sub-wallets; every allocation becomes a real, traceable
+// TRANSFER (see convert_wallet_to_parent). Never invoked automatically --
+// the caller must always preview first and show it to the user.
+
+const walletConversionAllocationSchema = z
+  .union([
+    z.object({ existingWalletId: z.string().uuid(), amount: z.number().positive() }).strict(),
+    z.object({ newWalletName: z.string().trim().min(1), newWalletType: z.string().trim().min(1), amount: z.number().positive() }).strict(),
+  ]);
+
+const walletConversionInputSchema = z
+  .object({
+    walletId: walletIdSchema,
+    allocations: z.array(walletConversionAllocationSchema).min(1),
+  })
+  .strict();
+
+function toAllocationsJson(allocations: z.infer<typeof walletConversionInputSchema>["allocations"]): Json {
+  return allocations.map((allocation) =>
+    "existingWalletId" in allocation
+      ? { existing_wallet_id: allocation.existingWalletId, amount: allocation.amount }
+      : { new_wallet_name: allocation.newWalletName, new_wallet_type: allocation.newWalletType, amount: allocation.amount },
+  ) as Json;
+}
+
+export interface WalletConversionTarget {
+  existingWalletId?: string;
+  newWalletName?: string;
+  newWalletType?: string;
+  name?: string;
+  balanceBefore: number;
+  balanceAfter: number;
+  amount: number;
+  isNew: boolean;
+}
+
+export interface WalletConversionJekoMapping {
+  providerStoreId: string;
+  walletId: string;
+}
+
+// A still-PENDING Jèko payment request against the wallet being converted
+// -- unlike jekoMappings (the "where new checkouts land" config), this is
+// an in-flight payment that would otherwise resolve to the frozen parent
+// the moment it is paid. Requires the same remap as jekoMappings before
+// convert_wallet_to_parent will proceed -- see the migration's
+// _internal_plan_wallet_parent_conversion comment.
+export interface WalletConversionJekoPendingRequest {
+  providerStoreId: string;
+  providerReference: string;
+}
+
+export interface WalletConversionPlan {
+  walletId: string;
+  walletName: string;
+  balanceBefore: number;
+  balanceAfter: number;
+  targets: WalletConversionTarget[];
+  jekoMappings: WalletConversionJekoMapping[];
+  jekoPendingRequests: WalletConversionJekoPendingRequest[];
+}
+
+function toConversionPlan(row: unknown): WalletConversionPlan {
+  const plan = row as {
+    wallet_id: string;
+    wallet_name: string;
+    balance_before: number;
+    balance_after: number;
+    targets: Array<{
+      existing_wallet_id?: string;
+      new_wallet_name?: string;
+      new_wallet_type?: string;
+      name?: string;
+      balance_before: number;
+      balance_after: number;
+      amount: number;
+      is_new: boolean;
+    }>;
+    jeko_mappings: Array<{ provider_store_id: string; wallet_id: string }>;
+    jeko_pending_requests?: Array<{ provider_store_id: string; provider_reference: string }>;
+  };
+  return {
+    walletId: plan.wallet_id,
+    walletName: plan.wallet_name,
+    balanceBefore: Number(plan.balance_before),
+    balanceAfter: Number(plan.balance_after),
+    targets: plan.targets.map((target) => ({
+      existingWalletId: target.existing_wallet_id,
+      newWalletName: target.new_wallet_name,
+      newWalletType: target.new_wallet_type,
+      name: target.name,
+      balanceBefore: Number(target.balance_before),
+      balanceAfter: Number(target.balance_after),
+      amount: Number(target.amount),
+      isNew: target.is_new,
+    })),
+    jekoMappings: (plan.jeko_mappings ?? []).map((mapping) => ({
+      providerStoreId: mapping.provider_store_id,
+      walletId: mapping.wallet_id,
+    })),
+    jekoPendingRequests: (plan.jeko_pending_requests ?? []).map((request) => ({
+      providerStoreId: request.provider_store_id,
+      providerReference: request.provider_reference,
+    })),
+  };
+}
+
+export const previewWalletParentConversion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator(
-    z
-      .object({
-        id: walletIdSchema,
-        module: z.enum(WALLET_MODULES),
-        assetKind: z.enum(["MOTORCYCLE", "VEHICLE", "FARM", "BUSINESS_LOCATION", "GENERAL"]).nullable(),
-        motorcycleId: z.string().uuid().nullable().optional(),
-        vehicleId: z.string().uuid().nullable().optional(),
-        farmId: z.string().uuid().nullable().optional(),
-      })
-      .strict(),
-  )
-  .handler(async ({ context, data }) => {
-    const { data: wallet, error } = await context.supabase.rpc("reassign_wallet_asset", {
-      p_wallet_id: data.id,
-      p_new_module: data.module,
-      // The generated RPC arg type is `string` (no `| null`) because the SQL
-      // parameter has no DEFAULT -- the column and the function body both
-      // accept NULL just fine, this is purely a codegen gap for a required
-      // text arg.
-      p_new_asset_kind: data.assetKind as string,
-      p_motorcycle_id: data.motorcycleId ?? undefined,
-      p_vehicle_id: data.vehicleId ?? undefined,
-      p_farm_id: data.farmId ?? undefined,
+  .validator(walletConversionInputSchema)
+  .handler(async ({ context, data }): Promise<WalletConversionPlan> => {
+    const { data: plan, error } = await context.supabase.rpc("preview_wallet_parent_conversion", {
+      p_wallet_id: data.walletId,
+      p_allocations: toAllocationsJson(data.allocations),
     });
     if (error) throw error;
-    return wallet;
+    return toConversionPlan(plan);
+  });
+
+export const convertWalletToParent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(
+    walletConversionInputSchema.extend({
+      jekoRemap: z.array(z.object({ providerStoreId: z.string(), newWalletId: z.string().uuid() }).strict()).optional(),
+    }),
+  )
+  .handler(async ({ context, data }): Promise<WalletConversionPlan> => {
+    const { data: plan, error } = await context.supabase.rpc("convert_wallet_to_parent", {
+      p_wallet_id: data.walletId,
+      p_allocations: toAllocationsJson(data.allocations),
+      p_jeko_remap: data.jekoRemap
+        ? (data.jekoRemap.map((remap) => ({ provider_store_id: remap.providerStoreId, new_wallet_id: remap.newWalletId })) as Json)
+        : null,
+    });
+    if (error) throw error;
+    return toConversionPlan(plan);
   });

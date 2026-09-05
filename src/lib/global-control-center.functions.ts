@@ -37,7 +37,13 @@ const itemSchema = z.object({
   occurred_at: z.string(),
   actor: z.string().nullable(),
   action_label: z.string(),
-  action_route: z.string(),
+  // Nullable : notifications.entity_route (supabase/migrations/20260728184000_add_notifications_alerts_center.sql)
+  // n'a ni NOT NULL ni DEFAULT -- toute notification anterieure a cette
+  // migration (hors CONTRAINT_EXPIRY, seul type retro-rempli) a
+  // legitimement entity_route = NULL en base. Le crash reel : .parse()
+  // echouait sur cette seule ligne et faisait tomber tout le centre de
+  // controle (tous modules confondus, pas seulement Notifications).
+  action_route: z.string().nullable(),
   metadata: z.record(z.string(), z.unknown()),
   total_count: z.number(),
 });
@@ -56,7 +62,7 @@ export interface GlobalControlCenterItem {
   occurredAt: string;
   actor: string | null;
   actionLabel: string;
-  actionRoute: string;
+  actionRoute: string | null;
 }
 
 export interface GlobalControlCenterResult {

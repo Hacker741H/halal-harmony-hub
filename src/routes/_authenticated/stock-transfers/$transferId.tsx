@@ -19,6 +19,7 @@ import {
   getStockTransfer,
   receiveStockTransfer,
 } from "@/lib/stock-transfers.functions";
+import { formatDateTimeMedium as formatDateTime, formatXOF as formatAmount } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/stock-transfers/$transferId")({ component: StockTransferDetailPage });
 
@@ -34,16 +35,8 @@ function statusVariant(status: string): "outline" | "info" | "success" | "danger
   return "outline";
 }
 
-function formatDateTime(value: string | null) {
-  return value ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "—";
-}
-
 function formatQuantity(value: number | string | null) {
   return value === null ? "—" : Number(value).toLocaleString("fr-FR", { maximumFractionDigits: 3 });
-}
-
-function formatAmount(value: number | string | null) {
-  return value === null ? "—" : `${Number(value).toLocaleString("fr-FR")} FCFA`;
 }
 
 function showError(fallback: string) {

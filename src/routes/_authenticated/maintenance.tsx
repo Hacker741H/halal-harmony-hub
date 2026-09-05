@@ -124,9 +124,16 @@ function MaintenancePage() {
   }
 
   async function refresh() {
+    // Même correction que les pages détail véhicule/moto : une maintenance
+    // avec coût débite un wallet, invalidé ici aussi pour ce point d'entrée
+    // partagé.
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["motorcycle-maintenances"] }),
       queryClient.invalidateQueries({ queryKey: ["vehicle-maintenances"] }),
+      queryClient.invalidateQueries({ queryKey: ["wallets"] }),
+      queryClient.invalidateQueries({ queryKey: ["wallet-stats"] }),
+      queryClient.invalidateQueries({ queryKey: ["finance-operations"] }),
+      queryClient.invalidateQueries({ queryKey: ["treasury"] }),
     ]);
     setDialogOpen(false);
     clearQuickCreate();

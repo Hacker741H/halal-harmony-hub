@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { WalletSelect } from "@/components/selects/entity-selects";
 import type { Stock } from "@/lib/stocks.functions";
 import { createStockMovement } from "@/lib/stock-movements.functions";
 import { getWallets } from "@/lib/wallet.functions";
@@ -138,14 +139,12 @@ export function StockMovementForm({ stocks, onSuccess }: Props) {
             </div>
             <div>
               <Label htmlFor="stock-movement-wallet">{movementType === "PURCHASE" ? "Wallet débité" : "Wallet crédité"}</Label>
-              <Select value={walletId || undefined} onValueChange={setWalletId}>
-                <SelectTrigger id="stock-movement-wallet">
-                  <SelectValue placeholder="Sélectionner un wallet" />
-                </SelectTrigger>
-                <SelectContent>
-                  {wallets.map((wallet) => <SelectItem key={wallet.id} value={wallet.id}>{wallet.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <WalletSelect
+                id="stock-movement-wallet"
+                value={walletId}
+                onValueChange={setWalletId}
+                placeholder="Sélectionner un wallet"
+              />
               <p className="mt-1 text-xs text-muted-foreground">
                 Une {movementType === "PURCHASE" ? "dépense" : "recette"} sera créée automatiquement.
               </p>

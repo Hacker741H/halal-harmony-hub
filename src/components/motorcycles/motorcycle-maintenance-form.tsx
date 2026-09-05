@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { WalletSelect } from "@/components/selects/entity-selects";
 
 import {
   createMotorcycleMaintenance,
@@ -217,18 +218,13 @@ export function MotorcycleMaintenanceForm({
         <div>
           <Label htmlFor="motorcycle-maintenance-wallet">Wallet de paiement</Label>
 
-          <Select value={walletId} onValueChange={setWalletId} disabled={Number(cost || 0) <= 0}>
-            <SelectTrigger id="motorcycle-maintenance-wallet">
-              <SelectValue placeholder="Sélectionner un wallet" />
-            </SelectTrigger>
-            <SelectContent>
-              {wallets.map((wallet) => (
-                <SelectItem key={wallet.id} value={wallet.id}>
-                  {wallet.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <WalletSelect
+            id="motorcycle-maintenance-wallet"
+            value={walletId}
+            onValueChange={setWalletId}
+            disabled={Number(cost || 0) <= 0}
+            placeholder="Sélectionner un wallet"
+          />
 
           <p className="mt-1 text-xs text-muted-foreground">
             Une dépense sera créée automatiquement si le coût est supérieur à zéro.

@@ -11,9 +11,17 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
+import { toast } from "sonner";
+
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { isRelevantAuthEvent, shouldSkipFullSessionResync } from "../lib/auth-session-resync";
+import {
+  consumeVoluntarySignOutFlag,
+  isRelevantAuthEvent,
+  markVoluntarySignOut,
+  shouldRedirectOnSignOut,
+  shouldSkipFullSessionResync,
+} from "../lib/auth-session-resync";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
@@ -105,6 +113,7 @@ function RootShell({ children }: { children: ReactNode }) {
 function useSession() {
   const [session, setSession] = useState<{ email?: string; fullName?: string } | null>(null);
   const router = useRouter();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const currentUserIdRef = useRef<string | null>(null);
   useEffect(() => {
@@ -133,12 +142,21 @@ function useSession() {
       } else {
         setSession(null);
       }
+      // P0-1 : un SIGNED_OUT que rien dans l'app n'a demande -- session
+      // revoquee/expiree en arriere-plan, pas un clic sur "Se deconnecter"
+      // (voir consumeVoluntarySignOutFlag). Sans ca, l'utilisateur restait
+      // sur une page morte : plus rien ne charge, aucun message, puisque
+      // router.tsx supprime deliberement tout toast "Unauthorized:".
+      if (event === "SIGNED_OUT" && shouldRedirectOnSignOut(event, consumeVoluntarySignOutFlag())) {
+        navigate({ to: "/auth", replace: true });
+        toast.error("Votre session a expiré, reconnectez-vous.", { id: "session-expired" });
+      }
       if (skipFullResync) return;
       queryClient.clear();
       router.invalidate();
     });
     return () => sub.subscription.unsubscribe();
-  }, [queryClient, router]);
+  }, [queryClient, router, navigate]);
   return session;
 }
 
@@ -151,6 +169,7 @@ function AuthenticatedShell() {
   if (session && access.isPending) return null;
 
   const signOut = async () => {
+    markVoluntarySignOut();
     await supabase.auth.signOut();
     navigate({ to: "/auth", replace: true });
   };

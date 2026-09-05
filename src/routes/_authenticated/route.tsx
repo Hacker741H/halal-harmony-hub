@@ -52,14 +52,14 @@ function AuthenticatedRoute() {
   }, [navigate]);
 
   useEffect(() => {
-    if (access.isCashierOnly && !pathname.startsWith("/commerce")) {
-      void navigate({ to: "/commerce", replace: true });
+    if (access.isCashierOnly && !pathname.startsWith("/caisse")) {
+      void navigate({ to: "/caisse", replace: true });
     }
   }, [access.isCashierOnly, navigate, pathname]);
 
   if (isCheckingSession || access.isPending) return null;
 
-  if (access.isCashierOnly && !pathname.startsWith("/commerce")) return null;
+  if (access.isCashierOnly && !pathname.startsWith("/caisse")) return null;
 
   return <Outlet />;
 }

@@ -6,6 +6,13 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+// wallets.parent_wallet_id and the convert_wallet_to_parent /
+// preview_wallet_parent_conversion RPCs below (search these two names) were
+// added by hand for supabase/migrations/20260823000000_add_wallet_parent_hierarchy.sql
+// -- there is no live database in this environment to regenerate from.
+// Re-run `supabase gen types` against a database that has actually applied
+// that migration (and any later one) and this whole file should be
+// replaced by the generated output rather than hand-patched further.
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -7372,6 +7379,7 @@ export type Database = {
           module: string | null
           motorcycle_id: string | null
           name: string
+          parent_wallet_id: string | null
           type: string
           updated_at: string | null
           vehicle_id: string | null
@@ -7393,6 +7401,7 @@ export type Database = {
           module?: string | null
           motorcycle_id?: string | null
           name: string
+          parent_wallet_id?: string | null
           type: string
           updated_at?: string | null
           vehicle_id?: string | null
@@ -7414,6 +7423,7 @@ export type Database = {
           module?: string | null
           motorcycle_id?: string | null
           name?: string
+          parent_wallet_id?: string | null
           type?: string
           updated_at?: string | null
           vehicle_id?: string | null
@@ -7431,6 +7441,13 @@ export type Database = {
             columns: ["motorcycle_id"]
             isOneToOne: false
             referencedRelation: "motorcycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallets_parent_wallet_id_fkey"
+            columns: ["parent_wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
             referencedColumns: ["id"]
           },
           {
@@ -13712,6 +13729,14 @@ export type Database = {
         Args: { p_permission_code: string }
         Returns: boolean
       }
+      convert_wallet_to_parent: {
+        Args: { p_allocations: Json; p_jeko_remap?: Json; p_wallet_id: string }
+        Returns: Json
+      }
+      preview_wallet_parent_conversion: {
+        Args: { p_allocations: Json; p_wallet_id: string }
+        Returns: Json
+      }
       wallet_create: {
         Args: { p_wallet: Json }
         Returns: {
@@ -13772,6 +13797,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      write_off_commerce_inventory_item: {
+        Args: { p_writeoff: Json }
+        Returns: Json
       }
     }
     Enums: {

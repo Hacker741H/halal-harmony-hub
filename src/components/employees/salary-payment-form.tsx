@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { WalletSelect } from "@/components/selects/entity-selects";
 import {
   createSalaryPayment,
   getSalaryPaymentPeople,
@@ -134,14 +135,12 @@ export function SalaryPaymentForm({
         </div>
         <div>
           <Label htmlFor="salary-wallet">Wallet</Label>
-          <Select value={walletId || undefined} onValueChange={setWalletId}>
-            <SelectTrigger id="salary-wallet">
-              <SelectValue placeholder="Sélectionner un wallet" />
-            </SelectTrigger>
-            <SelectContent>
-              {wallets.map((wallet) => <SelectItem key={wallet.id} value={wallet.id}>{wallet.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <WalletSelect
+            id="salary-wallet"
+            value={walletId}
+            onValueChange={setWalletId}
+            placeholder="Sélectionner un wallet"
+          />
         </div>
         <div className="md:col-span-2 flex items-center gap-2">
           <Checkbox id="salary-partial" checked={isPartial} onCheckedChange={(checked) => setIsPartial(checked === true)} />

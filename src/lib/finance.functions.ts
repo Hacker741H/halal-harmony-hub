@@ -186,6 +186,24 @@ export const getFinanceOperationsByWallet = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
+// Used by a parent wallet's "Tous" view: every operation touching the
+// parent itself or any of its sub-wallets, consolidated into one journal.
+export const getFinanceOperationsByWalletGroup = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .validator(z.array(walletIdSchema).min(1))
+  .handler(async ({ context, data: walletIds }) => {
+    const list = walletIds.join(",");
+    const { data, error } = await context.supabase
+      .from("finance_operations")
+      .select(financeOperationSelect)
+      .or(`wallet_id.in.(${list}),destination_wallet_id.in.(${list})`)
+      .order("operation_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .range(0, FINANCE_OPERATIONS_HARD_CAP - 1);
+    if (error) throw error;
+    return data ?? [];
+  });
+
 export const getFinanceOperationsByFarm = createServerFn({
   method: "GET",
 })

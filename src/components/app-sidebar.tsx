@@ -1,7 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ArrowLeftRight,
   BarChart3,
   Bell,
   Bike,
@@ -68,9 +67,9 @@ type NavigationRoute =
   | "/sales"
   | "/suppliers"
   | "/purchases"
-  | "/inventory-counts"
-  | "/stock-transfers"
+  | "/stock-operations"
   | "/commerce"
+  | "/caisse"
   | "/wallets"
   | "/finance"
   | "/revenues"
@@ -88,7 +87,13 @@ interface NavigationItem {
   url?: NavigationRoute;
   icon: LucideIcon;
   disabled?: boolean;
+  /** Single required permission. */
   permission?: string;
+  /** Visible if the user holds ANY one of these -- for a destination that
+   * legitimately serves several distinct roles (e.g. store management, open
+   * to anyone who can touch locations, stock, or store finances) where no
+   * single existing permission code covers the whole group. */
+  permissions?: readonly string[];
 }
 
 interface NavigationGroup {
@@ -135,13 +140,22 @@ const navigationGroups: readonly NavigationGroup[] = [
   {
     label: "Commerce",
     items: [
-      { title: "Magasin & caisse", url: "/commerce", icon: Store, permission: "commerce.pos.read" },
+      // Caisse (vente) et Magasins (administration) sont deux destinations
+      // volontairement séparées, jamais mélangées : un caissier n'a et ne
+      // doit avoir accès qu'à Caisse ; Magasins ne concerne que celles et
+      // ceux qui pilotent le magasin (stock, tarifs, trésorerie), jamais
+      // l'écran de vente lui-même.
+      { title: "Caisse", url: "/caisse", icon: ShoppingCart, permission: "commerce.pos.read" },
+      {
+        title: "Magasins",
+        url: "/commerce",
+        icon: Store,
+        permissions: ["locations.manage", "commerce.stock.receive", "sales.finance.read", "store.financial.read", "store.stock_valuation.read", "store.expenses.read"],
+      },
       { title: "Clients", url: "/clients", icon: Building2, permission: "clients.read" },
       { title: "Ventes & créances", url: "/sales", icon: PackageCheck, permission: "sales.read" },
       { title: "Fournisseurs", url: "/suppliers", icon: Contact, permission: "suppliers.read" },
-      { title: "Achats & dettes", url: "/purchases", icon: ShoppingCart, permission: "purchases.read" },
-      { title: "Inventaires", url: "/inventory-counts", icon: ClipboardList, permission: "inventory.counts.read" },
-      { title: "Transferts", url: "/stock-transfers", icon: ArrowLeftRight, permission: "transfers.read" },
+      { title: "Ajustements de stock", url: "/stock-operations", icon: ClipboardList, permissions: ["inventory.counts.read", "transfers.read"] },
     ],
   },
   {
@@ -176,7 +190,7 @@ const navigationGroups: readonly NavigationGroup[] = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const { density } = useShellPreferences();
-  const { can } = usePermissions();
+  const { can, canAny } = usePermissions();
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (router) => router.location.pathname });
   const { data: notificationSummary } = useQuery({
@@ -208,7 +222,7 @@ export function AppSidebar() {
 
       <SidebarContent className={cn("px-3 py-4", groupSpacing)}>
         {visibleNavigationGroups.map((group) => {
-          const visibleItems = group.items.filter((item) => !item.permission || can(item.permission));
+          const visibleItems = group.items.filter((item) => (!item.permission || can(item.permission)) && (!item.permissions || canAny(item.permissions)));
           if (visibleItems.length === 0) return null;
           return <SidebarGroup key={group.label} className="p-0">
             {!collapsed ? (

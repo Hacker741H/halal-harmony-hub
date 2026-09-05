@@ -28,6 +28,7 @@ import {
   getDriverActivitySummary,
   type DriverActivityExpenseCategory,
 } from "@/lib/driver-activity.functions";
+import { formatXOF } from "@/lib/format";
 
 type Period = { from: string; to: string };
 
@@ -259,5 +260,4 @@ function toInputDate(value: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function formatXOF(value: number): string { return `${value.toLocaleString("fr-FR")} FCFA`; }
 function formatDate(value: string | null): string { return value ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(new Date(value)) : "Date non renseignée"; }

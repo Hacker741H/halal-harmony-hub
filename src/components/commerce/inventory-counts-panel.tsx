@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { usePermissions } from "@/hooks/use-permissions";
 import { getCommercePosLocations } from "@/lib/commerce-pos.functions";
+import { formatDateTimeMedium as formatDateTime } from "@/lib/format";
 import { INVENTORY_COUNT_STATUSES, getInventoryCounts, openInventoryCount } from "@/lib/inventory-counts.functions";
 
 // Contenu extrait de l'ancienne route /inventory-counts (désormais une
@@ -34,9 +35,6 @@ function statusVariant(status: string): "info" | "success" | "danger" {
   return "info";
 }
 
-function formatDateTime(value: string | null) {
-  return value ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "—";
-}
 
 function showError(fallback: string) {
   return (error: Error) => toast.error(error instanceof Error ? error.message : fallback);

@@ -15,6 +15,7 @@ import {
   type PosOfflineCashSessionCloseServerReceipt,
 } from "@/lib/commerce-pos-offline";
 import { closeCommercePosCashSession, syncCommercePosOfflineSale } from "@/lib/commerce-pos.functions";
+import { classifyError, getErrorMessage, isRetryableCategory } from "@/lib/error-classification";
 
 export type CommercePosSyncProgress = {
   total: number;
@@ -91,18 +92,35 @@ export async function sendCommercePosOfflineCashSessionClose(event: PosOfflineCa
   return { closureId: receipt.closureId, reportId: receipt.reportId, status: receipt.status, errorCode: receipt.errorCode ?? null, errorMessage: receipt.errorMessage ?? null };
 }
 
-function getErrorDetails(error: unknown): { message: string; permanent: boolean } {
-  if (error instanceof Error) {
-    const code = "code" in error && typeof error.code === "string" ? error.code : null;
-    const permanent = code === "22023" || code === "42501" || code === "23503";
-    return { message: `${code ? `${code}: ` : ""}${error.message}`, permanent };
+/**
+ * P1-1 (audit de stabilisation) : lisait error.code pour décider si une
+ * erreur était définitive -- ce champ ne survit jamais au transport
+ * serveur -> client (seul .message traverse, voir
+ * src/lib/error-classification.ts), donc `permanent` valait toujours
+ * `false` en pratique. Une vente hors-ligne réellement rejetée (permission
+ * révoquée, règle de stock violée, donnée invalide) était donc indiscernable
+ * d'un problème réseau, et réessayée indéfiniment au lieu d'être signalée
+ * au caissier.
+ *
+ * Classification maintenant partagée avec router.tsx : seule "network" est
+ * retentable (voir isRetryableCategory) -- les cinq autres catégories,
+ * y compris une forme d'erreur non reconnue, sont définitives, puisque
+ * rien n'indique alors un problème de connexion.
+ */
+export function getErrorDetails(error: unknown): { message: string; permanent: boolean } {
+  const message = getErrorMessage(error);
+  // `permanent` vient toujours du classificateur, jamais d'un cas
+  // particulier codé en dur ici -- un objet vide, une chaîne brute ou
+  // `null` lancés n'ont pas de message extractible, mais classifyError()
+  // les classe déjà correctement en "server" (ni network, ni aucune des
+  // catégories connues), donc isRetryableCategory() les marque déjà comme
+  // non-retryable. Seul le TEXTE affiché change selon qu'un message reste
+  // extractible ; jamais la décision retryable/permanent.
+  const permanent = !isRetryableCategory(classifyError(error));
+  if (!message) {
+    return { message: "Synchronisation indisponible. La vente reste dans la caisse locale.", permanent };
   }
-  if (typeof error === "object" && error !== null && "message" in error && typeof error.message === "string") {
-    const code = "code" in error && typeof error.code === "string" ? error.code : null;
-    const permanent = code === "22023" || code === "42501" || code === "23503";
-    return { message: `${code ? `${code}: ` : ""}${error.message}`, permanent };
-  }
-  return { message: "Synchronisation indisponible. La vente reste dans la caisse locale.", permanent: false };
+  return { message, permanent };
 }
 
 /**

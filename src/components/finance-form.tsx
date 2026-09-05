@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { WalletSelect } from "@/components/selects/entity-selects";
 
 import {
   createFinanceOperation,
@@ -16,10 +16,7 @@ import {
 } from "@/lib/finance.functions";
 import { formatXOF } from "@/lib/format";
 
-import {
-  getWallets,
-  type Wallet,
-} from "@/lib/wallet.functions";
+import { getWallets } from "@/lib/wallet.functions";
 
 type FinanceType =
   | "REVENUE"
@@ -207,31 +204,12 @@ export function FinanceForm({
             Wallet
           </Label>
 
-          <Select
-            value={form.wallet_id || undefined}
-            onValueChange={(value) =>
-              setForm({
-                ...form,
-                wallet_id: value,
-              })
-            }
-          >
-            <SelectTrigger id="finance-wallet">
-              <SelectValue placeholder="Sélectionner un wallet..." />
-            </SelectTrigger>
-            <SelectContent>
-              {wallets.map(
-                (wallet: Wallet) => (
-                  <SelectItem
-                    key={wallet.id}
-                    value={wallet.id}
-                  >
-                    {wallet.name}
-                  </SelectItem>
-                ),
-              )}
-            </SelectContent>
-          </Select>
+          <WalletSelect
+            id="finance-wallet"
+            value={form.wallet_id}
+            onValueChange={(value) => setForm({ ...form, wallet_id: value })}
+            placeholder="Sélectionner un wallet..."
+          />
 
         </div>
 

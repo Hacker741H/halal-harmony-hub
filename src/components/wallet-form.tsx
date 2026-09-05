@@ -7,9 +7,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createWallet, updateWallet, type Wallet } from "@/lib/wallet.functions";
+import { createWallet, getWallets, updateWallet, type Wallet } from "@/lib/wallet.functions";
+import { useQuery } from "@tanstack/react-query";
 
-type Props = { onSuccess: () => void; wallet?: Wallet | null };
+type Props = { onSuccess: () => void; wallet?: Wallet | null; defaultParentWalletId?: string | null };
 
 type FormValues = {
   name: string;
@@ -18,6 +19,7 @@ type FormValues = {
   color: string;
   icon: string;
   is_default: boolean;
+  parent_wallet_id: string;
 };
 
 const emptyForm: FormValues = {
@@ -27,11 +29,29 @@ const emptyForm: FormValues = {
   color: "#16a34a",
   icon: "wallet",
   is_default: false,
+  parent_wallet_id: "",
 };
 
-export function WalletForm({ onSuccess, wallet }: Props) {
+export function WalletForm({ onSuccess, wallet, defaultParentWalletId }: Props) {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<FormValues>(emptyForm);
+
+  // Only wallets that could legally become this wallet's parent: no parent
+  // of their own (single level) and, when editing, not the wallet itself.
+  const { data: wallets = [] } = useQuery({ queryKey: ["wallets"], queryFn: () => getWallets(), staleTime: 15_000 });
+  const eligibleParents = wallets.filter((candidate) => !candidate.parent_wallet_id && candidate.id !== wallet?.id);
+
+  const selectedParent = wallets.find((candidate) => candidate.id === form.parent_wallet_id) ?? null;
+  const isNewParentLink = form.parent_wallet_id !== "" && form.parent_wallet_id !== (wallet?.parent_wallet_id ?? "");
+  const selectedParentHasChildren = wallets.some(
+    (candidate) => candidate.parent_wallet_id === form.parent_wallet_id && candidate.id !== wallet?.id,
+  );
+  // Only the very first sub-wallet of a still-funded parent needs the
+  // dedicated conversion flow -- once a parent has any child, its own
+  // balance is already 0 (see convert_wallet_to_parent), so later siblings
+  // are ordinary wallet_create calls with parent_wallet_id set.
+  const selectedParentNeedsConversion =
+    isNewParentLink && !!selectedParent && Number(selectedParent.balance ?? 0) !== 0 && !selectedParentHasChildren;
 
   useEffect(() => {
     setForm(
@@ -43,10 +63,11 @@ export function WalletForm({ onSuccess, wallet }: Props) {
             color: wallet.color ?? "#16a34a",
             icon: wallet.icon ?? "wallet",
             is_default: wallet.is_default ?? false,
+            parent_wallet_id: wallet.parent_wallet_id ?? "",
           }
-        : emptyForm,
+        : { ...emptyForm, parent_wallet_id: defaultParentWalletId ?? "" },
     );
-  }, [wallet]);
+  }, [wallet, defaultParentWalletId]);
 
   async function save() {
     if (!form.name.trim()) {
@@ -56,6 +77,10 @@ export function WalletForm({ onSuccess, wallet }: Props) {
     const initialBalance = Number(form.initial_balance || 0);
     if (!Number.isFinite(initialBalance)) {
       toast.error("Le solde d'ouverture doit être un nombre valide.");
+      return;
+    }
+    if (selectedParentNeedsConversion) {
+      toast.error("Ce wallet parent a encore un solde direct : utilisez « Convertir en wallet parent » depuis sa fiche avant de lui créer un premier sous-wallet.");
       return;
     }
 
@@ -68,6 +93,7 @@ export function WalletForm({ onSuccess, wallet }: Props) {
         color: form.color,
         icon: form.icon,
         is_default: form.is_default,
+        parent_wallet_id: form.parent_wallet_id || null,
       };
       if (wallet) await updateWallet({ data: { id: wallet.id, values } });
       else await createWallet({ data: values });
@@ -111,6 +137,26 @@ export function WalletForm({ onSuccess, wallet }: Props) {
           </Select>
         </div>
         <div>
+          <Label htmlFor="wallet-parent">Wallet parent</Label>
+          <Select
+            value={form.parent_wallet_id || "NONE"}
+            onValueChange={(value) => setForm({ ...form, parent_wallet_id: value === "NONE" ? "" : value })}
+          >
+            <SelectTrigger id="wallet-parent"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="NONE">Aucun (wallet autonome)</SelectItem>
+              {eligibleParents.map((candidate) => (
+                <SelectItem key={candidate.id} value={candidate.id}>{candidate.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedParentNeedsConversion ? (
+            <p className="mt-1 text-xs font-medium text-warning-foreground">
+              Ce wallet a encore un solde direct de {(selectedParent?.balance ?? 0).toLocaleString("fr-FR")} FCFA. Utilisez l'action « Convertir en wallet parent » depuis sa fiche pour répartir ce solde avant de créer un premier sous-wallet.
+            </p>
+          ) : null}
+        </div>
+        <div>
           <Label htmlFor="wallet-initial-balance">Solde d'ouverture (FCFA)</Label>
           <Input
             id="wallet-initial-balance"
@@ -150,7 +196,7 @@ export function WalletForm({ onSuccess, wallet }: Props) {
           <span className="text-sm font-medium">Définir comme wallet principal</span>
         </label>
       </div>
-      <Button className="w-full" disabled={loading} onClick={save}>
+      <Button className="w-full" disabled={loading || selectedParentNeedsConversion} onClick={save}>
         {loading ? "Enregistrement…" : wallet ? "Mettre à jour le wallet" : "Créer le wallet"}
       </Button>
     </div>

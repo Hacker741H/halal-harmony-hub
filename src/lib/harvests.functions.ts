@@ -168,28 +168,6 @@ export const getHarvestsByFarm = createServerFn({
     return harvests ?? [];
   });
 
-// Legacy path: creates a harvest with all commercial fields set at once and
-// a conditional Finance write, exactly as before. No longer reachable from
-// the planning form -- kept only so existing LEGACY rows' data shape stays
-// valid and any direct caller doesn't break. New harvests go through
-// planHarvest below instead.
-export const createHarvest = createServerFn({
-  method: "POST",
-})
-  .middleware([requireSupabaseAuth])
-  .validator(harvestValuesSchema)
-  .handler(async ({ context, data }) => {
-    const { supabase } = context;
-
-    const { data: harvest, error } = await supabase
-      .rpc("create_harvest_with_finance", { p_harvest: data });
-
-    if (error) throw error;
-    if (!harvest) throw new Error("La récolte n'a pas été créée.");
-
-    return harvest;
-  });
-
 export const updateHarvest = createServerFn({
   method: "POST",
 })

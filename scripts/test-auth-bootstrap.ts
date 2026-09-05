@@ -4,17 +4,28 @@
 // These exercise the pure functions the components delegate to, extracted
 // without changing behavior specifically so this suite could exist.
 //
-// Scenario 6 ("logout -> auth") has no unit test here on purpose: it is
-// `await supabase.auth.signOut(); navigate({ to: "/auth" })` in
-// __root.tsx's AuthenticatedShell -- a straight-line imperative call with
-// no branch to assert on, not a decision function. Verified by reading
-// that code, not by a test double standing in for a real Supabase client.
+// Scenario 6 ("logout -> auth") used to have no unit test here on purpose:
+// it used to be `await supabase.auth.signOut(); navigate({ to: "/auth" })`
+// in __root.tsx's AuthenticatedShell -- a straight-line imperative call
+// with no branch to assert on, not a decision function. Stabilization
+// audit P0-1 turned the *other* half of that scenario -- a SIGNED_OUT that
+// nothing in this app requested (revoked/expired session, not a click on
+// "Se déconnecter") -- into exactly that kind of decision function
+// (shouldRedirectOnSignOut), so it is tested below like its siblings. The
+// voluntary path itself (still a plain imperative call at both of its two
+// sites) remains verified by reading the code, not by a test double.
 import assert from "node:assert/strict";
 
 import { AuthRetryableFetchError } from "@supabase/supabase-js";
 
 import { resolveBackgroundVerification, resolveSessionCheck } from "../src/lib/auth-bootstrap";
-import { isRelevantAuthEvent, shouldSkipFullSessionResync } from "../src/lib/auth-session-resync";
+import {
+  consumeVoluntarySignOutFlag,
+  isRelevantAuthEvent,
+  markVoluntarySignOut,
+  shouldRedirectOnSignOut,
+  shouldSkipFullSessionResync,
+} from "../src/lib/auth-session-resync";
 
 function expect(condition: unknown, message: string): asserts condition {
   assert.equal(condition, true, message);
@@ -85,6 +96,41 @@ function run(): void {
   expect(
     shouldSkipFullSessionResync("SIGNED_IN", null, "user-1") === false,
     "The very first sign-in (no previous user) must not be treated as a same-user re-emission.",
+  );
+
+  // 6. P0-1 : an involuntary SIGNED_OUT (revoked/expired session) must
+  // redirect to /auth with a clear message ; a voluntary one (the user's
+  // own "Se déconnecter" click, at either of its two call sites) must not
+  // -- both already navigate themselves right after calling signOut(), so
+  // redirecting again here would be redundant at best, a false "session
+  // expired" message at worst.
+  expect(
+    shouldRedirectOnSignOut("SIGNED_OUT", false) === true,
+    "A SIGNED_OUT nobody in the app requested must redirect to /auth.",
+  );
+  expect(
+    shouldRedirectOnSignOut("SIGNED_OUT", true) === false,
+    "A SIGNED_OUT that followed our own signOut() call must not redirect again.",
+  );
+  expect(
+    shouldRedirectOnSignOut("SIGNED_IN", false) === false,
+    "Only SIGNED_OUT is a candidate -- SIGNED_IN must never trigger this redirect.",
+  );
+  // The flag itself: set once, consumed once, then back to "involuntary"
+  // by default so a later, genuinely involuntary SIGNED_OUT is never
+  // mistaken for the voluntary one that already happened.
+  expect(
+    consumeVoluntarySignOutFlag() === false,
+    "With no prior markVoluntarySignOut() call, the flag must read as involuntary.",
+  );
+  markVoluntarySignOut();
+  expect(
+    consumeVoluntarySignOutFlag() === true,
+    "Right after markVoluntarySignOut(), the next consume must read as voluntary.",
+  );
+  expect(
+    consumeVoluntarySignOutFlag() === false,
+    "Consuming the flag must reset it -- a second consume must not still read as voluntary.",
   );
 
   console.log("Auth bootstrap tests passed.");

@@ -6,7 +6,6 @@ import type { Json, Tables } from "@/integrations/supabase/types";
 import { getPermissionCodesForClient } from "@/lib/permissions.functions";
 
 export type Course = Tables<"transport_missions">;
-export type CourseBudgetLine = Tables<"transport_mission_budget_lines">;
 export type CourseExpense = Tables<"transport_mission_expenses">;
 export type CourseInvoice = Tables<"transport_invoices">;
 export type CoursePayment = Tables<"transport_invoice_payments">;
@@ -116,7 +115,7 @@ export type CourseFinancialSummary = {
 };
 export type CourseHistoryEntry = { id: string; source_type: string; source_id: string; action: string; created_at: string; performed_by: string | null; before_value: Json | null; after_value: Json | null };
 export type CourseListItem = Course & { clientName: string | null; vehicleLabel: string | null; vehicleStatus: string | null; driverName: string | null; driverStatus: string | null; actualExpenses: number | null; amountDue: number | null; grossResult: number | null; invoiceStatus: string | null };
-export type CourseDetail = { course: Course; clientName: string | null; vehicle: { id: string; registration: string; brand: string | null; model: string | null; kilometrage: number | null; status: string | null } | null; driver: { id: string; name: string; telephone: string | null; licenseExpiry: string | null } | null; budgets: CourseBudgetLine[]; expenses: CourseExpense[]; invoices: CourseInvoice[]; payments: CoursePayment[]; financial: CourseFinancialSummary | null };
+export type CourseDetail = { course: Course; clientName: string | null; vehicle: { id: string; registration: string; brand: string | null; model: string | null; kilometrage: number | null; status: string | null } | null; driver: { id: string; name: string; telephone: string | null; licenseExpiry: string | null } | null; expenses: CourseExpense[]; invoices: CourseInvoice[]; payments: CoursePayment[]; financial: CourseFinancialSummary | null };
 
 function valuesPayload(values: Partial<CourseValues>): Json {
   return {
@@ -178,26 +177,24 @@ export const getCourse = createServerFn({ method: "GET" }).middleware([requireSu
   const { data: course, error } = await context.supabase.from("transport_missions").select("*").eq("id", data).maybeSingle();
   if (error) throw error; if (!course) throw new Error("Course introuvable ou non autorisée.");
   const permissionCodes = new Set(await getPermissionCodesForClient(context.supabase)); const canReadFinance = permissionCodes.has("missions.finance.read");
-  const [clientResult, vehicleResult, driverResult, budgetsResult, expensesResult, invoiceResult, paymentsResult, financialResult] = await Promise.all([
+  const [clientResult, vehicleResult, driverResult, expensesResult, invoiceResult, paymentsResult, financialResult] = await Promise.all([
     context.supabase.from("transport_clients").select("display_name").eq("id", course.client_id).maybeSingle(),
     course.vehicle_id ? context.supabase.from("vehicles").select("id, registration, brand, model, kilometrage, status").eq("id", course.vehicle_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     course.driver_id ? context.supabase.from("drivers").select("id, numero_permis, date_expiration_permis, employees(nom, prenom, telephone)").eq("id", course.driver_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
-    context.supabase.from("transport_mission_budget_lines").select("*").eq("mission_id", data).order("category"),
     canReadFinance ? context.supabase.from("transport_mission_expenses").select("*").eq("mission_id", data).order("expense_date", { ascending: false }) : Promise.resolve({ data: [], error: null }),
     canReadFinance ? context.supabase.from("transport_invoices").select("*").eq("mission_id", data).order("created_at", { ascending: false }) : Promise.resolve({ data: [], error: null }),
     canReadFinance ? context.supabase.from("transport_invoice_payments").select("*").eq("mission_id", data).order("payment_date", { ascending: false }) : Promise.resolve({ data: [], error: null }),
     canReadFinance ? context.supabase.rpc("get_transport_mission_financial_summary", { p_mission_id: data }) : Promise.resolve({ data: [], error: null }),
   ]);
-  for (const result of [clientResult, vehicleResult, driverResult, budgetsResult, expensesResult, invoiceResult, paymentsResult, financialResult]) if (result.error) throw result.error;
+  for (const result of [clientResult, vehicleResult, driverResult, expensesResult, invoiceResult, paymentsResult, financialResult]) if (result.error) throw result.error;
   const driver = driverResult.data;
-  return { course, clientName: clientResult.data?.display_name ?? null, vehicle: vehicleResult.data, driver: driver ? { id: driver.id, name: [driver.employees?.nom, driver.employees?.prenom].filter(Boolean).join(" ") || "Chauffeur", telephone: driver.employees?.telephone ?? null, licenseExpiry: driver.date_expiration_permis } : null, budgets: budgetsResult.data ?? [], expenses: expensesResult.data ?? [], invoices: invoiceResult.data ?? [], payments: paymentsResult.data ?? [], financial: financialResult.data?.[0] ?? null };
+  return { course, clientName: clientResult.data?.display_name ?? null, vehicle: vehicleResult.data, driver: driver ? { id: driver.id, name: [driver.employees?.nom, driver.employees?.prenom].filter(Boolean).join(" ") || "Chauffeur", telephone: driver.employees?.telephone ?? null, licenseExpiry: driver.date_expiration_permis } : null, expenses: expensesResult.data ?? [], invoices: invoiceResult.data ?? [], payments: paymentsResult.data ?? [], financial: financialResult.data?.[0] ?? null };
 });
 
 export const createCourse = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).validator(courseValuesSchema).handler(async ({ context, data }) => { const { data: course, error } = await context.supabase.rpc("create_transport_mission", { p_mission: valuesPayload(data) }); if (error) throw error; if (!course) throw new Error("La Course n’a pas été créée."); return course; });
 export const deleteCourse = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).validator(z.object({ id: idSchema }).strict()).handler(async ({ context, data }) => { const { data: deleted, error } = await context.supabase.rpc("delete_transport_mission", { p_mission_id: data.id }); if (error) throw error; if (!deleted) throw new Error("La Course n’a pas été supprimée."); return deleted; });
 export const updateCourse = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).validator(courseUpdateSchema).handler(async ({ context, data }) => { const { data: course, error } = await context.supabase.rpc("update_transport_mission", { p_mission_id: data.id, p_values: valuesPayload(data.values) }); if (error) throw error; if (!course) throw new Error("La Course n’a pas été mise à jour."); return course; });
 export const setCourseStatus = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).validator(z.object({ id: idSchema, status: z.enum(COURSE_STATUSES), reason: z.string().trim().max(2_000).nullable().default(null) }).strict()).handler(async ({ context, data }) => { const { data: course, error } = await context.supabase.rpc("set_transport_mission_status", { p_mission_id: data.id, p_status: data.status, p_reason: data.reason ?? undefined }); if (error) throw error; if (!course) throw new Error("Le statut de la Course n’a pas été mis à jour."); return course; });
-export const saveCourseBudgetLine = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).validator(z.object({ missionId: idSchema, category: z.enum(COURSE_EXPENSE_CATEGORIES), plannedAmount: z.number().finite().min(0), notes: nullableText }).strict()).handler(async ({ context, data }) => { const { data: line, error } = await context.supabase.rpc("create_transport_mission_budget_line", { p_mission_id: data.missionId, p_line: { category: data.category, planned_amount: data.plannedAmount, notes: data.notes } }); if (error) throw error; return line; });
 export const createCourseExpense = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).validator(z.object({ missionId: idSchema, expense: expenseValuesSchema }).strict()).handler(async ({ context, data }) => { const { data: expense, error } = await context.supabase.rpc("create_transport_mission_expense", { p_mission_id: data.missionId, p_expense: data.expense }); if (error) throw error; return expense; });
 export const updateCourseExpense = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).validator(z.object({ id: idSchema, expense: expenseValuesSchema.partial() }).strict()).handler(async ({ context, data }) => { const { data: expense, error } = await context.supabase.rpc("update_transport_mission_expense", { p_expense_id: data.id, p_values: data.expense }); if (error) throw error; return expense; });
 export const confirmCourseExpense = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).validator(z.object({ id: idSchema }).strict()).handler(async ({ context, data }) => { const { data: expense, error } = await context.supabase.rpc("confirm_transport_mission_expense", { p_expense_id: data.id }); if (error) throw error; return expense; });

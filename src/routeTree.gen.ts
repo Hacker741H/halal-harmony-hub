@@ -42,6 +42,7 @@ import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedStocksRouteImport } from './routes/_authenticated/stocks'
 import { Route as AuthenticatedVehiclesRouteImport } from './routes/_authenticated/vehicles'
 import { Route as AuthenticatedWalletsRouteImport } from './routes/_authenticated/wallets'
+import { Route as AuthenticatedCaisseIndexRouteImport } from './routes/_authenticated/caisse/index'
 import { Route as AuthenticatedClientsIndexRouteImport } from './routes/_authenticated/clients/index'
 import { Route as AuthenticatedClientsClientIdRouteImport } from './routes/_authenticated/clients/$clientId'
 import { Route as AuthenticatedCommerceIndexRouteImport } from './routes/_authenticated/commerce/index'
@@ -67,6 +68,7 @@ import { Route as AuthenticatedPurchasesIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedPurchasesPurchaseIdRouteImport } from './routes/_authenticated/purchases/$purchaseId'
 import { Route as AuthenticatedSalesIndexRouteImport } from './routes/_authenticated/sales/index'
 import { Route as AuthenticatedSalesSaleIdRouteImport } from './routes/_authenticated/sales/$saleId'
+import { Route as AuthenticatedStockOperationsIndexRouteImport } from './routes/_authenticated/stock-operations/index'
 import { Route as AuthenticatedStockTransfersIndexRouteImport } from './routes/_authenticated/stock-transfers/index'
 import { Route as AuthenticatedStockTransfersTransferIdRouteImport } from './routes/_authenticated/stock-transfers/$transferId'
 import { Route as AuthenticatedSuppliersIndexRouteImport } from './routes/_authenticated/suppliers/index'
@@ -247,6 +249,12 @@ const AuthenticatedWalletsRoute = AuthenticatedWalletsRouteImport.update({
   path: '/wallets',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCaisseIndexRoute =
+  AuthenticatedCaisseIndexRouteImport.update({
+    id: '/caisse/',
+    path: '/caisse/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedClientsIndexRoute =
   AuthenticatedClientsIndexRouteImport.update({
     id: '/',
@@ -394,6 +402,12 @@ const AuthenticatedSalesSaleIdRoute =
     path: '/$saleId',
     getParentRoute: () => AuthenticatedSalesRoute,
   } as any)
+const AuthenticatedStockOperationsIndexRoute =
+  AuthenticatedStockOperationsIndexRouteImport.update({
+    id: '/stock-operations/',
+    path: '/stock-operations/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedStockTransfersIndexRoute =
   AuthenticatedStockTransfersIndexRouteImport.update({
     id: '/stock-transfers/',
@@ -499,6 +513,7 @@ export interface FileRoutesByFullPath {
   '/suppliers/$supplierId': typeof AuthenticatedSuppliersSupplierIdRoute
   '/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
   '/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
+  '/caisse/': typeof AuthenticatedCaisseIndexRoute
   '/clients/': typeof AuthenticatedClientsIndexRoute
   '/commerce/': typeof AuthenticatedCommerceIndexRoute
   '/contracts/': typeof AuthenticatedContractsIndexRoute
@@ -511,6 +526,7 @@ export interface FileRoutesByFullPath {
   '/motorcycles/': typeof AuthenticatedMotorcyclesIndexRoute
   '/purchases/': typeof AuthenticatedPurchasesIndexRoute
   '/sales/': typeof AuthenticatedSalesIndexRoute
+  '/stock-operations/': typeof AuthenticatedStockOperationsIndexRoute
   '/stock-transfers/': typeof AuthenticatedStockTransfersIndexRoute
   '/suppliers/': typeof AuthenticatedSuppliersIndexRoute
   '/vehicles/': typeof AuthenticatedVehiclesIndexRoute
@@ -555,6 +571,7 @@ export interface FileRoutesByTo {
   '/suppliers/$supplierId': typeof AuthenticatedSuppliersSupplierIdRoute
   '/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
   '/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
+  '/caisse': typeof AuthenticatedCaisseIndexRoute
   '/clients': typeof AuthenticatedClientsIndexRoute
   '/commerce': typeof AuthenticatedCommerceIndexRoute
   '/contracts': typeof AuthenticatedContractsIndexRoute
@@ -567,6 +584,7 @@ export interface FileRoutesByTo {
   '/motorcycles': typeof AuthenticatedMotorcyclesIndexRoute
   '/purchases': typeof AuthenticatedPurchasesIndexRoute
   '/sales': typeof AuthenticatedSalesIndexRoute
+  '/stock-operations': typeof AuthenticatedStockOperationsIndexRoute
   '/stock-transfers': typeof AuthenticatedStockTransfersIndexRoute
   '/suppliers': typeof AuthenticatedSuppliersIndexRoute
   '/vehicles': typeof AuthenticatedVehiclesIndexRoute
@@ -625,6 +643,7 @@ export interface FileRoutesById {
   '/_authenticated/suppliers/$supplierId': typeof AuthenticatedSuppliersSupplierIdRoute
   '/_authenticated/vehicles/$vehicleId': typeof AuthenticatedVehiclesVehicleIdRoute
   '/_authenticated/wallets/$walletId': typeof AuthenticatedWalletsWalletIdRoute
+  '/_authenticated/caisse/': typeof AuthenticatedCaisseIndexRoute
   '/_authenticated/clients/': typeof AuthenticatedClientsIndexRoute
   '/_authenticated/commerce/': typeof AuthenticatedCommerceIndexRoute
   '/_authenticated/contracts/': typeof AuthenticatedContractsIndexRoute
@@ -637,6 +656,7 @@ export interface FileRoutesById {
   '/_authenticated/motorcycles/': typeof AuthenticatedMotorcyclesIndexRoute
   '/_authenticated/purchases/': typeof AuthenticatedPurchasesIndexRoute
   '/_authenticated/sales/': typeof AuthenticatedSalesIndexRoute
+  '/_authenticated/stock-operations/': typeof AuthenticatedStockOperationsIndexRoute
   '/_authenticated/stock-transfers/': typeof AuthenticatedStockTransfersIndexRoute
   '/_authenticated/suppliers/': typeof AuthenticatedSuppliersIndexRoute
   '/_authenticated/vehicles/': typeof AuthenticatedVehiclesIndexRoute
@@ -695,6 +715,7 @@ export interface FileRouteTypes {
     | '/suppliers/$supplierId'
     | '/vehicles/$vehicleId'
     | '/wallets/$walletId'
+    | '/caisse/'
     | '/clients/'
     | '/commerce/'
     | '/contracts/'
@@ -707,6 +728,7 @@ export interface FileRouteTypes {
     | '/motorcycles/'
     | '/purchases/'
     | '/sales/'
+    | '/stock-operations/'
     | '/stock-transfers/'
     | '/suppliers/'
     | '/vehicles/'
@@ -751,6 +773,7 @@ export interface FileRouteTypes {
     | '/suppliers/$supplierId'
     | '/vehicles/$vehicleId'
     | '/wallets/$walletId'
+    | '/caisse'
     | '/clients'
     | '/commerce'
     | '/contracts'
@@ -763,6 +786,7 @@ export interface FileRouteTypes {
     | '/motorcycles'
     | '/purchases'
     | '/sales'
+    | '/stock-operations'
     | '/stock-transfers'
     | '/suppliers'
     | '/vehicles'
@@ -820,6 +844,7 @@ export interface FileRouteTypes {
     | '/_authenticated/suppliers/$supplierId'
     | '/_authenticated/vehicles/$vehicleId'
     | '/_authenticated/wallets/$walletId'
+    | '/_authenticated/caisse/'
     | '/_authenticated/clients/'
     | '/_authenticated/commerce/'
     | '/_authenticated/contracts/'
@@ -832,6 +857,7 @@ export interface FileRouteTypes {
     | '/_authenticated/motorcycles/'
     | '/_authenticated/purchases/'
     | '/_authenticated/sales/'
+    | '/_authenticated/stock-operations/'
     | '/_authenticated/stock-transfers/'
     | '/_authenticated/suppliers/'
     | '/_authenticated/vehicles/'
@@ -1077,6 +1103,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWalletsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/caisse/': {
+      id: '/_authenticated/caisse/'
+      path: '/caisse'
+      fullPath: '/caisse/'
+      preLoaderRoute: typeof AuthenticatedCaisseIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/clients/': {
       id: '/_authenticated/clients/'
       path: '/'
@@ -1251,6 +1284,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/sales/$saleId'
       preLoaderRoute: typeof AuthenticatedSalesSaleIdRouteImport
       parentRoute: typeof AuthenticatedSalesRoute
+    }
+    '/_authenticated/stock-operations/': {
+      id: '/_authenticated/stock-operations/'
+      path: '/stock-operations'
+      fullPath: '/stock-operations/'
+      preLoaderRoute: typeof AuthenticatedStockOperationsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/stock-transfers/': {
       id: '/_authenticated/stock-transfers/'
@@ -1556,8 +1596,10 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPurchasesPurchaseIdRoute: typeof AuthenticatedPurchasesPurchaseIdRoute
   AuthenticatedStockTransfersTransferIdRoute: typeof AuthenticatedStockTransfersTransferIdRoute
   AuthenticatedSuppliersSupplierIdRoute: typeof AuthenticatedSuppliersSupplierIdRoute
+  AuthenticatedCaisseIndexRoute: typeof AuthenticatedCaisseIndexRoute
   AuthenticatedInventoryCountsIndexRoute: typeof AuthenticatedInventoryCountsIndexRoute
   AuthenticatedPurchasesIndexRoute: typeof AuthenticatedPurchasesIndexRoute
+  AuthenticatedStockOperationsIndexRoute: typeof AuthenticatedStockOperationsIndexRoute
   AuthenticatedStockTransfersIndexRoute: typeof AuthenticatedStockTransfersIndexRoute
   AuthenticatedSuppliersIndexRoute: typeof AuthenticatedSuppliersIndexRoute
 }
@@ -1601,9 +1643,12 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedStockTransfersTransferIdRoute:
     AuthenticatedStockTransfersTransferIdRoute,
   AuthenticatedSuppliersSupplierIdRoute: AuthenticatedSuppliersSupplierIdRoute,
+  AuthenticatedCaisseIndexRoute: AuthenticatedCaisseIndexRoute,
   AuthenticatedInventoryCountsIndexRoute:
     AuthenticatedInventoryCountsIndexRoute,
   AuthenticatedPurchasesIndexRoute: AuthenticatedPurchasesIndexRoute,
+  AuthenticatedStockOperationsIndexRoute:
+    AuthenticatedStockOperationsIndexRoute,
   AuthenticatedStockTransfersIndexRoute: AuthenticatedStockTransfersIndexRoute,
   AuthenticatedSuppliersIndexRoute: AuthenticatedSuppliersIndexRoute,
 }

@@ -327,9 +327,18 @@ function ControlCenterRow({ item }: { item: GlobalControlCenterItem }) {
           {item.amount !== null ? ` · ${formatXOF(item.amount)}` : ""}
         </p>
       </div>
-      <Button variant="outline" size="sm" asChild className="shrink-0">
-        <Link to={item.actionRoute}>{item.actionLabel}</Link>
-      </Button>
+      {item.actionRoute ? (
+        <Button variant="outline" size="sm" asChild className="shrink-0">
+          <Link to={item.actionRoute}>{item.actionLabel}</Link>
+        </Button>
+      ) : (
+        // Notification anterieure a l'ajout d'entity_route (aout 2026) :
+        // aucune destination connue -- bouton visible mais non cliquable
+        // plutot qu'un lien casse.
+        <Button variant="outline" size="sm" disabled className="shrink-0">
+          {item.actionLabel}
+        </Button>
+      )}
     </div>
   );
 }

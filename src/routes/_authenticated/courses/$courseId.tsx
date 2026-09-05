@@ -66,15 +66,15 @@ import {
   type CourseInvoice,
   type CoursePayment,
 } from "@/lib/courses.functions";
+import { formatXOF as formatAmount } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/courses/$courseId")({ component: CourseDetailsPage });
 
 type CourseStatus = (typeof COURSE_STATUSES)[number];
 
-function formatAmount(value: number | null | undefined) {
-  return value === null || value === undefined ? "Non renseigné" : `${Number(value).toLocaleString("fr-FR")} FCFA`;
-}
-
+// formatDate reste locale : s'adapte pour afficher aussi l'heure quand la
+// valeur en contient une (dateStyle+timeStyle conditionnels) -- un
+// comportement différent des formateurs partagés, propre à cet écran.
 function formatDate(value: string | null) {
   return value
     ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: value.includes("T") ? "short" : undefined }).format(new Date(value))

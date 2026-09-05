@@ -639,16 +639,35 @@ function FarmDetailsPage() {
 
         <TabsContent value="stats">
           {(() => {
-            const revenueTotal = harvests.reduce(
-              (total: number, harvest: Harvest) =>
-                total + Number(harvest.montant_total ?? Number(harvest.quantite_kg) * Number(harvest.prix_kg)),
+            // montant_total est une colonne generee (quantite_kg * prix_kg),
+            // et quantite_kg/prix_kg ne sont plus ecrits que par l'ancien
+            // circuit direct (sellHarvest) -- une recolte vendue via GFC
+            // (createCommercialSale) ou pas encore vendue a montant_total
+            // NULL pour toujours. Number(null) valant 0, les compter
+            // directement sous-estimait silencieusement les recettes ; on
+            // les exclut du total et on le dit, plutot que de les compter a
+            // 0 FCFA comme si de rien n'etait.
+            const soldDirect = harvests.filter((harvest: Harvest) => harvest.montant_total !== null);
+            const unaccountedCount = harvests.length - soldDirect.length;
+            const revenueTotal = soldDirect.reduce(
+              (total: number, harvest: Harvest) => total + Number(harvest.montant_total),
               0,
             );
             const expenseTotal = expenses.reduce((total: number, expense: Expense) => total + Number(expense.amount), 0);
             const profit = revenueTotal - expenseTotal;
             return (
               <div className="grid gap-4 md:grid-cols-3">
-                <MetricCard icon={ArrowUpRight} label="Recettes" value={formatXOF(revenueTotal)} description="Valeur totale des récoltes" tone="success" />
+                <MetricCard
+                  icon={ArrowUpRight}
+                  label="Recettes"
+                  value={formatXOF(revenueTotal)}
+                  description={
+                    unaccountedCount > 0
+                      ? `Circuit direct seulement -- ${unaccountedCount} récolte(s) hors total (vendue via GFC ou pas encore vendue)`
+                      : "Valeur des récoltes vendues via le circuit direct"
+                  }
+                  tone="success"
+                />
                 <MetricCard icon={ArrowDownRight} label="Dépenses" value={formatXOF(expenseTotal)} description="Total des dépenses liées" tone="danger" />
                 <MetricCard icon={profit >= 0 ? TrendingUp : TrendingDown} label="Bénéfice" value={formatXOF(profit)} description="Recettes moins dépenses" tone={profit >= 0 ? "success" : "warning"} />
               </div>

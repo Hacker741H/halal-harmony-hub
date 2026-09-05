@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 
-import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { WalletSelect } from "@/components/selects/entity-selects";
 import { formatXOF } from "@/lib/format";
 
 import {
@@ -13,10 +13,8 @@ import {
   type FinanceOperationValues,
 } from "@/lib/finance.functions";
 
-import {
-  getWallets,
-  type Wallet,
-} from "@/lib/wallet.functions";
+import { getWallets } from "@/lib/wallet.functions";
+import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,31 +178,13 @@ export function RevenueForm({
         <div>
           <Label htmlFor="revenue-wallet">Wallet</Label>
 
-          <Select
-            value={form.wallet_id || undefined}
-            onValueChange={(value) =>
-              setForm({
-                ...form,
-                wallet_id: value,
-              })
-            }
-          >
-            <SelectTrigger id="revenue-wallet">
-              <SelectValue placeholder="Sélectionner..." />
-            </SelectTrigger>
-            <SelectContent>
-              {wallets.map(
-                (wallet: Wallet) => (
-                  <SelectItem
-                    key={wallet.id}
-                    value={wallet.id}
-                  >
-                    {wallet.name}
-                  </SelectItem>
-                ),
-              )}
-            </SelectContent>
-          </Select>
+          <WalletSelect
+            id="revenue-wallet"
+            value={form.wallet_id}
+            onValueChange={(value) => setForm({ ...form, wallet_id: value })}
+            paymentMethodHint={form.payment_method}
+            placeholder="Sélectionner..."
+          />
         </div>
 
         <div>

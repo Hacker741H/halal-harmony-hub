@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, getRouteApi, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Banknote, Check, CheckCircle2, CircleDollarSign, CloudOff, CloudUpload, CreditCard, DoorOpen, ListTodo, LogOut, Minus, Package, PackagePlus, Pencil, Plus, ReceiptText, Search, ShoppingCart, Smartphone, Store, Trash2, UserPlus, UserRoundX, WalletCards, Wrench, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { PosCashSessionClose } from "@/components/commerce/pos-cash-session-close";
 import { StoreManagementCockpit } from "@/components/commerce/store-management-cockpit";
-import { ClientSelect } from "@/components/selects/entity-selects";
+import { ClientSelect, InventoryLocationItemSelect, WalletSelect } from "@/components/selects/entity-selects";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,8 +30,10 @@ import {
   receiveCommerceInventoryItem,
   setupCommerceLocation,
   updateCommerceLocation,
+  writeOffCommerceInventoryItem,
   type CommercePosLocation,
 } from "@/lib/commerce-pos.functions";
+import { markVoluntarySignOut } from "@/lib/auth-session-resync";
 import { getWallets } from "@/lib/wallet.functions";
 import { useCommercePosSession } from "@/hooks/use-commerce-pos-session";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -45,11 +47,6 @@ import { cn } from "@/lib/utils";
 type CartLine = CommercePosDraftLine;
 type PaymentMethod = CommercePosPaymentMethod;
 
-// Bug global (retour de focus, point 3) : getRouteApi plutot que useSearch/
-// useNavigate importes nus -- ce composant n'est pas lui-meme le fichier de
-// la route, et c'est le pattern documente pour garder l'inference de type
-// (from) fiable depuis un composant enfant.
-const commerceRouteApi = getRouteApi("/_authenticated/commerce/");
 
 const money = (amount: number) => `${amount.toLocaleString("fr-FR")} FCFA`;
 
@@ -61,28 +58,13 @@ const paymentMethods: Array<{ value: PaymentMethod; label: string; icon: typeof 
   { value: "OTHER", label: "Autre", icon: WalletCards },
 ];
 
-export function CommercePosWorkspace() {
-  const { canAny, isPending } = usePermissions();
-  // Bug global (retour de focus, point 3) : caisse vs gestion vit dans l'URL
-  // -- un remount de l'app (queryClient.clear() sur un vrai changement
-  // d'identite, un reload volontaire) retrouve le meme onglet au lieu de
-  // revenir silencieusement a "management" par defaut.
-  const search = commerceRouteApi.useSearch();
-  const navigate = commerceRouteApi.useNavigate();
-  const canUseManagementWorkspace = canAny(["locations.manage", "commerce.stock.receive", "sales.finance.read", "store.financial.read", "store.stock_valuation.read", "store.expenses.read"]);
-  const workspaceMode: "management" | "cashier" = canUseManagementWorkspace && search.view !== "caisse" ? "management" : "cashier";
-  const setWorkspaceMode = (mode: "management" | "cashier") => {
-    void navigate({ search: (prev) => ({ ...prev, view: mode === "cashier" ? "caisse" : undefined }) });
-  };
-
-  if (isPending) return <div className="grid gap-4 lg:grid-cols-3"><Skeleton className="h-48 lg:col-span-2" /><Skeleton className="h-48" /></div>;
-  if (workspaceMode === "management") {
-    return <CommerceManagementWorkspace onOpenCashier={() => setWorkspaceMode("cashier")} />;
-  }
-  return <CommerceCashierWorkspace onBackToManagement={canUseManagementWorkspace ? () => setWorkspaceMode("management") : undefined} />;
-}
-
-function CommerceManagementWorkspace({ onOpenCashier }: { onOpenCashier: () => void }) {
+// Caisse (vente) et Magasins (administration) sont deux routes distinctes
+// (/caisse et /commerce), jamais un seul écran qui bascule de mode -- ce
+// composant est monté directement par la route /commerce, qui ne concerne
+// plus que l'administration d'un magasin. La navigation vers la caisse
+// elle-même est une vraie navigation de route (onOpenCashier), pas un
+// paramètre d'URL local.
+export function CommerceManagementWorkspace({ onOpenCashier }: { onOpenCashier: () => void }) {
   const queryClient = useQueryClient();
   const { can } = usePermissions();
   const canManageStock = can("commerce.stock.receive");
@@ -136,6 +118,7 @@ function CommerceManagementWorkspace({ onOpenCashier }: { onOpenCashier: () => v
     actions={<>
       {canManageLocations ? <><CommerceLocationDialog mode="create" onDone={handleLocationSaved} /><CommerceLocationDialog mode="edit" location={dashboard?.location} primaryWalletId={dashboard?.cashDrawer?.id ?? ""} onDone={handleLocationSaved} /></> : null}
       {canReceiveCommerceInventory ? <CommerceQuickInventoryReceipt locationId={selectedLocationId} locationName={dashboard?.location.name ?? managementLocations.find((location) => location.id === selectedLocationId)?.name ?? "ce magasin"} onSaved={refreshDashboard} /> : null}
+      {canManageStock ? <CommerceQuickInventoryWriteOff locationId={selectedLocationId} locationName={dashboard?.location.name ?? managementLocations.find((location) => location.id === selectedLocationId)?.name ?? "ce magasin"} onSaved={refreshDashboard} /> : null}
       {canManageStock ? <CommerceInventorySetup locationId={selectedLocationId} onSaved={refreshDashboard} /> : null}
     </>}
   />;
@@ -167,7 +150,7 @@ function isIndeterminateCheckoutError(error: unknown): boolean {
   return /network|timeout|timed out|failed to fetch|load failed/i.test(error.message);
 }
 
-function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?: () => void }) {
+export function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?: () => void }) {
   const queryClient = useQueryClient();
   const { can } = usePermissions();
   const canManageStock = can("commerce.stock.receive");
@@ -184,6 +167,7 @@ function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManagement?:
   // so the extra control would just be redundant clutter for them.
   const isCashierOnlyShell = currentUserQuery.isCashierOnly;
   const signOut = useCallback(async () => {
+    markVoluntarySignOut();
     await supabase.auth.signOut();
     navigate({ to: "/auth", replace: true });
   }, [navigate]);
@@ -1037,10 +1021,7 @@ function CommerceLocationForm({ mode, location, primaryWalletId = "", onDone }: 
       </div>
       <div className="space-y-1">
         <Label>Wallet de caisse</Label>
-        <Select value={walletId} onValueChange={setWalletId}>
-          <SelectTrigger><SelectValue placeholder="Choisir le wallet" /></SelectTrigger>
-          <SelectContent>{optionsQuery.data?.wallets.map((wallet) => <SelectItem key={wallet.id} value={wallet.id}>{wallet.name}</SelectItem>)}</SelectContent>
-        </Select>
+        <WalletSelect value={walletId} onValueChange={setWalletId} placeholder="Choisir le wallet" />
         <p className="text-caption">Modifier le wallet conserve toutes les ventes historiques dans leur wallet d’origine.</p>
       </div>
       {!isEdit ? (
@@ -1169,8 +1150,12 @@ function CommerceLocationDialog({ mode, location, primaryWalletId, onDone }: Com
 function CommerceQuickInventoryReceipt({ locationId, locationName, onSaved, triggerVariant = "default" }: { locationId: string; locationName: string; onSaved: () => void; triggerVariant?: "default" | "outline" }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<"new" | "restock">("new");
+  // Restocking an existing article is the more frequent daily gesture than
+  // creating a brand-new one -- it should be what the user sees first, not
+  // an extra toggle away.
+  const [mode, setMode] = useState<"new" | "restock">("restock");
   const [itemId, setItemId] = useState("");
+  const quantityInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [sku, setSku] = useState("");
@@ -1189,7 +1174,7 @@ function CommerceQuickInventoryReceipt({ locationId, locationName, onSaved, trig
   const grossMarginPerUnit = Number(salePrice || 0) - Number(purchaseUnitPrice || 0);
   const canSubmit = Boolean(locationId && walletId && quantity && purchaseUnitPrice && salePrice && (mode === "new" ? name.trim() : itemId));
   const reset = () => {
-    setMode("new"); setItemId(""); setName(""); setCategory(""); setSku(""); setUnit("Piece"); setQuantity(""); setPurchaseUnitPrice(""); setSalePrice(""); setWalletId(""); setSupplier(""); setReference(""); setReorderLevel("");
+    setMode("restock"); setItemId(""); setName(""); setCategory(""); setSku(""); setUnit("Piece"); setQuantity(""); setPurchaseUnitPrice(""); setSalePrice(""); setWalletId(""); setSupplier(""); setReference(""); setReorderLevel("");
   };
   const mutation = useMutation({
     mutationFn: receiveCommerceInventoryItem,
@@ -1213,6 +1198,13 @@ function CommerceQuickInventoryReceipt({ locationId, locationName, onSaved, trig
     setItemId(value);
     setSalePrice(item?.salePrice === null || item?.salePrice === undefined ? "" : String(item.salePrice));
     setReorderLevel(item?.reorderLevel === null || item?.reorderLevel === undefined ? "" : String(item.reorderLevel));
+    // Price drifts between purchases, so it's only a starting point (stays
+    // editable) -- but re-typing the exact same last cost every single
+    // restock is pure friction. Quantity is deliberately NOT prefilled: how
+    // much is being received now is a new fact every time, and defaulting
+    // it risks a silently-wrong receipt if it's left unchanged by mistake.
+    setPurchaseUnitPrice(item?.lastUnitCost === null || item?.lastUnitCost === undefined ? "" : String(item.lastUnitCost));
+    requestAnimationFrame(() => quantityInputRef.current?.focus());
   };
   const save = () => {
     if (!canSubmit) return;
@@ -1255,12 +1247,12 @@ function CommerceQuickInventoryReceipt({ locationId, locationName, onSaved, trig
             <div className="space-y-1 sm:col-span-2"><Label htmlFor="commerce-receipt-name">Nom de l’article *</Label><Input id="commerce-receipt-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex. Chargeur rapide USB-C" autoFocus /></div>
             <div className="space-y-1"><Label htmlFor="commerce-receipt-category">Catégorie <span className="font-normal text-muted-foreground">(facultatif)</span></Label><Input id="commerce-receipt-category" value={category} onChange={(event) => setCategory(event.target.value)} placeholder="Accessoires téléphone" /></div>
             <div className="space-y-1"><Label htmlFor="commerce-receipt-sku">Référence <span className="font-normal text-muted-foreground">(facultatif)</span></Label><Input id="commerce-receipt-sku" value={sku} onChange={(event) => setSku(event.target.value)} placeholder="USB-C-20W" /></div>
-          </> : <div className="space-y-2 sm:col-span-2"><Label>Article à réapprovisionner *</Label><Select value={itemId} onValueChange={selectExistingItem} disabled={catalogueQuery.isPending || catalogueQuery.isError || !catalogueQuery.data?.length}><SelectTrigger><SelectValue placeholder={catalogueQuery.isPending ? "Chargement…" : catalogueQuery.isError ? "Catalogue indisponible" : catalogueQuery.data?.length ? "Choisir un article déjà créé" : "Aucun article dans le catalogue"} /></SelectTrigger><SelectContent>{catalogueQuery.data?.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}{item.sku ? ` · ${item.sku}` : ""}</SelectItem>)}</SelectContent></Select>{catalogueQuery.isError ? <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/25 bg-destructive/[0.06] px-3 py-2 text-xs text-destructive"><span>Le catalogue des articles n’a pas pu être chargé. Aucune réception ne sera enregistrée tant que cette erreur persiste.</span><Button type="button" size="sm" variant="outline" onClick={() => void catalogueQuery.refetch()}>Réessayer</Button></div> : null}{catalogueQuery.isSuccess && !catalogueQuery.data.length ? <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/35 px-3 py-2 text-xs text-muted-foreground"><span>Aucun article existant à réapprovisionner. Créez d’abord l’article une seule fois ; il apparaîtra ensuite ici.</span><Button type="button" size="sm" variant="outline" onClick={() => setMode("new")}>Nouvel article</Button></div> : null}{selectedItem ? <p className="text-xs text-muted-foreground">En rayon : {selectedItem.locationQuantity} {selectedItem.unit ?? "unité"} · stock global : {selectedItem.globalQuantity}.</p> : null}</div>}
+          </> : <div className="space-y-2 sm:col-span-2"><Label htmlFor="commerce-receipt-existing-item">Article à réapprovisionner *</Label><InventoryLocationItemSelect id="commerce-receipt-existing-item" value={itemId} onValueChange={selectExistingItem} disabled={catalogueQuery.isPending || catalogueQuery.isError || !catalogueQuery.data?.length} items={catalogueQuery.data ?? []} placeholder={catalogueQuery.isPending ? "Chargement…" : catalogueQuery.isError ? "Catalogue indisponible" : catalogueQuery.data?.length ? "Rechercher un article déjà créé…" : "Aucun article dans le catalogue"} />{catalogueQuery.isError ? <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/25 bg-destructive/[0.06] px-3 py-2 text-xs text-destructive"><span>Le catalogue des articles n’a pas pu être chargé. Aucune réception ne sera enregistrée tant que cette erreur persiste.</span><Button type="button" size="sm" variant="outline" onClick={() => void catalogueQuery.refetch()}>Réessayer</Button></div> : null}{catalogueQuery.isSuccess && !catalogueQuery.data.length ? <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/35 px-3 py-2 text-xs text-muted-foreground"><span>Aucun article existant à réapprovisionner. Créez d’abord l’article une seule fois ; il apparaîtra ensuite ici.</span><Button type="button" size="sm" variant="outline" onClick={() => setMode("new")}>Nouvel article</Button></div> : null}{selectedItem ? <p className="text-xs text-muted-foreground">En rayon : {selectedItem.locationQuantity} {selectedItem.unit ?? "unité"} · stock global : {selectedItem.globalQuantity}.</p> : null}</div>}
           {mode === "new" ? <div className="space-y-1"><Label htmlFor="commerce-receipt-unit">Unité</Label><Input id="commerce-receipt-unit" value={unit} onChange={(event) => setUnit(event.target.value)} placeholder="Pièce" /></div> : null}
-          <div className="space-y-1"><Label htmlFor="commerce-receipt-quantity">Quantité reçue *</Label><Input id="commerce-receipt-quantity" type="number" min="0.001" step="0.001" inputMode="decimal" value={quantity} onChange={(event) => setQuantity(event.target.value)} placeholder="0" /></div>
+          <div className="space-y-1"><Label htmlFor="commerce-receipt-quantity">Quantité reçue *</Label><Input ref={quantityInputRef} id="commerce-receipt-quantity" type="number" min="0.001" step="0.001" inputMode="decimal" value={quantity} onChange={(event) => setQuantity(event.target.value)} placeholder="0" /></div>
           <div className="space-y-1"><Label htmlFor="commerce-receipt-purchase-price">Prix d’achat unitaire (FCFA) *</Label><Input id="commerce-receipt-purchase-price" type="number" min="1" step="1" inputMode="numeric" value={purchaseUnitPrice} onChange={(event) => setPurchaseUnitPrice(event.target.value)} placeholder="0" /></div>
           <div className="space-y-1"><Label htmlFor="commerce-receipt-sale-price">Prix de vente unitaire (FCFA) *</Label><Input id="commerce-receipt-sale-price" type="number" min="0" step="1" inputMode="numeric" value={salePrice} onChange={(event) => setSalePrice(event.target.value)} placeholder="0" /></div>
-          <div className="space-y-1 sm:col-span-2"><Label>Wallet débité pour l’achat *</Label><Select value={walletId} onValueChange={setWalletId}><SelectTrigger><SelectValue placeholder={walletsQuery.isPending ? "Chargement des wallets…" : "Choisir le wallet qui paie le fournisseur"} /></SelectTrigger><SelectContent>{walletsQuery.data?.map((wallet) => <SelectItem key={wallet.id} value={wallet.id}>{wallet.name} · {wallet.type}</SelectItem>)}</SelectContent></Select><p className="text-xs text-muted-foreground">Le débit est créé par le moteur financier existant, jamais manuellement.</p></div>
+          <div className="space-y-1 sm:col-span-2"><Label>Wallet débité pour l’achat *</Label><WalletSelect value={walletId} onValueChange={setWalletId} placeholder="Choisir le wallet qui paie le fournisseur" /><p className="text-xs text-muted-foreground">Le débit est créé par le moteur financier existant, jamais manuellement.</p></div>
           <div className="space-y-1"><Label htmlFor="commerce-receipt-supplier">Fournisseur <span className="font-normal text-muted-foreground">(facultatif)</span></Label><Input id="commerce-receipt-supplier" value={supplier} onChange={(event) => setSupplier(event.target.value)} placeholder="Nom du fournisseur" /></div>
           <div className="space-y-1"><Label htmlFor="commerce-receipt-reorder">Seuil d’alerte <span className="font-normal text-muted-foreground">(facultatif)</span></Label><Input id="commerce-receipt-reorder" type="number" min="0" step="0.001" inputMode="decimal" value={reorderLevel} onChange={(event) => setReorderLevel(event.target.value)} placeholder="Ex. 3" /></div>
           <div className="space-y-1 sm:col-span-2"><Label htmlFor="commerce-receipt-reference">Référence d’achat <span className="font-normal text-muted-foreground">(facultatif)</span></Label><Input id="commerce-receipt-reference" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Facture fournisseur, reçu ou référence mobile money" /></div>
@@ -1270,6 +1262,88 @@ function CommerceQuickInventoryReceipt({ locationId, locationName, onSaved, trig
           <div><p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Marge brute prévisionnelle / unité</p><p className={`mt-1 text-lg font-semibold tabular-nums ${grossMarginPerUnit < 0 ? "text-destructive" : "text-success"}`}>{money(grossMarginPerUnit)}</p><p className="mt-1 text-xs text-muted-foreground">Prix de vente moins prix d’achat, hors autres charges.</p></div>
         </div>
         <DialogFooter><Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={mutation.isPending}>Annuler</Button><Button type="button" onClick={save} disabled={!canSubmit || mutation.isPending}>{mutation.isPending ? "Réception en cours…" : "Ajouter au magasin"}</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const WRITE_OFF_REASONS = ["Perte ou vol", "Casse", "Péremption", "Autre"] as const;
+
+// The deliberate mirror of CommerceQuickInventoryReceipt: same dialog
+// shape, same catalogue picker -- but no price field, no wallet field at
+// all. That absence is itself the visual confirmation to whoever fills it
+// in that this action never touches money, only the shelf count.
+function CommerceQuickInventoryWriteOff({ locationId, locationName, onSaved }: { locationId: string; locationName: string; onSaved: () => void }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [itemId, setItemId] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [reasonCategory, setReasonCategory] = useState<(typeof WRITE_OFF_REASONS)[number]>(WRITE_OFF_REASONS[0]);
+  const [note, setNote] = useState("");
+  const catalogueQuery = useQuery({ queryKey: ["commerce-inventory-catalogue", locationId], queryFn: () => getCommerceInventoryCatalogue({ data: { locationId } }), enabled: open && Boolean(locationId) });
+  const availableItems = useMemo(() => (catalogueQuery.data ?? []).filter((item) => item.locationQuantity > 0), [catalogueQuery.data]);
+  const selectedItem = availableItems.find((item) => item.id === itemId);
+  const reason = note.trim() ? `${reasonCategory} — ${note.trim()}` : reasonCategory;
+  const quantityValue = Number(quantity || 0);
+  const exceedsStock = Boolean(selectedItem) && quantityValue > (selectedItem?.locationQuantity ?? 0);
+  const canSubmit = Boolean(locationId && itemId && quantity && quantityValue > 0 && !exceedsStock);
+  const reset = () => { setItemId(""); setQuantity(""); setReasonCategory(WRITE_OFF_REASONS[0]); setNote(""); };
+  const mutation = useMutation({
+    mutationFn: writeOffCommerceInventoryItem,
+    onSuccess: async () => {
+      toast.success("Retrait enregistré. Le stock de ce magasin est à jour.");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["commerce-inventory-catalogue", locationId] }),
+        queryClient.invalidateQueries({ queryKey: ["commerce-pos-workspace", locationId] }),
+        queryClient.invalidateQueries({ queryKey: ["commerce-management-dashboard", locationId] }),
+        queryClient.invalidateQueries({ queryKey: ["stock-movements"] }),
+      ]);
+      onSaved();
+      reset();
+      setOpen(false);
+    },
+    onError: (error) => toast.error(error instanceof Error && error.message ? error.message : "Le retrait a été refusé. Aucun stock n’a été modifié."),
+  });
+  const save = () => {
+    if (!canSubmit) return;
+    mutation.mutate({ data: { businessLocationId: locationId, inventoryItemId: itemId, quantity: quantityValue, reason } });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(nextOpen) => { setOpen(nextOpen); if (!nextOpen && !mutation.isPending) reset(); }}>
+      <DialogTrigger asChild><Button type="button" variant="outline"><Minus /> Retirer un produit</Button></DialogTrigger>
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Retirer un produit du magasin</DialogTitle>
+          <DialogDescription>Perte, casse ou péremption : le stock de ce magasin baisse immédiatement. Aucun wallet, aucune écriture financière n’est créée — rien n’a été payé.</DialogDescription>
+        </DialogHeader>
+        <div className="rounded-xl border border-primary/15 bg-primary/[0.06] px-4 py-3 text-sm">
+          <span className="font-semibold">Magasin sélectionné : </span>{locationName}
+        </div>
+        <div className="grid gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="commerce-writeoff-item">Article *</Label>
+            <InventoryLocationItemSelect id="commerce-writeoff-item" value={itemId} onValueChange={setItemId} disabled={catalogueQuery.isPending || catalogueQuery.isError || !availableItems.length} items={availableItems} placeholder={catalogueQuery.isPending ? "Chargement…" : catalogueQuery.isError ? "Catalogue indisponible" : availableItems.length ? "Rechercher un article en rayon…" : "Aucun article en rayon dans ce magasin"} />
+            {selectedItem ? <p className="text-xs text-muted-foreground">En rayon : {selectedItem.locationQuantity} {selectedItem.unit ?? "unité"}.</p> : null}
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="commerce-writeoff-quantity">Quantité à retirer *</Label>
+            <Input id="commerce-writeoff-quantity" type="number" min="0.001" step="0.001" max={selectedItem?.locationQuantity} inputMode="decimal" value={quantity} onChange={(event) => setQuantity(event.target.value)} placeholder="0" />
+            {exceedsStock ? <p className="text-xs font-medium text-destructive">Dépasse le stock en rayon ({selectedItem?.locationQuantity}).</p> : null}
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="commerce-writeoff-reason">Motif *</Label>
+            <Select value={reasonCategory} onValueChange={(value) => setReasonCategory(value as (typeof WRITE_OFF_REASONS)[number])}>
+              <SelectTrigger id="commerce-writeoff-reason"><SelectValue /></SelectTrigger>
+              <SelectContent>{WRITE_OFF_REASONS.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="commerce-writeoff-note">Précision <span className="font-normal text-muted-foreground">(facultatif)</span></Label>
+            <Input id="commerce-writeoff-note" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Ex. carton tombé en réserve" />
+          </div>
+        </div>
+        <DialogFooter><Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={mutation.isPending}>Annuler</Button><Button type="button" variant="destructive" onClick={save} disabled={!canSubmit || mutation.isPending}>{mutation.isPending ? "Retrait en cours…" : "Confirmer le retrait"}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );

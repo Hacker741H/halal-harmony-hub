@@ -17,15 +17,12 @@ import { OperationalHero } from "@/components/ui/operational-hero";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePermissions } from "@/hooks/use-permissions";
 import { COMMERCIAL_SALE_STATUSES, getCommercialSales } from "@/lib/commercial-sales.functions";
+import { formatXOF as formatAmount } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/sales/")({
   validateSearch: z.object({ clientId: z.string().uuid().optional() }),
   component: SalesPage,
 });
-
-function formatAmount(value: number) {
-  return `${value.toLocaleString("fr-FR")} FCFA`;
-}
 
 function statusLabel(status: string) {
   const labels: Record<string, string> = { DRAFT: "Brouillon", CONFIRMED: "Confirmée", CANCELLED: "Annulée", ARCHIVED: "Archivée" };

@@ -18,6 +18,7 @@ import {
   getVehicleAssignments,
   type AssignmentDriver,
 } from "@/lib/assignments.functions";
+import { formatDate } from "@/lib/format";
 
 type Props =
   | { assetType: "vehicle"; assetId: string }
@@ -31,10 +32,6 @@ type AssignmentDisplay = {
   notes: string | null;
   driver: AssignmentDriver | null;
 };
-
-function formatDate(value: string | null) {
-  return value ? new Intl.DateTimeFormat("fr-FR").format(new Date(`${value}T00:00:00`)) : "Date inconnue";
-}
 
 export function DriverAssignmentPanel({ assetType, assetId }: Props) {
   const queryClient = useQueryClient();

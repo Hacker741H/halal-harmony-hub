@@ -20,7 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { usePermissions } from "@/hooks/use-permissions";
-import { formatNumber } from "@/lib/format";
+import { formatNumber, formatXOF as formatAmount } from "@/lib/format";
 import {
   cancelCommerceSaleRefund,
   confirmCommerceSaleRefund,
@@ -47,10 +47,8 @@ import {
 
 export const Route = createFileRoute("/_authenticated/sales/$saleId")({ component: CommercialSaleDetailsPage });
 
-function formatAmount(value: number | null | undefined) {
-  return `${Number(value ?? 0).toLocaleString("fr-FR")} FCFA`;
-}
-
+// formatDate reste locale (dateStyle "medium", ancrage midi) -- style
+// différent de src/lib/format.ts, propre à cet écran.
 function formatDate(value: string | null) {
   return value ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(new Date(`${value}T12:00:00`)) : "—";
 }

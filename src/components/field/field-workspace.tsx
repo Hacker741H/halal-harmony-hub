@@ -86,6 +86,7 @@ import {
   saveOfflineFieldDeclarationDraft,
   type OfflineFieldDeclarationDraft,
 } from "@/lib/field-offline-drafts";
+import { formatXOF as formatAmount } from "@/lib/format";
 
 const REPORT_LABELS: Record<string, string> = {
   DRAFT: "Brouillon",
@@ -123,10 +124,11 @@ function declarationVariant(status: string): "success" | "warning" | "danger" | 
   return "outline";
 }
 
-function formatAmount(value: number) {
-  return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(value)} FCFA`;
-}
-
+// formatDate reste locale à ce fichier : dateStyle "medium" (ex. "4 sept.
+// 2026") et un ancrage midi plutôt que minuit -- un style et une marge de
+// sécurité de fuseau différents de src/lib/format.ts, propres à Terrain.
+// Uniformiser changerait l'affichage visible de cet écran ; hors périmètre
+// d'un nettoyage de duplication.
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(
     new Date(`${value.slice(0, 10)}T12:00:00`),
@@ -397,7 +399,25 @@ export function FieldReportWorkspace({ reportId }: { reportId: string }) {
   };
 
   useEffect(() => {
-    void refreshOfflineDrafts();
+    // reportId est un paramètre de route ; TanStack Router ne démonte pas
+    // ce composant en passant d'un rapport à un autre, donc sans garde,
+    // une lecture IndexedDB encore en vol pour l'ANCIEN rapport pouvait
+    // écraser l'état du NOUVEAU si elle se résolvait après le changement
+    // -- pas un simple avertissement de démontage, un vrai mélange de
+    // données entre deux rapports différents.
+    let cancelled = false;
+    (async () => {
+      try {
+        setOfflineDraftsLoading(true);
+        const drafts = await getOfflineFieldDeclarationDrafts(reportId);
+        if (!cancelled) setOfflineDrafts(drafts);
+      } catch (error) {
+        if (!cancelled) console.warn("Impossible de lire les brouillons terrain locaux.", error);
+      } finally {
+        if (!cancelled) setOfflineDraftsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [reportId]);
 
   const saveOfflineDraft = async (values: FieldDeclarationValues) => {

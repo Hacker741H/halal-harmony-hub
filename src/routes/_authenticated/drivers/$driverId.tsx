@@ -27,13 +27,10 @@ import { getDriverAssignments } from "@/lib/assignments.functions";
 import { getContractsForRelation } from "@/lib/contracts.functions";
 import { getDocumentsForRelation } from "@/lib/documents.functions";
 import { getDriver, getDriverFinanceOperations } from "@/lib/drivers.functions";
+import { formatXOF as formatAmount } from "@/lib/format";
 import { getSalaryPaymentsByDriver } from "@/lib/salary-payments.functions";
 
 export const Route = createFileRoute("/_authenticated/drivers/$driverId")({ component: DriverDetailsPage });
-
-function formatAmount(value: number) {
-  return `${value.toLocaleString("fr-FR")} FCFA`;
-}
 
 function DriverDetailsPage() {
   const { driverId } = Route.useParams();

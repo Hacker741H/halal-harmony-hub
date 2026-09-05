@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { WalletSelect } from "@/components/selects/entity-selects";
 import {
   createVehicle,
   updateVehicle,
@@ -16,7 +17,7 @@ import {
   type VehicleStatus,
   type VehicleValues,
 } from "@/lib/vehicles.functions";
-import { getWallets, type Wallet } from "@/lib/wallet.functions";
+import { getWallets } from "@/lib/wallet.functions";
 import { getDrivers, type DriverWithEmployee } from "@/lib/drivers.functions";
 
 type Props = {
@@ -262,12 +263,12 @@ export default function VehicleForm({ vehicle, onSuccess }: Props) {
           </div>
           <div>
             <Label htmlFor="vehicle-purchase-wallet">Wallet de paiement</Label>
-            <Select value={form.purchase_wallet_id || undefined} onValueChange={(value) => setForm({ ...form, purchase_wallet_id: value })}>
-              <SelectTrigger id="vehicle-purchase-wallet"><SelectValue placeholder="Choisir…" /></SelectTrigger>
-              <SelectContent>
-                {wallets.map((wallet: Wallet) => <SelectItem key={wallet.id} value={wallet.id}>{wallet.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <WalletSelect
+              id="vehicle-purchase-wallet"
+              value={form.purchase_wallet_id}
+              onValueChange={(value) => setForm({ ...form, purchase_wallet_id: value })}
+              placeholder="Choisir…"
+            />
           </div>
           <div>
             <Label htmlFor="vehicle-supplier">Fournisseur</Label>

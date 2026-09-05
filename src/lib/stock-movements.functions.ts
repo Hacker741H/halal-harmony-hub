@@ -71,13 +71,6 @@ const stockMovementValuesSchema = stockMovementObjectSchema
     validateStockMovement(value, context);
   });
 
-const updateStockMovementSchema = stockMovementObjectSchema
-  .extend({ id: stockMovementIdSchema })
-  .strict()
-  .superRefine((value, context) => {
-    validateStockMovement(value, context);
-  });
-
 // Hard cap: stock_movements is explicitly expected to grow to thousands of
 // rows and both queries below previously fetched the entire table/item
 // history unbounded. Ordered by most recent first, so the cap always keeps
@@ -102,24 +95,6 @@ export const getStockMovements = createServerFn({
     return data ?? [];
   });
 
-export const getStockMovementsByItem = createServerFn({
-  method: "GET",
-})
-  .middleware([requireSupabaseAuth])
-  .validator(z.string().uuid())
-  .handler(async ({ context, data }) => {
-    const { data: movements, error } = await context.supabase
-      .from("stock_movements")
-      .select("*")
-      .eq("inventory_item_id", data)
-      .order("movement_date", { ascending: false })
-      .range(0, STOCK_MOVEMENTS_HARD_CAP - 1);
-
-    if (error) throw error;
-
-    return movements ?? [];
-  });
-
 export const createStockMovement = createServerFn({
   method: "POST",
 })
@@ -133,23 +108,6 @@ export const createStockMovement = createServerFn({
 
     if (error) throw error;
     if (!movement) throw new Error("Le mouvement de stock n'a pas été créé.");
-
-    return movement;
-  });
-
-export const updateStockMovement = createServerFn({
-  method: "POST",
-})
-  .middleware([requireSupabaseAuth])
-  .validator(updateStockMovementSchema)
-  .handler(async ({ context, data }) => {
-    const { data: movement, error } = await context.supabase.rpc(
-      "update_stock_movement_with_finance",
-      { p_movement: data },
-    );
-
-    if (error) throw error;
-    if (!movement) throw new Error("Le mouvement de stock n'a pas été mis à jour.");
 
     return movement;
   });

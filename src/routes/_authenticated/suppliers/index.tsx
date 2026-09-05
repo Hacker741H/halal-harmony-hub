@@ -1,8 +1,8 @@
 import { useState } from "react";
 
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Contact, Plus } from "lucide-react";
+import { Contact, Plus, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 
 import { SupplierForm } from "@/components/suppliers/supplier-form";
@@ -73,12 +73,22 @@ function SuppliersPage() {
         description="Un référentiel fournisseur unique pour tracer les achats, réceptions et dettes sans dupliquer les coordonnées."
         primaryStat={{ label: "Fournisseurs", value: total }}
         actions={
-          can("suppliers.create") ? (
-            <Button onClick={() => { setEditingSupplier(null); setDialogOpen(true); }}>
-              <Plus className="h-4 w-4" />
-              Nouveau fournisseur
-            </Button>
-          ) : null
+          <>
+            {can("purchases.read") ? (
+              <Button asChild variant="outline">
+                <Link to="/purchases">
+                  <ShoppingCart className="h-4 w-4" />
+                  Tous les achats
+                </Link>
+              </Button>
+            ) : null}
+            {can("suppliers.create") ? (
+              <Button onClick={() => { setEditingSupplier(null); setDialogOpen(true); }}>
+                <Plus className="h-4 w-4" />
+                Nouveau fournisseur
+              </Button>
+            ) : null}
+          </>
         }
       />
 

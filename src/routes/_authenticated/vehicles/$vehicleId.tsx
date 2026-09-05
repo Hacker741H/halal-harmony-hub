@@ -139,9 +139,18 @@ function VehicleDetailsPage() {
   }
 
   async function refreshMaintenances() {
+    // Une maintenance avec coût débite un wallet (create_vehicle_maintenance_
+    // with_finance) -- sans ces invalidations, ce wallet et le journal
+    // Finance restaient périmés jusqu'à 10s (ou indéfiniment si déjà en
+    // cache ailleurs). Même correction que le paiement de salaire, qui
+    // l'a déjà (employees/index.tsx).
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["vehicle-maintenances", vehicleId] }),
       queryClient.invalidateQueries({ queryKey: ["vehicle-finance-operations", vehicleId] }),
+      queryClient.invalidateQueries({ queryKey: ["wallets"] }),
+      queryClient.invalidateQueries({ queryKey: ["wallet-stats"] }),
+      queryClient.invalidateQueries({ queryKey: ["finance-operations"] }),
+      queryClient.invalidateQueries({ queryKey: ["treasury"] }),
     ]);
     setMaintenanceDialogOpen(false);
     setSelectedMaintenance(null);

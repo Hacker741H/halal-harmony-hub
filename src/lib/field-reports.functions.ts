@@ -222,7 +222,21 @@ export const getFieldWallets = createServerFn({ method: "GET" })
       .select("id, name, type, color, balance")
       .in("id", walletIds);
     if (walletsError) throw walletsError;
-    const walletsById = new Map((wallets ?? []).map((wallet) => [wallet.id, wallet]));
+    // Un wallet parent (qui a des sous-wallets) n'est jamais transactionnel
+    // -- assign_field_wallet le rejette déjà à l'affectation, mais une
+    // affectation plus ancienne pourrait viser un wallet devenu parent
+    // depuis (conversion). Requête dédiée (et non un filtre sur `wallets`
+    // ci-dessus) car un enfant peut exister sans être lui-même affecté à
+    // cet utilisateur -- même règle que WalletSelect, vérifiée correctement.
+    const { data: parentRows, error: parentError } = await context.supabase
+      .from("wallets")
+      .select("parent_wallet_id")
+      .in("parent_wallet_id", walletIds);
+    if (parentError) throw parentError;
+    const parentIds = new Set((parentRows ?? []).flatMap((w) => (w.parent_wallet_id ? [w.parent_wallet_id] : [])));
+    const walletsById = new Map(
+      (wallets ?? []).filter((wallet) => !parentIds.has(wallet.id)).map((wallet) => [wallet.id, wallet]),
+    );
     return rows.flatMap((assignment) => {
       const wallet = walletsById.get(assignment.wallet_id);
       return wallet ? [{ ...assignment, wallet }] : [];
@@ -269,10 +283,18 @@ export const getFieldAssignableWallets = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: wallets, error } = await supabaseAdmin
       .from("wallets")
-      .select("id, name, type, color, balance")
+      .select("id, name, type, color, balance, parent_wallet_id")
       .order("name", { ascending: true });
     if (error) throw error;
-    return wallets ?? [];
+    // Un wallet parent (qui a des sous-wallets) n'est jamais transactionnel
+    // -- exclu de la liste des candidats, même règle que WalletSelect. La
+    // requête ci-dessus porte déjà sur tous les wallets, donc un seul
+    // passage suffit pour identifier qui est parent de qui.
+    const rows = wallets ?? [];
+    const parentIds = new Set(rows.flatMap((wallet) => (wallet.parent_wallet_id ? [wallet.parent_wallet_id] : [])));
+    return rows
+      .filter((wallet) => !parentIds.has(wallet.id))
+      .map((wallet) => ({ id: wallet.id, name: wallet.name, type: wallet.type, color: wallet.color, balance: wallet.balance }));
   });
 
 export const createFieldReport = createServerFn({ method: "POST" })

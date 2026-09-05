@@ -16,12 +16,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePermissions } from "@/hooks/use-permissions";
 import { COURSE_STATUS_LABELS, COURSE_STATUSES, getCourses, type CourseListItem } from "@/lib/courses.functions";
+import { formatXOF as formatAmount } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/courses/")({ component: CoursesPage });
-
-function formatAmount(value: number) {
-  return `${value.toLocaleString("fr-FR")} FCFA`;
-}
 
 function isCompletedToday(course: CourseListItem) {
   if (!course.actual_arrival_at || !["COMPLETED", "CLOSED"].includes(course.status)) return false;
