@@ -53,6 +53,14 @@ export function WalletForm({ onSuccess, wallet, defaultParentWalletId }: Props) 
   const selectedParentNeedsConversion =
     isNewParentLink && !!selectedParent && Number(selectedParent.balance ?? 0) !== 0 && !selectedParentHasChildren;
 
+  // Revue pré-merge : un wallet déjà converti en parent (a des sous-wallets)
+  // a son solde propre ramené à 0 par compensation algébrique côté RPC
+  // (convert_wallet_to_parent), jamais parce qu'initial_balance vaut 0.
+  // Ce champ est toujours renvoyé par save() ci-dessous, même sur un
+  // simple renommage -- le désactiver ici évite de jamais heurter le
+  // garde-fou ajouté à wallet_update (20260905100000) dans le flux normal.
+  const walletHasChildren = !!wallet && wallets.some((candidate) => candidate.parent_wallet_id === wallet.id);
+
   useEffect(() => {
     setForm(
       wallet
@@ -163,10 +171,13 @@ export function WalletForm({ onSuccess, wallet, defaultParentWalletId }: Props) 
             type="number"
             placeholder="0"
             value={form.initial_balance}
+            disabled={walletHasChildren}
             onChange={(event) => setForm({ ...form, initial_balance: event.target.value })}
           />
           <p className="mt-1 text-xs text-muted-foreground">
-            Il sera conservé et ajouté aux opérations futures.
+            {walletHasChildren
+              ? "Ce wallet est un wallet parent consolidateur : son solde propre reste à 0 par construction, son solde d'ouverture ne peut plus être modifié. Ajustez le solde de ses sous-wallets si nécessaire."
+              : "Il sera conservé et ajouté aux opérations futures."}
           </p>
         </div>
         <div>

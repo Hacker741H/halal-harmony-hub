@@ -92,9 +92,18 @@ async function main() {
     console.log(`Recette validée : ${testCase.role}.`);
   }
   } finally {
+    // Revue pré-merge, no-unsafe-finally : un throw ici effacerait
+    // silencieusement une vraie erreur de test déjà en vol depuis le
+    // bloc try (ex. "résultat RLS Wallet inattendu") si le nettoyage du
+    // fixture échoue aussi -- masquant l'échec de sécurité réel derrière
+    // un échec de nettoyage sans rapport. On journalise et on marque le
+    // script en échec sans jamais remplacer une exception déjà levée.
     const { error: deleteFixtureError } = await accountant.rpc("wallet_delete", { p_wallet_id: fixtureWallet.id });
     await accountant.auth.signOut();
-    if (deleteFixtureError) throw deleteFixtureError;
+    if (deleteFixtureError) {
+      console.error(`Nettoyage du wallet fixture échoué : ${deleteFixtureError.message}`);
+      process.exitCode = 1;
+    }
   }
 }
 

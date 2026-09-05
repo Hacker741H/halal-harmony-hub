@@ -35,27 +35,29 @@ function DocumentDetailPage() {
   const historyQuery = useQuery({ queryKey: ["document-history", documentId], queryFn: () => getDocumentHistory({ data: { id: documentId } }) });
   const archiveMutation = useMutation({ mutationFn: () => archiveDocument({ data: { id: documentId } }), onSuccess: () => { toast.success("Document archivé."); void documentQuery.refetch(); void historyQuery.refetch(); }, onError: () => toast.error("Impossible d'archiver le document.") });
   const restoreMutation = useMutation({ mutationFn: () => restoreDocument({ data: { id: documentId } }), onSuccess: () => { toast.success("Document restauré."); void documentQuery.refetch(); void historyQuery.refetch(); }, onError: () => toast.error("Impossible de restaurer le document.") });
-
-  if (documentQuery.isLoading) return <div className="p-6 text-muted-foreground">Chargement du document…</div>;
-  if (documentQuery.isError || !documentQuery.data) return <div className="space-y-4 p-6"><p className="text-destructive">Document introuvable ou non autorisé.</p><Button asChild variant="outline"><Link to="/documents">Retour aux documents</Link></Button></div>;
-
-  const document = documentQuery.data;
-  const relation = relationsQuery.data?.[0];
-  const entityHref = relation ? relation.route.replace(/\$[A-Za-z]+Id/, relation.entityId) : null;
-  const canReplace = permissions.can("documents.upload");
-  const canDelete = permissions.can("documents.delete");
+  // Revue pré-merge, react-hooks/rules-of-hooks : ces deux useMutation
+  // vivaient après les `return` conditionnels ci-dessous -- le nombre de
+  // hooks appelés changeait donc entre le rendu "chargement" (aucun des
+  // deux appelé) et le rendu "document chargé" (les deux apparaissent) --
+  // une vraie violation, pas un style, React peut se perdre entre les deux
+  // rendus. Remontées ici, avant tout retour anticipé ; leurs closures
+  // relisent documentQuery.data au moment de l'appel (jamais avant que
+  // l'utilisateur ne puisse cliquer un bouton qui les déclenche) plutôt que
+  // de fermer sur la constante `document`, qui elle reste après les gardes.
   const replaceMutation = useMutation({
     mutationFn: async (file: File) => {
+      const currentDocument = documentQuery.data;
+      if (!currentDocument) throw new Error("Document introuvable.");
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
       const newPath = `documents/${documentId}/${crypto.randomUUID()}-${safeName}`;
       const { error: uploadError } = await supabase.storage.from("documents").upload(newPath, file, { upsert: false, contentType: file.type || undefined });
       if (uploadError) throw uploadError;
       try {
         await replaceDocumentMetadata({ data: { id: documentId, storage_path: newPath, nom: file.name } });
-        if (document.storage_path) {
-          const { error: removeOldError } = await supabase.storage.from("documents").remove([document.storage_path]);
+        if (currentDocument.storage_path) {
+          const { error: removeOldError } = await supabase.storage.from("documents").remove([currentDocument.storage_path]);
           if (removeOldError) {
-            await replaceDocumentMetadata({ data: { id: documentId, storage_path: document.storage_path, nom: document.nom } });
+            await replaceDocumentMetadata({ data: { id: documentId, storage_path: currentDocument.storage_path, nom: currentDocument.nom } });
             await supabase.storage.from("documents").remove([newPath]);
             throw new Error("Remplacement annulé : l'ancien fichier ne peut pas être supprimé.");
           }
@@ -70,8 +72,9 @@ function DocumentDetailPage() {
   });
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      if (document.storage_path) {
-        const { error } = await supabase.storage.from("documents").remove([document.storage_path]);
+      const currentDocument = documentQuery.data;
+      if (currentDocument?.storage_path) {
+        const { error } = await supabase.storage.from("documents").remove([currentDocument.storage_path]);
         if (error) throw error;
       }
       await deleteDocumentMetadata({ data: { id: documentId } });
@@ -79,6 +82,15 @@ function DocumentDetailPage() {
     onSuccess: () => { toast.success("Document supprimé."); void queryClient.invalidateQueries({ queryKey: ["documents"] }); void navigate({ to: "/documents" }); },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Impossible de supprimer le document."),
   });
+
+  if (documentQuery.isLoading) return <div className="p-6 text-muted-foreground">Chargement du document…</div>;
+  if (documentQuery.isError || !documentQuery.data) return <div className="space-y-4 p-6"><p className="text-destructive">Document introuvable ou non autorisé.</p><Button asChild variant="outline"><Link to="/documents">Retour aux documents</Link></Button></div>;
+
+  const document = documentQuery.data;
+  const relation = relationsQuery.data?.[0];
+  const entityHref = relation ? relation.route.replace(/\$[A-Za-z]+Id/, relation.entityId) : null;
+  const canReplace = permissions.can("documents.upload");
+  const canDelete = permissions.can("documents.delete");
 
   return <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
     <input ref={replacementInputRef} className="hidden" type="file" onChange={(event) => { const file = event.target.files?.[0]; if (file) replaceMutation.mutate(file); event.currentTarget.value = ""; }} />

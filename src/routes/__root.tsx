@@ -177,7 +177,7 @@ function AuthenticatedShell() {
   // A cashier-only account must feel like it is running dedicated register
   // software, never a sub-page of the ERP cockpit -- so this branch skips the
   // sidebar and product header entirely instead of merely trimming them.
-  // CommerceCashierWorkspace (rendered by the /commerce route below) owns its
+  // CommerceCashierWorkspace (rendered by the /caisse route below) owns its
   // own app bar, including sign-out, so nothing here can replace it.
   if (access.isCashierOnly) {
     return (
