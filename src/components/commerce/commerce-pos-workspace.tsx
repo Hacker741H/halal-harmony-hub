@@ -423,14 +423,34 @@ export function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManag
     },
   });
 
+  // Bug production (transfert de stock -> article "indisponible" en Caisse) :
+  // un article dont le prix de vente n'a jamais été défini à ce magasin
+  // (business_location_inventory_items.sale_price = NULL -- c'est le cas
+  // pour tout article reçu pour la première fois via un transfert :
+  // receive_commerce_stock_transfer n'insère que business_location_id/
+  // inventory_item_id/quantity, jamais sale_price, faute d'avoir cette
+  // information au moment du transfert) était accepté silencieusement avec
+  // `unitPrice: defaultPrice ?? 0` -- une vente à 0 FCFA sans le moindre
+  // avertissement, alors que le stock était bien présent. Les trois points
+  // d'entrée (bouton grille, recherche rapide, événement clavier/scan
+  // externe) appellent tous cette même fonction : le garde-fou vit ici,
+  // pas dans un seul composant d'appel.
   const addArticle = useCallback((itemId: string, defaultPrice: number | null, label: string, quantity = 1) => {
     if (!posSession.isReady || checkoutState !== "READY") return;
     const availableQuantity = activeCatalogue.find((item) => item.id === itemId)?.quantity ?? 0;
+    if (availableQuantity <= 0) {
+      toast.error(`${label} : rupture de stock dans ce magasin.`);
+      return;
+    }
+    if (defaultPrice === null) {
+      toast.error(`${label} : prix de vente à définir pour ce magasin avant de pouvoir le vendre.`);
+      return;
+    }
     updateDraft((current) => {
       const line = current.lines.find((entry) => entry.lineType === "ARTICLE" && entry.itemId === itemId);
       const lines = line
         ? current.lines.map((entry) => entry.lineId === line.lineId ? { ...entry, quantity: Math.min(entry.quantity + quantity, availableQuantity), label } : entry)
-        : availableQuantity > 0 ? [...current.lines, { lineId: `article-${itemId}`, lineType: "ARTICLE" as const, itemId, label, quantity: Math.min(quantity, availableQuantity), unitPrice: defaultPrice ?? 0 }] : current.lines;
+        : [...current.lines, { lineId: `article-${itemId}`, lineType: "ARTICLE" as const, itemId, label, quantity: Math.min(quantity, availableQuantity), unitPrice: defaultPrice }];
       return { ...current, lines };
     });
   }, [activeCatalogue, checkoutState, posSession.isReady, updateDraft]);
@@ -751,13 +771,19 @@ export function CommerceCashierWorkspace({ onBackToManagement }: { onBackToManag
                 <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4">
                   {gridItems.map((item) => {
                     const outOfStock = item.quantity <= 0;
+                    // Deux états distincts, jamais confondus : un stock
+                    // positif sans prix de vente défini n'est jamais une
+                    // rupture -- l'article reste visible avec sa vraie
+                    // quantité, seul le bouton de vente est désactivé tant
+                    // que le prix n'est pas défini (voir addArticle).
+                    const needsPrice = !outOfStock && item.salePrice === null;
                     return (
-                      <button key={item.id} type="button" disabled={outOfStock || checkoutState !== "READY"} onClick={() => addArticle(item.id, item.salePrice, item.name)}
+                      <button key={item.id} type="button" disabled={outOfStock || needsPrice || checkoutState !== "READY"} title={needsPrice ? "Prix de vente à définir pour ce magasin avant de pouvoir le vendre." : undefined} onClick={() => addArticle(item.id, item.salePrice, item.name)}
                         className="flex flex-col items-stretch gap-1.5 rounded-xl border border-border bg-surface p-2.5 text-left shadow-sm transition-colors hover:border-primary/40 hover:shadow disabled:cursor-not-allowed disabled:opacity-50">
                         <div className="flex aspect-square w-full items-center justify-center rounded-lg bg-primary/[0.07] text-primary"><Package className="size-8" /></div>
                         <p className="line-clamp-2 text-xs font-semibold leading-tight" title={item.name}>{item.name}</p>
                         <div className="mt-auto flex items-center justify-between gap-1">
-                          <span className="text-sm font-bold tabular-nums">{item.salePrice !== null ? money(item.salePrice) : "—"}</span>
+                          <span className={`text-sm font-bold tabular-nums ${needsPrice ? "text-warning" : ""}`}>{item.salePrice !== null ? money(item.salePrice) : needsPrice ? "Prix à définir" : "—"}</span>
                           <span className={`shrink-0 text-[10px] font-semibold ${outOfStock ? "text-destructive" : "text-muted-foreground"}`}>{outOfStock ? "Rupture" : `${item.quantity} ${item.unit ?? ""}`.trim()}</span>
                         </div>
                       </button>
