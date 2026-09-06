@@ -72,7 +72,7 @@ function AuthPage() {
               </div>
               <div>
                 <p className="font-display text-xl font-semibold tracking-tight">HALAL ERP</p>
-                <p className="text-caption text-primary-foreground/65">Système d’exploitation métier</p>
+                <p className="text-caption text-primary-foreground/65">Prévu hier, réalisé aujourd'hui</p>
               </div>
             </div>
 
@@ -82,8 +82,8 @@ function AuthPage() {
                 HALAL ERP
               </Badge>
               <h1 className="mt-6 font-display text-4xl font-semibold leading-[1.06] tracking-[-0.045em] sm:text-5xl">
-                Votre entreprise,
-                <span className="block text-emerald"> pleinement en mouvement.</span>
+                On gère tout,
+                <span className="block text-emerald"> toutes les marasses.</span>
               </h1>
               <p className="mt-6 max-w-md text-base leading-7 text-primary-foreground/72">
                 Transport, terrain, agriculture, stocks et finance réunis dans un espace de travail clair et sécurisé.
@@ -113,7 +113,7 @@ function AuthPage() {
                 <Input
                   id="username"
                   autoComplete="username"
-                  placeholder="keita"
+                  placeholder="Ici"
                   required
                   value={username}
                   onChange={(event) => setUsername(event.target.value)}
