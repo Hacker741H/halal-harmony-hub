@@ -379,7 +379,10 @@ function SalePriceEditDialog({ item, locationId, locationName, onClose, onSaved 
     setPriceDraft(item && item.salePrice !== null ? String(item.salePrice) : "");
   }, [item]);
   const parsedDraft = Number(priceDraft);
-  const isValidDraft = priceDraft.trim() !== "" && Number.isFinite(parsedDraft) && parsedDraft >= 0;
+  // Règle métier verrouillée : un sale_price normal est strictement positif
+  // -- 0 n'est plus valide ici. Une gratuité éventuelle sera un workflow
+  // dédié plus tard, jamais sale_price = 0.
+  const isValidDraft = priceDraft.trim() !== "" && Number.isFinite(parsedDraft) && parsedDraft > 0;
   const marginPerUnit = item && item.unitCost !== null && isValidDraft ? parsedDraft - item.unitCost : null;
   const mutation = useMutation({
     mutationFn: () => {

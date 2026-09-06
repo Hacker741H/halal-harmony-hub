@@ -14,10 +14,12 @@ function expect(condition: unknown, message: string): asserts condition {
   assert.equal(condition, true, message);
 }
 
-// Mirroir exact de isValidDraft dans SalePriceEditDialog.
+// Mirroir exact de isValidDraft dans SalePriceEditDialog. Règle métier
+// verrouillée : un sale_price normal est strictement positif -- 0 n'est
+// plus valide (une gratuité éventuelle sera un workflow dédié plus tard).
 function isValidDraft(priceDraft: string): boolean {
   const parsed = Number(priceDraft);
-  return priceDraft.trim() !== "" && Number.isFinite(parsed) && parsed >= 0;
+  return priceDraft.trim() !== "" && Number.isFinite(parsed) && parsed > 0;
 }
 
 // Mirroir exact de marginPerUnit dans SalePriceEditDialog.
@@ -43,10 +45,13 @@ function run(): void {
   // que la RPC ne le revérifie server-side).
   expect(isValidDraft("-100") === false, "Un prix négatif ne doit jamais être valide.");
 
-  // 4. Zéro est un prix valide et distinct de "vide" -- un article peut
-  // légitimement être mis en vente à 0 (ex. promotion), ce n'est pas la
-  // même chose que ne pas avoir encore de prix.
-  expect(isValidDraft("0"), "0 est un prix valide, distinct d'un champ vide.");
+  // 4. Zéro est désormais refusé -- un sale_price normal est strictement
+  // positif, distinct à la fois d'un champ vide (prix pas encore défini)
+  // et d'un prix négatif. Une gratuité éventuelle sera traitée par un
+  // workflow dédié plus tard, jamais par sale_price = 0.
+  expect(isValidDraft("0") === false, "0 doit être refusé -- un sale_price normal est strictement positif.");
+  expect(isValidDraft("0.00") === false, "0.00 doit aussi être refusé -- même règle, quelle que soit la notation décimale.");
+  expect(isValidDraft("1"), "1 doit rester valide -- la borne est bien > 0, pas une restriction plus large.");
 
   // 5. Éditer un prix déjà existant (Sac eastpak, 9000) doit fonctionner
   // identiquement -- même mécanisme, pas de branche séparée.

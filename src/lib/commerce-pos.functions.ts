@@ -451,7 +451,10 @@ const updateLocationItemSalePriceSchema = z.object({ id: z.string().uuid(), sale
 
 export const updateCommerceLocationItemSalePrice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator(z.object({ businessLocationId: z.string().uuid(), inventoryItemId: z.string().uuid(), salePrice: z.number().finite().min(0) }).strict())
+  // Règle métier verrouillée : un sale_price normal est strictement positif
+  // -- 0 n'est plus un prix valide (NULL et négatif ne l'étaient déjà pas).
+  // Une éventuelle gratuité sera un workflow dédié plus tard, jamais ce champ.
+  .validator(z.object({ businessLocationId: z.string().uuid(), inventoryItemId: z.string().uuid(), salePrice: z.number().finite().positive() }).strict())
   .handler(async ({ context, data }) => {
     const { data: result, error } = await callUntypedRpc(context.supabase, "update_commerce_location_item_sale_price", {
       p_business_location_id: data.businessLocationId,
