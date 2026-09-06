@@ -152,13 +152,17 @@ const commerceCashRemittanceWorkspaceSchema = z.object({
   }),
   closures: z.array(z.object({
     id: z.string().uuid(), cashSessionId: z.string(), closedAt: z.string(), cashierId: z.string().uuid(), cashier: z.string(),
-    // Nullable : une clôture pas encore comptée physiquement par le
-    // caissier n'a ni compté ni écart -- même réalité déjà gérée pour la
-    // liste de clôtures du cockpit (voir countedCash plus haut dans ce
-    // fichier). remainingAmount reste un number : la RPC applique déjà
-    // GREATEST(NULL - x, 0) = 0 pour une clôture non comptée, donc elle
-    // n'est jamais proposée comme remisable.
-    theoreticalCash: z.number(), countedCash: z.number().nullable(), cashDifference: z.number().nullable(), status: z.enum(["SYNCED", "REVIEW_REQUIRED"]), remainingAmount: z.number(),
+    // Nullable : une clôture pas encore comptée physiquement (parcours
+    // automatique, closure_kind='AUTOMATIC') n'a ni compté ni écart --
+    // même réalité déjà gérée pour la liste de clôtures du cockpit (voir
+    // countedCash plus haut dans ce fichier). Correctif préflight
+    // production : remainingAmount était laissé non-nullable en
+    // supposant que GREATEST(NULL - x, 0) = 0 suffisait à l'exclure des
+    // clôtures remisables -- vérifié faux contre la donnée réelle (0
+    // FCFA affiché pour une session jamais comptée, un signal identique
+    // à "entièrement remise"). La RPC (20260906130000) renvoie désormais
+    // explicitement NULL, jamais 0, quand counted_cash est inconnu.
+    theoreticalCash: z.number(), countedCash: z.number().nullable(), cashDifference: z.number().nullable(), status: z.enum(["SYNCED", "REVIEW_REQUIRED"]), remainingAmount: z.number().nullable(),
   })),
   destinationWallets: z.array(z.object({ id: z.string().uuid(), name: z.string(), purpose: z.enum(["COLLECTION", "OPERATING"]) })),
   remittances: z.array(z.object({

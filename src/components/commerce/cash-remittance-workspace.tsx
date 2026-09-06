@@ -46,7 +46,13 @@ function RemittanceContent({ workspace, locationId, cashier = false }: { workspa
   const [receivedAmount, setReceivedAmount] = useState("");
   const [destinationWalletId, setDestinationWalletId] = useState("");
   const [confirmationNote, setConfirmationNote] = useState("");
-  const availableClosures = workspace.closures.filter((closure) => closure.remainingAmount > 0.009);
+  // Correctif préflight production : une clôture pas encore comptée
+  // (remainingAmount === null, parcours automatique) reste visible ici --
+  // la masquer purement et simplement lui donnait le même statut qu'une
+  // clôture déjà entièrement remise (0 FCFA restant), alors que son
+  // montant est seulement inconnu pour l'instant. Affichée mais non
+  // sélectionnable, voir le rendu ci-dessous.
+  const availableClosures = workspace.closures.filter((closure) => closure.remainingAmount === null || closure.remainingAmount > 0.009);
   const selectedAllocations = Object.entries(allocations).filter(([, amount]) => amount > 0);
   const selectedTotal = selectedAllocations.reduce((sum, [, amount]) => sum + amount, 0);
   const pendingRemittances = workspace.remittances.filter((remittance) => remittance.status === "DECLARED");
@@ -97,8 +103,18 @@ function RemittanceContent({ workspace, locationId, cashier = false }: { workspa
     {workspace.access.declare && !workspace.access.confirm ? <div className="space-y-3 rounded-xl border border-border p-4">
       <div><h3 className="font-semibold">Déclarer une remise</h3><p className="mt-1 text-sm text-muted-foreground">Sélectionnez uniquement l’argent physiquement remis. Une clôture partielle conserve son solde restant.</p></div>
       {availableClosures.length ? <div className="space-y-2">{availableClosures.map((closure) => {
-        const selected = (allocations[closure.id] ?? 0) > 0;
-        return <div key={closure.id} className="grid gap-2 rounded-lg border border-border/70 p-3 sm:grid-cols-[auto_minmax(0,1fr)_10rem] sm:items-center"><input type="checkbox" checked={selected} onChange={(event) => setAllocations((current) => ({ ...current, [closure.id]: event.target.checked ? closure.remainingAmount : 0 }))} aria-label={`Sélectionner ${closure.cashSessionId}`} /><div><p className="font-medium">{when(closure.closedAt)} · {closure.cashSessionId}</p><p className="text-xs text-muted-foreground">Théorique {money(closure.theoreticalCash)} · compté {closure.countedCash === null ? "non compté" : money(closure.countedCash)} · restant {money(closure.remainingAmount)}</p></div><Input type="number" min="0" max={closure.remainingAmount} step="1" disabled={!selected} value={selected ? allocations[closure.id] : ""} onChange={(event) => setAllocations((current) => ({ ...current, [closure.id]: Math.min(closure.remainingAmount, Math.max(0, Number(event.target.value))) }))} /></div>;
+        const remainingAmount = closure.remainingAmount;
+        const isUnknown = remainingAmount === null;
+        const selected = !isUnknown && (allocations[closure.id] ?? 0) > 0;
+        return <div key={closure.id} className="grid gap-2 rounded-lg border border-border/70 p-3 sm:grid-cols-[auto_minmax(0,1fr)_10rem] sm:items-center">
+          <input type="checkbox" checked={selected} disabled={isUnknown} onChange={(event) => setAllocations((current) => ({ ...current, [closure.id]: event.target.checked && remainingAmount !== null ? remainingAmount : 0 }))} aria-label={`Sélectionner ${closure.cashSessionId}`} />
+          <div>
+            <p className="font-medium">{when(closure.closedAt)} · {closure.cashSessionId}</p>
+            <p className="text-xs text-muted-foreground">Théorique {money(closure.theoreticalCash)} · compté {closure.countedCash === null ? "non compté" : money(closure.countedCash)} · restant {isUnknown ? "à déterminer" : money(remainingAmount)}</p>
+            {isUnknown ? <p className="mt-0.5 text-xs text-warning">Pas encore compté — la remise ne peut pas encore être déclarée pour cette session.</p> : null}
+          </div>
+          <Input type="number" min="0" max={remainingAmount ?? undefined} step="1" disabled={!selected} value={selected ? allocations[closure.id] : ""} onChange={(event) => setAllocations((current) => ({ ...current, [closure.id]: Math.min(remainingAmount ?? 0, Math.max(0, Number(event.target.value))) }))} />
+        </div>;
       })}</div> : <p className="rounded-lg bg-muted/30 p-4 text-sm text-muted-foreground">Aucune clôture synchronisée ne possède de montant encore remisable.</p>}
       <div className="grid gap-3 sm:grid-cols-2"><div><Label>Référence (optionnelle)</Label><Input value={reference} maxLength={160} onChange={(event) => setReference(event.target.value)} /></div><div><Label>Note (optionnelle)</Label><Input value={declarationNote} maxLength={1000} onChange={(event) => setDeclarationNote(event.target.value)} /></div></div>
       <div className="flex flex-wrap items-center justify-between gap-3"><p className="font-semibold">Déclaré remis : {money(selectedTotal)}</p><Button disabled={selectedTotal <= 0 || declareMutation.isPending} onClick={() => declareMutation.mutate()}>{declareMutation.isPending ? "Déclaration…" : "Déclarer la remise"}</Button></div>
