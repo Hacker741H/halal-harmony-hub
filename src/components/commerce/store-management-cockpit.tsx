@@ -35,6 +35,8 @@ import {
   type CommerceStoreCockpit,
   type StoreExpenseCategory,
 } from "@/lib/commerce-pos.functions";
+import { partitionWalletsByHierarchy } from "@/components/selects/entity-selects";
+import { getWallets, WALLET_MODULE_LABELS, type Wallet, type WalletModule } from "@/lib/wallet.functions";
 
 // Bug global (retour de focus, point 3) : getRouteApi plutot que useSearch/
 // useNavigate importes nus -- ce composant n'est pas lui-meme le fichier de
@@ -54,6 +56,11 @@ const categories: Array<{ value: StoreExpenseCategory; label: string }> = [
   { value: "SALARY_BONUS", label: "Salaires / primes" }, { value: "OTHER", label: "Autre" },
 ];
 const categoryLabel = (value: string) => categories.find((category) => category.value === value)?.label ?? value;
+// Réconciliation avec origin/main (commit a44e05f, section réconciliation
+// post-stabilisation) : le wallet à débiter n'est plus limité à ceux mappés
+// à ce magasin -- son module d'origine (Commerce, Motos, ...) est donc
+// affiché pour éviter toute confusion au moment du choix.
+const walletModuleLabel = (module: string | null) => (module ? (WALLET_MODULE_LABELS[module as WalletModule] ?? module) : "Général");
 
 type StoreExpense = NonNullable<CommerceStoreCockpit["expenses"]>["rows"][number];
 
@@ -133,11 +140,27 @@ export function StoreManagementCockpit({
   // Git, pas une conception nouvelle.
   const [expenseToConfirm, setExpenseToConfirm] = useState<StoreExpense | null>(null);
   const [confirmationWalletId, setConfirmationWalletId] = useState("");
+  // Réconciliation post-stabilisation avec origin/main (commits aa289de puis
+  // a44e05f, même jour) : aa289de limitait le wallet aux seuls wallets
+  // mappés à CE magasin -- trop étroit (une dépense magasin doit pouvoir se
+  // payer depuis n'importe quel wallet accessible, ex. un wallet central).
+  // a44e05f corrige en élargissant à tout wallet accessible en lecture,
+  // exactement la même règle que la RLS wallets_read déjà en vigueur --
+  // confirmCommerceStoreExpense (migration 20260906100000) revérifie
+  // désormais cette même règle explicitement, plus l'exclusion des wallets
+  // parents consolidateurs (hiérarchie propre à cette branche, inconnue de
+  // main). Chargé seulement à l'ouverture du dialogue, comme a44e05f.
+  const walletsQuery = useQuery({ queryKey: ["wallets"], queryFn: () => getWallets(), enabled: expenseToConfirm !== null });
+  const expenseWalletOptions = useMemo(() => {
+    const active = (walletsQuery.data ?? []).filter((wallet) => !wallet.is_archived);
+    const { flatOptions, groups } = partitionWalletsByHierarchy(active);
+    return [...flatOptions, ...groups.flatMap((group) => group.children)];
+  }, [walletsQuery.data]);
   const mutate = useMutation({
     mutationFn: async (action: { type: "confirm-expense" | "cancel-expense" | "pay-charge" | "cancel-charge"; id: string; reason?: string; walletId?: string }) => {
       if (action.type === "confirm-expense") {
-        if (!action.walletId || !cockpit?.wallets.some((wallet) => wallet.id === action.walletId)) {
-          throw new Error("Choisissez un wallet actif autorisé pour ce magasin.");
+        if (!action.walletId || !expenseWalletOptions.some((wallet) => wallet.id === action.walletId)) {
+          throw new Error("Choisissez un wallet actif auquel vous avez accès.");
         }
         return confirmCommerceStoreExpense({ data: { expenseId: action.id, walletId: action.walletId } });
       }
@@ -175,7 +198,7 @@ export function StoreManagementCockpit({
       toast.error(userFacingMutationError(error));
     },
   });
-  const selectedConfirmationWallet = cockpit?.wallets.find((wallet) => wallet.id === confirmationWalletId);
+  const selectedConfirmationWallet = expenseWalletOptions.find((wallet) => wallet.id === confirmationWalletId);
   const [cancelTarget, setCancelTarget] = useState<{ type: "cancel-expense" | "cancel-charge"; id: string } | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const cancelWithReason = (type: "cancel-expense" | "cancel-charge", id: string) => {
@@ -255,7 +278,9 @@ export function StoreManagementCockpit({
 
       <ExpenseConfirmationDialog
         expense={expenseToConfirm}
-        wallets={cockpit?.wallets ?? []}
+        wallets={expenseWalletOptions}
+        walletsLoading={walletsQuery.isPending}
+        walletsError={walletsQuery.isError}
         walletId={confirmationWalletId}
         pending={mutate.isPending}
         onWalletChange={setConfirmationWalletId}
@@ -320,12 +345,13 @@ function ExpensesSection({ cockpit, locationId, pending, onConfirm, onMutate, on
   return <Card variant="section" id="store-expenses"><CardHeader className="pb-3"><div className="flex flex-wrap items-start justify-between gap-3"><div><CardTitle className="text-lg">Dépenses & charges</CardTitle><p className="mt-1 text-sm text-muted-foreground">Une charge à venir n’affecte le résultat qu’après paiement confirmé via STORE-02.</p></div><div className="flex gap-2">{cockpit.access.expensesCreate ? <><ExpenseCreateDialog locationId={locationId} planned={false} onSaved={onSaved} /><ExpenseCreateDialog locationId={locationId} planned onSaved={onSaved} /></> : null}</div></div></CardHeader><CardContent>{!cockpit.expenses ? <Restricted label="Les dépenses sensibles sont masquées pour ce rôle." /> : <><div className="mb-3 flex gap-1"><Button size="sm" variant={tab === "paid" ? "default" : "outline"} onClick={() => setTab("paid")}>Dépenses réelles</Button><Button size="sm" variant={tab === "planned" ? "default" : "outline"} onClick={() => setTab("planned")}>Charges à venir</Button></div>{tab === "paid" ? cockpit.expenses.rows.length ? <div className="overflow-x-auto rounded-lg border border-border"><table className="w-full min-w-[900px] text-sm"><thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><Th>Date</Th><Th>Catégorie / description</Th><Th right>Montant</Th><Th>Wallet</Th><Th>Créateur / confirmation</Th><Th>Finance</Th><Th>Statut / actions</Th></tr></thead><tbody className="divide-y divide-border/60">{cockpit.expenses.rows.map((expense) => <tr key={expense.id}><Td>{day(expense.expenseDate)}</Td><Td><strong>{categoryLabel(expense.category)}</strong><span className="block text-xs text-muted-foreground">{expense.description}</span></Td><Td right strong>{money(expense.amount)}</Td><Td>{expense.walletName ?? "—"}</Td><Td>{expense.createdBy}<span className="block text-xs text-muted-foreground">{expense.confirmedBy ? `Confirmé par ${expense.confirmedBy}` : "Non confirmée"}</span></Td><Td>{expense.financeReference ?? "—"}</Td><Td><div className="flex items-center gap-2"><Status value={expense.status} />{expense.status === "DRAFT" && cockpit.access.expensesConfirm ? <><Button size="sm" disabled={pending} onClick={() => onConfirm(expense)}>Confirmer</Button><Button size="sm" variant="ghost" disabled={pending} onClick={() => onCancel("cancel-expense", expense.id)}>Annuler</Button></> : null}</div></Td></tr>)}</tbody></table></div> : <Empty label="Aucune dépense sur cette période." /> : cockpit.expenses.planned.length ? <div className="overflow-x-auto rounded-lg border border-border"><table className="w-full min-w-[820px] text-sm"><thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><Th>Échéance</Th><Th>Catégorie / description</Th><Th right>Montant attendu</Th><Th>Référence</Th><Th>Statut</Th><Th>Actions</Th></tr></thead><tbody className="divide-y divide-border/60">{cockpit.expenses.planned.map((charge) => <tr key={charge.id} className={charge.timing === "OVERDUE" ? "bg-destructive/[0.04]" : undefined}><Td>{day(charge.dueDate)}</Td><Td><strong>{categoryLabel(charge.category)}</strong><span className="block text-xs text-muted-foreground">{charge.description}</span></Td><Td right strong>{money(charge.expectedAmount)}</Td><Td>{charge.reference ?? "—"}</Td><Td><Status value={charge.timing} /></Td><Td>{charge.status === "PLANNED" && cockpit.access.expensesConfirm ? <div className="flex gap-2"><Button size="sm" disabled={pending || !mainWalletName} title={`Wallet : ${mainWalletName ?? "absent"}`} onClick={() => onMutate({ type: "pay-charge", id: charge.id })}>Marquer payée</Button><Button size="sm" variant="ghost" disabled={pending} onClick={() => onCancel("cancel-charge", charge.id)}>Annuler</Button></div> : "—"}</Td></tr>)}</tbody></table></div> : <Empty label="Aucune charge planifiée." />}</>}</CardContent></Card>;
 }
 
-function ExpenseConfirmationDialog({ expense, wallets, walletId, pending, onWalletChange, onOpenChange, onConfirm }: { expense: StoreExpense | null; wallets: CommerceStoreCockpit["wallets"]; walletId: string; pending: boolean; onWalletChange: (walletId: string) => void; onOpenChange: (open: boolean) => void; onConfirm: () => void }) {
+function ExpenseConfirmationDialog({ expense, wallets, walletsLoading, walletsError, walletId, pending, onWalletChange, onOpenChange, onConfirm }: { expense: StoreExpense | null; wallets: Wallet[]; walletsLoading: boolean; walletsError: boolean; walletId: string; pending: boolean; onWalletChange: (walletId: string) => void; onOpenChange: (open: boolean) => void; onConfirm: () => void }) {
   const selectedWallet = wallets.find((wallet) => wallet.id === walletId);
-  const balanceAfter = selectedWallet && expense ? selectedWallet.balance - expense.amount : null;
+  const currentBalance = selectedWallet ? (selectedWallet.balance ?? 0) : null;
+  const balanceAfter = currentBalance !== null && expense ? currentBalance - expense.amount : null;
   const hasNegativeBalance = balanceAfter !== null && balanceAfter < 0;
 
-  return <Dialog open={expense !== null} onOpenChange={onOpenChange}><DialogContent><DialogHeader><DialogTitle>Confirmer la dépense</DialogTitle><DialogDescription>Choisissez explicitement le wallet qui sera débité. La confirmation créera l’écriture dans le journal Finance.</DialogDescription></DialogHeader>{expense ? <div className="space-y-4 py-2"><div className="grid gap-3 rounded-xl border border-border bg-muted/20 p-4 text-sm"><DataRow label="Catégorie" value={categoryLabel(expense.category)} /><DataRow label="Description" value={expense.description || "—"} /><DataRow label="Montant" value={money(expense.amount)} /></div><div className="grid gap-2"><Label htmlFor="store-expense-confirmation-wallet">Wallet à débiter</Label>{wallets.length ? <Select value={walletId || undefined} onValueChange={onWalletChange}><SelectTrigger id="store-expense-confirmation-wallet"><SelectValue placeholder="Choisir un wallet actif…" /></SelectTrigger><SelectContent>{wallets.map((wallet) => <SelectItem key={wallet.id} value={wallet.id}>{wallet.name}</SelectItem>)}</SelectContent></Select> : <div className="rounded-lg border border-warning/30 bg-warning/[0.08] p-3 text-sm"><p className="font-semibold text-warning">Aucun wallet actif disponible pour ce magasin.</p><p className="mt-1 text-muted-foreground">Un wallet de caisse ou d’exploitation doit être associé au magasin avant de confirmer cette dépense.</p></div>}</div>{selectedWallet && balanceAfter !== null ? <div className="grid gap-3 rounded-xl border border-border p-4 text-sm"><DataRow label="Solde actuel" value={money(selectedWallet.balance)} /><DataRow label="Après cette dépense" value={money(balanceAfter)} />{hasNegativeBalance ? <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/[0.08] p-3 text-warning"><TriangleAlert className="mt-0.5 size-4 shrink-0" /><p>Attention : cette dépense fera passer ce wallet à un solde négatif de {money(Math.abs(balanceAfter))}.</p></div> : null}</div> : null}</div> : null}<DialogFooter><Button variant="outline" disabled={pending} onClick={() => onOpenChange(false)}>Annuler</Button><Button disabled={!selectedWallet || pending} loading={pending} onClick={onConfirm}>Confirmer la dépense</Button></DialogFooter></DialogContent></Dialog>;
+  return <Dialog open={expense !== null} onOpenChange={onOpenChange}><DialogContent><DialogHeader><DialogTitle>Confirmer la dépense</DialogTitle><DialogDescription>Choisissez explicitement le wallet qui sera débité. La confirmation créera l’écriture dans le journal Finance.</DialogDescription></DialogHeader>{expense ? <div className="space-y-4 py-2"><div className="grid gap-3 rounded-xl border border-border bg-muted/20 p-4 text-sm"><DataRow label="Catégorie" value={categoryLabel(expense.category)} /><DataRow label="Description" value={expense.description || "—"} /><DataRow label="Montant" value={money(expense.amount)} /></div><div className="grid gap-2"><Label htmlFor="store-expense-confirmation-wallet">Wallet à débiter</Label>{walletsLoading ? <div className="rounded-lg border border-border p-3 text-sm text-muted-foreground">Chargement des wallets actifs…</div> : walletsError ? <div className="rounded-lg border border-destructive/30 bg-destructive/[0.06] p-3 text-sm text-destructive">Les wallets accessibles n’ont pas pu être chargés.</div> : wallets.length ? <Select value={walletId || undefined} onValueChange={onWalletChange}><SelectTrigger id="store-expense-confirmation-wallet"><SelectValue placeholder="Choisir un wallet actif…" /></SelectTrigger><SelectContent>{wallets.map((wallet) => <SelectItem key={wallet.id} value={wallet.id}>{wallet.name} — {walletModuleLabel(wallet.module)} — {money(wallet.balance ?? 0)}</SelectItem>)}</SelectContent></Select> : <div className="rounded-lg border border-warning/30 bg-warning/[0.08] p-3 text-sm"><p className="font-semibold text-warning">Aucun wallet actif accessible.</p><p className="mt-1 text-muted-foreground">Vous devez disposer d’un wallet actif et des permissions permettant de le consulter.</p></div>}</div>{selectedWallet && currentBalance !== null && balanceAfter !== null ? <div className="grid gap-3 rounded-xl border border-border p-4 text-sm"><DataRow label="Solde actuel" value={money(currentBalance)} /><DataRow label="Après cette dépense" value={money(balanceAfter)} />{hasNegativeBalance ? <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/[0.08] p-3 text-warning"><TriangleAlert className="mt-0.5 size-4 shrink-0" /><p>Attention : cette dépense fera passer ce wallet à un solde négatif de {money(Math.abs(balanceAfter))}.</p></div> : null}</div> : null}</div> : null}<DialogFooter><Button variant="outline" disabled={pending} onClick={() => onOpenChange(false)}>Annuler</Button><Button disabled={!selectedWallet || pending || walletsLoading} loading={pending} onClick={onConfirm}>Confirmer la dépense</Button></DialogFooter></DialogContent></Dialog>;
 }
 
 function ExpenseCreateDialog({ locationId, planned, onSaved }: { locationId: string; planned: boolean; onSaved: () => Promise<void> }) {
@@ -420,11 +446,24 @@ function ControlReportDetailDialog({ reportId, locationId, onClose }: { reportId
   const [flagOpen, setFlagOpen] = useState(false);
   const [flagReason, setFlagReason] = useState("");
 
+  // Réconciliation post-stabilisation avec origin/main (commit 6f575076) :
+  // valider une réception crédite réellement un wallet (confirm_commerce_
+  // pos_cash_reception) -- n'invalider que ce cockpit et ce centre de
+  // contrôle laissait /wallets, /finance et la trésorerie consolidée
+  // afficher un solde périmé jusqu'à leur prochain staleTime, même bug que
+  // les invalidations de maintenance déjà corrigées ailleurs cette session.
   const refresh = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["commerce-pos-control-report-detail", reportId] }),
       queryClient.invalidateQueries({ queryKey: ["commerce-pos-control-reports", locationId] }),
       queryClient.invalidateQueries({ queryKey: ["commerce-store-cockpit", locationId] }),
+      queryClient.invalidateQueries({ queryKey: ["commerce-cash-remittances", locationId] }),
+      queryClient.invalidateQueries({ queryKey: ["wallets"] }),
+      queryClient.invalidateQueries({ queryKey: ["wallet-stats"] }),
+      queryClient.invalidateQueries({ queryKey: ["wallet-modules-summary"] }),
+      queryClient.invalidateQueries({ queryKey: ["finance-operations"] }),
+      queryClient.invalidateQueries({ queryKey: ["finance-stats"] }),
+      queryClient.invalidateQueries({ queryKey: ["treasury"] }),
     ]);
   };
   const receiveMutation = useMutation({
