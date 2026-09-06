@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { endOfMonth, format, startOfMonth, startOfYear, subDays, subMonths } from "date-fns";
@@ -30,12 +30,14 @@ import {
   getCommerceStoreCockpit,
   getCommercePosLocations,
   payCommerceStorePlannedExpense,
+  updateCommerceLocationItemSalePrice,
   type CommercePosControlReportSummary,
   type CommercePosLocation,
   type CommerceStoreCockpit,
   type StoreExpenseCategory,
 } from "@/lib/commerce-pos.functions";
 import { partitionWalletsByHierarchy } from "@/components/selects/entity-selects";
+import { usePermissions } from "@/hooks/use-permissions";
 import { getWallets, WALLET_MODULE_LABELS, type Wallet, type WalletModule } from "@/lib/wallet.functions";
 
 // Bug global (retour de focus, point 3) : getRouteApi plutot que useSearch/
@@ -258,7 +260,7 @@ export function StoreManagementCockpit({
           <Card variant="information"><CardHeader className="pb-3"><CardTitle className="text-lg">Période analysée</CardTitle></CardHeader><CardContent className="space-y-3 text-sm"><DataRow label="Du" value={day(cockpit.period.from)} /><DataRow label="Au" value={day(cockpit.period.to)} /><DataRow label="Tickets" value={String(cockpit.sales?.ticketCount ?? 0)} /><DataRow label="Panier moyen" value={money(cockpit.sales?.averageBasket)} /><DataRow label="Wallets actifs" value={String(cockpit.wallets.length)} /></CardContent></Card>
         </section>
 
-        <StockSection cockpit={cockpit} />
+        <StockSection cockpit={cockpit} locationId={locationId} />
         <ExpensesSection
           cockpit={cockpit}
           locationId={locationId}
@@ -335,8 +337,89 @@ function Empty({ label }: { label: string }) { return <div className="flex min-h
 function DataRow({ label, value }: { label: string; value: string }) { return <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">{label}</span><span className="text-right font-medium tabular-nums">{value}</span></div>; }
 function Kpi({ label, value, detail, icon: Icon, onClick }: { label: string; value: string; detail: string; icon: typeof Store; onClick: () => void }) { return <button type="button" onClick={onClick} className="rounded-xl border border-border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><div className="flex items-start justify-between gap-2"><span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</span><Icon className="size-4 text-primary" /></div><span className="mt-3 block text-xl font-semibold tabular-nums">{value}</span><span className="mt-1 block truncate text-xs text-muted-foreground" title={detail}>{detail}</span></button>; }
 
-function StockSection({ cockpit }: { cockpit: CommerceStoreCockpit }) {
-  return <Card variant="section" id="store-stock"><CardHeader className="pb-3"><div className="flex flex-wrap items-start justify-between gap-3"><div><CardTitle className="text-lg">Stock & valorisation</CardTitle><p className="mt-1 text-sm text-muted-foreground">La marge potentielle est non réalisée et n’entre pas dans le résultat.</p></div>{cockpit.stock && !cockpit.stock.isComplete ? <Status value="INCOMPLET" /> : null}</div></CardHeader><CardContent>{!cockpit.access.stockValuation || !cockpit.stock ? <Restricted label="La valorisation, le CUMP et les prix d’achat sont réservés aux permissions STORE-02." /> : <><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><DataRow label="Valeur au coût" value={money(cockpit.stock.costValue)} /><DataRow label="Vente potentielle" value={money(cockpit.stock.potentialSaleValue)} /><DataRow label="Marge potentielle" value={money(cockpit.stock.potentialMargin)} /><DataRow label="Références" value={String(cockpit.stock.itemCount)} /><DataRow label="Stock faible" value={String(cockpit.stock.lowStockCount)} /></div><details className="mt-4 rounded-lg border border-border"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold">Ouvrir le détail sensible ({cockpit.stock.items.length})</summary><div className="overflow-x-auto border-t border-border"><table className="w-full min-w-[980px] text-sm"><thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><Th>Référence</Th><Th>Désignation</Th><Th right>Quantité</Th><Th right>CUMP</Th><Th right>Valeur coût</Th><Th right>Prix vente</Th><Th right>Vente potentielle</Th><Th right>Marge potentielle</Th></tr></thead><tbody className="divide-y divide-border/60">{cockpit.stock.items.map((item) => <tr key={item.id} className={item.isLow ? "bg-warning/[0.05]" : undefined}><Td>{item.sku ?? "—"}</Td><Td strong>{item.name}</Td><Td right>{number(item.quantity)} {item.unit ?? ""}</Td><Td right>{money(item.unitCost)}</Td><Td right>{money(item.costValue)}</Td><Td right>{item.salePrice === null ? <span className="text-warning">Prix de vente à définir</span> : money(item.salePrice)}</Td><Td right>{money(item.potentialSaleValue)}</Td><Td right>{money(item.potentialMargin)}</Td></tr>)}</tbody></table></div></details></>}</CardContent></Card>;
+type StockLineItem = NonNullable<CommerceStoreCockpit["stock"]>["items"][number];
+
+// Parcours transfert -> stock -> prix de vente -> Caisse : un article
+// transféré pour la première fois dans un magasin a stock_price=NULL
+// (aucune information de prix au moment d'un transfert, voir
+// 20260906140000). "Prix de vente à définir" devient cliquable pour
+// quiconque a la permission commerce.stock.receive (la même que "Mettre en
+// rayon", aucune permission nouvelle) -- et un prix déjà défini reste
+// éditable via le même mécanisme, pour Sac eastpak comme pour les autres.
+function StockSection({ cockpit, locationId }: { cockpit: CommerceStoreCockpit; locationId: string }) {
+  const queryClient = useQueryClient();
+  const { can } = usePermissions();
+  const canEditPrice = can("commerce.stock.receive");
+  const [priceEditItem, setPriceEditItem] = useState<StockLineItem | null>(null);
+  const refreshAfterPriceChange = async () => {
+    // Cockpit magasin, catalogue Caisse et le picker de réapprovisionnement
+    // partagent tous business_location_inventory_items -- l'article doit
+    // devenir vendable en Caisse immédiatement, sans nouveau transfert ni
+    // rechargement manuel.
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["commerce-store-cockpit", locationId] }),
+      queryClient.invalidateQueries({ queryKey: ["commerce-pos-workspace", locationId] }),
+      queryClient.invalidateQueries({ queryKey: ["commerce-inventory-catalogue", locationId] }),
+    ]);
+  };
+  return <><Card variant="section" id="store-stock"><CardHeader className="pb-3"><div className="flex flex-wrap items-start justify-between gap-3"><div><CardTitle className="text-lg">Stock & valorisation</CardTitle><p className="mt-1 text-sm text-muted-foreground">La marge potentielle est non réalisée et n’entre pas dans le résultat.</p></div>{cockpit.stock && !cockpit.stock.isComplete ? <Status value="INCOMPLET" /> : null}</div></CardHeader><CardContent>{!cockpit.access.stockValuation || !cockpit.stock ? <Restricted label="La valorisation, le CUMP et les prix d’achat sont réservés aux permissions STORE-02." /> : <><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><DataRow label="Valeur au coût" value={money(cockpit.stock.costValue)} /><DataRow label="Vente potentielle" value={money(cockpit.stock.potentialSaleValue)} /><DataRow label="Marge potentielle" value={money(cockpit.stock.potentialMargin)} /><DataRow label="Références" value={String(cockpit.stock.itemCount)} /><DataRow label="Stock faible" value={String(cockpit.stock.lowStockCount)} /></div><details className="mt-4 rounded-lg border border-border"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold">Ouvrir le détail sensible ({cockpit.stock.items.length})</summary><div className="overflow-x-auto border-t border-border"><table className="w-full min-w-[980px] text-sm"><thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><Th>Référence</Th><Th>Désignation</Th><Th right>Quantité</Th><Th right>CUMP</Th><Th right>Valeur coût</Th><Th right>Prix vente</Th><Th right>Vente potentielle</Th><Th right>Marge potentielle</Th></tr></thead><tbody className="divide-y divide-border/60">{cockpit.stock.items.map((item) => <tr key={item.id} className={item.isLow ? "bg-warning/[0.05]" : undefined}><Td>{item.sku ?? "—"}</Td><Td strong>{item.name}</Td><Td right>{number(item.quantity)} {item.unit ?? ""}</Td><Td right>{money(item.unitCost)}</Td><Td right>{money(item.costValue)}</Td><Td right>{canEditPrice ? <button type="button" className="underline decoration-dotted underline-offset-4 hover:text-primary" onClick={() => setPriceEditItem(item)}>{item.salePrice === null ? <span className="text-warning">Prix de vente à définir</span> : money(item.salePrice)}</button> : item.salePrice === null ? <span className="text-warning">Prix de vente à définir</span> : money(item.salePrice)}</Td><Td right>{money(item.potentialSaleValue)}</Td><Td right>{money(item.potentialMargin)}</Td></tr>)}</tbody></table></div></details></>}</CardContent></Card>
+    <SalePriceEditDialog item={priceEditItem} locationName={cockpit.location.name} onClose={() => setPriceEditItem(null)} onSaved={refreshAfterPriceChange} locationId={locationId} />
+  </>;
+}
+
+function SalePriceEditDialog({ item, locationId, locationName, onClose, onSaved }: {
+  item: StockLineItem | null;
+  locationId: string;
+  locationName: string;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
+  const [priceDraft, setPriceDraft] = useState("");
+  useEffect(() => {
+    setPriceDraft(item && item.salePrice !== null ? String(item.salePrice) : "");
+  }, [item]);
+  const parsedDraft = Number(priceDraft);
+  const isValidDraft = priceDraft.trim() !== "" && Number.isFinite(parsedDraft) && parsedDraft >= 0;
+  const marginPerUnit = item && item.unitCost !== null && isValidDraft ? parsedDraft - item.unitCost : null;
+  const mutation = useMutation({
+    mutationFn: () => {
+      if (!item) throw new Error("Article introuvable.");
+      if (!isValidDraft) throw new Error("Saisissez un prix de vente valide.");
+      return updateCommerceLocationItemSalePrice({ data: { businessLocationId: locationId, inventoryItemId: item.id, salePrice: parsedDraft } });
+    },
+    onSuccess: async () => {
+      toast.success("Prix de vente enregistré.");
+      onClose();
+      await onSaved();
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Le prix n’a pas pu être enregistré."),
+  });
+  return <Dialog open={item !== null} onOpenChange={(open) => { if (!open && !mutation.isPending) onClose(); }}>
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Définir le prix de vente</DialogTitle>
+        <DialogDescription>Le prix de vente appartient à cet article dans ce magasin uniquement -- il ne modifie ni la quantité, ni le CUMP, ni Finance, ni le transfert d’origine.</DialogDescription>
+      </DialogHeader>
+      {item ? <div className="space-y-4 py-2">
+        <div className="grid gap-3 rounded-xl border border-border bg-muted/20 p-4 text-sm">
+          <DataRow label="Article" value={item.name} />
+          <DataRow label="Magasin" value={locationName} />
+          <DataRow label="Quantité actuelle" value={`${number(item.quantity)} ${item.unit ?? ""}`.trim()} />
+          <DataRow label="CUMP / coût unitaire" value={item.unitCost === null ? "Non certifiable" : money(item.unitCost)} />
+          <DataRow label="Prix de vente actuel" value={item.salePrice === null ? "Aucun (à définir)" : money(item.salePrice)} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="stock-sale-price">Prix de vente (FCFA)</Label>
+          <Input id="stock-sale-price" type="number" min="0" step="1" value={priceDraft} onChange={(event) => setPriceDraft(event.target.value)} placeholder="0" />
+        </div>
+        {marginPerUnit !== null ? <div className="rounded-xl border border-border p-3 text-sm"><DataRow label="Marge estimée / unité" value={money(marginPerUnit)} /></div> : null}
+      </div> : null}
+      <DialogFooter>
+        <Button variant="outline" disabled={mutation.isPending} onClick={onClose}>Annuler</Button>
+        <Button disabled={!isValidDraft || mutation.isPending} onClick={() => mutation.mutate()}>{mutation.isPending ? "Enregistrement…" : "Enregistrer"}</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>;
 }
 
 function ExpensesSection({ cockpit, locationId, pending, onConfirm, onMutate, onCancel, onSaved }: { cockpit: CommerceStoreCockpit; locationId: string; pending: boolean; onConfirm: (expense: StoreExpense) => void; onMutate: (action: { type: "pay-charge"; id: string }) => void; onCancel: (type: "cancel-expense" | "cancel-charge", id: string) => void; onSaved: () => Promise<void> }) {

@@ -443,6 +443,25 @@ export const confirmCommerceStoreExpense = createServerFn({ method: "POST" })
     return storeExpenseRecordSchema.parse(result);
   });
 
+// Parcours transfert -> prix de vente : un article reçu pour la première
+// fois dans un magasin (transfert de stock) n'a jamais de sale_price défini
+// -- update_commerce_location_item_sale_price (20260906140000) est la RPC
+// minimale dédiée, ne touche jamais quantity/reorder_level/CUMP/Finance.
+const updateLocationItemSalePriceSchema = z.object({ id: z.string().uuid(), sale_price: z.number().nullable() });
+
+export const updateCommerceLocationItemSalePrice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(z.object({ businessLocationId: z.string().uuid(), inventoryItemId: z.string().uuid(), salePrice: z.number().finite().min(0) }).strict())
+  .handler(async ({ context, data }) => {
+    const { data: result, error } = await callUntypedRpc(context.supabase, "update_commerce_location_item_sale_price", {
+      p_business_location_id: data.businessLocationId,
+      p_inventory_item_id: data.inventoryItemId,
+      p_sale_price: data.salePrice,
+    });
+    if (error) throw error;
+    return updateLocationItemSalePriceSchema.parse(result);
+  });
+
 export const cancelCommerceStoreExpense = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator(z.object({ expenseId: z.string().uuid(), reason: z.string().trim().min(1).max(500) }).strict())
