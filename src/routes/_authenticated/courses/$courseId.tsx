@@ -258,7 +258,15 @@ function CourseDetailsPage() {
         {course.status === "PLANNED" && can("departures.confirm") ? <Button onClick={() => setDepartureOpen(true)}>Démarrer</Button> : null}
         {course.status !== "CLOSED" && course.status !== "CANCELLED" && can("missions.expenses.manage") ? <Button variant="outline" onClick={() => setExpenseOpen(true)}>Ajouter une dépense</Button> : null}
         {course.status === "IN_PROGRESS" && can("deliveries.confirm") ? <Button onClick={() => setDeliveryOpen(true)}>Finaliser / livrer</Button> : null}
-        {course.status !== "CANCELLED" && (can("missions.update") || can("deliveries.correct")) ? <Button variant="outline" onClick={() => setActualsOpen(true)}>Corriger les données</Button> : null}
+        {/* AUDIT TOTAL (symptôme 2) : la visibilité du bouton doit refléter
+            exactement la règle de la RPC (update_transport_mission_actuals,
+            20260813143000), pas une approximation -- sur une Course
+            COMPLETED/CLOSED elle exige deliveries.correct seul (missions.update
+            seul ne suffit plus, contrairement à avant finalisation) ; sinon
+            missions.update OU deliveries.confirm. Avant ce correctif, un
+            gestionnaire/operations (missions.update sans deliveries.correct)
+            voyait le bouton sur une Course finalisée puis recevait 42501. */}
+        {course.status !== "CANCELLED" && ((course.status === "COMPLETED" || course.status === "CLOSED") ? can("deliveries.correct") : (can("missions.update") || can("deliveries.confirm"))) ? <Button variant="outline" onClick={() => setActualsOpen(true)}>Corriger les données</Button> : null}
         {course.status === "COMPLETED" && can("missions.close") ? <Button onClick={() => setCloseOpen(true)} disabled={statusMutation.isPending}>Clôturer</Button> : null}
         {["DRAFT", "PLANNED"].includes(course.status) && can("missions.delete") ? <Button variant="outline" onClick={() => setDeleteOpen(true)}><Trash2 className="mr-2 size-4" />Supprimer</Button> : null}
         {course.status !== "CLOSED" && course.status !== "CANCELLED" && can("missions.cancel") ? <Button variant="outline" onClick={() => setArchiveOpen(true)}>Annuler / archiver</Button> : null}
