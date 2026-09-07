@@ -47,7 +47,16 @@ export type CommercePosRegisterSelection =
       chooseAnother: () => void;
     }
   | { status: "ERROR"; message: string; retry: () => void }
-  | { status: "READY"; registerId: string | null; registerName: string | null };
+  | {
+      status: "READY";
+      registerId: string | null;
+      registerName: string | null;
+      /** UX CAISSE : "Changer de caisse" depuis l'en-tête, réutilise le
+       * même mécanisme que le bouton du même nom sur l'écran "occupé" --
+       * jamais une deuxième logique. null quand il n'y a rien d'autre à
+       * choisir (0 ou 1 poste actif) : pas de bouton mort. */
+      changeRegister: (() => void) | null;
+    };
 
 function storageKey(locationId: string, userId: string): string {
   return `halal_erp_pos_register:${locationId}:${userId}`;
@@ -247,7 +256,7 @@ export function useCommercePosRegisterSelection(
       : { status: "LOADING" };
   }
   if (candidateRegisterId === null) {
-    return { status: "READY", registerId: null, registerName: null };
+    return { status: "READY", registerId: null, registerName: null, changeRegister: null };
   }
   if (busyInfo) {
     return {
@@ -274,5 +283,10 @@ export function useCommercePosRegisterSelection(
   }
   const registerName =
     enrichedRegisters.find((register) => register.id === candidateRegisterId)?.name ?? null;
-  return { status: "READY", registerId: candidateRegisterId, registerName };
+  return {
+    status: "READY",
+    registerId: candidateRegisterId,
+    registerName,
+    changeRegister: activeRegisters.length > 1 ? chooseAnother : null,
+  };
 }

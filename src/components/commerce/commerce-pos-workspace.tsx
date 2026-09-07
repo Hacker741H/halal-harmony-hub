@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
+  ArrowLeftRight,
   ArrowRight,
   Banknote,
   Check,
@@ -13,6 +14,7 @@ import {
   DoorOpen,
   ListTodo,
   LogOut,
+  MoreHorizontal,
   Minus,
   Package,
   PackagePlus,
@@ -60,6 +62,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -276,7 +291,8 @@ export function CommerceManagementWorkspace({
 type CashierDraftAction =
   | { type: "DISCARD" }
   | { type: "CHANGE_LOCATION"; locationId: string }
-  | { type: "RETURN_TO_MANAGEMENT" };
+  | { type: "RETURN_TO_MANAGEMENT" }
+  | { type: "CHANGE_REGISTER" };
 
 function useCommerceCashierUserId() {
   const [userId, setUserId] = useState("");
@@ -343,6 +359,220 @@ function RegisterTile({
         {statusLabel}
       </span>
     </button>
+  );
+}
+
+// UX CAISSE : une carte article n'a qu'un travail -- se faire lire et se
+// faire toucher vite. Pas d'icône générique identique sur 40 cartes (elle
+// n'apportait aucune information) : le nom prend sa place, le prix domine
+// visuellement (priorité 2 après le total), le stock reste lisible mais
+// secondaire. L'état (rupture / prix à définir) se lit par une teinte de
+// fond très légère + le mot lui-même -- jamais la couleur seule.
+type CashierCatalogueItem = {
+  id: string;
+  name: string;
+  unit: string | null;
+  category: string | null;
+  quantity: number;
+  salePrice: number | null;
+};
+
+function ProductCard({
+  item,
+  disabled,
+  onSelect,
+}: {
+  item: CashierCatalogueItem;
+  disabled: boolean;
+  onSelect: () => void;
+}) {
+  const outOfStock = item.quantity <= 0;
+  // Deux états distincts, jamais confondus : un stock positif sans prix de
+  // vente défini n'est jamais une rupture -- l'article reste visible avec
+  // sa vraie quantité, seul le bouton de vente est désactivé tant que le
+  // prix n'est pas défini (voir addArticle).
+  const needsPrice = !outOfStock && item.salePrice === null;
+  return (
+    <button
+      type="button"
+      disabled={outOfStock || needsPrice || disabled}
+      title={
+        needsPrice
+          ? "Prix de vente à définir pour ce magasin avant de pouvoir le vendre."
+          : undefined
+      }
+      onClick={onSelect}
+      className={cn(
+        "flex min-h-[104px] flex-col justify-between gap-2.5 rounded-2xl border p-3.5 text-left shadow-sm transition-all duration-150",
+        "hover:-translate-y-0.5 hover:shadow-md focus-visible:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        "disabled:pointer-events-none disabled:opacity-60",
+        outOfStock
+          ? "border-destructive/20 bg-destructive/[0.025]"
+          : needsPrice
+            ? "border-warning/25 bg-warning/[0.025]"
+            : "border-border bg-surface hover:border-primary/40",
+      )}
+    >
+      <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">{item.name}</p>
+      <div className="flex items-end justify-between gap-2">
+        <span
+          className={cn(
+            "text-lg font-bold tabular-nums",
+            needsPrice && "text-sm font-semibold text-warning",
+          )}
+        >
+          {item.salePrice !== null ? money(item.salePrice) : needsPrice ? "Prix à définir" : "—"}
+        </span>
+        <span
+          className={cn(
+            "shrink-0 text-xs font-medium",
+            outOfStock ? "text-destructive" : "text-muted-foreground",
+          )}
+        >
+          {outOfStock ? "Rupture" : `${item.quantity} ${item.unit ?? ""}`.trim()}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+// Une ligne, tout ce dont un caissier a besoin d'un coup d'œil -- nom,
+// prix modifiable, quantité, sous-total, retirer. Zones +/- et suppression
+// assez grandes pour rester utilisables vite, souris ou tactile.
+function CartLineRow({
+  line,
+  disabled,
+  isEditingPrice,
+  priceDraft,
+  priceError,
+  surcharge,
+  canIncrease,
+  onStartEditPrice,
+  onPriceDraftChange,
+  onCommitPrice,
+  onCancelPrice,
+  onDecrease,
+  onIncrease,
+  onRemove,
+}: {
+  line: CartLine;
+  disabled: boolean;
+  isEditingPrice: boolean;
+  priceDraft: string;
+  priceError: string | null;
+  surcharge: number;
+  canIncrease: boolean;
+  onStartEditPrice: () => void;
+  onPriceDraftChange: (value: string) => void;
+  onCommitPrice: () => void;
+  onCancelPrice: () => void;
+  onDecrease: () => void;
+  onIncrease: () => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/70 bg-muted/[0.12] p-3.5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold" title={line.label}>
+            {line.label}
+          </p>
+          {isEditingPrice ? (
+            <div className="mt-1.5 flex items-center gap-1">
+              <Input
+                autoFocus
+                type="number"
+                min="0"
+                step="1"
+                className="h-8 w-24 text-sm"
+                value={priceDraft}
+                onChange={(event) => onPriceDraftChange(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") onCommitPrice();
+                  if (event.key === "Escape") onCancelPrice();
+                }}
+              />
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                aria-label="Valider le prix"
+                onClick={onCommitPrice}
+              >
+                <Check className="size-3.5" />
+              </Button>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                aria-label="Annuler"
+                onClick={onCancelPrice}
+              >
+                <X className="size-3.5" />
+              </Button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={onStartEditPrice}
+              className="mt-1 flex items-center gap-1.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none"
+            >
+              <span className="text-base font-bold tabular-nums text-foreground">
+                {money(line.unitPrice)}
+              </span>
+              <span className="text-xs text-muted-foreground underline">modifier</span>
+              {surcharge > 0 ? (
+                <span className="rounded-full bg-success/15 px-1.5 py-0.5 text-xs font-semibold text-success">
+                  +{money(surcharge)}
+                </span>
+              ) : null}
+            </button>
+          )}
+          {isEditingPrice && priceError ? (
+            <p className="mt-1 text-xs text-destructive">{priceError}</p>
+          ) : null}
+        </div>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          aria-label={`Retirer ${line.label} du ticket`}
+          disabled={disabled}
+          onClick={onRemove}
+        >
+          <Trash2 className="text-destructive" />
+        </Button>
+      </div>
+      <div className="mt-2.5 flex items-center justify-between">
+        <div className="flex items-center rounded-lg border border-border bg-surface">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label={`Diminuer la quantité de ${line.label}`}
+            disabled={disabled}
+            onClick={onDecrease}
+          >
+            <Minus />
+          </Button>
+          <span className="min-w-9 text-center text-base font-bold tabular-nums">
+            {line.quantity}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label={`Augmenter la quantité de ${line.label}`}
+            disabled={disabled || !canIncrease}
+            onClick={onIncrease}
+          >
+            <Plus />
+          </Button>
+        </div>
+        <p className="text-base font-bold tabular-nums">{money(line.quantity * line.unitPrice)}</p>
+      </div>
+    </div>
   );
 }
 
@@ -480,6 +710,7 @@ export function CommerceCashierWorkspace({
   const [servicePrice, setServicePrice] = useState("");
   const [serviceNote, setServiceNote] = useState("");
   const [suspendedTicketsOpen, setSuspendedTicketsOpen] = useState(false);
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [pendingSuspendedDeletion, setPendingSuspendedDeletion] =
     useState<CommercePosSuspendedTicket | null>(null);
   const [showClient, setShowClient] = useState(false);
@@ -687,7 +918,26 @@ export function CommerceCashierWorkspace({
     setPendingDraftAction(null);
     if (action.type === "CHANGE_LOCATION") setLocationId(action.locationId);
     if (action.type === "RETURN_TO_MANAGEMENT") onBackToManagement?.();
-  }, [onBackToManagement, pendingDraftAction, posSession]);
+    // Lu au moment de l'application, jamais capturé dans l'action elle-même
+    // -- évite tout callback figé si registerSelection a changé entre
+    // l'ouverture de la confirmation et sa validation.
+    if (action.type === "CHANGE_REGISTER" && registerSelection.status === "READY") {
+      registerSelection.changeRegister?.();
+    }
+  }, [onBackToManagement, pendingDraftAction, posSession, registerSelection]);
+  // UX CAISSE : "Changer de caisse" réutilise exactement le même mécanisme
+  // que le bouton du même nom sur l'écran "poste occupé"
+  // (registerSelection.chooseAnother) -- jamais une deuxième logique. Un
+  // ticket en cours est protégé par la même confirmation que pour changer
+  // de magasin, pas une nouvelle.
+  const requestRegisterChange = () => {
+    if (registerSelection.status !== "READY" || !registerSelection.changeRegister) return;
+    if (hasDraftInProgress) {
+      setPendingDraftAction({ type: "CHANGE_REGISTER" });
+      return;
+    }
+    registerSelection.changeRegister();
+  };
   const closeCashSession = async () => {
     await posSession.closeCashSession();
     toast.success(
@@ -1062,22 +1312,19 @@ export function CommerceCashierWorkspace({
   const conflictOutboxCount = posSession.outboxEvents.filter(
     (event) => event.status === "CONFLICT",
   ).length;
-  const lastSuccessfulSyncAt =
-    posSession.outboxEvents
-      .map((event) => event.syncedAt)
-      .filter((value): value is string => Boolean(value))
-      .sort()
-      .at(-1) ?? null;
+  // UX CAISSE : vocabulaire calme, phrase courte, jamais en capitales --
+  // un indicateur compact, pas un bandeau d'alerte. Le calcul lui-même
+  // (quel état l'emporte) est inchangé, seul le libellé change.
   const syncStatusLabel =
     posSession.networkStatus !== "ONLINE"
-      ? "HORS LIGNE"
+      ? "Hors ligne"
       : posSession.syncProgress
-        ? `SYNCHRONISATION… ${syncedOutboxCount} / ${posSession.outboxEvents.length}`
+        ? "Synchronisation…"
         : conflictOutboxCount > 0
-          ? "CONFLIT À CONTRÔLER"
+          ? "Intervention requise"
           : posSession.pendingOutboxCount > 0
-            ? `${posSession.pendingOutboxCount} EN ATTENTE`
-            : `SYNCHRONISÉ ${syncedOutboxCount} / ${posSession.outboxEvents.length}`;
+            ? `${posSession.pendingOutboxCount} vente${posSession.pendingOutboxCount > 1 ? "s" : ""} en attente`
+            : "Synchronisé";
 
   if (locationsQuery.isPending && !availableLocations.length)
     return (
@@ -1264,6 +1511,219 @@ export function CommerceCashierWorkspace({
       : posSession.networkStatus !== "ONLINE" || posSession.pendingOutboxCount > 0
         ? "bg-warning/20 text-warning-foreground"
         : "bg-success/20 text-success-foreground";
+  const canChangeRegisterHeader =
+    registerSelection.status === "READY" && registerSelection.changeRegister !== null;
+
+  // UX CAISSE : un seul panier, rendu à deux endroits (fixe sur desktop,
+  // dans un tiroir sur mobile) -- jamais deux implémentations qui
+  // pourraient diverger. Zéro logique métier ici, uniquement la
+  // présentation déjà validée (updateDraft/update/addArticle/checkout...).
+  const cartPanelBody = (
+    <>
+      <div className="shrink-0 border-b border-border/75 p-3">
+        {showClient ? (
+          <div className="flex items-center gap-2">
+            <ClientSelect
+              value={clientId}
+              onValueChange={(value) =>
+                updateDraft((current) => ({ ...current, clientId: value || null }))
+              }
+              placeholder="Client facultatif"
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                updateDraft((current) => ({ ...current, clientId: null }));
+                setShowClient(false);
+              }}
+            >
+              Comptoir
+            </Button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowClient(true)}
+            className="flex w-full items-center justify-between rounded-xl border border-dashed border-border/90 bg-surface/75 px-3 py-2 text-left text-sm transition-colors hover:border-primary/35 hover:bg-primary/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <span className="font-semibold">
+              {clientId ? "Ticket nominatif" : "Vente comptoir"}
+            </span>
+            <span className="text-xs font-semibold text-primary">F4 · Client</span>
+          </button>
+        )}
+      </div>
+
+      <div className="min-h-0 flex-1 space-y-2.5 overflow-auto p-3">
+        {cart.map((line) => {
+          const isService = line.lineType === "SERVICE";
+          const catalogItem = !isService
+            ? activeCatalogue.find((entry) => entry.id === line.itemId)
+            : null;
+          const availableQuantity = isService
+            ? Number.POSITIVE_INFINITY
+            : (catalogItem?.quantity ?? 0);
+          const isEditingPrice = editingPriceLineId === line.lineId;
+          const floor = catalogFloorFor(line);
+          const surcharge = floor !== null && line.unitPrice > floor ? line.unitPrice - floor : 0;
+          return (
+            <CartLineRow
+              key={line.lineId}
+              line={line}
+              disabled={checkoutState !== "READY"}
+              isEditingPrice={isEditingPrice}
+              priceDraft={priceDraft}
+              priceError={isEditingPrice ? priceError : null}
+              surcharge={surcharge}
+              canIncrease={isService || line.quantity < availableQuantity}
+              onStartEditPrice={() => startEditPrice(line)}
+              onPriceDraftChange={setPriceDraft}
+              onCommitPrice={() => commitEditPrice(line)}
+              onCancelPrice={cancelEditPrice}
+              onDecrease={() => update(line.lineId, { quantity: line.quantity - 1 })}
+              onIncrease={() =>
+                isService
+                  ? update(line.lineId, { quantity: line.quantity + 1 })
+                  : addArticle(line.itemId, line.unitPrice, line.label)
+              }
+              onRemove={() => update(line.lineId, { quantity: 0 })}
+            />
+          );
+        })}
+        {cart.length === 0 ? (
+          <div className="flex min-h-40 flex-col items-center justify-center gap-2 text-center">
+            <ShoppingCart className="size-6 text-muted-foreground" />
+            <p className="text-sm font-semibold">Le panier est vide</p>
+            <p className="text-xs text-muted-foreground">
+              Touchez un article du rayon pour commencer.
+            </p>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="shrink-0 space-y-3 border-t border-border/75 bg-muted/[0.10] p-3">
+        <div
+          className="flex flex-wrap items-center gap-1"
+          role="radiogroup"
+          aria-label="Moyen de paiement"
+        >
+          {paymentMethods.map(({ value, label, icon: Icon }) => {
+            const selected = method === value;
+            const jekoDisabled = value === "JEKO";
+            const offlineUnavailable = posSession.networkStatus !== "ONLINE" && value !== "CASH";
+            return (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => setPaymentMethod(value)}
+                disabled={checkoutState !== "READY" || jekoDisabled || offlineUnavailable}
+                title={
+                  jekoDisabled
+                    ? "Jèko sera disponible lorsque l’encaissement transactionnel POS sera relié."
+                    : offlineUnavailable
+                      ? "Paiement indisponible hors connexion."
+                      : value === "WAVE"
+                        ? "Saisie mobile manuelle : aucune API Wave directe"
+                        : label
+                }
+                className={`flex h-10 min-w-[4.5rem] flex-1 items-center justify-center gap-1 rounded-lg border text-xs font-semibold transition-[background-color,border-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55 ${selected ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-surface text-muted-foreground hover:border-primary/35 hover:text-foreground"}`}
+              >
+                <Icon className="size-3.5" />
+                <span className="hidden sm:inline">
+                  {jekoDisabled ? "Jèko" : value === "WAVE" ? "Mobile" : label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        {method === "CASH" ? (
+          <div className="flex items-center gap-2">
+            <Label
+              htmlFor="commerce-pos-cash-received"
+              className="shrink-0 text-xs font-semibold text-muted-foreground"
+            >
+              Reçu
+            </Label>
+            <Input
+              id="commerce-pos-cash-received"
+              className="h-9 text-right tabular-nums"
+              type="number"
+              min={total}
+              step="1"
+              disabled={checkoutState !== "READY"}
+              placeholder={money(total)}
+              value={cashReceived ?? ""}
+              onChange={(event) =>
+                updateDraft((current) => ({
+                  ...current,
+                  cashReceived: event.target.value === "" ? null : Number(event.target.value),
+                }))
+              }
+            />
+            {cashReceived !== null ? (
+              <span className="shrink-0 text-xs font-semibold text-muted-foreground">
+                Rendu {money(cashChange)}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* UX CAISSE : l'élément le plus visible du panier -- empilé, pas
+            juste plus gros sur la même ligne que son étiquette. */}
+        <div className="rounded-xl bg-primary/[0.06] px-4 py-3 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            Total
+          </p>
+          <p className="mt-1 text-3xl font-bold tabular-nums text-foreground">{money(total)}</p>
+        </div>
+
+        <Button
+          className="h-14 w-full text-base"
+          loading={saleMutation.isPending}
+          loadingLabel="Comptabilisation"
+          disabled={!canCheckout}
+          onClick={checkout}
+        >
+          <WalletCards />
+          {saleMutation.isPending || checkoutState === "PROCESSING"
+            ? "Comptabilisation…"
+            : posSession.networkStatus !== "ONLINE"
+              ? `Conserver ${money(total)}`
+              : `Encaisser ${money(total)}`}
+          <span className="ml-1 hidden text-xs font-normal opacity-75 2xl:inline">· F10</span>
+        </Button>
+        {hasDraftInProgress ? (
+          <div className="flex justify-end gap-3 pt-0.5">
+            <button
+              type="button"
+              disabled={checkoutState !== "READY" || cart.length === 0}
+              onClick={() => {
+                if (posSession.suspendDraft()) {
+                  setShowClient(false);
+                  toast.success("Ticket suspendu : aucune opération n’a été comptabilisée.");
+                }
+              }}
+              className="text-xs font-semibold text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+            >
+              Suspendre
+            </button>
+            <button
+              type="button"
+              disabled={checkoutState !== "READY"}
+              onClick={() => setPendingDraftAction({ type: "DISCARD" })}
+              className="text-xs font-semibold text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
+            >
+              Abandonner
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </>
+  );
 
   return (
     <div
@@ -1272,48 +1732,36 @@ export function CommerceCashierWorkspace({
         isCashierOnlyShell ? "lg:h-[calc(100dvh-1.5rem)]" : "lg:h-[calc(100dvh-6.4rem)]",
       )}
     >
-      {/* Distinct cashier shell identity: a dedicated app bar, not the admin cockpit's card grid. */}
+      {/* UX CAISSE : un titre net (HALAL ERP -- CAISSE), une seule ligne de
+          contexte discrète en dessous (magasin, poste, caissier, ouverture)
+          -- jamais un tableau de bord. CA du jour déplacé dans l'onglet
+          Session : ça n'aide pas à vendre la prochaine ligne. Les actions
+          secondaires (changer de caisse, gestion, déconnexion) vivent dans
+          un menu compact -- seuls l'état sync et Clôturer restent toujours
+          visibles, ce sont les deux qui comptent en continu. */}
       <header className="shrink-0 rounded-2xl bg-foreground text-background shadow-md">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">
               {cashierInitials}
             </span>
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-background/55">
-                Caisse
-              </p>
-              <p className="truncate text-sm font-bold" title={currentLocationName}>
-                {currentLocationName}
-                {registerSelection.status === "READY" && registerSelection.registerName ? (
-                  <span className="ml-1.5 font-normal text-background/70">
-                    · {registerSelection.registerName}
-                  </span>
-                ) : null}
+              <p className="truncate text-base font-bold tracking-tight">HALAL ERP — CAISSE</p>
+              <p className="mt-0.5 truncate text-xs text-background/60">
+                <span title={currentLocationName}>{currentLocationName}</span>
+                {registerSelection.status === "READY" && registerSelection.registerName
+                  ? ` · ${registerSelection.registerName}`
+                  : ""}
+                {" · "}
+                {cashierName}
+                {" · Ouverte "}
+                {sessionOpenedLabel}
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-4 text-xs">
-            <div className="text-right">
-              <p className="text-background/55">Caissier</p>
-              <p className="max-w-32 truncate font-semibold" title={cashierName}>
-                {cashierName}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-background/55">Session ouverte</p>
-              <p className="font-semibold tabular-nums">{sessionOpenedLabel}</p>
-            </div>
-            {canSeeTodayRevenue ? (
-              <div className="text-right">
-                <p className="text-background/55">CA du jour</p>
-                <p className="font-semibold tabular-nums">
-                  {money(workspace?.today.received ?? 0)}
-                </p>
-              </div>
-            ) : null}
+          <div className="flex flex-wrap items-center gap-2">
             <span
-              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold ${syncPillTone}`}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${syncPillTone}`}
             >
               {posSession.networkStatus !== "ONLINE" ? (
                 <CloudOff className="size-3.5" aria-hidden="true" />
@@ -1322,34 +1770,6 @@ export function CommerceCashierWorkspace({
               )}
               {syncStatusLabel}
             </span>
-          </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {onBackToManagement ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="text-background hover:bg-background/10 hover:text-background"
-                onClick={onBackToManagement}
-              >
-                <LogOut />
-                Gestion
-              </Button>
-            ) : null}
-            {isCashierOnlyShell ? (
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="text-background hover:bg-background/10 hover:text-background"
-                onClick={() => {
-                  void signOut();
-                }}
-                aria-label="Déconnexion"
-              >
-                <DoorOpen className="size-4" />
-              </Button>
-            ) : null}
             <PosCashSessionClose
               session={posSession.cashSession}
               summary={cashSessionSummary}
@@ -1357,6 +1777,45 @@ export function CommerceCashierWorkspace({
               onClose={closeCashSession}
               onStartNew={startNewCashSession}
             />
+            {canChangeRegisterHeader || onBackToManagement || isCashierOnlyShell ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="text-background hover:bg-background/10 hover:text-background"
+                    aria-label="Plus d’options"
+                  >
+                    <MoreHorizontal className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {canChangeRegisterHeader ? (
+                    <DropdownMenuItem onClick={requestRegisterChange}>
+                      <ArrowLeftRight />
+                      Changer de caisse
+                    </DropdownMenuItem>
+                  ) : null}
+                  {onBackToManagement ? (
+                    <DropdownMenuItem onClick={onBackToManagement}>
+                      <LogOut />
+                      Gestion
+                    </DropdownMenuItem>
+                  ) : null}
+                  {isCashierOnlyShell ? (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        void signOut();
+                      }}
+                    >
+                      <DoorOpen />
+                      Déconnexion
+                    </DropdownMenuItem>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
           </div>
         </div>
       </header>
@@ -1374,7 +1833,8 @@ export function CommerceCashierWorkspace({
             key={value}
             type="button"
             onClick={() => setCashierTab(value)}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold transition-colors ${cashierTab === value ? "bg-surface text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            aria-current={cashierTab === value ? "page" : undefined}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${cashierTab === value ? "bg-surface text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Icon className="size-4" />
             {value === "CAISSE" ? "Caisse" : value === "VENTES" ? "Ventes" : "Session"}
@@ -1384,13 +1844,12 @@ export function CommerceCashierWorkspace({
 
       {cashierTab === "SESSION" ? (
         <CashierSessionTab
-          locationName={currentLocationName}
-          cashierName={cashierName}
-          sessionOpenedLabel={sessionOpenedLabel}
-          session={posSession.cashSession}
           summary={cashSessionSummary}
-          syncStatusLabel={syncStatusLabel}
-          lastSuccessfulSyncAt={lastSuccessfulSyncAt}
+          suspendedTicketsCount={posSession.suspendedTickets.length}
+          onOpenSuspendedTickets={() => setSuspendedTicketsOpen(true)}
+          canSeeTodayRevenue={canSeeTodayRevenue}
+          todayRevenue={workspace?.today.received ?? 0}
+          session={posSession.cashSession}
           disabled={hasDraftInProgress || posSession.suspendedTickets.length > 0}
           onClose={closeCashSession}
           onStartNew={startNewCashSession}
@@ -1423,9 +1882,11 @@ export function CommerceCashierWorkspace({
             </div>
           ) : null}
 
-          <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]">
-            {/* LEFT ~60% -- catalogue: search/scan, categories, product grid. */}
-            <section className="order-2 flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-sm lg:order-1">
+          <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(380px,1fr)]">
+            {/* ~65-70% sur desktop -- le catalogue est la zone principale.
+                Plein écran sur mobile : le panier vit dans le tiroir fixe
+                plus bas, jamais empilé au-dessus du rayon. */}
+            <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-sm">
               <div className="shrink-0 space-y-2.5 border-b border-border/75 bg-muted/[0.16] p-3">
                 <div className="flex gap-2">
                   <form
@@ -1493,7 +1954,7 @@ export function CommerceCashierWorkspace({
                   <button
                     type="button"
                     onClick={() => setActiveCategory(null)}
-                    className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${activeCategory === null ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface text-muted-foreground hover:border-primary/35 hover:text-foreground"}`}
+                    className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${activeCategory === null ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface text-muted-foreground hover:border-primary/35 hover:text-foreground"}`}
                   >
                     Tous
                   </button>
@@ -1502,7 +1963,7 @@ export function CommerceCashierWorkspace({
                       key={category}
                       type="button"
                       onClick={() => setActiveCategory(category)}
-                      className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${activeCategory === category ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface text-muted-foreground hover:border-primary/35 hover:text-foreground"}`}
+                      className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${activeCategory === category ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface text-muted-foreground hover:border-primary/35 hover:text-foreground"}`}
                     >
                       {category}
                     </button>
@@ -1510,13 +1971,13 @@ export function CommerceCashierWorkspace({
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-auto p-3">
+              <div className="min-h-0 flex-1 overflow-auto p-3 pb-28 lg:pb-3">
                 {workspaceQuery.isPending && !isUsingOfflineCatalogue ? (
-                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4">
-                    <Skeleton className="h-32" />
-                    <Skeleton className="h-32" />
-                    <Skeleton className="h-32" />
-                    <Skeleton className="h-32" />
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                    <Skeleton className="h-28" />
+                    <Skeleton className="h-28" />
+                    <Skeleton className="h-28" />
+                    <Skeleton className="h-28" />
                   </div>
                 ) : null}
                 {workspaceQuery.isError && !isUsingOfflineCatalogue ? (
@@ -1535,58 +1996,15 @@ export function CommerceCashierWorkspace({
                 {(!workspaceQuery.isPending || isUsingOfflineCatalogue) &&
                 (!workspaceQuery.isError || isUsingOfflineCatalogue) ? (
                   gridItems.length ? (
-                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4">
-                      {gridItems.map((item) => {
-                        const outOfStock = item.quantity <= 0;
-                        // Deux états distincts, jamais confondus : un stock
-                        // positif sans prix de vente défini n'est jamais une
-                        // rupture -- l'article reste visible avec sa vraie
-                        // quantité, seul le bouton de vente est désactivé tant
-                        // que le prix n'est pas défini (voir addArticle).
-                        const needsPrice = !outOfStock && item.salePrice === null;
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            disabled={outOfStock || needsPrice || checkoutState !== "READY"}
-                            title={
-                              needsPrice
-                                ? "Prix de vente à définir pour ce magasin avant de pouvoir le vendre."
-                                : undefined
-                            }
-                            onClick={() => addArticle(item.id, item.salePrice, item.name)}
-                            className="flex flex-col items-stretch gap-1.5 rounded-xl border border-border bg-surface p-2.5 text-left shadow-sm transition-colors hover:border-primary/40 hover:shadow disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <div className="flex aspect-square w-full items-center justify-center rounded-lg bg-primary/[0.07] text-primary">
-                              <Package className="size-8" />
-                            </div>
-                            <p
-                              className="line-clamp-2 text-xs font-semibold leading-tight"
-                              title={item.name}
-                            >
-                              {item.name}
-                            </p>
-                            <div className="mt-auto flex items-center justify-between gap-1">
-                              <span
-                                className={`text-sm font-bold tabular-nums ${needsPrice ? "text-warning" : ""}`}
-                              >
-                                {item.salePrice !== null
-                                  ? money(item.salePrice)
-                                  : needsPrice
-                                    ? "Prix à définir"
-                                    : "—"}
-                              </span>
-                              <span
-                                className={`shrink-0 text-[10px] font-semibold ${outOfStock ? "text-destructive" : "text-muted-foreground"}`}
-                              >
-                                {outOfStock
-                                  ? "Rupture"
-                                  : `${item.quantity} ${item.unit ?? ""}`.trim()}
-                              </span>
-                            </div>
-                          </button>
-                        );
-                      })}
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+                      {gridItems.map((item) => (
+                        <ProductCard
+                          key={item.id}
+                          item={item}
+                          disabled={checkoutState !== "READY"}
+                          onSelect={() => addArticle(item.id, item.salePrice, item.name)}
+                        />
+                      ))}
                     </div>
                   ) : (
                     <div className="flex min-h-56 flex-col items-center justify-center gap-2 text-center">
@@ -1601,310 +2019,38 @@ export function CommerceCashierWorkspace({
               </div>
             </section>
 
-            {/* RIGHT ~40% -- cart: lines, payment, ENCAISSER. Always visible, never a hidden drawer. */}
-            <aside className="order-1 flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-sm lg:order-2">
-              <div className="shrink-0 border-b border-border/75 p-3">
-                {showClient ? (
-                  <div className="flex items-center gap-2">
-                    <ClientSelect
-                      value={clientId}
-                      onValueChange={(value) =>
-                        updateDraft((current) => ({ ...current, clientId: value || null }))
-                      }
-                      placeholder="Client facultatif"
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        updateDraft((current) => ({ ...current, clientId: null }));
-                        setShowClient(false);
-                      }}
-                    >
-                      Comptoir
-                    </Button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setShowClient(true)}
-                    className="flex w-full items-center justify-between rounded-xl border border-dashed border-border/90 bg-surface/75 px-3 py-2 text-left text-sm transition-colors hover:border-primary/35 hover:bg-primary/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    <span className="font-semibold">
-                      {clientId ? "Ticket nominatif" : "Vente comptoir"}
-                    </span>
-                    <span className="text-xs font-semibold text-primary">F4 · Client</span>
-                  </button>
-                )}
-              </div>
-
-              <div className="min-h-0 flex-1 space-y-2 overflow-auto p-3">
-                {cart.map((line) => {
-                  const isService = line.lineType === "SERVICE";
-                  const catalogItem = !isService
-                    ? activeCatalogue.find((entry) => entry.id === line.itemId)
-                    : null;
-                  const availableQuantity = isService
-                    ? Number.POSITIVE_INFINITY
-                    : (catalogItem?.quantity ?? 0);
-                  const isEditingPrice = editingPriceLineId === line.lineId;
-                  const floor = catalogFloorFor(line);
-                  const surcharge =
-                    floor !== null && line.unitPrice > floor ? line.unitPrice - floor : 0;
-                  return (
-                    <div
-                      key={line.lineId}
-                      className="rounded-xl border border-border/70 bg-muted/[0.12] p-2.5"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold" title={line.label}>
-                            {line.label}
-                          </p>
-                          {isEditingPrice ? (
-                            <div className="mt-1 flex items-center gap-1">
-                              <Input
-                                autoFocus
-                                type="number"
-                                min="0"
-                                step="1"
-                                className="h-7 w-24 text-sm"
-                                value={priceDraft}
-                                onChange={(event) => setPriceDraft(event.target.value)}
-                                onKeyDown={(event) => {
-                                  if (event.key === "Enter") commitEditPrice(line);
-                                  if (event.key === "Escape") cancelEditPrice();
-                                }}
-                              />
-                              <Button
-                                type="button"
-                                size="icon-sm"
-                                variant="ghost"
-                                aria-label="Valider le prix"
-                                onClick={() => commitEditPrice(line)}
-                              >
-                                <Check className="size-3.5" />
-                              </Button>
-                              <Button
-                                type="button"
-                                size="icon-sm"
-                                variant="ghost"
-                                aria-label="Annuler"
-                                onClick={cancelEditPrice}
-                              >
-                                <X className="size-3.5" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              disabled={checkoutState !== "READY"}
-                              onClick={() => startEditPrice(line)}
-                              className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary disabled:pointer-events-none"
-                            >
-                              <span className="font-semibold tabular-nums text-foreground">
-                                {money(line.unitPrice)}
-                              </span>
-                              <span className="underline">modifier</span>
-                              {surcharge > 0 ? (
-                                <span className="rounded-full bg-success/15 px-1.5 py-0.5 font-semibold text-success">
-                                  +{money(surcharge)}
-                                </span>
-                              ) : null}
-                            </button>
-                          )}
-                          {isEditingPrice && priceError ? (
-                            <p className="mt-1 text-xs text-destructive">{priceError}</p>
-                          ) : null}
-                        </div>
-                        <Button
-                          type="button"
-                          size="icon-sm"
-                          variant="ghost"
-                          aria-label={`Retirer ${line.label} du ticket`}
-                          disabled={checkoutState !== "READY"}
-                          onClick={() => update(line.lineId, { quantity: 0 })}
-                        >
-                          <Trash2 className="text-destructive" />
-                        </Button>
-                      </div>
-                      <div className="mt-2 flex items-center justify-between">
-                        <div className="flex items-center rounded-lg border border-border bg-surface">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label={`Diminuer la quantité de ${line.label}`}
-                            disabled={checkoutState !== "READY"}
-                            onClick={() => update(line.lineId, { quantity: line.quantity - 1 })}
-                          >
-                            <Minus />
-                          </Button>
-                          <span className="min-w-8 text-center text-sm font-bold tabular-nums">
-                            {line.quantity}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label={`Augmenter la quantité de ${line.label}`}
-                            disabled={
-                              checkoutState !== "READY" ||
-                              (!isService && line.quantity >= availableQuantity)
-                            }
-                            onClick={() =>
-                              isService
-                                ? update(line.lineId, { quantity: line.quantity + 1 })
-                                : addArticle(line.itemId, line.unitPrice, line.label)
-                            }
-                          >
-                            <Plus />
-                          </Button>
-                        </div>
-                        <p className="font-bold tabular-nums">
-                          {money(line.quantity * line.unitPrice)}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-                {cart.length === 0 ? (
-                  <div className="flex min-h-40 flex-col items-center justify-center gap-2 text-center">
-                    <ShoppingCart className="size-6 text-muted-foreground" />
-                    <p className="text-sm font-semibold">Le panier est vide</p>
-                    <p className="text-xs text-muted-foreground">
-                      Touchez un article du rayon pour commencer.
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="shrink-0 space-y-2.5 border-t border-border/75 bg-muted/[0.10] p-3">
-                <div
-                  className="flex flex-wrap items-center gap-1"
-                  role="radiogroup"
-                  aria-label="Moyen de paiement"
-                >
-                  {paymentMethods.map(({ value, label, icon: Icon }) => {
-                    const selected = method === value;
-                    const jekoDisabled = value === "JEKO";
-                    const offlineUnavailable =
-                      posSession.networkStatus !== "ONLINE" && value !== "CASH";
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        role="radio"
-                        aria-checked={selected}
-                        onClick={() => setPaymentMethod(value)}
-                        disabled={checkoutState !== "READY" || jekoDisabled || offlineUnavailable}
-                        title={
-                          jekoDisabled
-                            ? "Jèko sera disponible lorsque l’encaissement transactionnel POS sera relié."
-                            : offlineUnavailable
-                              ? "Paiement indisponible hors connexion."
-                              : value === "WAVE"
-                                ? "Saisie mobile manuelle : aucune API Wave directe"
-                                : label
-                        }
-                        className={`flex h-9 min-w-[4.5rem] flex-1 items-center justify-center gap-1 rounded-lg border text-xs font-semibold transition-[background-color,border-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55 ${selected ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-surface text-muted-foreground hover:border-primary/35 hover:text-foreground"}`}
-                      >
-                        <Icon className="size-3.5" />
-                        <span className="hidden sm:inline">
-                          {jekoDisabled ? "Jèko" : value === "WAVE" ? "Mobile" : label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                {method === "CASH" ? (
-                  <div className="flex items-center gap-2">
-                    <Label
-                      htmlFor="commerce-pos-cash-received"
-                      className="shrink-0 text-xs font-semibold text-muted-foreground"
-                    >
-                      Reçu
-                    </Label>
-                    <Input
-                      id="commerce-pos-cash-received"
-                      className="h-9 text-right tabular-nums"
-                      type="number"
-                      min={total}
-                      step="1"
-                      disabled={checkoutState !== "READY"}
-                      placeholder={money(total)}
-                      value={cashReceived ?? ""}
-                      onChange={(event) =>
-                        updateDraft((current) => ({
-                          ...current,
-                          cashReceived:
-                            event.target.value === "" ? null : Number(event.target.value),
-                        }))
-                      }
-                    />
-                    {cashReceived !== null ? (
-                      <span className="shrink-0 text-xs font-semibold text-muted-foreground">
-                        Rendu {money(cashChange)}
-                      </span>
-                    ) : null}
-                  </div>
-                ) : null}
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                    Total
-                  </p>
-                  <p className="text-xl font-bold tabular-nums">{money(total)}</p>
-                </div>
-                <Button
-                  className="h-14 w-full text-base"
-                  loading={saleMutation.isPending}
-                  loadingLabel="Comptabilisation"
-                  disabled={!canCheckout}
-                  onClick={checkout}
-                >
-                  <WalletCards />
-                  {saleMutation.isPending || checkoutState === "PROCESSING"
-                    ? "Comptabilisation…"
-                    : posSession.networkStatus !== "ONLINE"
-                      ? `Conserver ${money(total)}`
-                      : `Encaisser ${money(total)}`}
-                  <span className="ml-1 hidden text-xs font-normal opacity-75 2xl:inline">
-                    · F10
-                  </span>
-                </Button>
-                {hasDraftInProgress ? (
-                  <div className="flex justify-end gap-2 pt-1">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={checkoutState !== "READY" || cart.length === 0}
-                      onClick={() => {
-                        if (posSession.suspendDraft()) {
-                          setShowClient(false);
-                          toast.success(
-                            "Ticket suspendu : aucune opération n’a été comptabilisée.",
-                          );
-                        }
-                      }}
-                    >
-                      Suspendre
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      disabled={checkoutState !== "READY"}
-                      onClick={() => setPendingDraftAction({ type: "DISCARD" })}
-                    >
-                      Abandonner
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
+            {/* ~30-35% sur desktop -- panier fixe, jamais un tiroir caché.
+                Masqué sur mobile : même contenu (cartPanelBody), affiché
+                dans le tiroir fixe en bas d'écran à la place. */}
+            <aside className="hidden min-h-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-sm lg:flex">
+              {cartPanelBody}
             </aside>
           </div>
+
+          {/* MOBILE -- catalogue plein écran, panier dans un tiroir fixe.
+              Le total reste visible en permanence sans ouvrir quoi que ce
+              soit ; le tiroir ne s'ouvre que pour agir sur le panier. */}
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface p-3 shadow-[0_-6px_20px_-6px_rgb(0_0_0_/_0.15)] lg:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileCartOpen(true)}
+              className="flex w-full items-center justify-between rounded-xl bg-primary px-4 py-3.5 text-primary-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                <ShoppingCart className="size-5" />
+                {cart.length} article{cart.length > 1 ? "s" : ""}
+              </span>
+              <span className="text-lg font-bold tabular-nums">{money(total)}</span>
+            </button>
+          </div>
+          <Drawer open={mobileCartOpen} onOpenChange={setMobileCartOpen}>
+            <DrawerContent className="flex max-h-[90dvh] flex-col">
+              <DrawerHeader className="shrink-0 border-b border-border/75 text-left">
+                <DrawerTitle>Panier</DrawerTitle>
+              </DrawerHeader>
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{cartPanelBody}</div>
+            </DrawerContent>
+          </Drawer>
         </>
       )}
 
@@ -2070,76 +2216,58 @@ export function CommerceCashierWorkspace({
 /** Mission caisse-UX: a dedicated, always-legible "où en est ma session ?"
  * screen -- no Finance vocabulary, no wallet, nothing the cashier has to
  * interpret beyond what they already see in the header at a glance. */
+// UX CAISSE : magasin, poste, caissier, ouverture, sync restent visibles en
+// permanence dans l'en-tête (au-dessus de cet onglet, quel que soit
+// l'onglet actif) -- les répéter ici à l'identique n'aiderait personne.
+// Cet onglet ne montre que ce que l'en-tête ne montre pas : le récap
+// chiffré de la session, les tickets en attente, et l'action de clôture.
 function CashierSessionTab({
-  locationName,
-  cashierName,
-  sessionOpenedLabel,
-  session,
   summary,
-  syncStatusLabel,
-  lastSuccessfulSyncAt,
+  suspendedTicketsCount,
+  onOpenSuspendedTickets,
+  canSeeTodayRevenue,
+  todayRevenue,
+  session,
   disabled,
   onClose,
   onStartNew,
 }: {
-  locationName: string;
-  cashierName: string;
-  sessionOpenedLabel: string;
-  session: ReturnType<typeof useCommercePosSession>["cashSession"];
   summary: ReturnType<typeof useCommercePosSession>["cashSessionSummary"];
-  syncStatusLabel: string;
-  lastSuccessfulSyncAt: string | null;
+  suspendedTicketsCount: number;
+  onOpenSuspendedTickets: () => void;
+  canSeeTodayRevenue: boolean;
+  todayRevenue: number;
+  session: ReturnType<typeof useCommercePosSession>["cashSession"];
   disabled: boolean;
   onClose: () => Promise<void>;
   onStartNew: () => Promise<void>;
 }) {
   return (
     <div className="flex-1 space-y-3 overflow-auto">
-      <Card variant="section">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Cette session</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Caisse
-            </p>
-            <p className="mt-1 font-semibold">{locationName}</p>
-          </div>
-          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Caissier
-            </p>
-            <p className="mt-1 font-semibold">{cashierName}</p>
-          </div>
-          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Session ouverte
-            </p>
-            <p className="mt-1 font-semibold tabular-nums">{sessionOpenedLabel}</p>
-          </div>
-          <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Synchronisation
-            </p>
-            <p className="mt-1 font-semibold">{syncStatusLabel}</p>
-            {lastSuccessfulSyncAt ? (
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {new Date(lastSuccessfulSyncAt).toLocaleString("fr-FR", {
-                  dateStyle: "short",
-                  timeStyle: "short",
-                })}
-              </p>
-            ) : null}
-          </div>
-        </CardContent>
-      </Card>
+      {suspendedTicketsCount > 0 ? (
+        <button
+          type="button"
+          onClick={onOpenSuspendedTickets}
+          className="flex w-full items-center justify-between rounded-2xl border border-warning/25 bg-warning/[0.06] px-4 py-3 text-left transition-colors hover:bg-warning/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <span className="flex items-center gap-2 text-sm font-semibold text-warning">
+            <ListTodo className="size-4" />
+            {suspendedTicketsCount} ticket{suspendedTicketsCount > 1 ? "s" : ""} en attente
+          </span>
+          <span className="text-xs font-semibold text-warning underline">Voir</span>
+        </button>
+      ) : null}
       {summary ? (
         <Card variant="section">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Depuis l’ouverture</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <CardContent
+            className={cn(
+              "grid gap-3 sm:grid-cols-2",
+              canSeeTodayRevenue ? "xl:grid-cols-5" : "xl:grid-cols-4",
+            )}
+          >
             <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 Tickets
@@ -2166,6 +2294,14 @@ function CashierSessionTab({
                 {money(summary.theoreticalCash)}
               </p>
             </div>
+            {canSeeTodayRevenue ? (
+              <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  CA du jour
+                </p>
+                <p className="mt-1 text-lg font-bold tabular-nums">{money(todayRevenue)}</p>
+              </div>
+            ) : null}
             {/* Toujours affiches, meme a 0 : un montant Mobile Money ou Autres
               ne doit jamais disparaitre silencieusement de ce recap. */}
             <div className="rounded-xl border border-border/70 bg-muted/[0.12] p-3">
