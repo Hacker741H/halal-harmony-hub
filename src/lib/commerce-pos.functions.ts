@@ -914,8 +914,15 @@ export const updateCommerceLocationItemSalePrice = createServerFn({ method: "POS
 
 // CHANTIER CAISSE : sélection explicite du poste de caisse. [] = magasin non
 // migré vers des postes nommés -- le client garde alors le comportement
-// ambiant historique (voir get_commerce_pos_available_registers).
-const commercePosRegisterSchema = z.object({ id: z.string().uuid(), name: z.string() });
+// ambiant historique (voir get_commerce_pos_available_registers). isActive
+// : un poste inactif n'apparaît ici que pour un profil locations.manage
+// (voir 20260907140000) -- affiché pour contexte dans l'écran de choix,
+// jamais compté parmi les candidats à l'auto-sélection.
+const commercePosRegisterSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  isActive: z.boolean(),
+});
 
 export const getCommercePosAvailableRegisters = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

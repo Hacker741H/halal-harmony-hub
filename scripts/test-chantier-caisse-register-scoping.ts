@@ -56,6 +56,37 @@ const commerceCashRegisterSchemaMirror = z.object({
   isActive: z.boolean(),
 });
 
+// 8. BUG UX corrigé le 07/09 : l'écran "poste occupé" n'affichait que
+// Réessayer pour MAGASIN MARIAM. Cause : get_commerce_pos_available_
+// registers filtrait déjà sur is_active -- avec un seul poste actif
+// (CAISSE 2, CAISSE MARIAM alors inactif), le bouton "choisir un autre
+// poste" (gated sur registers.length > 1 côté UI) ne s'affichait jamais.
+// Mirroir de la fusion occupation (useCommercePosRegisterSelection,
+// src/hooks/use-commerce-pos-register.ts) et du filtrage actif/inactif
+// pour la décision d'auto-sélection.
+type RawRegister = { id: string; name: string; isActive: boolean };
+type OpenSession = { cashRegisterId: string | null; cashier: string; openedAtServer: string };
+type EnrichedRegister = RawRegister & {
+  occupiedBy: { cashier: string; since: string } | null;
+};
+function enrichRegisters(raw: RawRegister[], openSessions: OpenSession[]): EnrichedRegister[] {
+  const openByRegisterId = new Map(
+    openSessions
+      .filter((session) => session.cashRegisterId)
+      .map((session) => [session.cashRegisterId, session]),
+  );
+  return raw.map((register) => {
+    const open = openByRegisterId.get(register.id);
+    return {
+      ...register,
+      occupiedBy: open ? { cashier: open.cashier, since: open.openedAtServer } : null,
+    };
+  });
+}
+function isRegisterSelectable(register: EnrichedRegister): boolean {
+  return register.isActive && !register.occupiedBy;
+}
+
 // 1. scopeKey (commerce-pos-offline.ts) -- partitionnement IndexedDB par
 // poste. null = comportement historique inchangé (clé à 2 segments).
 type PosOfflineScope = { locationId: string; userId: string; registerId: string | null };
@@ -290,6 +321,49 @@ function run(): void {
       draftLocationId: null,
     }) === null,
     "Un identifiant demandé qui ne figure plus dans les magasins accessibles (lien obsolète) doit être ignoré, pas suivi aveuglément.",
+  );
+
+  // -- 8. Fusion occupation + scénario exact du rapport : MAGASIN MARIAM ->
+  // CAISSE 2 occupée -> choisir autre caisse -> ouverture d'un poste libre.
+  const caisse2 = "56ef5a70-ad1f-433b-be00-dc796252bcac";
+  const caisseMariamInactive = "7cd5e664-9814-4a04-b12e-eb2cfd1a6886";
+  const caisseMariamActive = "df449a49-e4c4-4af2-b708-0a24ee4683e8";
+  const rawRegisters: RawRegister[] = [
+    { id: caisse2, name: "CAISSE 2", isActive: true },
+    { id: caisseMariamInactive, name: "CAISSE MARIAM", isActive: false },
+    { id: caisseMariamActive, name: "CAISSE MARIAM", isActive: true },
+  ];
+  const openSessions: OpenSession[] = [
+    { cashRegisterId: caisse2, cashier: "Mariam Keita", openedAtServer: "2026-09-07T13:00:00Z" },
+  ];
+  const enriched = enrichRegisters(rawRegisters, openSessions);
+  const caisse2Enriched = enriched.find((register) => register.id === caisse2);
+  const caisseMariamActiveEnriched = enriched.find(
+    (register) => register.id === caisseMariamActive,
+  );
+  const caisseMariamInactiveEnriched = enriched.find(
+    (register) => register.id === caisseMariamInactive,
+  );
+  expect(
+    caisse2Enriched?.occupiedBy?.cashier === "Mariam Keita" &&
+      !isRegisterSelectable(caisse2Enriched),
+    "CAISSE 2 occupée : occupiedBy renseigné (qui, pas seulement un booléen) et jamais sélectionnable -- un poste occupé n'est jamais ouvrable.",
+  );
+  expect(
+    caisseMariamActiveEnriched !== undefined &&
+      caisseMariamActiveEnriched.occupiedBy === null &&
+      isRegisterSelectable(caisseMariamActiveEnriched),
+    "CAISSE MARIAM (active, libre) reste sélectionnable même quand CAISSE 2 est occupée -- un poste occupé ne bloque jamais l'accès aux autres. C'est exactement le scénario : MAGASIN MARIAM -> CAISSE 2 occupée -> choisir autre caisse -> ouverture correcte d'un poste libre.",
+  );
+  expect(
+    caisseMariamInactiveEnriched !== undefined &&
+      !isRegisterSelectable(caisseMariamInactiveEnriched),
+    "Le poste CAISSE MARIAM inactif reste visible (contexte pour l'admin) mais jamais sélectionnable.",
+  );
+  const activeOnly = rawRegisters.filter((register) => register.isActive);
+  expect(
+    activeOnly.length === 2,
+    "Seuls les postes actifs (CAISSE 2, CAISSE MARIAM active) comptent pour la décision d'auto-sélection 0/1/2+ -- le poste inactif ne doit ni compter ni bloquer l'auto-sélection à poste unique dans un autre scénario.",
   );
 
   console.log("CHANTIER CAISSE register-scoping tests passed.");

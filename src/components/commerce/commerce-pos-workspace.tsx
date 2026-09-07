@@ -93,7 +93,10 @@ import {
 } from "@/lib/commerce-pos.functions";
 import { markVoluntarySignOut } from "@/lib/auth-session-resync";
 import { getWallets } from "@/lib/wallet.functions";
-import { useCommercePosRegisterSelection } from "@/hooks/use-commerce-pos-register";
+import {
+  useCommercePosRegisterSelection,
+  type CommercePosRegister,
+} from "@/hooks/use-commerce-pos-register";
 import { useCommercePosSession } from "@/hooks/use-commerce-pos-session";
 import { useConfirm } from "@/hooks/use-confirm";
 import { useCurrentUserAccess } from "@/hooks/use-current-user-access";
@@ -295,6 +298,52 @@ function isIndeterminateCheckoutError(error: unknown): boolean {
   if (error instanceof TypeError && error.message.toLowerCase().includes("fetch")) return true;
   if (!(error instanceof Error)) return false;
   return /network|timeout|timed out|failed to fetch|load failed/i.test(error.message);
+}
+
+// Une tuile par poste, avec son état réel -- disponible / occupé par X
+// depuis HH:MM / inactif. Un poste occupé ou inactif est visible (pour
+// qu'un admin/gestionnaire voie l'ensemble du magasin) mais jamais
+// cliquable : un poste occupé ne doit jamais pouvoir être ouvert, mais ne
+// bloque jamais l'accès aux autres. Partagée entre l'écran de choix
+// initial et "Choisir une autre caisse" depuis l'écran "poste occupé" --
+// un seul rendu, jamais deux écrans qui pourraient diverger.
+function RegisterTile({
+  register,
+  onSelect,
+}: {
+  register: CommercePosRegister;
+  onSelect: (registerId: string) => void;
+}) {
+  const isSelectable = register.isActive && !register.occupiedBy;
+  const statusLabel = !register.isActive
+    ? "Inactif"
+    : register.occupiedBy
+      ? `Occupé par ${register.occupiedBy.cashier} depuis ${new Date(register.occupiedBy.since).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`
+      : "Disponible";
+  const statusTone = !register.isActive
+    ? "bg-muted text-muted-foreground"
+    : register.occupiedBy
+      ? "bg-warning/15 text-warning-foreground"
+      : "bg-success/15 text-success-foreground";
+  return (
+    <button
+      type="button"
+      disabled={!isSelectable}
+      onClick={() => onSelect(register.id)}
+      className={cn(
+        "flex flex-col items-start gap-1.5 rounded-xl border border-border bg-card p-4 text-left transition-colors",
+        isSelectable
+          ? "hover:border-primary hover:bg-primary/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          : "cursor-not-allowed opacity-60",
+      )}
+    >
+      <Store className="size-5 text-primary" />
+      <span className="font-semibold">{register.name}</span>
+      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusTone}`}>
+        {statusLabel}
+      </span>
+    </button>
+  );
 }
 
 export function CommerceCashierWorkspace({
@@ -1163,11 +1212,12 @@ export function CommerceCashierWorkspace({
             <Button type="button" onClick={registerSelection.retry}>
               Réessayer
             </Button>
-            {registerSelection.registers.length > 1 ? (
-              <Button type="button" variant="outline" onClick={registerSelection.chooseAnother}>
-                Choisir un autre poste
-              </Button>
-            ) : null}
+            {/* Un poste occupé ne bloque jamais l'accès aux autres -- ce
+                bouton reste proposé même si l'écran de choix montre ensuite
+                qu'aucune autre caisse active n'est libre pour l'instant. */}
+            <Button type="button" variant="outline" onClick={registerSelection.chooseAnother}>
+              Choisir une autre caisse
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -1182,15 +1232,11 @@ export function CommerceCashierWorkspace({
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {registerSelection.registers.map((register) => (
-              <button
+              <RegisterTile
                 key={register.id}
-                type="button"
-                onClick={() => registerSelection.select(register.id)}
-                className="flex flex-col items-start gap-1 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-primary hover:bg-primary/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <Store className="size-5 text-primary" />
-                <span className="font-semibold">{register.name}</span>
-              </button>
+                register={register}
+                onSelect={registerSelection.select}
+              />
             ))}
           </div>
         </CardContent>

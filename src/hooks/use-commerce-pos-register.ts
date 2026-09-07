@@ -4,20 +4,32 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { createCommercePosId } from "@/lib/commerce-pos-session";
 import {
   getCommercePosAvailableRegisters,
+  getCommercePosOpenSessions,
   openCommercePosCashSession,
 } from "@/lib/commerce-pos.functions";
 
 // CHANTIER CAISSE : plus jamais de sélection silencieuse d'"une" caisse.
-// - 0 poste connu pour ce magasin -> comportement historique inchangé, zéro
-//   friction, zéro appel serveur supplémentaire (registerId reste null).
+// - 0 poste actif connu pour ce magasin -> comportement historique
+//   inchangé, zéro friction, zéro appel serveur supplémentaire (registerId
+//   reste null).
 // - 1 seul poste actif -> choisi automatiquement, zéro friction (aucune
-//   ambiguïté à lever).
-// - 2+ postes -> le dernier poste choisi sur ce navigateur est repris
-//   silencieusement s'il figure toujours dans la liste ; sinon une sélection
-//   explicite est requise. Un poste est verrouillé côté serveur dès qu'il
-//   est retenu (open_commerce_pos_cash_session) : "occupé par quelqu'un
-//   d'autre" devient détectable AVANT toute vente locale.
-export type CommercePosRegister = { id: string; name: string };
+//   ambiguïté à lever). Un poste inactif ne compte jamais comme candidat.
+// - 2+ postes actifs -> le dernier poste choisi sur ce navigateur est
+//   repris silencieusement s'il figure toujours parmi les actifs ; sinon
+//   une sélection explicite est requise. Un poste est verrouillé côté
+//   serveur dès qu'il est retenu (open_commerce_pos_cash_session) :
+//   "occupé par quelqu'un d'autre" devient détectable AVANT toute vente
+//   locale.
+// - Écran "occupé" : Réessayer ET Choisir une autre caisse, toujours les
+//   deux -- un poste occupé n'empêche jamais d'accéder aux autres.
+export type CommercePosRegisterOccupancy = { cashier: string; since: string } | null;
+
+export type CommercePosRegister = {
+  id: string;
+  name: string;
+  isActive: boolean;
+  occupiedBy: CommercePosRegisterOccupancy;
+};
 
 export type CommercePosRegisterSelection =
   | { status: "LOADING" }
@@ -70,33 +82,85 @@ export function useCommercePosRegisterSelection(
     queryFn: () => getCommercePosAvailableRegisters({ data: { locationId } }),
     enabled: Boolean(locationId && userId),
   });
-  // undefined = pas encore déterminé, null = mode historique (aucun poste),
-  // string = poste retenu (choisi explicitement ou seul candidat possible).
+  // Qui a quel poste ouvert, depuis quand -- déjà écrite pour la
+  // visibilité gestionnaire (get_commerce_pos_open_sessions), jamais
+  // encore branchée à un écran avant cet écran de choix. Rafraîchie
+  // périodiquement : un affichage "occupé" un peu daté n'est jamais
+  // dangereux -- l'ouverture réelle revérifie toujours côté serveur au
+  // moment du clic (open_commerce_pos_cash_session).
+  const openSessionsQuery = useQuery({
+    queryKey: ["commerce-pos-open-sessions", locationId],
+    queryFn: () => getCommercePosOpenSessions({ data: { locationId } }),
+    enabled: Boolean(locationId && userId),
+    refetchInterval: 15_000,
+  });
+  // undefined = pas encore déterminé, null = mode historique (aucun poste
+  // actif), string = poste retenu (choisi explicitement ou seul candidat
+  // actif possible).
   const [candidateRegisterId, setCandidateRegisterId] = useState<string | null | undefined>(
     undefined,
   );
   const [busyInfo, setBusyInfo] = useState<{ cashier: string; since: string | null } | null>(null);
+  // "Choisir une autre caisse" doit toujours ramener à l'écran de choix,
+  // même s'il n'y a qu'un seul poste actif (celui-là même qui est occupé)
+  // -- sans ce drapeau, l'effet ci-dessous re-résoudrait aussitôt le même
+  // candidat unique et renverrait silencieusement à l'état BUSY.
+  const [forceManualSelection, setForceManualSelection] = useState(false);
   const openedForRef = useRef<string | null>(null);
 
-  const registers = useMemo(() => registersQuery.data ?? [], [registersQuery.data]);
+  const rawRegisters = useMemo(() => registersQuery.data ?? [], [registersQuery.data]);
+  // Seuls les postes ACTIFS comptent pour la décision d'auto-sélection
+  // (0/1/2+) -- un poste inactif est visible pour contexte dans l'écran de
+  // choix, jamais un candidat auto-sélectionnable ni un blocage vers
+  // l'auto-sélection à poste unique.
+  const activeRegisters = useMemo(
+    () => rawRegisters.filter((register) => register.isActive),
+    [rawRegisters],
+  );
+  const enrichedRegisters = useMemo<CommercePosRegister[]>(() => {
+    const openByRegisterId = new Map(
+      (openSessionsQuery.data ?? [])
+        .filter((session): session is typeof session & { cashRegisterId: string } =>
+          Boolean(session.cashRegisterId),
+        )
+        .map((session) => [session.cashRegisterId, session]),
+    );
+    return rawRegisters.map((register) => {
+      const open = openByRegisterId.get(register.id);
+      return {
+        id: register.id,
+        name: register.name,
+        isActive: register.isActive,
+        occupiedBy: open ? { cashier: open.cashier, since: open.openedAtServer } : null,
+      };
+    });
+  }, [rawRegisters, openSessionsQuery.data]);
 
-  // Détermine le candidat dès que la liste des postes disponibles est connue.
+  // Détermine le candidat dès que la liste des postes actifs est connue.
   useEffect(() => {
     if (!registersQuery.isSuccess || candidateRegisterId !== undefined) return;
-    if (registers.length === 0) {
+    if (forceManualSelection) return;
+    if (activeRegisters.length === 0) {
       setCandidateRegisterId(null);
       return;
     }
-    if (registers.length === 1) {
-      setCandidateRegisterId(registers[0].id);
+    if (activeRegisters.length === 1) {
+      setCandidateRegisterId(activeRegisters[0].id);
       return;
     }
     const remembered = readRememberedRegisterId(locationId, userId);
-    if (remembered && registers.some((register) => register.id === remembered)) {
+    if (remembered && activeRegisters.some((register) => register.id === remembered)) {
       setCandidateRegisterId(remembered);
     }
     // Sinon : reste undefined -> NEEDS_SELECTION, une sélection explicite est requise.
-  }, [candidateRegisterId, locationId, registers, registersQuery.isSuccess, userId]);
+  }, [
+    candidateRegisterId,
+    locationId,
+    activeRegisters,
+    registersQuery.isSuccess,
+    userId,
+    forceManualSelection,
+  ]);
 
   const openMutation = useMutation({
     mutationFn: async (registerId: string) =>
@@ -141,14 +205,24 @@ export function useCommercePosRegisterSelection(
     setBusyInfo(null);
     openMutation.mutate(candidateRegisterId);
   };
+  // Retour à l'écran de choix du MÊME magasin -- locationId/userId
+  // n'étant jamais réinitialisés ici, la caisse ne se déplace jamais vers
+  // un autre magasin en cliquant "Choisir une autre caisse".
   const chooseAnother = () => {
     setBusyInfo(null);
     openedForRef.current = null;
     rememberRegisterId(locationId, userId, null);
+    setForceManualSelection(true);
     setCandidateRegisterId(undefined);
   };
   const select = (registerId: string) => {
+    // Garde défensive : l'UI ne rend déjà cliquables que les postes actifs
+    // et libres, mais un poste occupé ou inactif ne doit jamais pouvoir
+    // être ouvert même si cette fonction était appelée autrement.
+    const target = enrichedRegisters.find((register) => register.id === registerId);
+    if (!target || !target.isActive || target.occupiedBy) return;
     setBusyInfo(null);
+    setForceManualSelection(false);
     setCandidateRegisterId(registerId);
   };
 
@@ -163,12 +237,13 @@ export function useCommercePosRegisterSelection(
     return { status: "LOADING" };
   }
   if (candidateRegisterId === undefined) {
-    // L'effet n'a pas encore résolu de candidat. Pour 0 ou 1 poste, c'est un
-    // état transitoire d'un seul rendu (l'effet le résout aussitôt) -- pour
-    // 2 postes ou plus sans choix mémorisé valide, c'est l'état final :
-    // une sélection explicite est requise.
-    return registers.length > 1
-      ? { status: "NEEDS_SELECTION", registers, select }
+    // L'effet n'a pas encore résolu de candidat. Pour 0 ou 1 poste actif
+    // (hors forceManualSelection), c'est un état transitoire d'un seul
+    // rendu (l'effet le résout aussitôt) -- pour 2 postes actifs ou plus
+    // sans choix mémorisé valide, ou après un "Choisir une autre caisse"
+    // explicite, c'est l'état final : une sélection explicite est requise.
+    return activeRegisters.length > 1 || forceManualSelection
+      ? { status: "NEEDS_SELECTION", registers: enrichedRegisters, select }
       : { status: "LOADING" };
   }
   if (candidateRegisterId === null) {
@@ -179,7 +254,7 @@ export function useCommercePosRegisterSelection(
       status: "BUSY",
       busyCashier: busyInfo.cashier,
       busySince: busyInfo.since,
-      registers,
+      registers: enrichedRegisters,
       retry,
       chooseAnother,
     };
@@ -198,6 +273,6 @@ export function useCommercePosRegisterSelection(
     return { status: "LOADING" };
   }
   const registerName =
-    registers.find((register) => register.id === candidateRegisterId)?.name ?? null;
+    enrichedRegisters.find((register) => register.id === candidateRegisterId)?.name ?? null;
   return { status: "READY", registerId: candidateRegisterId, registerName };
 }
