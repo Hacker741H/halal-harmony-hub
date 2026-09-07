@@ -24,17 +24,22 @@ function expect(condition: unknown, message: string): asserts condition {
 // réponses précises. Mirroir exact de commerceCashRegisterSchema
 // (src/lib/commerce-pos.functions.ts) -- si l'une change sans l'autre,
 // relire les deux côte à côte.
-// 7. BUG PRODUCTION corrigé le 07/09 : "Ouvrir la caisse" depuis MAGASIN
-// MARIAM atterrissait sur ACCESSOIRES ET DIVERS. Cause : la navigation
-// /commerce -> /caisse ne transportait aucun contexte de magasin ;
-// /caisse retombait alors sur son inférence locale, dont le dernier repli
-// était availableLocations[0] -- et getCommercePosLocations trie par nom
-// (ORDER BY location_row.name), donc "ACCESSOIRES ET DIVERS" passe
-// systématiquement avant "MAGASIN MARIAM". Mirroir exact de la priorité
-// de résolution dans CommerceCashierWorkspace
-// (src/components/commerce/commerce-pos-workspace.tsx) : demande
-// explicite (URL) > brouillon existant > mono-magasin (aucune ambiguïté)
-// > jamais un choix silencieux quand 2+ magasins et aucun contexte.
+// 7. BUG PRODUCTION corrigé le 07/09, PUIS RETROUVÉ le 07/09 (AUDIT TOTAL)
+// dans un DEUXIÈME écran : "Ouvrir la caisse" depuis MAGASIN MARIAM
+// atterrissait sur ACCESSOIRES ET DIVERS (/caisse), puis /commerce
+// lui-même s'est révélé avoir exactement le même défaut à l'identique --
+// son propre useState local pour le magasin courant repartait de "" à
+// chaque refresh et retombait sur locationsQuery.data[0]. Cause commune :
+// getCommercePosLocations trie par nom (ORDER BY location_row.name), donc
+// "ACCESSOIRES ET DIVERS" passe systématiquement avant "MAGASIN MARIAM"
+// pour quiconque a accès aux deux. Mirroir exact de
+// resolveCommercePosLocationId (src/lib/commerce-pos-session.ts) --
+// désormais LA seule fonction réelle appelée par CommerceCashierWorkspace
+// (/caisse) ET CommerceManagementWorkspace (/commerce), pas deux copies
+// qui auraient pu diverger une troisième fois. Priorité : demande
+// explicite (URL) > brouillon existant (caisse uniquement, toujours null
+// côté /commerce) > mono-magasin (aucune ambiguïté) > jamais un choix
+// silencieux quand 2+ magasins et aucun contexte.
 type LocationResolutionInput = {
   requestedLocationId: string | null;
   availableLocationIds: readonly string[];

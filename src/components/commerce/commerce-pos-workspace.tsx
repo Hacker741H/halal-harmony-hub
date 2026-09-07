@@ -129,6 +129,7 @@ import {
   createCommercePosId,
   findCommercePosDraftLocation,
   getCommercePosStockConflicts,
+  resolveCommercePosLocationId,
   type CommercePosDraftLine,
   type CommercePosPaymentMethod,
   type CommercePosSuspendedTicket,
@@ -158,8 +159,18 @@ const paymentMethods: Array<{ value: PaymentMethod; label: string; icon: typeof 
 // paramètre de recherche de /caisse (jamais une inférence côté caisse).
 export function CommerceManagementWorkspace({
   onOpenCashier,
+  requestedLocationId,
+  onLocationResolved,
 }: {
   onOpenCashier: (locationId: string) => void;
+  /** AUDIT TOTAL (symptôme 1) : magasin explicitement demandé -- l'URL
+   * après un refresh, prioritaire sur tout repli. Voir
+   * resolveCommercePosLocationId. */
+  requestedLocationId?: string;
+  /** Reflète le magasin réellement résolu vers l'appelant, pour qu'il soit
+   * fixé dans l'URL -- un refresh relit alors ce même magasin au lieu de
+   * retomber sur locations[0]. */
+  onLocationResolved?: (locationId: string) => void;
 }) {
   const queryClient = useQueryClient();
   const { can } = usePermissions();
@@ -172,7 +183,29 @@ export function CommerceManagementWorkspace({
     queryFn: () => getCommercePosLocations(),
   });
   const [locationId, setLocationId] = useState("");
-  const selectedLocationId = locationId || locationsQuery.data?.[0]?.id || "";
+  const availableLocationIds = useMemo(
+    () => (locationsQuery.data ?? []).map((location) => location.id),
+    [locationsQuery.data],
+  );
+  // AUDIT TOTAL (symptôme 1) : plus de repli silencieux sur
+  // locationsQuery.data[0] -- cause exacte du bug "MAGASIN MARIAM revient
+  // sur ACCESSOIRES ET DIVERS au refresh" : locationId (useState local)
+  // repart de "" à chaque remount, et get_commerce_pos_locations trie par
+  // nom, donc "ACCESSOIRES ET DIVERS" gagnait systématiquement le repli.
+  // Aucun brouillon hors ligne côté administration (draftLocationId
+  // toujours null ici, à la différence de /caisse) -- même fonction
+  // partagée, un seul point de décision.
+  const selectedLocationId =
+    locationId ||
+    resolveCommercePosLocationId({
+      requestedLocationId: requestedLocationId ?? null,
+      availableLocationIds,
+      draftLocationId: null,
+    }) ||
+    "";
+  useEffect(() => {
+    if (selectedLocationId) onLocationResolved?.(selectedLocationId);
+  }, [selectedLocationId, onLocationResolved]);
   const dashboardQuery = useQuery({
     queryKey: ["commerce-management-dashboard", selectedLocationId],
     queryFn: () => getCommerceManagementDashboard({ data: { locationId: selectedLocationId } }),
@@ -238,6 +271,14 @@ export function CommerceManagementWorkspace({
     );
   }
 
+  // AUDIT TOTAL (symptôme 1) : 2+ magasins accessibles, aucun contexte --
+  // jamais un choix silencieux du premier, même règle qu'en caisse.
+  if (!selectedLocationId && managementLocations.length > 1) {
+    return (
+      <CommerceLocationChoiceScreen locations={managementLocations} onSelect={setLocationId} />
+    );
+  }
+
   return (
     <StoreManagementCockpit
       locations={managementLocations}
@@ -285,6 +326,42 @@ export function CommerceManagementWorkspace({
         </>
       }
     />
+  );
+}
+
+// AUDIT TOTAL : un seul écran de choix de magasin, partagé par /commerce et
+// /caisse -- avant ce correctif, seul /caisse en avait un (CHANTIER
+// CAISSE) ; /commerce retombait silencieusement sur locations[0]. Même
+// rendu strictement -- aucun changement visuel, un seul composant en
+// commun au lieu de deux implémentations qui auraient pu diverger.
+function CommerceLocationChoiceScreen({
+  locations,
+  onSelect,
+}: {
+  locations: CommercePosLocation[];
+  onSelect: (locationId: string) => void;
+}) {
+  return (
+    <Card variant="information">
+      <CardHeader>
+        <CardTitle>Choisissez votre magasin</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {locations.map((location) => (
+            <button
+              key={location.id}
+              type="button"
+              onClick={() => onSelect(location.id)}
+              className="flex flex-col items-start gap-1 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-primary hover:bg-primary/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Store className="size-5 text-primary" />
+              <span className="font-semibold">{location.name}</span>
+            </button>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -793,13 +870,18 @@ export function CommerceCashierWorkspace({
     // Une demande explicite (bouton "Ouvrir la caisse" pour un magasin
     // précis, ou l'URL après un refresh) est prioritaire sur toute
     // inférence -- jamais remplacée en silence par le brouillon hors
-    // ligne d'un AUTRE magasin. Vérifiée synchrone, avant même de
-    // consulter IndexedDB/localStorage.
-    const requested =
-      requestedLocationId &&
-      availableLocations.some((location) => location.id === requestedLocationId)
-        ? requestedLocationId
-        : null;
+    // ligne d'un AUTRE magasin. resolveCommercePosLocationId est LE point
+    // de décision partagé avec CommerceManagementWorkspace (/commerce) --
+    // AUDIT TOTAL : les deux avaient chacun leur propre repli
+    // `locationId || locations[0]?.id`, cause du même bug de refresh dans
+    // les deux écrans. Vérifiée synchrone, avant même de consulter
+    // IndexedDB/localStorage.
+    const availableLocationIds = availableLocations.map((location) => location.id);
+    const requested = resolveCommercePosLocationId({
+      requestedLocationId: requestedLocationId ?? null,
+      availableLocationIds,
+      draftLocationId: null,
+    });
     if (requested) {
       setLocationId(requested);
       return () => {
@@ -810,17 +892,14 @@ export function CommerceCashierWorkspace({
     void (async () => {
       let restoredLocationId: string | null = null;
       try {
-        restoredLocationId = await findPosOfflineDraftLocation(
-          availableLocations.map((location) => location.id),
-          currentUserId,
-        );
+        restoredLocationId = await findPosOfflineDraftLocation(availableLocationIds, currentUserId);
       } catch (error) {
         console.warn("Le brouillon hors connexion n’a pas pu être localisé.", error);
       }
       if (!restoredLocationId) {
         restoredLocationId = findCommercePosDraftLocation(
           window.localStorage,
-          availableLocations.map((location) => location.id),
+          availableLocationIds,
           currentUserId,
         );
       }
@@ -829,8 +908,11 @@ export function CommerceCashierWorkspace({
       // existant : ne jamais choisir silencieusement le premier -- l'écran
       // de choix explicite prend le relais (availableLocations.length > 1
       // plus bas, quand selectedLocationId reste vide).
-      const fallbackLocationId = availableLocations.length === 1 ? availableLocations[0].id : null;
-      const resolvedLocationId = restoredLocationId ?? fallbackLocationId;
+      const resolvedLocationId = resolveCommercePosLocationId({
+        requestedLocationId: null,
+        availableLocationIds,
+        draftLocationId: restoredLocationId,
+      });
       if (active && resolvedLocationId) setLocationId(resolvedLocationId);
     })();
     return () => {
@@ -1397,28 +1479,7 @@ export function CommerceCashierWorkspace({
   // getCommercePosLocations trie par nom, "ACCESSOIRES ET DIVERS" passait
   // ainsi systématiquement avant "MAGASIN MARIAM").
   if (!selectedLocationId && availableLocations.length > 1) {
-    return (
-      <Card variant="information">
-        <CardHeader>
-          <CardTitle>Choisissez votre magasin</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {availableLocations.map((location) => (
-              <button
-                key={location.id}
-                type="button"
-                onClick={() => setLocationId(location.id)}
-                className="flex flex-col items-start gap-1 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-primary hover:bg-primary/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <Store className="size-5 text-primary" />
-                <span className="font-semibold">{location.name}</span>
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <CommerceLocationChoiceScreen locations={availableLocations} onSelect={setLocationId} />;
   }
 
   // CHANTIER CAISSE : plus de sélection silencieuse d'un poste -- tant que

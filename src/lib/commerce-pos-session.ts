@@ -355,6 +355,33 @@ export function findCommercePosDraftLocation(
   return null;
 }
 
+// AUDIT TOTAL : un seul point de décision "quel magasin courant", partagé
+// par CommerceCashierWorkspace (/caisse) ET CommerceManagementWorkspace
+// (/commerce) -- avant ce correctif, les deux composants avaient chacun
+// leur propre repli local `locationId || locations[0]?.id`, qui retombait
+// silencieusement sur le premier magasin renvoyé par
+// get_commerce_pos_locations (trié par nom -- "ACCESSOIRES ET DIVERS"
+// avant "MAGASIN MARIAM") dès qu'un refresh remettait l'état React local à
+// zéro. Priorité : une demande explicite (search param d'URL, restaurée
+// après un refresh) > un contexte récupérable (ex. brouillon de caisse
+// existant -- sans objet pour l'administration, toujours null côté
+// /commerce) > un seul magasin accessible (aucune ambiguïté) > jamais un
+// choix silencieux du premier quand 2+ magasins existent sans le moindre
+// contexte -- l'appelant doit alors présenter un choix explicite.
+export function resolveCommercePosLocationId(input: {
+  requestedLocationId: string | null;
+  availableLocationIds: readonly string[];
+  draftLocationId: string | null;
+}): string | null {
+  if (input.requestedLocationId && input.availableLocationIds.includes(input.requestedLocationId)) {
+    return input.requestedLocationId;
+  }
+  if (input.draftLocationId && input.availableLocationIds.includes(input.draftLocationId)) {
+    return input.draftLocationId;
+  }
+  return input.availableLocationIds.length === 1 ? input.availableLocationIds[0] : null;
+}
+
 export function getCommercePosStockConflicts(
   lines: readonly CommercePosDraftLine[],
   availability: readonly CommercePosStockAvailability[],
