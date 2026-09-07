@@ -59,7 +59,6 @@ import {
   getCommercePosControlReportDetail,
   getCommercePosControlReports,
   getCommerceStoreCockpit,
-  getCommercePosLocations,
   payCommerceStorePlannedExpense,
   updateCommerceLocationItemSalePrice,
   type CommercePosControlReportSummary,
@@ -140,46 +139,13 @@ const periodLabels: Record<PeriodKey, string> = {
   custom: "Personnalisé",
 };
 
-export function CommerceStoreManagementWorkspace({
-  onOpenCashier,
-}: {
-  onOpenCashier: (locationId: string) => void;
-}) {
-  const locationsQuery = useQuery({
-    queryKey: ["commerce-pos-locations"],
-    queryFn: () => getCommercePosLocations(),
-  });
-  const [locationId, setLocationId] = useState("");
-  const selectedLocationId = locationId || locationsQuery.data?.[0]?.id || "";
-
-  if (locationsQuery.isPending) return <CockpitSkeleton />;
-  if (locationsQuery.isError)
-    return (
-      <Card variant="information">
-        <CardContent className="p-5">
-          Impossible de charger les magasins auxquels vous avez accès.
-        </CardContent>
-      </Card>
-    );
-  if (!locationsQuery.data?.length)
-    return (
-      <Card variant="information">
-        <CardHeader>
-          <CardTitle>Aucun magasin accessible</CardTitle>
-        </CardHeader>
-        <CardContent>Une affectation active à un magasin Commerce est nécessaire.</CardContent>
-      </Card>
-    );
-
-  return (
-    <StoreManagementCockpit
-      locations={locationsQuery.data}
-      locationId={selectedLocationId}
-      onLocationChange={setLocationId}
-      onOpenCashier={onOpenCashier}
-    />
-  );
-}
+// AUDIT TOTAL : CommerceStoreManagementWorkspace (résolution locale
+// locationId || locations[0]?.id, sans URL ni persistance) a été retirée --
+// zéro appelant dans tout le dépôt (grep confirmé), c'était une copie morte
+// du même bug de contexte magasin déjà corrigé ailleurs pour /commerce et
+// /caisse. Le seul chemin réel est CommerceManagementWorkspace
+// (commerce-pos-workspace.tsx) -> StoreManagementCockpit (ci-dessous), qui
+// reçoit locationId en prop contrôlée et ne devine jamais.
 
 function resolvePeriod(key: PeriodKey, openedAt?: string, custom?: { from: string; to: string }) {
   const today = new Date();
