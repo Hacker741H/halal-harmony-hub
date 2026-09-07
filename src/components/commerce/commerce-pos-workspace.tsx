@@ -330,17 +330,24 @@ function RegisterTile({
   register: CommercePosRegister;
   onSelect: (registerId: string) => void;
 }) {
-  const isSelectable = register.isActive && !register.occupiedBy;
+  // RÈGLE FINALE (reprise de session) : occupé par moi-même n'est jamais un
+  // blocage -- seul un poste occupé par quelqu'un d'AUTRE reste désactivé.
+  const isMine = register.occupiedBy?.isMine ?? false;
+  const isSelectable = register.isActive && (!register.occupiedBy || isMine);
   const statusLabel = !register.isActive
     ? "Inactif"
-    : register.occupiedBy
-      ? `Occupé par ${register.occupiedBy.cashier} depuis ${new Date(register.occupiedBy.since).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`
-      : "Disponible";
+    : !register.occupiedBy
+      ? "Disponible"
+      : isMine
+        ? "Reprendre ma session"
+        : `Occupé par ${register.occupiedBy.cashier} depuis ${new Date(register.occupiedBy.since).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
   const statusTone = !register.isActive
     ? "bg-muted text-muted-foreground"
-    : register.occupiedBy
-      ? "bg-warning/15 text-warning-foreground"
-      : "bg-success/15 text-success-foreground";
+    : !register.occupiedBy
+      ? "bg-success/15 text-success-foreground"
+      : isMine
+        ? "bg-primary/15 text-primary"
+        : "bg-warning/15 text-warning-foreground";
   return (
     <button
       type="button"

@@ -22,7 +22,21 @@ import {
 //   locale.
 // - Écran "occupé" : Réessayer ET Choisir une autre caisse, toujours les
 //   deux -- un poste occupé n'empêche jamais d'accéder aux autres.
-export type CommercePosRegisterOccupancy = { cashier: string; since: string } | null;
+// - BUG CORRIGÉ : OPEN + même user_id + même cash_register_id -> RESUME,
+//   jamais BUSY. get_commerce_pos_open_sessions liste "qui a quel poste
+//   ouvert" sans distinguer "moi" de "quelqu'un d'autre" -- la fusion
+//   ci-dessous (isMine) est ce qui manquait : open_commerce_pos_cash_
+//   session lui-même reprenait déjà correctement sa propre session
+//   (vérifié en direct contre la production, cashier_user_id = auth.uid()),
+//   mais l'écran de choix affichait et désactivait CE MÊME poste comme
+//   n'importe quel autre poste occupé -- y compris pour son propre
+//   titulaire. isMine distingue les deux ; seul un poste occupé par
+//   quelqu'un d'autre reste désactivé.
+export type CommercePosRegisterOccupancy = {
+  cashier: string;
+  since: string;
+  isMine: boolean;
+} | null;
 
 export type CommercePosRegister = {
   id: string;
@@ -140,10 +154,19 @@ export function useCommercePosRegisterSelection(
         id: register.id,
         name: register.name,
         isActive: register.isActive,
-        occupiedBy: open ? { cashier: open.cashier, since: open.openedAtServer } : null,
+        occupiedBy: open
+          ? { cashier: open.cashier, since: open.openedAtServer, isMine: open.cashierId === userId }
+          : null,
       };
     });
-  }, [rawRegisters, openSessionsQuery.data]);
+  }, [rawRegisters, openSessionsQuery.data, userId]);
+
+  // Réglé une fois que get_commerce_pos_open_sessions a répondu (succès OU
+  // échec) -- une panne de cette requête auxiliaire ne doit jamais bloquer
+  // indéfiniment la résolution du poste, seulement priver la vérification
+  // "ma propre session" ci-dessous de donnée (on retombe alors sur le choix
+  // mémorisé, comme avant que cette priorité n'existe).
+  const openSessionsSettled = openSessionsQuery.isSuccess || openSessionsQuery.isError;
 
   // Détermine le candidat dès que la liste des postes actifs est connue.
   useEffect(() => {
@@ -157,6 +180,25 @@ export function useCommercePosRegisterSelection(
       setCandidateRegisterId(activeRegisters[0].id);
       return;
     }
+
+    // 2+ postes actifs : RÈGLE FINALE -- OPEN + même user_id gagne avant
+    // tout le reste, y compris le choix mémorisé sur ce navigateur. C'est
+    // ce qui rend "refresh" ET "logout/login" robustes de la même façon :
+    // ce signal vient du serveur (commerce_pos_cash_sessions), jamais du
+    // localStorage d'un navigateur précis -- une reconnexion depuis un
+    // autre appareil retrouve donc aussi sa propre session sans ambiguïté.
+    if (!openSessionsSettled) return;
+    const myOpenSession = (openSessionsQuery.data ?? []).find(
+      (session) =>
+        session.cashierId === userId &&
+        session.cashRegisterId !== null &&
+        activeRegisters.some((register) => register.id === session.cashRegisterId),
+    );
+    if (myOpenSession?.cashRegisterId) {
+      setCandidateRegisterId(myOpenSession.cashRegisterId);
+      return;
+    }
+
     const remembered = readRememberedRegisterId(locationId, userId);
     if (remembered && activeRegisters.some((register) => register.id === remembered)) {
       setCandidateRegisterId(remembered);
@@ -167,6 +209,8 @@ export function useCommercePosRegisterSelection(
     locationId,
     activeRegisters,
     registersQuery.isSuccess,
+    openSessionsSettled,
+    openSessionsQuery.data,
     userId,
     forceManualSelection,
   ]);
@@ -226,10 +270,12 @@ export function useCommercePosRegisterSelection(
   };
   const select = (registerId: string) => {
     // Garde défensive : l'UI ne rend déjà cliquables que les postes actifs
-    // et libres, mais un poste occupé ou inactif ne doit jamais pouvoir
-    // être ouvert même si cette fonction était appelée autrement.
+    // et non occupés PAR QUELQU'UN D'AUTRE -- ma propre session ouverte
+    // reste sélectionnable (RÈGLE FINALE : RESUME), seul un poste occupé
+    // par un autre utilisateur ou inactif ne doit jamais pouvoir être
+    // ouvert même si cette fonction était appelée autrement.
     const target = enrichedRegisters.find((register) => register.id === registerId);
-    if (!target || !target.isActive || target.occupiedBy) return;
+    if (!target || !target.isActive || (target.occupiedBy && !target.occupiedBy.isMine)) return;
     setBusyInfo(null);
     setForceManualSelection(false);
     setCandidateRegisterId(registerId);

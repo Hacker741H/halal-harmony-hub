@@ -63,13 +63,23 @@ const commerceCashRegisterSchemaMirror = z.object({
 // poste" (gated sur registers.length > 1 côté UI) ne s'affichait jamais.
 // Mirroir de la fusion occupation (useCommercePosRegisterSelection,
 // src/hooks/use-commerce-pos-register.ts) et du filtrage actif/inactif
-// pour la décision d'auto-sélection.
+// pour la décision d'auto-sélection. cashierId/isMine ajoutés au correctif
+// suivant (item 9) -- même mirroir, pas un second.
 type RawRegister = { id: string; name: string; isActive: boolean };
-type OpenSession = { cashRegisterId: string | null; cashier: string; openedAtServer: string };
-type EnrichedRegister = RawRegister & {
-  occupiedBy: { cashier: string; since: string } | null;
+type OpenSession = {
+  cashRegisterId: string | null;
+  cashierId: string;
+  cashier: string;
+  openedAtServer: string;
 };
-function enrichRegisters(raw: RawRegister[], openSessions: OpenSession[]): EnrichedRegister[] {
+type EnrichedRegister = RawRegister & {
+  occupiedBy: { cashier: string; since: string; isMine: boolean } | null;
+};
+function enrichRegisters(
+  raw: RawRegister[],
+  openSessions: OpenSession[],
+  currentUserId: string,
+): EnrichedRegister[] {
   const openByRegisterId = new Map(
     openSessions
       .filter((session) => session.cashRegisterId)
@@ -79,12 +89,47 @@ function enrichRegisters(raw: RawRegister[], openSessions: OpenSession[]): Enric
     const open = openByRegisterId.get(register.id);
     return {
       ...register,
-      occupiedBy: open ? { cashier: open.cashier, since: open.openedAtServer } : null,
+      occupiedBy: open
+        ? {
+            cashier: open.cashier,
+            since: open.openedAtServer,
+            isMine: open.cashierId === currentUserId,
+          }
+        : null,
     };
   });
 }
+// BUG PRODUCTION corrigé le 07/09 : occupé PAR MOI-MÊME n'est jamais un
+// blocage -- seul un poste occupé par quelqu'un d'AUTRE reste désactivé
+// (RÈGLE FINALE : OPEN + même user_id + même cash_register_id -> RESUME).
 function isRegisterSelectable(register: EnrichedRegister): boolean {
-  return register.isActive && !register.occupiedBy;
+  return register.isActive && (!register.occupiedBy || register.occupiedBy.isMine);
+}
+// Mirroir de la priorité de résolution automatique (2+ postes actifs) :
+// ma propre session déjà ouverte gagne AVANT le choix mémorisé en
+// localStorage -- c'est ce qui rend "refresh" et "logout/login" robustes
+// de la même façon, puisque ce signal vient du serveur, jamais du
+// navigateur.
+function resolveActiveRegisterId(
+  activeRegisters: RawRegister[],
+  openSessions: OpenSession[],
+  currentUserId: string,
+  rememberedRegisterId: string | null,
+): string | null {
+  const myOpenSession = openSessions.find(
+    (session) =>
+      session.cashierId === currentUserId &&
+      session.cashRegisterId !== null &&
+      activeRegisters.some((register) => register.id === session.cashRegisterId),
+  );
+  if (myOpenSession?.cashRegisterId) return myOpenSession.cashRegisterId;
+  if (
+    rememberedRegisterId &&
+    activeRegisters.some((register) => register.id === rememberedRegisterId)
+  ) {
+    return rememberedRegisterId;
+  }
+  return null;
 }
 
 // 1. scopeKey (commerce-pos-offline.ts) -- partitionnement IndexedDB par
@@ -324,30 +369,39 @@ function run(): void {
   );
 
   // -- 8. Fusion occupation + scénario exact du rapport : MAGASIN MARIAM ->
-  // CAISSE 2 occupée -> choisir autre caisse -> ouverture d'un poste libre.
+  // CAISSE 2 occupée (par un AUTRE utilisateur, Fabiola -- donnée réelle,
+  // voir item 9) -> choisir autre caisse -> ouverture d'un poste libre.
   const caisse2 = "56ef5a70-ad1f-433b-be00-dc796252bcac";
   const caisseMariamInactive = "7cd5e664-9814-4a04-b12e-eb2cfd1a6886";
   const caisseMariamActive = "df449a49-e4c4-4af2-b708-0a24ee4683e8";
+  const mariamId = "5ba008c0-4f9b-45b2-ac71-769a1c3e0085";
+  const fabiolaId = "32826e72-38e7-4a28-8926-61ff842dbd52";
   const rawRegisters: RawRegister[] = [
     { id: caisse2, name: "CAISSE 2", isActive: true },
     { id: caisseMariamInactive, name: "CAISSE MARIAM", isActive: false },
     { id: caisseMariamActive, name: "CAISSE MARIAM", isActive: true },
   ];
   const openSessions: OpenSession[] = [
-    { cashRegisterId: caisse2, cashier: "Mariam Keita", openedAtServer: "2026-09-07T13:00:00Z" },
+    {
+      cashRegisterId: caisse2,
+      cashierId: fabiolaId,
+      cashier: "Fabiola",
+      openedAtServer: "2026-09-07T13:47:41Z",
+    },
   ];
-  const enriched = enrichRegisters(rawRegisters, openSessions);
-  const caisse2Enriched = enriched.find((register) => register.id === caisse2);
-  const caisseMariamActiveEnriched = enriched.find(
+  const enrichedForMariam = enrichRegisters(rawRegisters, openSessions, mariamId);
+  const caisse2SeenByMariam = enrichedForMariam.find((register) => register.id === caisse2);
+  const caisseMariamActiveEnriched = enrichedForMariam.find(
     (register) => register.id === caisseMariamActive,
   );
-  const caisseMariamInactiveEnriched = enriched.find(
+  const caisseMariamInactiveEnriched = enrichedForMariam.find(
     (register) => register.id === caisseMariamInactive,
   );
   expect(
-    caisse2Enriched?.occupiedBy?.cashier === "Mariam Keita" &&
-      !isRegisterSelectable(caisse2Enriched),
-    "CAISSE 2 occupée : occupiedBy renseigné (qui, pas seulement un booléen) et jamais sélectionnable -- un poste occupé n'est jamais ouvrable.",
+    caisse2SeenByMariam?.occupiedBy?.cashier === "Fabiola" &&
+      caisse2SeenByMariam.occupiedBy.isMine === false &&
+      !isRegisterSelectable(caisse2SeenByMariam),
+    "CAISSE 2 occupée par Fabiola, vue par Mariam : occupiedBy renseigné (qui, pas seulement un booléen), isMine=false, jamais sélectionnable -- un poste occupé par un AUTRE utilisateur n'est jamais ouvrable.",
   );
   expect(
     caisseMariamActiveEnriched !== undefined &&
@@ -364,6 +418,87 @@ function run(): void {
   expect(
     activeOnly.length === 2,
     "Seuls les postes actifs (CAISSE 2, CAISSE MARIAM active) comptent pour la décision d'auto-sélection 0/1/2+ -- le poste inactif ne doit ni compter ni bloquer l'auto-sélection à poste unique dans un autre scénario.",
+  );
+
+  // -- 9. BUG PRODUCTION corrigé le 07/09 : "reprendre sa propre session".
+  // Données réelles de production au moment du rapport : Mariam a CAISSE
+  // MARIAM ouverte (sa propre session), Fabiola a CAISSE 2 ouverte (un
+  // autre utilisateur) -- exactement les deux lignes réelles de
+  // commerce_pos_cash_sessions vérifiées en direct avant ce correctif.
+  const bothOpenSessions: OpenSession[] = [
+    {
+      cashRegisterId: caisseMariamActive,
+      cashierId: mariamId,
+      cashier: "Mariam Keita",
+      openedAtServer: "2026-09-07T15:18:34Z",
+    },
+    {
+      cashRegisterId: caisse2,
+      cashierId: fabiolaId,
+      cashier: "Fabiola",
+      openedAtServer: "2026-09-07T13:47:41Z",
+    },
+  ];
+  const activeRegisters = rawRegisters.filter((register) => register.isActive);
+  const enrichedFromMariamsView = enrichRegisters(rawRegisters, bothOpenSessions, mariamId);
+  const herOwnRegister = enrichedFromMariamsView.find(
+    (register) => register.id === caisseMariamActive,
+  );
+  const fabiolasRegisterSeenByMariam = enrichedFromMariamsView.find(
+    (register) => register.id === caisse2,
+  );
+  expect(
+    herOwnRegister?.occupiedBy?.isMine === true && isRegisterSelectable(herOwnRegister),
+    'BUG CORRIGÉ : Mariam regardant son PROPRE poste déjà ouvert (CAISSE MARIAM) doit le voir occupé par elle-même (isMine=true) ET sélectionnable -- avant le correctif, occupiedBy non-null désactivait la tuile inconditionnellement, affichant "occupé par Mariam" comme un blocage à Mariam elle-même.',
+  );
+  expect(
+    fabiolasRegisterSeenByMariam?.occupiedBy?.isMine === false &&
+      !isRegisterSelectable(fabiolasRegisterSeenByMariam),
+    "Le poste de Fabiola (CAISSE 2), vu par Mariam, reste occupé par quelqu'un d'autre et non sélectionnable -- le correctif ne relâche jamais un poste réellement occupé par un tiers.",
+  );
+  // Symétrique : Fabiola regardant l'écran voit l'inverse -- jamais les
+  // deux utilisateurs "propriétaires" du même poste en même temps.
+  const enrichedFromFabiolasView = enrichRegisters(rawRegisters, bothOpenSessions, fabiolaId);
+  const herOwnRegisterFabiola = enrichedFromFabiolasView.find(
+    (register) => register.id === caisse2,
+  );
+  const mariamsRegisterSeenByFabiola = enrichedFromFabiolasView.find(
+    (register) => register.id === caisseMariamActive,
+  );
+  expect(
+    herOwnRegisterFabiola?.occupiedBy?.isMine === true &&
+      isRegisterSelectable(herOwnRegisterFabiola),
+    "Symétrique : Fabiola voit CAISSE 2 (son propre poste) comme occupé par elle-même et sélectionnable.",
+  );
+  expect(
+    mariamsRegisterSeenByFabiola?.occupiedBy?.isMine === false &&
+      !isRegisterSelectable(mariamsRegisterSeenByFabiola),
+    'Fabiola essayant CAISSE MARIAM (poste de Mariam) : bloquée -- "Occupé par Mariam Keita", exactement le comportement AUTRE UTILISATEUR demandé.',
+  );
+
+  // -- 9bis. resolveActiveRegisterId -- priorité de résolution automatique.
+  expect(
+    resolveActiveRegisterId(activeRegisters, bothOpenSessions, mariamId, null) ===
+      caisseMariamActive,
+    "Mariam, aucun choix mémorisé (ex. nouvel appareil après logout/login) : sa propre session ouverte doit être retrouvée et reprise directement, sans passer par l'écran de choix -- c'est ce qui rend refresh ET logout/login robustes de la même façon, le signal venant du serveur.",
+  );
+  expect(
+    resolveActiveRegisterId(activeRegisters, bothOpenSessions, mariamId, caisse2) ===
+      caisseMariamActive,
+    "Même avec un choix mémorisé en localStorage pointant vers un AUTRE poste (ex. valeur périmée), la session serveur réellement ouverte par l'utilisateur courant garde la priorité.",
+  );
+  expect(
+    resolveActiveRegisterId(activeRegisters, [], mariamId, caisse2) === caisse2,
+    "Aucune session ouverte connue (ex. get_commerce_pos_open_sessions en échec) : on retombe proprement sur le choix mémorisé, comportement historique préservé.",
+  );
+  expect(
+    resolveActiveRegisterId(
+      activeRegisters,
+      [],
+      "un-utilisateur-sans-session-ni-souvenir",
+      null,
+    ) === null,
+    "Ni session serveur ni choix mémorisé : reste null -- l'écran de choix explicite prend le relais, jamais un choix silencieux.",
   );
 
   console.log("CHANTIER CAISSE register-scoping tests passed.");
