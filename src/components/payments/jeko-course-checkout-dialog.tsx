@@ -61,7 +61,13 @@ export function JekoInvoiceCheckoutDialog({ invoice, dueAmount, open, onOpenChan
   }, [dueAmount, invoice?.id, open]);
 
   useEffect(() => {
-    if (!storeId && stores[0]) setStoreId(stores[0].id);
+    // AUDIT TOTAL : ne jamais deviner silencieusement le magasin Jèko quand
+    // plusieurs existent (même règle que le contexte magasin en /commerce et
+    // /caisse) -- un mauvais choix ici mappe un wallet ou dirige un paiement
+    // vers le mauvais magasin sans qu'aucun signal ne le montre. Auto-sélection
+    // uniquement quand un seul magasin est possible ; sinon le Select reste
+    // vide et affiche son placeholder, forçant un choix explicite.
+    if (!storeId && stores.length === 1) setStoreId(stores[0].id);
   }, [storeId, stores]);
 
   useEffect(() => {
