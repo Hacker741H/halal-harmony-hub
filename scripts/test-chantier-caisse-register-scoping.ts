@@ -24,6 +24,32 @@ function expect(condition: unknown, message: string): asserts condition {
 // réponses précises. Mirroir exact de commerceCashRegisterSchema
 // (src/lib/commerce-pos.functions.ts) -- si l'une change sans l'autre,
 // relire les deux côte à côte.
+// 7. BUG PRODUCTION corrigé le 07/09 : "Ouvrir la caisse" depuis MAGASIN
+// MARIAM atterrissait sur ACCESSOIRES ET DIVERS. Cause : la navigation
+// /commerce -> /caisse ne transportait aucun contexte de magasin ;
+// /caisse retombait alors sur son inférence locale, dont le dernier repli
+// était availableLocations[0] -- et getCommercePosLocations trie par nom
+// (ORDER BY location_row.name), donc "ACCESSOIRES ET DIVERS" passe
+// systématiquement avant "MAGASIN MARIAM". Mirroir exact de la priorité
+// de résolution dans CommerceCashierWorkspace
+// (src/components/commerce/commerce-pos-workspace.tsx) : demande
+// explicite (URL) > brouillon existant > mono-magasin (aucune ambiguïté)
+// > jamais un choix silencieux quand 2+ magasins et aucun contexte.
+type LocationResolutionInput = {
+  requestedLocationId: string | null;
+  availableLocationIds: readonly string[];
+  draftLocationId: string | null;
+};
+function resolveLocationId(input: LocationResolutionInput): string | null {
+  if (input.requestedLocationId && input.availableLocationIds.includes(input.requestedLocationId)) {
+    return input.requestedLocationId;
+  }
+  if (input.draftLocationId && input.availableLocationIds.includes(input.draftLocationId)) {
+    return input.draftLocationId;
+  }
+  return input.availableLocationIds.length === 1 ? input.availableLocationIds[0] : null;
+}
+
 const commerceCashRegisterSchemaMirror = z.object({
   id: z.string().uuid(),
   name: z.string(),
@@ -220,6 +246,50 @@ function run(): void {
   expect(
     camelCaseResult.success === true,
     "Le contrat corrigé (jsonb_build_object avec isActive camelCase, exactement ce que create/update_commerce_cash_register renvoient depuis 20260907130000) doit être accepté sans erreur.",
+  );
+
+  // -- 7. resolveLocationId (priorité de résolution du magasin) --
+  const magasinMariam = "d528b00e-2019-4b57-9d73-5368b0d00b0e";
+  const accessoires = "ee301cda-0cd5-4463-b8ad-75986b7dd58c";
+  expect(
+    resolveLocationId({
+      requestedLocationId: magasinMariam,
+      availableLocationIds: [accessoires, magasinMariam],
+      draftLocationId: accessoires,
+    }) === magasinMariam,
+    "Une demande explicite (bouton \"Ouvrir la caisse\" pour MAGASIN MARIAM) doit gagner même si un brouillon existant pointe vers un AUTRE magasin (ACCESSOIRES ET DIVERS) -- c'est exactement le scénario du bug d'origine.",
+  );
+  expect(
+    resolveLocationId({
+      requestedLocationId: null,
+      availableLocationIds: [accessoires, magasinMariam],
+      draftLocationId: magasinMariam,
+    }) === magasinMariam,
+    "Sans demande explicite (refresh brut sur /caisse), le brouillon existant reste consulté normalement.",
+  );
+  expect(
+    resolveLocationId({
+      requestedLocationId: null,
+      availableLocationIds: [magasinMariam],
+      draftLocationId: null,
+    }) === magasinMariam,
+    "Un seul magasin accessible : aucune ambiguïté, sélection automatique -- comportement historique inchangé pour un caissier mono-magasin.",
+  );
+  expect(
+    resolveLocationId({
+      requestedLocationId: null,
+      availableLocationIds: [accessoires, magasinMariam],
+      draftLocationId: null,
+    }) === null,
+    "2+ magasins, aucune demande explicite, aucun brouillon : ne jamais choisir silencieusement le premier -- null déclenche l'écran de choix explicite, jamais availableLocationIds[0].",
+  );
+  expect(
+    resolveLocationId({
+      requestedLocationId: "un-id-perime-qui-nexiste-plus",
+      availableLocationIds: [accessoires, magasinMariam],
+      draftLocationId: null,
+    }) === null,
+    "Un identifiant demandé qui ne figure plus dans les magasins accessibles (lien obsolète) doit être ignoré, pas suivi aveuglément.",
   );
 
   console.log("CHANTIER CAISSE register-scoping tests passed.");

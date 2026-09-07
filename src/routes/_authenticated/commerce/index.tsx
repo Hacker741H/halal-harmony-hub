@@ -26,7 +26,11 @@ function CommercePage() {
   const navigate = useNavigate();
   return (
     <main className="mx-auto h-full min-h-0 max-w-(--ds-content-max-width) p-3 sm:p-4 xl:p-5">
-      <CommerceManagementWorkspace onOpenCashier={() => void navigate({ to: "/caisse" })} />
+      <CommerceManagementWorkspace
+        onOpenCashier={(locationId) =>
+          void navigate({ to: "/caisse", search: { location: locationId } })
+        }
+      />
     </main>
   );
 }

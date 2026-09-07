@@ -135,8 +135,14 @@ const paymentMethods: Array<{ value: PaymentMethod; label: string; icon: typeof 
 // composant est monté directement par la route /commerce, qui ne concerne
 // plus que l'administration d'un magasin. La navigation vers la caisse
 // elle-même est une vraie navigation de route (onOpenCashier), pas un
-// paramètre d'URL local.
-export function CommerceManagementWorkspace({ onOpenCashier }: { onOpenCashier: () => void }) {
+// paramètre d'URL local -- mais CHANTIER CAISSE : elle transporte
+// désormais explicitement le magasin actuellement sélectionné ici, en
+// paramètre de recherche de /caisse (jamais une inférence côté caisse).
+export function CommerceManagementWorkspace({
+  onOpenCashier,
+}: {
+  onOpenCashier: (locationId: string) => void;
+}) {
   const queryClient = useQueryClient();
   const { can } = usePermissions();
   const canManageStock = can("commerce.stock.receive");
@@ -293,8 +299,20 @@ function isIndeterminateCheckoutError(error: unknown): boolean {
 
 export function CommerceCashierWorkspace({
   onBackToManagement,
+  requestedLocationId,
+  onLocationResolved,
 }: {
   onBackToManagement?: () => void;
+  /** Magasin explicitement demandé (ex. "Ouvrir la caisse" depuis /commerce
+   * pour un magasin précis, ou l'URL après un refresh) -- prioritaire sur
+   * toute inférence locale (brouillon existant, premier magasin de la
+   * liste). Voir la CHANTIER CAISSE : plus jamais un magasin choisi
+   * silencieusement remplacé par un autre. */
+  requestedLocationId?: string;
+  /** Reflète le magasin réellement résolu (quelle qu'en soit la source)
+   * vers l'appelant, pour qu'il puisse le fixer dans l'URL -- un refresh
+   * relit alors ce même magasin au lieu de redéclencher une inférence. */
+  onLocationResolved?: (locationId: string) => void;
 }) {
   const queryClient = useQueryClient();
   const { can } = usePermissions();
@@ -336,7 +354,13 @@ export function CommerceCashierWorkspace({
     : locationsQuery.isSuccess
       ? []
       : cachedLocations;
-  const selectedLocationId = locationId || availableLocations[0]?.id || "";
+  // CHANTIER CAISSE : plus de repli silencieux sur availableLocations[0]
+  // quand plusieurs magasins sont accessibles -- un seul magasin candidat
+  // reste résolu automatiquement (aucune ambiguïté à lever), 2+ exige une
+  // résolution explicite (requestedLocationId, brouillon existant, ou
+  // l'écran de choix plus bas). Voir l'effet de restauration ci-dessous.
+  const selectedLocationId =
+    locationId || (availableLocations.length === 1 ? availableLocations[0].id : "");
   const workspaceQuery = useQuery({
     queryKey: ["commerce-pos-workspace", selectedLocationId],
     queryFn: () => getCommercePosWorkspace({ data: { locationId: selectedLocationId } }),
@@ -478,6 +502,24 @@ export function CommerceCashierWorkspace({
     if (locationId || !currentUserId || !availableLocations.length || typeof window === "undefined")
       return;
     let active = true;
+
+    // Une demande explicite (bouton "Ouvrir la caisse" pour un magasin
+    // précis, ou l'URL après un refresh) est prioritaire sur toute
+    // inférence -- jamais remplacée en silence par le brouillon hors
+    // ligne d'un AUTRE magasin. Vérifiée synchrone, avant même de
+    // consulter IndexedDB/localStorage.
+    const requested =
+      requestedLocationId &&
+      availableLocations.some((location) => location.id === requestedLocationId)
+        ? requestedLocationId
+        : null;
+    if (requested) {
+      setLocationId(requested);
+      return () => {
+        active = false;
+      };
+    }
+
     void (async () => {
       let restoredLocationId: string | null = null;
       try {
@@ -495,12 +537,23 @@ export function CommerceCashierWorkspace({
           currentUserId,
         );
       }
-      if (active) setLocationId(restoredLocationId ?? availableLocations[0].id);
+      // Un seul magasin accessible : aucune ambiguïté, sélection
+      // automatique comme aujourd'hui. Plusieurs magasins sans brouillon
+      // existant : ne jamais choisir silencieusement le premier -- l'écran
+      // de choix explicite prend le relais (availableLocations.length > 1
+      // plus bas, quand selectedLocationId reste vide).
+      const fallbackLocationId = availableLocations.length === 1 ? availableLocations[0].id : null;
+      const resolvedLocationId = restoredLocationId ?? fallbackLocationId;
+      if (active && resolvedLocationId) setLocationId(resolvedLocationId);
     })();
     return () => {
       active = false;
     };
-  }, [availableLocations, currentUserId, locationId]);
+  }, [availableLocations, currentUserId, locationId, requestedLocationId]);
+
+  useEffect(() => {
+    if (locationId) onLocationResolved?.(locationId);
+  }, [locationId, onLocationResolved]);
 
   useEffect(() => {
     if (!posSession.isRestored || !draft?.clientId) return;
@@ -1030,6 +1083,36 @@ export function CommerceCashierWorkspace({
             <DoorOpen className="mr-2 h-4 w-4" />
             Se déconnecter
           </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // CHANTIER CAISSE : plusieurs magasins accessibles, aucun n'a encore été
+  // résolu (ni demande explicite, ni brouillon existant) -- jamais un choix
+  // silencieux du premier de la liste (cause exacte du bug d'origine :
+  // getCommercePosLocations trie par nom, "ACCESSOIRES ET DIVERS" passait
+  // ainsi systématiquement avant "MAGASIN MARIAM").
+  if (!selectedLocationId && availableLocations.length > 1) {
+    return (
+      <Card variant="information">
+        <CardHeader>
+          <CardTitle>Choisissez votre magasin</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {availableLocations.map((location) => (
+              <button
+                key={location.id}
+                type="button"
+                onClick={() => setLocationId(location.id)}
+                className="flex flex-col items-start gap-1 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-primary hover:bg-primary/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Store className="size-5 text-primary" />
+                <span className="font-semibold">{location.name}</span>
+              </button>
+            ))}
+          </div>
         </CardContent>
       </Card>
     );
