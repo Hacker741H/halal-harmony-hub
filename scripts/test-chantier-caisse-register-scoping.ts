@@ -8,10 +8,27 @@
 // mirroir ici (ou l'inverse), relire les deux côte à côte avant de faire
 // confiance à ce test.
 import assert from "node:assert/strict";
+import { z } from "zod";
 
 function expect(condition: unknown, message: string): asserts condition {
   assert.equal(condition, true, message);
 }
+
+// 6. BUG PRODUCTION corrigé le 07/09 : create_commerce_cash_register /
+// update_commerce_cash_register renvoyaient RETURNS public.commerce_cash_
+// registers (le type composite brut de la table, sérialisé is_active
+// snake_case par PostgREST) au lieu d'un jsonb_build_object camelCase --
+// exactement le même schéma Zod que get_commerce_cash_registers (qui,
+// lui, était déjà correct) échouait donc systématiquement avec
+// "invalid_type, path: [isActive], message: Required" sur ces deux
+// réponses précises. Mirroir exact de commerceCashRegisterSchema
+// (src/lib/commerce-pos.functions.ts) -- si l'une change sans l'autre,
+// relire les deux côte à côte.
+const commerceCashRegisterSchemaMirror = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  isActive: z.boolean(),
+});
 
 // 1. scopeKey (commerce-pos-offline.ts) -- partitionnement IndexedDB par
 // poste. null = comportement historique inchangé (clé à 2 segments).
@@ -170,6 +187,39 @@ function run(): void {
       requestingCashierId: "cashier-b",
     }) === "REGISTER_BUSY",
     "Poste déjà ouvert par un AUTRE caissier -> refusé avec un signal explicite -- exactement le cas que la mission demande de rendre détectable (aujourd'hui : aucune détection possible, deux caissiers pourraient silencieusement partager le même poste).",
+  );
+
+  // -- 6. commerceCashRegisterSchema contract (isActive) --
+  const rawComposite = {
+    id: "605f5307-823f-4597-803e-401882fde495",
+    business_location_id: "d528b00e-2019-4b57-9d73-5368b0d00b0e",
+    name: "CAISSE 2",
+    is_active: true,
+    created_by: null,
+    updated_by: null,
+    created_at: "2026-09-07T00:00:00Z",
+    updated_at: "2026-09-07T00:00:00Z",
+  };
+  const compositeResult = commerceCashRegisterSchemaMirror.safeParse(rawComposite);
+  expect(
+    compositeResult.success === false,
+    "Le type composite brut (is_active snake_case, pas de clé isActive) doit être rejeté -- c'est exactement le bug de production : RETURNS public.commerce_cash_registers sérialisé par PostgREST avec les noms de colonnes réels.",
+  );
+  if (!compositeResult.success) {
+    const issue = compositeResult.error.issues.find((entry) => entry.path.join(".") === "isActive");
+    expect(
+      issue !== undefined && issue.code === "invalid_type" && issue.message === "Required",
+      `Le rejet doit précisément correspondre à l'erreur observée en production (invalid_type, path ["isActive"], message "Required") -- reçu : ${JSON.stringify(compositeResult.error.issues)}`,
+    );
+  }
+  const camelCaseResult = commerceCashRegisterSchemaMirror.safeParse({
+    id: "605f5307-823f-4597-803e-401882fde495",
+    name: "CAISSE 2",
+    isActive: true,
+  });
+  expect(
+    camelCaseResult.success === true,
+    "Le contrat corrigé (jsonb_build_object avec isActive camelCase, exactement ce que create/update_commerce_cash_register renvoient depuis 20260907130000) doit être accepté sans erreur.",
   );
 
   console.log("CHANTIER CAISSE register-scoping tests passed.");
