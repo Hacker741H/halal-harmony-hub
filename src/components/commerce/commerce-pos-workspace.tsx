@@ -551,7 +551,19 @@ function ProductCard({
 // Même gabarit que l'en-tête juste au-dessus de la liste (CART_GRID_COLUMNS)
 // -- rien n'est retiré : prix modifiable en place, +/-, sous-total,
 // retirer, tout reste au même endroit fonctionnel.
-const CART_GRID_COLUMNS = "grid-cols-[1.25rem_1.25rem_minmax(0,1fr)_3.75rem_3.5rem_3.75rem_1.25rem]";
+// REFONTE CAISSE (passe 3, lisibilité Article) : # et delete réduits au
+// strict nécessaire (texte 1-2 chiffres / bouton 20px), thumb et Qté
+// gardés tels quels (planchers réels : thumb = size-5 = 1.25rem: en
+// dessous l'image est écrasée ; Qté = 2 boutons size-5 + le nombre + 2
+// gaps-0.5 = 3.625rem mesuré, donc 3.5rem est déjà le minimum jouable, pas
+// question de le resserrer encore). PU et Total rognés légèrement -- ce
+// sont de simples nombres avec un `truncate` déjà en place comme filet de
+// sécurité (jamais de coupure brutale, juste une ellipse sur un montant
+// extrême), donc rognables sans risque. Tout l'espace ainsi libéré va à la
+// colonne Article (minmax(0,1fr)), en plus du nouveau split 55/45 du
+// panneau entier : demande explicite "priorité de largeur à la colonne
+// Article", et "PU, Qté, Total très compacts".
+const CART_GRID_COLUMNS = "grid-cols-[1rem_1.25rem_minmax(0,1fr)_3.25rem_3.5rem_3.5rem_1.25rem]";
 const CART_ROW_ICON_BUTTON =
   "grid size-5 shrink-0 place-items-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40";
 
@@ -600,7 +612,15 @@ function CartLineRow({
       <span className="text-[11px] tabular-nums text-muted-foreground">{index}</span>
       <CommerceItemThumb imagePath={imagePath} alt="" className="size-5 rounded" />
       <div className="min-w-0">
-        <p className="truncate text-xs font-medium leading-tight" title={line.label}>
+        {/* REFONTE CAISSE (passe 3) : nom sur 2 lignes max (line-clamp-2,
+            même convention que ProductCard plus haut) au lieu d'une seule
+            ligne tronquée -- demande explicite "autorise le nom article sur
+            2 lignes maximum". Seuls les noms réellement longs grandissent à
+            2 lignes (chaque ligne panier a sa propre hauteur naturelle, ce
+            n'est pas une grille à rangées uniformes) ; les noms courts/
+            typiques restent sur 1 ligne, donc le nombre de lignes visibles
+            reste proche de la cible 15-20 pour un panier réaliste. */}
+        <p className="line-clamp-2 text-xs font-medium leading-snug" title={line.label}>
           {line.label}
         </p>
         {isEditingPrice && priceError ? (
@@ -2001,12 +2021,14 @@ export function CommerceCashierWorkspace({
             </div>
           ) : null}
 
-          <div className="grid min-h-0 w-full flex-1 gap-3 overflow-hidden lg:grid-cols-[3fr_2fr]">
-            {/* REFONTE CAISSE (passe 2) : 60%/40% sur desktop, en fr purs --
-                un plancher en pixels (minmax(480px,...)) pouvait forcer un
-                dépassement horizontal sur un écran plus étroit que prévu
-                (1366px avec sidebar) : deux fr sans plancher ne peuvent
-                mathématiquement jamais dépasser la largeur disponible.
+          <div className="grid min-h-0 w-full flex-1 gap-3 overflow-hidden lg:grid-cols-[55fr_45fr]">
+            {/* REFONTE CAISSE (passe 3) : 55%/45% sur desktop (était 60/40)
+                -- la colonne Article restait trop serrée pour bien lire les
+                noms. Toujours en fr purs, sans plancher en pixels
+                (minmax(480px,...) pouvait forcer un dépassement horizontal
+                sur un écran plus étroit que prévu, ex. 1366px avec sidebar) :
+                deux fr sans plancher ne peuvent mathématiquement jamais
+                dépasser la largeur disponible.
                 min-w-0 sur les deux panneaux : sans lui, un enfant grid
                 garde par défaut un min-width:auto basé sur son contenu, ce
                 qui est exactement ce qui provoquait le débordement. Plein
