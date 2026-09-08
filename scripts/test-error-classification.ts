@@ -8,7 +8,14 @@
 // to work with in production, not a convenient made-up string.
 import assert from "node:assert/strict";
 
-import { classifyError, getErrorMessage, isRetryableCategory, type ErrorCategory } from "../src/lib/error-classification";
+import {
+  classifyError,
+  getErrorMessage,
+  isRetryableCategory,
+  isSessionExpiredError,
+  SESSION_EXPIRED_MESSAGE,
+  type ErrorCategory,
+} from "../src/lib/error-classification";
 import { getErrorDetails } from "../src/lib/commerce-pos-sync";
 
 function expect(condition: unknown, message: string): asserts condition {
@@ -181,6 +188,35 @@ function run(): void {
   expect(
     getErrorDetails(new Error("Erreur interne du serveur.")).permanent === true,
     "A generic server-crash message reaching the POS sync must be definitive, not retried as if it were a transport failure.",
+  );
+
+  // 10. STABILISATION TRANSVERSALE (1/3) : isSessionExpiredError /
+  // SESSION_EXPIRED_MESSAGE (consumed by src/lib/notify-mutation-error.ts,
+  // the single replacement for the ~110 mutations that used to format
+  // "Unauthorized: ..." themselves). isSessionExpiredError is a thin,
+  // explicitly-named wrapper around classifyError(...) === "session" --
+  // this guards it staying in lockstep with classifyError rather than
+  // silently drifting into its own, independent (and possibly wrong)
+  // definition of "session error" in some future edit.
+  expect(
+    isSessionExpiredError(new Error("Unauthorized: Invalid token")) === true,
+    "isSessionExpiredError must agree with classifyError: the requireSupabaseAuth prefix is a session error.",
+  );
+  expect(
+    isSessionExpiredError(new Error("Authentification requise pour clore une session de caisse.")) === true,
+    "isSessionExpiredError must also catch the RPC-level defense-in-depth session message.",
+  );
+  expect(
+    isSessionExpiredError(new Error("Vous n'avez pas la permission d'effectuer cette action.")) === false,
+    "isSessionExpiredError must be false for a real permission error -- never masking a genuine business/permission rejection as a session expiry.",
+  );
+  expect(
+    isSessionExpiredError(new Error("Solde insuffisant. Disponible : 15 000 FCFA.")) === false,
+    "isSessionExpiredError must be false for a real business-rule error.",
+  );
+  expect(
+    SESSION_EXPIRED_MESSAGE === "Votre session a expiré, reconnectez-vous.",
+    "SESSION_EXPIRED_MESSAGE must stay the exact single source-of-truth string shown by __root.tsx and triggerSessionRecovery -- a silent change here would desynchronize the two.",
   );
 
   // Exhaustiveness guard: every category this file knows about must be
