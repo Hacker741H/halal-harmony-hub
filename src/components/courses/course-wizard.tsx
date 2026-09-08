@@ -10,7 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { COURSE_PRICING_MODES, COURSE_PRICING_MODE_LABELS, createCourse, type CourseValues } from "@/lib/courses.functions";
+import { isSessionExpiredError, SESSION_EXPIRED_MESSAGE } from "@/lib/error-classification";
 import { formatXOF } from "@/lib/format";
+import { triggerSessionRecovery } from "@/lib/notify-mutation-error";
 
 type PricingMode = (typeof COURSE_PRICING_MODES)[number];
 type FormState = {
@@ -73,7 +75,14 @@ export function CourseWizard({ onSuccess }: { onSuccess: (courseId: string) => v
       return createCourse({ data: values });
     },
     onSuccess: (course) => { toast.success("Course créée."); onSuccess(course.id); },
-    onError: (cause) => setError(cause instanceof Error ? cause.message : "Impossible de créer la Course."),
+    onError: (cause) => {
+      if (isSessionExpiredError(cause)) {
+        triggerSessionRecovery();
+        setError(SESSION_EXPIRED_MESSAGE);
+        return;
+      }
+      setError(cause instanceof Error ? cause.message : "Impossible de créer la Course.");
+    },
   });
 
   return <div className="space-y-5">

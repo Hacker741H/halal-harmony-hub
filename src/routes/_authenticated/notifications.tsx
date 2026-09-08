@@ -27,6 +27,7 @@ import {
   type NotificationStatus,
   updateNotificationStatus,
 } from "@/lib/notifications.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 export const Route = createFileRoute("/_authenticated/notifications")({
   head: () => ({ meta: [{ title: "Notifications — HALAL ERP" }] }),
@@ -80,7 +81,7 @@ function NotificationsPage() {
       await invalidate();
       toast.success(`${run.created_count} créée(s), ${run.updated_count} mise(s) à jour et ${run.resolved_count} résolue(s).`);
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Actualisation impossible."),
+    onError: (error) => notifyMutationError(error, "Actualisation impossible."),
   });
   const statusMutation = useMutation({
     mutationFn: updateNotificationStatus,
@@ -88,7 +89,7 @@ function NotificationsPage() {
       await invalidate();
       toast.success("Notification mise à jour.");
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Mise à jour impossible."),
+    onError: (error) => notifyMutationError(error, "Mise à jour impossible."),
   });
   const readAllMutation = useMutation({
     mutationFn: markAllNotificationsRead,
@@ -96,7 +97,7 @@ function NotificationsPage() {
       await invalidate();
       toast.success(count > 0 ? `${count} notification(s) marquée(s) comme lues.` : "Aucune notification non lue.");
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Mise à jour impossible."),
+    onError: (error) => notifyMutationError(error, "Mise à jour impossible."),
   });
 
   const result = notificationsQuery.data;

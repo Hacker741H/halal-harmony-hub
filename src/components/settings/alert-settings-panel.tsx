@@ -26,6 +26,7 @@ import {
   type AppRole,
   type NotificationGenerationRun,
 } from "@/lib/alert-settings.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 import type { Json } from "@/integrations/supabase/types";
 
 type AlertSeverity = (typeof ALERT_SEVERITIES)[number];
@@ -103,7 +104,7 @@ export function AlertSettingsPanel() {
       await invalidate();
       toast.success("Fuseau horaire et heure quotidienne enregistrés.");
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Enregistrement impossible."),
+    onError: (error) => notifyMutationError(error, "Enregistrement impossible."),
   });
 
   const generationMutation = useMutation({
@@ -112,7 +113,7 @@ export function AlertSettingsPanel() {
       await invalidate();
       toast.success(`Alertes actualisées : ${runSummary(run)}.`);
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Génération impossible."),
+    onError: (error) => notifyMutationError(error, "Génération impossible."),
   });
 
   if (settingsQuery.isLoading) {
@@ -313,7 +314,7 @@ function AlertRuleCard({ rule, disabled, onSaved }: { rule: AlertRule; disabled:
       await onSaved();
       toast.success(`Règle ${rule.alert_type} enregistrée.`);
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Règle non enregistrée."),
+    onError: (error) => notifyMutationError(error, "Règle non enregistrée."),
   });
 
   const parsedDueDays = parseDueDays(dueDays);
@@ -434,7 +435,7 @@ function ThresholdRow({ row, nullable, disabled, onSave }: { row: { id: string; 
       await onSave(row.id, threshold);
       toast.success("Seuil enregistré.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Seuil non enregistré.");
+      notifyMutationError(error, "Seuil non enregistré.");
     } finally {
       setSaving(false);
     }

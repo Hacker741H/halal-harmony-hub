@@ -16,6 +16,7 @@ import {
   type CommerceCashRemittanceWorkspace,
 } from "@/lib/commerce-pos.functions";
 import { createCommercePosId } from "@/lib/commerce-pos-session";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 const money = (amount: number) => `${amount.toLocaleString("fr-FR")} FCFA`;
 const when = (value: string | null) => value ? new Date(value).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" }) : "—";
@@ -75,7 +76,7 @@ function RemittanceContent({ workspace, locationId, cashier = false }: { workspa
       setAllocations({}); setReference(""); setDeclarationNote(""); setEventId(createCommercePosId("cash-remittance"));
       await refresh();
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "La remise n’a pas pu être déclarée."),
+    onError: (error) => notifyMutationError(error, "La remise n’a pas pu être déclarée."),
   });
   const confirmMutation = useMutation({
     mutationFn: () => confirmCommerceCashRemittance({ data: {
@@ -87,7 +88,7 @@ function RemittanceContent({ workspace, locationId, cashier = false }: { workspa
       setConfirmationId(""); setReceivedAmount(""); setDestinationWalletId(""); setConfirmationNote("");
       await refresh();
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "La réception n’a pas pu être confirmée."),
+    onError: (error) => notifyMutationError(error, "La réception n’a pas pu être confirmée."),
   });
   const summary = workspace.summary;
   const history = useMemo(() => workspace.remittances.slice(0, cashier ? 8 : 30), [cashier, workspace.remittances]);

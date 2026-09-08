@@ -9,6 +9,7 @@ import {
   updateEmployee,
   type Employee,
 } from "@/lib/employees.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 type Props = {
   employee?: Employee | null;
@@ -87,12 +88,7 @@ export function EmployeeForm({
   } catch (error) {
     console.error(error);
 
-    toast.error(
-      error instanceof Error
-        ? error.message
-        :
-        "Une erreur est survenue pendant l'enregistrement."
-    );
+    notifyMutationError(error, "Une erreur est survenue pendant l'enregistrement.");
   } finally {
     setLoading(false);
   }

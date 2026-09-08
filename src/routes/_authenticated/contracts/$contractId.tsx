@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EntityDocumentsTab } from "@/components/documents/entity-documents-tab";
 import { usePermissions } from "@/hooks/use-permissions";
 import { CONTRACT_STATUSES, getContract, updateContractStatus } from "@/lib/contracts.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 export const Route = createFileRoute("/_authenticated/contracts/$contractId")({
   component: ContractDetailsPage,
@@ -40,7 +41,7 @@ function ContractDetailsPage() {
       toast.success("Statut du contrat mis à jour.");
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Impossible de mettre à jour le statut.");
+      notifyMutationError(error, "Impossible de mettre à jour le statut.");
     },
   });
 

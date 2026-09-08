@@ -19,6 +19,7 @@ import {
 } from "@/lib/vehicles.functions";
 import { getWallets } from "@/lib/wallet.functions";
 import { getDrivers, type DriverWithEmployee } from "@/lib/drivers.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 type Props = {
   vehicle?: Vehicle | null;
@@ -176,7 +177,7 @@ export default function VehicleForm({ vehicle, onSuccess }: Props) {
       onSuccess();
     } catch (error: unknown) {
       console.error(error);
-      toast.error(error instanceof Error ? error.message : "Impossible d'enregistrer le véhicule.");
+      notifyMutationError(error, "Impossible d'enregistrer le véhicule.");
     } finally {
       setLoading(false);
     }

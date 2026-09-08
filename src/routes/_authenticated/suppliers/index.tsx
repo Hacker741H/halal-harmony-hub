@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useConfirm } from "@/hooks/use-confirm";
 import { usePermissions } from "@/hooks/use-permissions";
 import { archiveSupplier, getSuppliers, restoreSupplier, type Supplier } from "@/lib/suppliers.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 export const Route = createFileRoute("/_authenticated/suppliers/")({
   component: SuppliersPage,
@@ -42,7 +43,7 @@ function SuppliersPage() {
       toast.success("Fournisseur archivé.");
       void queryClient.invalidateQueries({ queryKey: ["suppliers"] });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Impossible d’archiver ce fournisseur."),
+    onError: (error) => notifyMutationError(error, "Impossible d’archiver ce fournisseur."),
   });
   const restoreMutation = useMutation({
     mutationFn: restoreSupplier,
@@ -50,7 +51,7 @@ function SuppliersPage() {
       toast.success("Fournisseur restauré.");
       void queryClient.invalidateQueries({ queryKey: ["suppliers"] });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Impossible de restaurer ce fournisseur."),
+    onError: (error) => notifyMutationError(error, "Impossible de restaurer ce fournisseur."),
   });
 
   const total = suppliersQuery.data?.total ?? 0;

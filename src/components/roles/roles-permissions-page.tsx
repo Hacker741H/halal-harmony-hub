@@ -19,6 +19,7 @@ import {
   type PermissionDefinition,
   type PermissionRole,
 } from "@/lib/permissions.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -126,7 +127,7 @@ export function RolesPermissionsPage() {
       toast.success("Permissions du rôle enregistrées.");
       setPendingPermissionSave(null);
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Modification refusée."),
+    onError: (error) => notifyMutationError(error, "Modification refusée."),
   });
 
   const assignmentMutation = useMutation({
@@ -135,7 +136,7 @@ export function RolesPermissionsPage() {
       await invalidate();
       toast.success("Attribution de rôle enregistrée.");
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Attribution refusée."),
+    onError: (error) => notifyMutationError(error, "Attribution refusée."),
   });
 
   if (administrationQuery.isLoading || permissionsQuery.isLoading) {
@@ -231,17 +232,17 @@ function AccountManagement({ roles }: { roles: PermissionRole[] }) {
       setFullName(""); setUsername(""); setPassword(""); setRole("employe");
       toast.success("Accès interne créé.");
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Création du compte impossible."),
+    onError: (error) => notifyMutationError(error, "Création du compte impossible."),
   });
   const statusMutation = useMutation({
     mutationFn: setInternalAccountActive,
     onSuccess: async () => { await refresh(); toast.success("Statut d’accès mis à jour."); },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Modification impossible."),
+    onError: (error) => notifyMutationError(error, "Modification impossible."),
   });
   const passwordMutation = useMutation({
     mutationFn: resetInternalAccountPassword,
     onSuccess: () => { setPasswordTarget(null); setNewPassword(""); toast.success("Nouveau mot de passe enregistré."); },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Réinitialisation impossible."),
+    onError: (error) => notifyMutationError(error, "Réinitialisation impossible."),
   });
   const updateMutation = useMutation({
     mutationFn: updateInternalAccount,
@@ -254,7 +255,7 @@ function AccountManagement({ roles }: { roles: PermissionRole[] }) {
       setEditingAccount(null);
       toast.success("Compte utilisateur mis à jour.");
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Modification du compte impossible."),
+    onError: (error) => notifyMutationError(error, "Modification du compte impossible."),
   });
 
   return <section className="space-y-4">

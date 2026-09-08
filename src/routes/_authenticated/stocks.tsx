@@ -18,6 +18,7 @@ import { OperationalHero } from "@/components/ui/operational-hero";
 import { useConfirm } from "@/hooks/use-confirm";
 import { cancelStockMovement, getStockMovements } from "@/lib/stock-movements.functions";
 import { deleteStock, getStocks, type Stock } from "@/lib/stocks.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 export const Route = createFileRoute("/_authenticated/stocks")({
   component: StocksPage,
@@ -61,7 +62,7 @@ function StocksPage() {
           toast.success("Mouvement annulé.");
         } catch (error) {
           console.error(error);
-          toast.error(error instanceof Error ? error.message : "Impossible d'annuler le mouvement.");
+          notifyMutationError(error, "Impossible d'annuler le mouvement.");
           throw error;
         }
       },
@@ -80,7 +81,7 @@ function StocksPage() {
           toast.success("Article supprimé.");
         } catch (error) {
           console.error(error);
-          toast.error(error instanceof Error ? error.message : "Impossible de supprimer l'article.");
+          notifyMutationError(error, "Impossible de supprimer l'article.");
           throw error;
         }
       },

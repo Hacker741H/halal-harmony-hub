@@ -14,6 +14,7 @@ import {
 } from "@/lib/finance.functions";
 
 import { getWallets } from "@/lib/wallet.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
@@ -160,11 +161,7 @@ export function RevenueForm({
     } catch (error) {
       console.error(error);
 
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Une erreur est survenue.",
-      );
+      notifyMutationError(error, "Une erreur est survenue.");
     } finally {
       setLoading(false);
     }

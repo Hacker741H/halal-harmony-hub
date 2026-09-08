@@ -23,7 +23,9 @@ import {
   getPurchase,
   type SupplierPaymentWithWallet,
 } from "@/lib/purchases.functions";
+import { isSessionExpiredError } from "@/lib/error-classification";
 import { formatXOF as formatAmount } from "@/lib/format";
+import { triggerSessionRecovery } from "@/lib/notify-mutation-error";
 
 export const Route = createFileRoute("/_authenticated/purchases/$purchaseId")({ component: PurchaseDetailsPage });
 
@@ -46,7 +48,13 @@ function paymentVariant(status: string): "outline" | "info" | "success" | "warni
 }
 
 function showError(fallback: string) {
-  return (error: Error) => toast.error(error instanceof Error ? error.message : fallback);
+  return (error: Error) => {
+    if (isSessionExpiredError(error)) {
+      triggerSessionRecovery();
+      return;
+    }
+    toast.error(error instanceof Error ? error.message : fallback);
+  };
 }
 
 function PurchaseDetailsPage() {

@@ -18,6 +18,7 @@ import {
   replaceDocumentMetadata,
   restoreDocument,
 } from "@/lib/documents.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 export const Route = createFileRoute("/_authenticated/documents/$documentId")({
   component: DocumentDetailPage,
@@ -68,7 +69,7 @@ function DocumentDetailPage() {
       }
     },
     onSuccess: () => { toast.success("Document remplacé."); void documentQuery.refetch(); void historyQuery.refetch(); },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Impossible de remplacer le document."),
+    onError: (error) => notifyMutationError(error, "Impossible de remplacer le document."),
   });
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -80,7 +81,7 @@ function DocumentDetailPage() {
       await deleteDocumentMetadata({ data: { id: documentId } });
     },
     onSuccess: () => { toast.success("Document supprimé."); void queryClient.invalidateQueries({ queryKey: ["documents"] }); void navigate({ to: "/documents" }); },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Impossible de supprimer le document."),
+    onError: (error) => notifyMutationError(error, "Impossible de supprimer le document."),
   });
 
   if (documentQuery.isLoading) return <div className="p-6 text-muted-foreground">Chargement du document…</div>;

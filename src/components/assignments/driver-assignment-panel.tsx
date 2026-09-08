@@ -19,6 +19,7 @@ import {
   type AssignmentDriver,
 } from "@/lib/assignments.functions";
 import { formatDate } from "@/lib/format";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 type Props =
   | { assetType: "vehicle"; assetId: string }
@@ -67,7 +68,7 @@ export function DriverAssignmentPanel({ assetType, assetId }: Props) {
       setNotes("");
       await invalidate();
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Impossible d'enregistrer l'affectation."),
+    onError: (error) => notifyMutationError(error, "Impossible d'enregistrer l'affectation."),
   });
 
   const closeMutation = useMutation<unknown, Error, string>({
@@ -82,7 +83,7 @@ export function DriverAssignmentPanel({ assetType, assetId }: Props) {
       toast.success("Affectation clôturée.");
       await invalidate();
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Impossible de clôturer l'affectation."),
+    onError: (error) => notifyMutationError(error, "Impossible de clôturer l'affectation."),
   });
 
   const assignments = assignmentsQuery.data ?? [];

@@ -17,6 +17,7 @@ import {
 } from "@/lib/finance.functions";
 
 import { getWallets } from "@/lib/wallet.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 type Props = {
   operation?: FinanceOperation | null;
@@ -178,11 +179,7 @@ export function TransferForm({
     } catch (error) {
       console.error(error);
 
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Une erreur est survenue.",
-      );
+      notifyMutationError(error, "Une erreur est survenue.");
     } finally {
       setLoading(false);
     }

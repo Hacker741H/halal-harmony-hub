@@ -26,6 +26,7 @@ import {
   type Wallet as WalletType,
   type WalletModule,
 } from "@/lib/wallet.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 export const Route = createFileRoute("/_authenticated/wallets/")({
   component: WalletsPage,
@@ -83,7 +84,7 @@ function WalletsPage() {
           await queryClient.invalidateQueries({ queryKey: ["wallet-module-detail", selectedModule] });
           toast.success(row.isArchived ? "Wallet réactivé." : "Wallet archivé.");
         } catch (error) {
-          toast.error(error instanceof Error ? error.message : "Action impossible.");
+          notifyMutationError(error, "Action impossible.");
           throw error;
         }
       },
@@ -105,7 +106,7 @@ function WalletsPage() {
           ]);
           toast.success("Wallet supprimé.");
         } catch (error) {
-          toast.error(error instanceof Error ? error.message : "Impossible de supprimer ce wallet.");
+          notifyMutationError(error, "Impossible de supprimer ce wallet.");
           throw error;
         }
       },

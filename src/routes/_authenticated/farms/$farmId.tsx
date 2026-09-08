@@ -76,6 +76,7 @@ import {
   getExpensesByFarm,
   type Expense,
 } from "@/lib/expenses.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 export const Route = createFileRoute(
   "/_authenticated/farms/$farmId",
@@ -157,7 +158,7 @@ function FarmDetailsPage() {
       await queryClient.invalidateQueries({ queryKey: ["harvests", farmId] });
       toast.success(successMessage);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Action impossible.");
+      notifyMutationError(error, "Action impossible.");
     } finally {
       setActingHarvestId(undefined);
     }

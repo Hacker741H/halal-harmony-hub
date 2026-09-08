@@ -18,6 +18,8 @@ import {
   type SupplierDuplicate,
   type SupplierValues,
 } from "@/lib/suppliers.functions";
+import { isSessionExpiredError, SESSION_EXPIRED_MESSAGE } from "@/lib/error-classification";
+import { triggerSessionRecovery } from "@/lib/notify-mutation-error";
 
 const COUNTRY_LABELS: Record<(typeof SUPPLIER_COUNTRY_CODES)[number], string> = {
   CI: "Côte d’Ivoire",
@@ -107,6 +109,11 @@ export function SupplierForm({ supplier, onSuccess }: Props) {
       onSuccess();
     },
     onError: (mutationError) => {
+      if (isSessionExpiredError(mutationError)) {
+        triggerSessionRecovery();
+        setError(SESSION_EXPIRED_MESSAGE);
+        return;
+      }
       setError(mutationError instanceof Error ? mutationError.message : "Impossible d’enregistrer le fournisseur.");
     },
   });

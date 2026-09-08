@@ -7,6 +7,7 @@ import {
   type NotificationEntityRelation,
   updateNotificationStatus,
 } from "@/lib/notifications.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 interface EntityAlertsSectionProps {
   entityId?: string;
@@ -52,7 +53,7 @@ export function EntityAlertsSection({
       ]);
       toast.success("Notification mise à jour.");
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Mise à jour impossible."),
+    onError: (error) => notifyMutationError(error, "Mise à jour impossible."),
   });
 
   return (

@@ -21,6 +21,7 @@ import {
   type DriverWithEmployee,
   updateDriver,
 } from "@/lib/drivers.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 type Props = {
   driver?: DriverWithEmployee | null;
@@ -100,12 +101,7 @@ export function DriverForm({
     } catch (error) {
       console.error(error);
 
-      toast.error(
-        error instanceof Error
-          ? error.message
-          :
-          "Une erreur est survenue."
-      );
+      notifyMutationError(error, "Une erreur est survenue.");
     } finally {
       setLoading(false);
     }

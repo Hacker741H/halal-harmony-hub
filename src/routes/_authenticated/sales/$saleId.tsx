@@ -20,7 +20,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { usePermissions } from "@/hooks/use-permissions";
+import { isSessionExpiredError } from "@/lib/error-classification";
 import { formatNumber, formatXOF as formatAmount } from "@/lib/format";
+import { notifyMutationError, triggerSessionRecovery } from "@/lib/notify-mutation-error";
 import {
   cancelCommerceSaleRefund,
   confirmCommerceSaleRefund,
@@ -219,7 +221,13 @@ function CommercialSaleDetailsPage() {
 }
 
 function showError(fallback: string) {
-  return (error: Error) => toast.error(error instanceof Error ? error.message : fallback);
+  return (error: Error) => {
+    if (isSessionExpiredError(error)) {
+      triggerSessionRecovery();
+      return;
+    }
+    toast.error(error instanceof Error ? error.message : fallback);
+  };
 }
 
 function Step({ label, detail, completed, action }: { label: string; detail: string; completed: boolean; action?: ReactNode }) {
@@ -272,6 +280,11 @@ function ConfirmAndInvoiceDialog({ saleId, open, onOpenChange, onSaved }: { sale
       try {
         sale = await confirmCommercialSale({ data: { id: saleId } });
       } catch (error) {
+        // Une session morte ne doit jamais être réemballée avec un préfixe
+        // métier -- cela la rendrait indétectable pour notifyMutationError
+        // (isSessionExpiredError vérifie que le message COMMENCE par
+        // "Unauthorized", un préfixe français casserait ce test).
+        if (isSessionExpiredError(error)) throw error;
         throw new Error(`Confirmation de la vente impossible : ${error instanceof Error ? error.message : "erreur inconnue"}`);
       }
       let invoice;
@@ -280,16 +293,18 @@ function ConfirmAndInvoiceDialog({ saleId, open, onOpenChange, onSaved }: { sale
           data: { saleId: sale.id, invoice: { due_date: dueDate || null, tax_rate: taxRate === "" ? null : Number(taxRate), notes: notes.trim() || null } },
         });
       } catch (error) {
+        if (isSessionExpiredError(error)) throw error;
         throw new Error(`Vente confirmée, mais la création de la facture a échoué : ${error instanceof Error ? error.message : "erreur inconnue"}`);
       }
       try {
         await issueCommercialInvoice({ data: { id: invoice.id } });
       } catch (error) {
+        if (isSessionExpiredError(error)) throw error;
         throw new Error(`Vente confirmée et facture créée en brouillon, mais l’émission a échoué : ${error instanceof Error ? error.message : "erreur inconnue"}`);
       }
     },
     onSuccess: () => { toast.success("Vente confirmée et facture émise."); onOpenChange(false); onSaved(); },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => notifyMutationError(error, error.message),
   });
 
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><DialogHeader><DialogTitle>Confirmer et facturer</DialogTitle><DialogDescription>Confirme la vente, crée la facture à partir des lignes de vente, puis l’émet immédiatement. Chaque étape s’arrête si la précédente échoue.</DialogDescription></DialogHeader><div className="space-y-4"><div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="cai-due-date">Date d’échéance</Label><Input id="cai-due-date" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></div><div className="space-y-2"><Label htmlFor="cai-tax-rate">TVA (%)</Label><Input id="cai-tax-rate" type="number" min="0" max="100" step="0.01" value={taxRate} onChange={(event) => setTaxRate(event.target.value)} placeholder="0" /></div></div><div className="space-y-2"><Label htmlFor="cai-notes">Notes</Label><Textarea id="cai-notes" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Informations complémentaires…" /></div></div><DialogFooter><Button onClick={() => mutation.mutate()} loading={mutation.isPending}>Confirmer et émettre la facture</Button></DialogFooter></DialogContent></Dialog>;

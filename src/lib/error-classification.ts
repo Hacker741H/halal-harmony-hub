@@ -142,6 +142,27 @@ export function isRetryableCategory(category: ErrorCategory): boolean {
 }
 
 /**
+ * STABILISATION TRANSVERSALE (durcissement 1/3) : point d'appel explicite
+ * pour "cette erreur signifie-t-elle que la session est morte" -- utilisé
+ * par src/lib/notify-mutation-error.ts (le point d'entrée que les ~110
+ * mutations de l'app doivent appeler) et par router.tsx (les gestionnaires
+ * globaux QueryCache/MutationCache). classifyError() reste la seule
+ * source de vérité ; ceci n'est qu'un nom explicite pour un de ses résultats.
+ */
+export function isSessionExpiredError(error: unknown): boolean {
+  return classifyError(error) === "session";
+}
+
+/**
+ * Seul texte que l'utilisateur doit jamais voir pour une session morte,
+ * quel que soit l'endroit qui la détecte en premier (__root.tsx via son
+ * propre écouteur onAuthStateChange, ou n'importe quelle mutation/requête
+ * via notify-mutation-error.ts) -- une seule chaîne, jamais reformulée
+ * indépendamment à deux endroits.
+ */
+export const SESSION_EXPIRED_MESSAGE = "Votre session a expiré, reconnectez-vous.";
+
+/**
  * Extraction de message tolérante, utilisée par classifyError() et par
  * tout appelant qui a seulement besoin d'un texte à afficher/logger --
  * gère une vraie Error, un objet simple avec .message (forme que prend

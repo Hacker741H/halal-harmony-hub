@@ -21,6 +21,7 @@ import {
   type Wallet,
   type WalletConversionPlan,
 } from "@/lib/wallet.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 type Row = {
   key: string;
@@ -110,7 +111,7 @@ export function WalletParentConversionDialog({ wallet, open, onOpenChange, onSuc
       setPlan(result);
     } catch (error) {
       console.error(error);
-      toast.error(error instanceof Error ? error.message : "Impossible de calculer la prévisualisation.");
+      notifyMutationError(error, "Impossible de calculer la prévisualisation.");
     } finally {
       setPreviewing(false);
     }
@@ -148,7 +149,7 @@ export function WalletParentConversionDialog({ wallet, open, onOpenChange, onSuc
       onSuccess();
     } catch (error) {
       console.error(error);
-      toast.error(error instanceof Error ? error.message : "La conversion a échoué.");
+      notifyMutationError(error, "La conversion a échoué.");
     } finally {
       setConfirming(false);
     }

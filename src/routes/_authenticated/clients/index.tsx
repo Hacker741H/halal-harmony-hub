@@ -23,6 +23,7 @@ import {
   type Client,
   type CommercialClientFinancialMetricsBulkEntry,
 } from "@/lib/clients.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 export const Route = createFileRoute("/_authenticated/clients/")({
   component: ClientsPage,
@@ -49,7 +50,7 @@ function ClientsPage() {
       toast.success("Client archivé.");
       void queryClient.invalidateQueries({ queryKey: ["clients"] });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Impossible d’archiver ce client."),
+    onError: (error) => notifyMutationError(error, "Impossible d’archiver ce client."),
   });
   const restoreMutation = useMutation({
     mutationFn: restoreClient,
@@ -57,7 +58,7 @@ function ClientsPage() {
       toast.success("Client restauré.");
       void queryClient.invalidateQueries({ queryKey: ["clients"] });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Impossible de restaurer ce client."),
+    onError: (error) => notifyMutationError(error, "Impossible de restaurer ce client."),
   });
 
   const total = clientsQuery.data?.total ?? 0;

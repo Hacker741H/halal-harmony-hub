@@ -25,6 +25,7 @@ import {
   getTreasury,
   type FinanceOperation,
 } from "@/lib/finance.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 export const Route = createFileRoute("/_authenticated/finance")({
   head: () => ({ meta: [{ title: "Finances — HALAL ERP" }] }),
@@ -84,7 +85,7 @@ function FinancePage() {
           toast.success("Opération annulée.");
         } catch (error) {
           console.error(error);
-          toast.error(error instanceof Error ? error.message : "Impossible d'annuler l'opération.");
+          notifyMutationError(error, "Impossible d'annuler l'opération.");
           throw error;
         }
       },

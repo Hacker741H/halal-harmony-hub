@@ -16,7 +16,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { usePermissions } from "@/hooks/use-permissions";
 import { getCommercePosLocations } from "@/lib/commerce-pos.functions";
+import { isSessionExpiredError } from "@/lib/error-classification";
 import { formatDateTimeMedium as formatDateTime } from "@/lib/format";
+import { triggerSessionRecovery } from "@/lib/notify-mutation-error";
 import { INVENTORY_COUNT_STATUSES, getInventoryCounts, openInventoryCount } from "@/lib/inventory-counts.functions";
 
 // Contenu extrait de l'ancienne route /inventory-counts (désormais une
@@ -37,7 +39,13 @@ function statusVariant(status: string): "info" | "success" | "danger" {
 
 
 function showError(fallback: string) {
-  return (error: Error) => toast.error(error instanceof Error ? error.message : fallback);
+  return (error: Error) => {
+    if (isSessionExpiredError(error)) {
+      triggerSessionRecovery();
+      return;
+    }
+    toast.error(error instanceof Error ? error.message : fallback);
+  };
 }
 
 export function InventoryCountsPanel() {

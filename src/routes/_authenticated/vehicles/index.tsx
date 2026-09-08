@@ -25,6 +25,7 @@ import {
   type Vehicle,
   type VehicleStatus,
 } from "@/lib/vehicles.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 export const Route = createFileRoute("/_authenticated/vehicles/")({
   validateSearch: z.object({ create: z.literal("true").optional() }),
@@ -77,7 +78,7 @@ function VehiclesPage() {
           toast.success("Véhicule supprimé.");
         } catch (error: unknown) {
           console.error(error);
-          toast.error(error instanceof Error ? error.message : "Impossible de supprimer le véhicule.");
+          notifyMutationError(error, "Impossible de supprimer le véhicule.");
           throw error;
         }
       },

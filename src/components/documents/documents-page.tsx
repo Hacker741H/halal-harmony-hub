@@ -24,6 +24,7 @@ import {
   type Document,
   type DocumentStatus,
 } from "@/lib/documents.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 function documentStatus(date: string | null) {
   if (!date) return { label: "Sans échéance", className: "bg-muted text-muted-foreground" };
@@ -88,7 +89,7 @@ export function DocumentsPage() {
       }
     },
     onSuccess: async () => { await refreshLibrary(); setReplacementTarget(null); toast.success("Document remplacé."); },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Impossible de remplacer le document."),
+    onError: (error) => notifyMutationError(error, "Impossible de remplacer le document."),
   });
   const deleteMutation = useMutation({
     mutationFn: async (document: Document) => {
@@ -99,7 +100,7 @@ export function DocumentsPage() {
       await deleteDocumentMetadata({ data: { id: document.id } });
     },
     onSuccess: async () => { await refreshLibrary(); setPreviewDocument(null); toast.success("Document supprimé."); },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Impossible de supprimer le document."),
+    onError: (error) => notifyMutationError(error, "Impossible de supprimer le document."),
   });
 
   return <div className="space-y-6 p-4 md:p-6">

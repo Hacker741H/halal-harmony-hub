@@ -40,6 +40,7 @@ import {
   type ReportType,
   type SavedReport,
 } from "@/lib/reporting.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 import type { Json } from "@/integrations/supabase/types";
 
 const REPORT_LABELS: Record<ReportType, string> = {
@@ -471,7 +472,7 @@ export function ReportingCenter({ search, onSearchChange }: ReportingCenterProps
       setShareSavedReport(false);
       toast.success("Rapport enregistré.");
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Impossible d’enregistrer le rapport."),
+    onError: (error) => notifyMutationError(error, "Impossible d’enregistrer le rapport."),
   });
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteSavedReport({ data: { id } }),
@@ -479,7 +480,7 @@ export function ReportingCenter({ search, onSearchChange }: ReportingCenterProps
       void queryClient.invalidateQueries({ queryKey: ["reporting", "saved"] });
       toast.success("Rapport enregistré supprimé.");
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Impossible de supprimer le rapport."),
+    onError: (error) => notifyMutationError(error, "Impossible de supprimer le rapport."),
   });
   const exportMutation = useMutation({
     mutationFn: () => exportManagementReportOperations({ data: { filters } }),
@@ -487,7 +488,7 @@ export function ReportingCenter({ search, onSearchChange }: ReportingCenterProps
       downloadCsv(result.content, result.filename);
       toast.success(`${result.rowCount} opération${result.rowCount > 1 ? "s" : ""} exportée${result.rowCount > 1 ? "s" : ""}.`);
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Impossible d’exporter les opérations."),
+    onError: (error) => notifyMutationError(error, "Impossible d’exporter les opérations."),
   });
 
   const options = filterOptionsQuery.data;

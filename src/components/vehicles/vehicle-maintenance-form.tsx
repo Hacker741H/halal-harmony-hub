@@ -14,6 +14,7 @@ import {
   type VehicleMaintenance,
 } from "@/lib/vehicles.functions";
 import { getWallets } from "@/lib/wallet.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 type Props = {
   vehicleId: string;
@@ -104,7 +105,7 @@ export function VehicleMaintenanceForm({
       onSuccess();
     } catch (error) {
       console.error(error);
-      toast.error(error instanceof Error ? error.message : "Impossible d'enregistrer l'entretien.");
+      notifyMutationError(error, "Impossible d'enregistrer l'entretien.");
     } finally {
       setLoading(false);
     }

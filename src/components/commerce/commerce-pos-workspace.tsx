@@ -135,6 +135,7 @@ import {
   type CommercePosSuspendedTicket,
 } from "@/lib/commerce-pos-session";
 import { cn } from "@/lib/utils";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 type CartLine = CommercePosDraftLine;
 type PaymentMethod = CommercePosPaymentMethod;
@@ -1315,9 +1316,7 @@ export function CommerceCashierWorkspace({
           );
         })
         .catch((error: unknown) => {
-          toast.error(
-            error instanceof Error ? error.message : "La vente locale n’a pas pu être sauvegardée.",
-          );
+          notifyMutationError(error, "La vente locale n’a pas pu être sauvegardée.");
         });
       return;
     }

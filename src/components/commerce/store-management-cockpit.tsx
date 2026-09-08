@@ -47,7 +47,9 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { createCommercePosId } from "@/lib/commerce-pos-session";
+import { isSessionExpiredError } from "@/lib/error-classification";
 import { formatNumber, formatXOF } from "@/lib/format";
+import { notifyMutationError, triggerSessionRecovery } from "@/lib/notify-mutation-error";
 import {
   cancelCommerceStoreExpense,
   cancelCommerceStorePlannedExpense,
@@ -279,6 +281,10 @@ export function StoreManagementCockpit({
       toast.success("Mise à jour enregistrée.");
     },
     onError: (error) => {
+      if (isSessionExpiredError(error)) {
+        triggerSessionRecovery();
+        return;
+      }
       console.error(error);
       toast.error(userFacingMutationError(error));
     },
@@ -930,7 +936,7 @@ function SalePriceEditDialog({
       await onSaved();
     },
     onError: (error) =>
-      toast.error(error instanceof Error ? error.message : "Le prix n’a pas pu être enregistré."),
+      notifyMutationError(error, "Le prix n’a pas pu être enregistré."),
   });
   return (
     <Dialog
@@ -1360,7 +1366,7 @@ function ExpenseCreateDialog({
       toast.success(planned ? "Charge à venir ajoutée." : "Dépense brouillon ajoutée.");
     },
     onError: (error) =>
-      toast.error(error instanceof Error ? error.message : "Création impossible."),
+      notifyMutationError(error, "Création impossible."),
   });
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -1930,9 +1936,7 @@ function ControlReportDetailDialog({
       await refresh();
     },
     onError: (error) =>
-      toast.error(
-        error instanceof Error ? error.message : "La réception n’a pas pu être confirmée.",
-      ),
+      notifyMutationError(error, "La réception n’a pas pu être confirmée."),
   });
   const flagMutation = useMutation({
     mutationFn: (reason: string) => flagCommercePosControlReport({ data: { reportId, reason } }),
@@ -1943,7 +1947,7 @@ function ControlReportDetailDialog({
       await refresh();
     },
     onError: (error) =>
-      toast.error(error instanceof Error ? error.message : "Le signalement a échoué."),
+      notifyMutationError(error, "Le signalement a échoué."),
   });
   const flag = () => {
     const reason = flagReason.trim();

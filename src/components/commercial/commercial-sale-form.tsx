@@ -19,6 +19,7 @@ import {
   type CommercialSaleValues,
 } from "@/lib/commercial-sales.functions";
 import { getStocks } from "@/lib/stocks.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 type LineForm = {
   key: string;
@@ -150,7 +151,7 @@ export function CommercialSaleForm({
       toast.success(sale ? "Vente mise à jour." : "Vente créée en brouillon.");
       onSuccess(saved.id);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Impossible d’enregistrer la vente.");
+      notifyMutationError(error, "Impossible d’enregistrer la vente.");
     } finally {
       setSubmitting(false);
     }

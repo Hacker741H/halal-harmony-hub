@@ -6,7 +6,9 @@ import { ArrowLeft, Sprout } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
+import { isSessionExpiredError, SESSION_EXPIRED_MESSAGE } from "@/lib/error-classification";
 import { formatXOF } from "@/lib/format";
+import { triggerSessionRecovery } from "@/lib/notify-mutation-error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -55,6 +57,10 @@ const statusLabels: Record<HarvestStatus, string> = {
 };
 
 function getErrorMessage(error: unknown): string {
+  if (isSessionExpiredError(error)) {
+    triggerSessionRecovery();
+    return SESSION_EXPIRED_MESSAGE;
+  }
   if (error instanceof Error && error.message) return error.message;
   return "Action impossible.";
 }

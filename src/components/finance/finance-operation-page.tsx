@@ -18,6 +18,7 @@ import {
   type FinanceOperation,
 } from "@/lib/finance.functions";
 import type { FinanceOperationType } from "@/lib/finance.service";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 type FinanceFormProps = {
   operation?: FinanceOperation | null;
@@ -104,7 +105,7 @@ export function FinanceOperationPage({
           toast.success("Opération annulée.");
         } catch (error) {
           console.error(error);
-          toast.error(error instanceof Error ? error.message : "Impossible d'annuler l'opération.");
+          notifyMutationError(error, "Impossible d'annuler l'opération.");
           throw error;
         }
       },

@@ -18,6 +18,8 @@ import {
   type ClientValues,
   updateClient,
 } from "@/lib/clients.functions";
+import { isSessionExpiredError, SESSION_EXPIRED_MESSAGE } from "@/lib/error-classification";
+import { triggerSessionRecovery } from "@/lib/notify-mutation-error";
 
 const COUNTRY_LABELS: Record<(typeof CLIENT_COUNTRY_CODES)[number], string> = {
   CI: "Côte d’Ivoire",
@@ -127,6 +129,11 @@ export function ClientForm({ client, onSuccess }: Props) {
       onSuccess();
     },
     onError: (mutationError) => {
+      if (isSessionExpiredError(mutationError)) {
+        triggerSessionRecovery();
+        setError(SESSION_EXPIRED_MESSAGE);
+        return;
+      }
       setError(mutationError instanceof Error ? mutationError.message : "Impossible d’enregistrer le client.");
     },
   });

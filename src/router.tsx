@@ -3,7 +3,8 @@ import { createRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 import { routeTree } from "./routeTree.gen";
-import { classifyError } from "@/lib/error-classification";
+import { classifyError, isSessionExpiredError } from "@/lib/error-classification";
+import { triggerSessionRecovery } from "@/lib/notify-mutation-error";
 
 // P1-2 (audit de stabilisation) : la classification réseau-vs-le-reste qui
 // vivait ici seule (isLikelyNetworkError) est maintenant dans
@@ -48,9 +49,20 @@ export const getRouter = () => {
         // src/integrations/supabase/auth-middleware.ts. Sign-out clears the
         // query cache and any query still in flight at that exact moment
         // can settle afterwards with this same error; surfacing it as a
-        // toast would read as a false "something broke" right as the user
-        // is intentionally logging out, or during a normal token refresh.
-        if (error instanceof Error && error.message.startsWith("Unauthorized")) return;
+        // generic "failed to load" toast would read as a false "something
+        // broke" right as the user is intentionally logging out, or during
+        // a normal token refresh. STABILISATION TRANSVERSALE (1/3) :
+        // instead of just staying silent, actively trigger recovery -- a
+        // page with only queries (no mutation) hitting a dead session used
+        // to show nothing at all until some other action eventually
+        // noticed; now the one correct "session expirée" toast + redirect
+        // fires from here too, deduplicated by triggerSessionRecovery's
+        // own shared sonner id against every other place that can also
+        // call it.
+        if (isSessionExpiredError(error)) {
+          triggerSessionRecovery();
+          return;
+        }
         // A query cancelled by navigation or a superseding refetch isn't a
         // failure the user needs to hear about.
         if (error instanceof Error && error.name === "AbortError") return;
@@ -71,25 +83,26 @@ export const getRouter = () => {
         });
       },
     }),
-    // Section 3 (chantier de stabilisation) : QueryCache a un filtrage
-    // "Unauthorized:"/AbortError partagé depuis le début (ci-dessus) ;
-    // MutationCache n'en avait aucun -- chacune des ~108 mutations de
-    // l'app affiche son propre toast.error(error.message) local, donc au
-    // moment exact d'une expiration de session, l'utilisateur pouvait voir
-    // ce message brut technique empilé sur le toast clair "Votre session a
-    // expiré" (P0-1). Impossible de supprimer un onError local depuis un
-    // hook global (les deux s'exécutent toujours), donc cette correction
-    // partagée cible ce qu'un seul point PEUT réellement faire : un id
-    // sonner partagé absorbe le cas commun (le toast local, exécuté juste
-    // après, écrase silencieusement celui-ci -- aucun changement visible
-    // pour les mutations qui gèrent déjà leur erreur), et sert de filet
-    // pour toute mutation qui n'a AUCUN onError local (3 cas réels trouvés
-    // -- vehicles/$vehicleId.tsx, motorcycles/$motorcycleId.tsx -- où rien
-    // n'était montré du tout) sans modifier ces fichiers un par un.
+    // STABILISATION TRANSVERSALE (1/3) : la vraie correction du message
+    // technique brut ("Unauthorized: Invalid token") qui pouvait s'afficher
+    // sur n'importe laquelle des ~110 mutations locales de l'app vit
+    // maintenant dans src/lib/notify-mutation-error.ts (notifyMutationError),
+    // que la quasi-totalité des onError locaux appellent désormais au lieu
+    // de formater l'erreur eux-mêmes. Ce gestionnaire global reste
+    // nécessaire comme filet pour ce qu'un point local ne peut pas
+    // couvrir : une mutation sans AUCUN onError (cas réels trouvés --
+    // vehicles/$vehicleId.tsx, motorcycles/$motorcycleId.tsx), et pour
+    // déclencher la reprise de session même dans ce cas -- toujours
+    // dédupliqué par le même id sonner partagé que notifyMutationError et
+    // que __root.tsx, donc jamais de doublon même si plusieurs mutations
+    // échouent dans le même instant.
     mutationCache: new MutationCache({
       onError: (error) => {
         if (typeof window === "undefined") return;
-        if (error instanceof Error && error.message.startsWith("Unauthorized")) return;
+        if (isSessionExpiredError(error)) {
+          triggerSessionRecovery();
+          return;
+        }
         if (error instanceof Error && error.name === "AbortError") return;
         toast.error(error instanceof Error ? error.message : "Une erreur est survenue.", {
           id: "mutation-error",

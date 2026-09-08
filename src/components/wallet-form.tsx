@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createWallet, getWallets, updateWallet, type Wallet } from "@/lib/wallet.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 import { useQuery } from "@tanstack/react-query";
 
 type Props = { onSuccess: () => void; wallet?: Wallet | null; defaultParentWalletId?: string | null };
@@ -110,7 +111,7 @@ export function WalletForm({ onSuccess, wallet, defaultParentWalletId }: Props) 
       onSuccess();
     } catch (error) {
       console.error(error);
-      toast.error(error instanceof Error ? error.message : "Une erreur est survenue.");
+      notifyMutationError(error, "Une erreur est survenue.");
     } finally {
       setLoading(false);
     }

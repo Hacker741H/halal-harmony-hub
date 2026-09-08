@@ -66,7 +66,9 @@ import {
   type CourseInvoice,
   type CoursePayment,
 } from "@/lib/courses.functions";
+import { isSessionExpiredError } from "@/lib/error-classification";
 import { formatXOF as formatAmount } from "@/lib/format";
+import { triggerSessionRecovery } from "@/lib/notify-mutation-error";
 
 export const Route = createFileRoute("/_authenticated/courses/$courseId")({ component: CourseDetailsPage });
 
@@ -353,6 +355,14 @@ function toIsoDateTime(value: string) {
 }
 
 function notificationError(error: unknown) {
+  // STABILISATION TRANSVERSALE (1/3) : une session morte ne doit plus
+  // jamais afficher son message brut ("Unauthorized: Invalid token") via
+  // findCourseActionError -- triggerSessionRecovery montre le seul message
+  // correct (id sonner partagé avec __root.tsx) et lance la reprise.
+  if (isSessionExpiredError(error)) {
+    triggerSessionRecovery();
+    return;
+  }
   console.error("Course action failed", error);
   toast.error(findCourseActionError(error) ?? "L’action n’a pas pu être effectuée. Réessayez ou vérifiez vos autorisations.");
 }

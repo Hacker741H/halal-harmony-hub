@@ -19,6 +19,7 @@ import {
   DOCUMENT_TYPES,
   type DocumentRelation,
 } from "@/lib/documents.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 type Props = {
   entityId?: string;
@@ -91,7 +92,7 @@ export function DocumentUpload({ entityId, relation, onSuccess }: Props) {
         });
         if (cleanupError || auditError) console.error(cleanupError ?? auditError);
       }
-      toast.error(error instanceof Error ? error.message : "Impossible d'envoyer le document.");
+      notifyMutationError(error, "Impossible d'envoyer le document.");
     } finally {
       setLoading(false);
     }

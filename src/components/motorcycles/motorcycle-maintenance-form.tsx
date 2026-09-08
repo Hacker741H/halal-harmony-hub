@@ -16,6 +16,7 @@ import {
   type MotorcycleMaintenance,
 } from "@/lib/motorcycle-maintenances.functions";
 import { getWallets } from "@/lib/wallet.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 type Props = {
   motorcycleId: string;
@@ -136,12 +137,7 @@ export function MotorcycleMaintenanceForm({
       onSuccess();
     } catch (error) {
       console.error(error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          :
-          "Une erreur est survenue.",
-      );
+      notifyMutationError(error, "Une erreur est survenue.");
     } finally {
       setLoading(false);
     }

@@ -14,6 +14,7 @@ import {
   getSalaryPaymentPeople,
 } from "@/lib/salary-payments.functions";
 import { getWallets } from "@/lib/wallet.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 type Props = {
   onSuccess: () => void;
@@ -84,7 +85,7 @@ export function SalaryPaymentForm({
       onSuccess();
     } catch (error) {
       console.error(error);
-      toast.error(error instanceof Error ? error.message : "Impossible d'enregistrer le paiement de salaire.");
+      notifyMutationError(error, "Impossible d'enregistrer le paiement de salaire.");
     } finally {
       setLoading(false);
     }

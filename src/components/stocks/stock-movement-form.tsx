@@ -11,6 +11,7 @@ import { WalletSelect } from "@/components/selects/entity-selects";
 import type { Stock } from "@/lib/stocks.functions";
 import { createStockMovement } from "@/lib/stock-movements.functions";
 import { getWallets } from "@/lib/wallet.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 type Props = {
   stocks: Stock[];
@@ -90,7 +91,7 @@ export function StockMovementForm({ stocks, onSuccess }: Props) {
       onSuccess();
     } catch (error) {
       console.error(error);
-      toast.error(error instanceof Error ? error.message : "Impossible d'enregistrer le mouvement.");
+      notifyMutationError(error, "Impossible d'enregistrer le mouvement.");
     } finally {
       setLoading(false);
     }

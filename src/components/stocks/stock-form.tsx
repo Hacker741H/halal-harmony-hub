@@ -10,6 +10,7 @@ import {
   updateStock,
   type Stock,
 } from "@/lib/stocks.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 type Props = {
   onSuccess: () => void;
@@ -108,7 +109,7 @@ export function StockForm({
     } catch (error) {
       console.error(error);
 
-      toast.error(error instanceof Error ? error.message : "Impossible d'enregistrer cet article.");
+      notifyMutationError(error, "Impossible d'enregistrer cet article.");
     } finally {
       setLoading(false);
     }

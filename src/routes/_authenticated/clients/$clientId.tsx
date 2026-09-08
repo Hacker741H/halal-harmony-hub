@@ -31,6 +31,7 @@ import {
 } from "@/lib/clients.functions";
 import { getCommercialSales } from "@/lib/commercial-sales.functions";
 import type { CommercialSaleListItem } from "@/lib/commercial-sales.functions";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId")({
   component: ClientDetailsPage,
@@ -72,17 +73,17 @@ function ClientDetailsPage() {
   const archiveMutation = useMutation({
     mutationFn: archiveClient,
     onSuccess: () => { toast.success("Client archivé."); void queryClient.invalidateQueries({ queryKey: ["client", clientId] }); void queryClient.invalidateQueries({ queryKey: ["clients"] }); void historyQuery.refetch(); },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Impossible d’archiver ce client."),
+    onError: (error) => notifyMutationError(error, "Impossible d’archiver ce client."),
   });
   const restoreMutation = useMutation({
     mutationFn: restoreClient,
     onSuccess: () => { toast.success("Client restauré."); void queryClient.invalidateQueries({ queryKey: ["client", clientId] }); void queryClient.invalidateQueries({ queryKey: ["clients"] }); void historyQuery.refetch(); },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Impossible de restaurer ce client."),
+    onError: (error) => notifyMutationError(error, "Impossible de restaurer ce client."),
   });
   const mergeMutation = useMutation({
     mutationFn: () => mergeClients({ data: { sourceClientId: clientId, targetClientId: mergeTargetId, reason: mergeReason } }),
     onSuccess: () => { toast.success("Client fusionné et archivé."); setMergeOpen(false); void queryClient.invalidateQueries({ queryKey: ["client", clientId] }); void queryClient.invalidateQueries({ queryKey: ["clients"] }); void historyQuery.refetch(); },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Impossible de fusionner les clients."),
+    onError: (error) => notifyMutationError(error, "Impossible de fusionner les clients."),
   });
 
   if (clientQuery.isPending) return <div className="p-6 text-muted-foreground">Chargement du client…</div>;

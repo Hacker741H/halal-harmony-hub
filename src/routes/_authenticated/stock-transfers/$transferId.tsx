@@ -19,7 +19,9 @@ import {
   getStockTransfer,
   receiveStockTransfer,
 } from "@/lib/stock-transfers.functions";
+import { isSessionExpiredError } from "@/lib/error-classification";
 import { formatDateTimeMedium as formatDateTime, formatXOF as formatAmount } from "@/lib/format";
+import { triggerSessionRecovery } from "@/lib/notify-mutation-error";
 
 export const Route = createFileRoute("/_authenticated/stock-transfers/$transferId")({ component: StockTransferDetailPage });
 
@@ -40,7 +42,13 @@ function formatQuantity(value: number | string | null) {
 }
 
 function showError(fallback: string) {
-  return (error: Error) => toast.error(error instanceof Error ? error.message : fallback);
+  return (error: Error) => {
+    if (isSessionExpiredError(error)) {
+      triggerSessionRecovery();
+      return;
+    }
+    toast.error(error instanceof Error ? error.message : fallback);
+  };
 }
 
 function StockTransferDetailPage() {

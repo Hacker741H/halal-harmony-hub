@@ -15,6 +15,7 @@ import { toast } from "sonner";
 
 import { getDocumentsForRelation } from "@/lib/documents.functions";
 import { formatDateTimeMedium as formatDateTime } from "@/lib/format";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 import {
   assignCourse,
   confirmCourseDelivery,
@@ -103,17 +104,6 @@ function statusVariant(status: string): "outline" | "info" | "warning" | "succes
   if (status === "PLANNED") return "warning";
   if (status === "CANCELLED") return "outline";
   return "outline";
-}
-
-function errorMessage(error: unknown) {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "object" && error !== null) {
-    const candidate = error as { message?: unknown; error?: { message?: unknown }; data?: { message?: unknown } };
-    if (typeof candidate.message === "string") return candidate.message;
-    if (typeof candidate.error?.message === "string") return candidate.error.message;
-    if (typeof candidate.data?.message === "string") return candidate.data.message;
-  }
-  return "Une erreur inattendue est survenue.";
 }
 
 export function OperationalCourseWorkspace({ kind }: { kind: OperationalWorkspaceKind }) {
@@ -247,7 +237,7 @@ export function AssignmentDialog({ course, open, onOpenChange }: { course: Cours
   const mutation = useMutation({
     mutationFn: () => assignCourse({ data: { missionId: course.id, assignment: { vehicle_id: vehicleId, driver_id: driverId, override_reason: overrideReason.trim() || null } } }),
     onSuccess: () => { toast.success("Affectation enregistrée."); void queryClient.invalidateQueries({ queryKey: ["transport-operations"] }); void queryClient.invalidateQueries({ queryKey: ["course", course.id] }); onOpenChange(false); },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notifyMutationError(error, "Une erreur inattendue est survenue."),
   });
 
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><DialogHeader><DialogTitle>Affecter la Course {course.mission_number}</DialogTitle><DialogDescription>Les conflits de véhicule et de chauffeur sont contrôlés par la base lors de l’enregistrement.</DialogDescription></DialogHeader><div className="grid gap-4 py-2"><div className="space-y-2"><Label>Véhicule</Label><VehicleSelect value={vehicleId} onValueChange={setVehicleId} placeholder="Sélectionner un véhicule" /></div><div className="space-y-2"><Label>Chauffeur</Label><DriverSelect value={driverId} onValueChange={setDriverId} placeholder="Sélectionner un chauffeur" /></div>{can("missions.override") ? <div className="space-y-2"><Label>Justification de dérogation <span className="font-normal text-muted-foreground">(uniquement en cas de conflit)</span></Label><Textarea value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} placeholder="Justifiez une dérogation administrateur…" /></div> : null}</div><DialogFooter><Button variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button><Button disabled={!vehicleId || !driverId || mutation.isPending} onClick={() => mutation.mutate()}>{mutation.isPending ? "Enregistrement…" : "Enregistrer l’affectation"}</Button></DialogFooter></DialogContent></Dialog>;
@@ -263,7 +253,7 @@ export function CourseDepartureDialog({ course, open, onOpenChange }: { course: 
   const mutation = useMutation({
     mutationFn: () => confirmCourseDeparture({ data: { missionId: course.id, departure: { actual_departure_at: startedAt ? new Date(startedAt).toISOString() : null, start_odometer: startOdometer ? Number(startOdometer) : null } } }),
     onSuccess: () => { toast.success("Départ confirmé. La Course est en cours."); void queryClient.invalidateQueries({ queryKey: ["transport-operations"] }); void queryClient.invalidateQueries({ queryKey: ["course", course.id] }); onOpenChange(false); },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notifyMutationError(error, "Une erreur inattendue est survenue."),
   });
   const blockingIssue = readinessQuery.data?.find((item) => item.is_blocking && !item.is_ready) ?? null;
 
@@ -305,7 +295,7 @@ export function CourseDeliveryDialog({ course, open, onOpenChange }: { course: C
       return confirmCourseDelivery({ data: { missionId: course.id, delivery: { delivery_status: deliveryStatus, actual_arrival_at: deliveryStatus === "INCIDENT" ? null : arrivedAt ? new Date(arrivedAt).toISOString() : null, end_odometer: deliveryStatus === "INCIDENT" || !endOdometer ? null : Number(endOdometer), start_odometer: course.start_odometer === null && missingStartOdometer ? Number(missingStartOdometer) : null, recipient_name: recipientName.trim() || null, notes: notes.trim() || null, reservations: reservations.trim() || null, delivery_document_id: documentId === "NONE" ? null : documentId } } });
     },
     onSuccess: () => { toast.success(deliveryStatus === "INCIDENT" ? "Incident enregistré." : "Livraison confirmée."); void queryClient.invalidateQueries({ queryKey: ["transport-operations"] }); void queryClient.invalidateQueries({ queryKey: ["course", course.id] }); onOpenChange(false); },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notifyMutationError(error, "Une erreur inattendue est survenue."),
   });
   const requiresArrival = deliveryStatus !== "INCIDENT";
 
@@ -325,7 +315,7 @@ function DeliveryCorrectionDialog({ course, open, onOpenChange }: { course: Cour
   const mutation = useMutation({
     mutationFn: () => correctCourseDelivery({ data: { missionId: course.id, reason } }),
     onSuccess: () => { toast.success("Confirmation de livraison annulée et historisée."); void queryClient.invalidateQueries({ queryKey: ["transport-operations"] }); void queryClient.invalidateQueries({ queryKey: ["course", course.id] }); onOpenChange(false); },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notifyMutationError(error, "Une erreur inattendue est survenue."),
   });
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><DialogHeader><DialogTitle>Annuler la confirmation</DialogTitle><DialogDescription>La Course reviendra en cours. L’action et sa justification resteront visibles dans l’historique.</DialogDescription></DialogHeader><div className="space-y-2 py-2"><Label>Justification</Label><Textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Expliquez la correction…" /></div><DialogFooter><Button variant="outline" onClick={() => onOpenChange(false)}>Retour</Button><Button variant="destructive" disabled={reason.trim().length < 3 || mutation.isPending} onClick={() => mutation.mutate()}>{mutation.isPending ? "Correction…" : "Annuler la confirmation"}</Button></DialogFooter></DialogContent></Dialog>;
 }

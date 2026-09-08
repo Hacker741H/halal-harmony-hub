@@ -22,6 +22,7 @@ import {
   shouldRedirectOnSignOut,
   shouldSkipFullSessionResync,
 } from "../lib/auth-session-resync";
+import { SESSION_EXPIRED_MESSAGE } from "../lib/error-classification";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
@@ -149,7 +150,11 @@ function useSession() {
       // router.tsx supprime deliberement tout toast "Unauthorized:".
       if (event === "SIGNED_OUT" && shouldRedirectOnSignOut(event, consumeVoluntarySignOutFlag())) {
         navigate({ to: "/auth", replace: true });
-        toast.error("Votre session a expiré, reconnectez-vous.", { id: "session-expired" });
+        // Même id sonner que triggerSessionRecovery (notify-mutation-error.ts)
+        // -- que ce SIGNED_OUT vienne du SDK Supabase découvrant seul son
+        // refresh token mort, ou de notre propre triggerSessionRecovery()
+        // appelé depuis une mutation/requête, un seul toast s'affiche.
+        toast.error(SESSION_EXPIRED_MESSAGE, { id: "session-expired" });
       }
       if (skipFullResync) return;
       queryClient.clear();

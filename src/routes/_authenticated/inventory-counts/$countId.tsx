@@ -13,7 +13,9 @@ import { Label } from "@/components/ui/label";
 import { OperationalHero } from "@/components/ui/operational-hero";
 import { Textarea } from "@/components/ui/textarea";
 import { usePermissions } from "@/hooks/use-permissions";
+import { isSessionExpiredError } from "@/lib/error-classification";
 import { formatDateTimeMedium as formatDateTime } from "@/lib/format";
+import { triggerSessionRecovery } from "@/lib/notify-mutation-error";
 import {
   cancelInventoryCount,
   completeInventoryCount,
@@ -40,7 +42,13 @@ function formatQuantity(value: number | string | null) {
 }
 
 function showError(fallback: string) {
-  return (error: Error) => toast.error(error instanceof Error ? error.message : fallback);
+  return (error: Error) => {
+    if (isSessionExpiredError(error)) {
+      triggerSessionRecovery();
+      return;
+    }
+    toast.error(error instanceof Error ? error.message : fallback);
+  };
 }
 
 function InventoryCountDetailPage() {

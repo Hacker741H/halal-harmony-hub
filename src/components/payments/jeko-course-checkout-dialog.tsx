@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatXOF as formatAmount } from "@/lib/format";
+import { notifyMutationError } from "@/lib/notify-mutation-error";
 import {
   configureJekoCourseWallet,
   createJekoCourseInvoiceCheckout,
@@ -35,7 +36,7 @@ type JekoCheckoutDialogProps = {
 };
 
 function notificationError(error: unknown) {
-  toast.error(error instanceof Error ? error.message : "L’action Jèko n’a pas pu être effectuée.");
+  notifyMutationError(error, "L’action Jèko n’a pas pu être effectuée.");
 }
 
 export function JekoInvoiceCheckoutDialog({ invoice, dueAmount, open, onOpenChange, canManageSettings, flow = "COURSE" }: JekoCheckoutDialogProps) {

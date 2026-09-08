@@ -86,7 +86,9 @@ import {
   saveOfflineFieldDeclarationDraft,
   type OfflineFieldDeclarationDraft,
 } from "@/lib/field-offline-drafts";
+import { isSessionExpiredError } from "@/lib/error-classification";
 import { formatXOF as formatAmount } from "@/lib/format";
+import { notifyMutationError, triggerSessionRecovery } from "@/lib/notify-mutation-error";
 
 const REPORT_LABELS: Record<string, string> = {
   DRAFT: "Brouillon",
@@ -443,9 +445,13 @@ export function FieldReportWorkspace({ reportId }: { reportId: string }) {
       invalidate();
       toast.success("Les brouillons terrain ont été synchronisés.");
     } catch (error) {
-      toast.error(
-        `${errorMessage(error)} Les brouillons non synchronisés restent sur cet appareil.`,
-      );
+      if (isSessionExpiredError(error)) {
+        triggerSessionRecovery();
+      } else {
+        toast.error(
+          `${errorMessage(error)} Les brouillons non synchronisés restent sur cet appareil.`,
+        );
+      }
       await refreshOfflineDrafts();
     } finally {
       setSyncingOfflineDrafts(false);
