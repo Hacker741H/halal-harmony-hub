@@ -15,6 +15,7 @@ import {
   ArrowRight,
   Banknote,
   CalendarDays,
+  Camera,
   CheckCircle2,
   CircleDollarSign,
   ClipboardCheck,
@@ -576,6 +577,7 @@ export function StoreManagementCockpit({
             </Card>
           </section>
 
+          <ArticleImagesSection cockpit={cockpit} locationId={locationId} />
           <StockSection cockpit={cockpit} locationId={locationId} />
           <ExpensesSection
             cockpit={cockpit}
@@ -777,6 +779,111 @@ function Kpi({
 }
 
 type StockLineItem = NonNullable<CommerceStoreCockpit["stock"]>["items"][number];
+
+// CORRECTIF IMAGE ARTICLE EXISTANT : audit prealable (voir commit) --
+// ItemImageEditDialog et update_commerce_inventory_item_image existaient
+// deja et fonctionnent correctement (verifie RPC + NULL image_path +
+// permissions admin/super_admin, toutes deux OK). Le vrai probleme n'etait
+// pas fonctionnel mais de decouvrabilite : le seul point d'entree pour
+// modifier l'image d'un article existant vivait dans la cellule Image du
+// tableau "Stock & valorisation", lui-meme derriere un <details> replie
+// par defaut ("Ouvrir le detail sensible"). Plutot que de changer ce
+// comportement par defaut (ce <details> regroupe aussi CUMP/valorisation/
+// marge -- une donnee volontairement "sensible", cf. le libelle -- changer
+// sa visibilite par defaut serait toucher a autre chose que l'image),
+// cette section est un point d'entree separe, toujours visible, qui ne
+// montre QUE nom + photo (aucun prix/CUMP/quantite) et reutilise a 100%
+// le meme ItemImageEditDialog -- zero nouvelle architecture, zero nouvelle
+// RPC, zero champ metier touche.
+function ArticleImagesSection({
+  cockpit,
+  locationId,
+}: {
+  cockpit: CommerceStoreCockpit;
+  locationId: string;
+}) {
+  const queryClient = useQueryClient();
+  const { can } = usePermissions();
+  // Meme permission que le clic sur la cellule Image du tableau Stock (et
+  // que "Mettre en rayon") -- aucune permission nouvelle inventee.
+  const canEditImage = can("commerce.stock.receive");
+  const [imageEditItem, setImageEditItem] = useState<StockLineItem | null>(null);
+  const [search, setSearch] = useState("");
+  const refreshAfterImageChange = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["commerce-store-cockpit", locationId] }),
+      queryClient.invalidateQueries({ queryKey: ["commerce-pos-workspace", locationId] }),
+      queryClient.invalidateQueries({ queryKey: ["commerce-inventory-catalogue", locationId] }),
+    ]);
+  };
+  // Meme garde que StockSection : si l'utilisateur n'a pas
+  // store.stock_valuation.read, cockpit.stock est null (rien de nouveau
+  // n'est exposé ici -- même source de données que le tableau existant).
+  if (!cockpit.stock) return null;
+  const items = cockpit.stock.items;
+  const query = search.trim().toLowerCase();
+  const filtered = query ? items.filter((item) => item.name.toLowerCase().includes(query)) : items;
+  return (
+    <Card variant="section" id="store-article-images">
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <CardTitle className="text-lg">Photos des articles</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Ajouter, remplacer ou retirer la photo d’un article existant. Rien d’autre n’est modifié
+              ici.
+            </p>
+          </div>
+          {items.length > 8 ? (
+            <Input
+              placeholder="Rechercher un article…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="w-full sm:w-56"
+            />
+          ) : null}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {items.length === 0 ? (
+          <Empty label="Aucun article dans ce magasin." />
+        ) : filtered.length === 0 ? (
+          <Empty label={`Aucun article ne correspond à « ${search.trim()} ».`} />
+        ) : (
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+            {filtered.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                disabled={!canEditImage}
+                onClick={() => setImageEditItem(item)}
+                title={canEditImage ? `Modifier l’image -- ${item.name}` : item.name}
+                className="group flex flex-col items-center gap-1.5 rounded-lg border border-transparent p-1.5 text-center transition-colors hover:border-border hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:hover:border-transparent disabled:hover:bg-transparent"
+              >
+                <div className="relative">
+                  <CommerceItemThumb imagePath={item.imagePath} alt="" className="size-14 rounded-lg" />
+                  {canEditImage ? (
+                    <span className="absolute -bottom-1 -right-1 grid size-5 place-items-center rounded-full border border-border bg-background text-muted-foreground shadow-sm group-hover:text-primary">
+                      <Camera className="size-3" />
+                    </span>
+                  ) : null}
+                </div>
+                <span className="line-clamp-2 text-xs font-medium leading-snug text-foreground">
+                  {item.name}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </CardContent>
+      <ItemImageEditDialog
+        item={imageEditItem}
+        onClose={() => setImageEditItem(null)}
+        onSaved={refreshAfterImageChange}
+      />
+    </Card>
+  );
+}
 
 // Parcours transfert -> stock -> prix de vente -> Caisse : un article
 // transféré pour la première fois dans un magasin a stock_price=NULL
