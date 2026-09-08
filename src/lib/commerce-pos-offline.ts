@@ -52,6 +52,11 @@ export type PosOfflineCatalogueInput = {
   category: string | null;
   quantity: number;
   salePrice: number | null;
+  // Facultatif : le cache hors-ligne existant avant cette fonctionnalité n'a
+  // jamais eu ce champ -- un enregistrement IndexedDB déjà présent le lit
+  // simplement comme absent, jamais une erreur (voir CommerceItemThumb, qui
+  // traite toute valeur absente/nulle comme "aucune image").
+  imagePath?: string | null;
 };
 
 export type PosOfflineCatalogueItem = PosOfflineCatalogueInput & {
@@ -689,6 +694,7 @@ export async function cachePosOfflineCatalogue(
           unit: item.unit,
           category: item.category,
           salePrice: item.salePrice,
+          imagePath: item.imagePath ?? null,
           syncedAtDevice: timestamp,
         }));
 
@@ -754,6 +760,7 @@ export async function cachePosOfflineCatalogue(
             category: item.category,
             quantity: source.quantity,
             salePrice: item.salePrice,
+            imagePath: item.imagePath ?? null,
             scopeKey: item.scopeKey,
             syncedAtDevice: item.syncedAtDevice,
           },
@@ -780,6 +787,7 @@ export async function getPosOfflineCatalogue(
         unit: string | null;
         category: string | null;
         salePrice: number | null;
+        imagePath?: string | null;
         syncedAtDevice: string;
       }>(stores[POS_OFFLINE_STORES.catalog], "scopeKey", currentScopeKey);
       const stock = await getAllByIndex<PosOfflineStockRecord>(
@@ -995,6 +1003,7 @@ async function getPosOfflineCatalogueInTransaction(
     unit: string | null;
     category: string | null;
     salePrice: number | null;
+    imagePath?: string | null;
     syncedAtDevice: string;
   }>(stores[POS_OFFLINE_STORES.catalog], "scopeKey", currentScopeKey);
   const stock = await getAllByIndex<PosOfflineStockRecord>(
@@ -1012,6 +1021,7 @@ async function getPosOfflineCatalogueInTransaction(
       category: item.category,
       quantity: stockByItem.get(item.itemId) ?? 0,
       salePrice: item.salePrice,
+      imagePath: item.imagePath ?? null,
       scopeKey: item.scopeKey,
       syncedAtDevice: item.syncedAtDevice,
     }))

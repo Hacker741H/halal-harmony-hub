@@ -34,6 +34,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import {
+  CommerceItemImageField,
+  CommerceItemThumb,
+  uploadCommerceItemImage,
+} from "@/components/commerce/commerce-item-image";
 import { PosCashSessionClose } from "@/components/commerce/pos-cash-session-close";
 import { StoreManagementCockpit } from "@/components/commerce/store-management-cockpit";
 import {
@@ -460,6 +465,11 @@ type CashierCatalogueItem = {
   category: string | null;
   quantity: number;
   salePrice: number | null;
+  // Optionnel ET nullable : le cache hors-ligne (IndexedDB) peut contenir
+  // des enregistrements créés avant cette fonctionnalité, où le champ est
+  // simplement absent -- jamais une erreur de type, jamais un blocage
+  // d'affichage (voir CommerceItemThumb, qui traite les deux cas pareil).
+  imagePath?: string | null;
 };
 
 function ProductCard({
@@ -498,7 +508,16 @@ function ProductCard({
             : "border-border bg-surface hover:border-primary/40",
       )}
     >
-      <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">{item.name}</p>
+      <div className="flex items-start gap-2">
+        <CommerceItemThumb
+          imagePath={item.imagePath}
+          alt=""
+          className="size-9 rounded-lg border border-border/60"
+        />
+        <p className="line-clamp-2 min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground">
+          {item.name}
+        </p>
+      </div>
       <div className="flex items-end justify-between gap-2">
         <span
           className={cn(
@@ -521,11 +540,20 @@ function ProductCard({
   );
 }
 
-// Une ligne, tout ce dont un caissier a besoin d'un coup d'œil -- nom,
-// prix modifiable, quantité, sous-total, retirer. Zones +/- et suppression
-// assez grandes pour rester utilisables vite, souris ou tactile.
+// REFONTE CAISSE : la liste doit dominer visuellement le panneau (priorité
+// absolue de la demande) -- une carte par ligne (bordure + padding 3.5 +
+// coins arrondis) coûtait trop de hauteur pour tenir 15-20 lignes sans
+// scroll. Une vraie ligne de tableau dense, alignée sur CART_COLUMNS
+// (même gabarit que l'en-tête juste au-dessus de la liste), fait le même
+// travail en une fraction de la hauteur -- rien n'est retiré : prix
+// modifiable en place, +/-, sous-total, retirer, tout reste au même
+// endroit fonctionnel.
+const CART_GRID_COLUMNS = "grid-cols-[1.5rem_1.75rem_minmax(0,1fr)_4.5rem_4.75rem_4.75rem_1.75rem]";
+
 function CartLineRow({
+  index,
   line,
+  imagePath,
   disabled,
   isEditingPrice,
   priceDraft,
@@ -540,7 +568,9 @@ function CartLineRow({
   onIncrease,
   onRemove,
 }: {
+  index: number;
   line: CartLine;
+  imagePath: string | null;
   disabled: boolean;
   isEditingPrice: boolean;
   priceDraft: string;
@@ -556,107 +586,111 @@ function CartLineRow({
   onRemove: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-border/70 bg-muted/[0.12] p-3.5">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold" title={line.label}>
-            {line.label}
-          </p>
-          {isEditingPrice ? (
-            <div className="mt-1.5 flex items-center gap-1">
-              <Input
-                autoFocus
-                type="number"
-                min="0"
-                step="1"
-                className="h-8 w-24 text-sm"
-                value={priceDraft}
-                onChange={(event) => onPriceDraftChange(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") onCommitPrice();
-                  if (event.key === "Escape") onCancelPrice();
-                }}
-              />
-              <Button
-                type="button"
-                size="icon-sm"
-                variant="ghost"
-                aria-label="Valider le prix"
-                onClick={onCommitPrice}
-              >
-                <Check className="size-3.5" />
-              </Button>
-              <Button
-                type="button"
-                size="icon-sm"
-                variant="ghost"
-                aria-label="Annuler"
-                onClick={onCancelPrice}
-              >
-                <X className="size-3.5" />
-              </Button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={onStartEditPrice}
-              className="mt-1 flex items-center gap-1.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none"
-            >
-              <span className="text-base font-bold tabular-nums text-foreground">
-                {money(line.unitPrice)}
-              </span>
-              <span className="text-xs text-muted-foreground underline">modifier</span>
-              {surcharge > 0 ? (
-                <span className="rounded-full bg-success/15 px-1.5 py-0.5 text-xs font-semibold text-success">
-                  +{money(surcharge)}
-                </span>
-              ) : null}
-            </button>
-          )}
-          {isEditingPrice && priceError ? (
-            <p className="mt-1 text-xs text-destructive">{priceError}</p>
-          ) : null}
-        </div>
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          aria-label={`Retirer ${line.label} du ticket`}
-          disabled={disabled}
-          onClick={onRemove}
-        >
-          <Trash2 className="text-destructive" />
-        </Button>
+    <div
+      className={cn(
+        "grid items-center gap-x-1.5 border-b border-border/50 py-1 pr-0.5",
+        CART_GRID_COLUMNS,
+      )}
+    >
+      <span className="text-xs tabular-nums text-muted-foreground">{index}</span>
+      <CommerceItemThumb imagePath={imagePath} alt="" className="size-6 rounded-md" />
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium leading-tight" title={line.label}>
+          {line.label}
+        </p>
+        {isEditingPrice && priceError ? (
+          <p className="text-xs leading-tight text-destructive">{priceError}</p>
+        ) : null}
       </div>
-      <div className="mt-2.5 flex items-center justify-between">
-        <div className="flex items-center rounded-lg border border-border bg-surface">
+      {isEditingPrice ? (
+        <div className="col-span-2 flex items-center gap-0.5 justify-self-end">
+          <Input
+            autoFocus
+            type="number"
+            min="0"
+            step="1"
+            className="h-7 w-20 px-1.5 text-xs"
+            value={priceDraft}
+            onChange={(event) => onPriceDraftChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") onCommitPrice();
+              if (event.key === "Escape") onCancelPrice();
+            }}
+          />
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label="Valider le prix"
+            onClick={onCommitPrice}
+          >
+            <Check className="size-3" />
+          </Button>
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label="Annuler"
+            onClick={onCancelPrice}
+          >
+            <X className="size-3" />
+          </Button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onStartEditPrice}
+          title="Modifier le prix"
+          className="truncate text-right text-xs font-semibold tabular-nums text-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none"
+        >
+          {money(line.unitPrice)}
+          {surcharge > 0 ? <span className="ml-1 text-success">+{money(surcharge)}</span> : null}
+        </button>
+      )}
+      {isEditingPrice ? null : (
+        <div className="flex items-center justify-center gap-0.5">
           <Button
             type="button"
             variant="ghost"
-            size="icon"
+            size="icon-sm"
             aria-label={`Diminuer la quantité de ${line.label}`}
             disabled={disabled}
             onClick={onDecrease}
           >
-            <Minus />
+            <Minus className="size-3" />
           </Button>
-          <span className="min-w-9 text-center text-base font-bold tabular-nums">
+          <span className="min-w-4 text-center text-xs font-semibold tabular-nums">
             {line.quantity}
           </span>
           <Button
             type="button"
             variant="ghost"
-            size="icon"
+            size="icon-sm"
             aria-label={`Augmenter la quantité de ${line.label}`}
             disabled={disabled || !canIncrease}
             onClick={onIncrease}
           >
-            <Plus />
+            <Plus className="size-3" />
           </Button>
         </div>
-        <p className="text-base font-bold tabular-nums">{money(line.quantity * line.unitPrice)}</p>
-      </div>
+      )}
+      {isEditingPrice ? null : (
+        <p className="truncate text-right text-sm font-bold tabular-nums">
+          {money(line.quantity * line.unitPrice)}
+        </p>
+      )}
+      <Button
+        type="button"
+        size="icon-sm"
+        variant="ghost"
+        aria-label={`Retirer ${line.label} du ticket`}
+        disabled={disabled}
+        onClick={onRemove}
+        className="justify-self-end"
+      >
+        <Trash2 className="size-3.5 text-destructive" />
+      </Button>
     </div>
   );
 }
@@ -1623,8 +1657,28 @@ export function CommerceCashierWorkspace({
         )}
       </div>
 
-      <div className="min-h-0 flex-1 space-y-2.5 overflow-auto p-3">
-        {cart.map((line) => {
+      {cart.length > 0 ? (
+        <div
+          className={cn(
+            "grid shrink-0 items-center gap-x-1.5 border-b border-border bg-muted/40 py-1 pl-3 pr-[calc(0.125rem+0.75rem)] text-[10px] font-semibold uppercase tracking-wide text-muted-foreground",
+            CART_GRID_COLUMNS,
+          )}
+        >
+          <span>#</span>
+          <span />
+          <span>Article</span>
+          <span className="text-right">PU</span>
+          <span className="text-center">Qté</span>
+          <span className="text-right">Total</span>
+          <span />
+        </div>
+      ) : null}
+      {/* REFONTE CAISSE : priorité absolue -- cette liste doit dominer le
+          panneau. Header (client) et footer (paiement) restent shrink-0
+          au-dessus/en-dessous ; seule cette zone scrolle, et seulement au-delà
+          d'environ 15-20 lignes sur un écran desktop courant. */}
+      <div className="min-h-0 flex-1 overflow-auto px-3">
+        {cart.map((line, index) => {
           const isService = line.lineType === "SERVICE";
           const catalogItem = !isService
             ? activeCatalogue.find((entry) => entry.id === line.itemId)
@@ -1638,7 +1692,9 @@ export function CommerceCashierWorkspace({
           return (
             <CartLineRow
               key={line.lineId}
+              index={index + 1}
               line={line}
+              imagePath={catalogItem?.imagePath ?? null}
               disabled={checkoutState !== "READY"}
               isEditingPrice={isEditingPrice}
               priceDraft={priceDraft}
@@ -1670,7 +1726,11 @@ export function CommerceCashierWorkspace({
         ) : null}
       </div>
 
-      <div className="shrink-0 space-y-3 border-t border-border/75 bg-muted/[0.10] p-3">
+      {/* REFONTE CAISSE : point 3 -- la zone paiement ne doit plus dominer
+          verticalement. Puces de moyen de paiement plus fines, Reçu/Monnaie/
+          Total réunis sur une seule ligne compacte (plus de bloc "Total"
+          autonome en 3xl), bouton Encaisser plus fin (h-11, pas h-14). */}
+      <div className="shrink-0 space-y-2 border-t border-border/75 bg-muted/[0.10] p-2.5">
         <div
           className="flex flex-wrap items-center gap-1"
           role="radiogroup"
@@ -1697,7 +1757,7 @@ export function CommerceCashierWorkspace({
                         ? "Saisie mobile manuelle : aucune API Wave directe"
                         : label
                 }
-                className={`flex h-10 min-w-[4.5rem] flex-1 items-center justify-center gap-1 rounded-lg border text-xs font-semibold transition-[background-color,border-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55 ${selected ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-surface text-muted-foreground hover:border-primary/35 hover:text-foreground"}`}
+                className={`flex h-8 min-w-[4rem] flex-1 items-center justify-center gap-1 rounded-lg border text-xs font-semibold transition-[background-color,border-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55 ${selected ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-surface text-muted-foreground hover:border-primary/35 hover:text-foreground"}`}
               >
                 <Icon className="size-3.5" />
                 <span className="hidden sm:inline">
@@ -1707,49 +1767,54 @@ export function CommerceCashierWorkspace({
             );
           })}
         </div>
-        {method === "CASH" ? (
-          <div className="flex items-center gap-2">
-            <Label
-              htmlFor="commerce-pos-cash-received"
-              className="shrink-0 text-xs font-semibold text-muted-foreground"
-            >
-              Reçu
-            </Label>
-            <Input
-              id="commerce-pos-cash-received"
-              className="h-9 text-right tabular-nums"
-              type="number"
-              min={total}
-              step="1"
-              disabled={checkoutState !== "READY"}
-              placeholder={money(total)}
-              value={cashReceived ?? ""}
-              onChange={(event) =>
-                updateDraft((current) => ({
-                  ...current,
-                  cashReceived: event.target.value === "" ? null : Number(event.target.value),
-                }))
-              }
-            />
-            {cashReceived !== null ? (
-              <span className="shrink-0 text-xs font-semibold text-muted-foreground">
-                Rendu {money(cashChange)}
-              </span>
-            ) : null}
-          </div>
-        ) : null}
 
-        {/* UX CAISSE : l'élément le plus visible du panier -- empilé, pas
-            juste plus gros sur la même ligne que son étiquette. */}
-        <div className="rounded-xl bg-primary/[0.06] px-4 py-3 text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            Total
-          </p>
-          <p className="mt-1 text-3xl font-bold tabular-nums text-foreground">{money(total)}</p>
+        <div className="flex items-stretch gap-1.5">
+          {method === "CASH" ? (
+            <div className="flex w-24 flex-col gap-0.5">
+              <Label
+                htmlFor="commerce-pos-cash-received"
+                className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+              >
+                Reçu
+              </Label>
+              <Input
+                id="commerce-pos-cash-received"
+                className="h-9 px-2 text-right text-sm tabular-nums"
+                type="number"
+                min={total}
+                step="1"
+                disabled={checkoutState !== "READY"}
+                placeholder={money(total)}
+                value={cashReceived ?? ""}
+                onChange={(event) =>
+                  updateDraft((current) => ({
+                    ...current,
+                    cashReceived: event.target.value === "" ? null : Number(event.target.value),
+                  }))
+                }
+              />
+            </div>
+          ) : null}
+          {method === "CASH" && cashReceived !== null ? (
+            <div className="flex w-20 flex-col gap-0.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Monnaie
+              </span>
+              <div className="flex h-9 items-center justify-end rounded-md border border-transparent px-2 text-sm font-semibold tabular-nums">
+                {money(cashChange)}
+              </div>
+            </div>
+          ) : null}
+          <div className="flex flex-1 flex-col items-end justify-center gap-0.5 rounded-lg bg-primary/[0.08] px-3 py-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Total à payer
+            </span>
+            <span className="text-lg font-bold tabular-nums text-foreground">{money(total)}</span>
+          </div>
         </div>
 
         <Button
-          className="h-14 w-full text-base"
+          className="h-11 w-full text-sm"
           loading={saleMutation.isPending}
           loadingLabel="Comptabilisation"
           disabled={!canCheckout}
@@ -1949,10 +2014,11 @@ export function CommerceCashierWorkspace({
             </div>
           ) : null}
 
-          <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(380px,1fr)]">
-            {/* ~65-70% sur desktop -- le catalogue est la zone principale.
-                Plein écran sur mobile : le panier vit dans le tiroir fixe
-                plus bas, jamais empilé au-dessus du rayon. */}
+          <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,4fr)_minmax(480px,3fr)]">
+            {/* REFONTE CAISSE : ~57%/43% sur desktop (avant : ~67%/33%) --
+                le panier était trop étroit pour que sa liste domine
+                visuellement. Plein écran sur mobile : le panier vit dans le
+                tiroir fixe plus bas, jamais empilé au-dessus du rayon. */}
             <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-sm">
               <div className="shrink-0 space-y-2.5 border-b border-border/75 bg-muted/[0.16] p-3">
                 <div className="flex gap-2">
@@ -2086,7 +2152,7 @@ export function CommerceCashierWorkspace({
               </div>
             </section>
 
-            {/* ~30-35% sur desktop -- panier fixe, jamais un tiroir caché.
+            {/* ~43% sur desktop -- panier fixe, jamais un tiroir caché.
                 Masqué sur mobile : même contenu (cartPanelBody), affiché
                 dans le tiroir fixe en bas d'écran à la place. */}
             <aside className="hidden min-h-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-sm lg:flex">
@@ -3084,6 +3150,13 @@ function CommerceQuickInventoryReceipt({
   const [supplier, setSupplier] = useState("");
   const [reference, setReference] = useState("");
   const [reorderLevel, setReorderLevel] = useState("");
+  // IMAGE ARTICLE : upload différé -- le fichier n'est envoyé au Storage
+  // qu'à la validation du formulaire (save()), jamais avant. Un aperçu local
+  // (URL.createObjectURL) évite un aller-retour réseau juste pour afficher
+  // ce que l'utilisateur vient de choisir.
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
   const catalogueQuery = useQuery({
     queryKey: ["commerce-inventory-catalogue", locationId],
     queryFn: () => getCommerceInventoryCatalogue({ data: { locationId } }),
@@ -3119,6 +3192,9 @@ function CommerceQuickInventoryReceipt({
     setSupplier("");
     setReference("");
     setReorderLevel("");
+    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    setImageFile(null);
+    setImagePreviewUrl(null);
   };
   const mutation = useMutation({
     mutationFn: receiveCommerceInventoryItem,
@@ -3165,8 +3241,25 @@ function CommerceQuickInventoryReceipt({
     );
     requestAnimationFrame(() => quantityInputRef.current?.focus());
   };
-  const save = () => {
+  const save = async () => {
     if (!canSubmit) return;
+    // IMAGE ARTICLE : l'upload se fait juste avant la création, uniquement
+    // en mode "new" (un réapprovisionnement ne touche jamais l'image, voir
+    // la garde côté SQL) -- un échec d'upload bloque la validation avec un
+    // message clair plutôt que de créer silencieusement l'article sans
+    // l'image demandée.
+    let imagePath: string | null = null;
+    if (mode === "new" && imageFile) {
+      setImageUploading(true);
+      try {
+        imagePath = await uploadCommerceItemImage(imageFile);
+      } catch (error) {
+        setImageUploading(false);
+        notifyMutationError(error, "L’image n’a pas pu être envoyée. Réessayez ou retirez-la.");
+        return;
+      }
+      setImageUploading(false);
+    }
     mutation.mutate({
       data: {
         businessLocationId: locationId,
@@ -3175,6 +3268,7 @@ function CommerceQuickInventoryReceipt({
         category: mode === "new" && category.trim() ? category.trim() : null,
         sku: mode === "new" && sku.trim() ? sku.trim() : null,
         unit: mode === "new" && unit.trim() ? unit.trim() : null,
+        imagePath: mode === "new" ? imagePath : null,
         quantity: Number(quantity),
         purchaseUnitPrice: Number(purchaseUnitPrice),
         salePrice: Number(salePrice),
@@ -3267,6 +3361,26 @@ function CommerceQuickInventoryReceipt({
                   value={sku}
                   onChange={(event) => setSku(event.target.value)}
                   placeholder="USB-C-20W"
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label>
+                  Image de l’article{" "}
+                  <span className="font-normal text-muted-foreground">(facultatif)</span>
+                </Label>
+                <CommerceItemImageField
+                  previewUrl={imagePreviewUrl}
+                  uploading={imageUploading}
+                  onFileSelected={(file) => {
+                    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+                    setImageFile(file);
+                    setImagePreviewUrl(URL.createObjectURL(file));
+                  }}
+                  onRemove={() => {
+                    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+                    setImageFile(null);
+                    setImagePreviewUrl(null);
+                  }}
                 />
               </div>
             </>
@@ -3457,8 +3571,16 @@ function CommerceQuickInventoryReceipt({
           >
             Annuler
           </Button>
-          <Button type="button" onClick={save} disabled={!canSubmit || mutation.isPending}>
-            {mutation.isPending ? "Réception en cours…" : "Ajouter au magasin"}
+          <Button
+            type="button"
+            onClick={save}
+            disabled={!canSubmit || mutation.isPending || imageUploading}
+          >
+            {imageUploading
+              ? "Envoi de l’image…"
+              : mutation.isPending
+                ? "Réception en cours…"
+                : "Ajouter au magasin"}
           </Button>
         </DialogFooter>
       </DialogContent>

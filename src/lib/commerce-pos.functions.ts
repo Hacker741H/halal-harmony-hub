@@ -32,6 +32,9 @@ const itemSchema = z.object({
   quantity: z.number(),
   salePrice: z.number().nullable(),
   reorderLevel: z.number().nullable(),
+  // Meme precaution que `category` ci-dessus : nullable ET par defaut, pour
+  // rester compatible avec un frontend deploye avant la migration 20260908.
+  imagePath: z.string().nullable().default(null),
 });
 
 const workspaceSchema = z.object({
@@ -176,6 +179,7 @@ export const commerceStoreCockpitSchema = z.object({
           potentialMargin: z.number().nullable(),
           reorderLevel: z.number().nullable(),
           isLow: z.boolean(),
+          imagePath: z.string().nullable().default(null),
         }),
       ),
     })
@@ -665,6 +669,7 @@ const catalogueItemSchema = z.object({
   salePrice: z.number().nullable(),
   reorderLevel: z.number().nullable(),
   lastUnitCost: z.number().nullable().optional(),
+  imagePath: z.string().nullable().default(null),
 });
 const catalogueInputSchema = z
   .object({
@@ -684,6 +689,11 @@ const commerceInventoryReceiptSchema = z
     category: nullableOptionalTextSchema,
     sku: nullableOptionalTextSchema,
     unit: nullableOptionalTextSchema,
+    // Chemin Storage (bucket commerce-item-images), jamais un binaire ni une
+    // URL absolue -- appliqué uniquement côté RPC lors d'une création
+    // (mode "new"), jamais lors d'un réapprovisionnement (voir la garde côté
+    // SQL dans receive_commerce_inventory_item).
+    imagePath: z.string().trim().max(500).nullable().optional(),
     quantity: z.number().finite().positive(),
     purchaseUnitPrice: z.number().finite().positive(),
     salePrice: z.number().finite().nonnegative(),
@@ -1696,6 +1706,7 @@ export const receiveCommerceInventoryItem = createServerFn({ method: "POST" })
         category: data.category,
         sku: data.sku,
         unit: data.unit,
+        image_path: data.imagePath ?? null,
         quantity: data.quantity,
         purchase_unit_price: data.purchaseUnitPrice,
         sale_price: data.salePrice,
@@ -1716,6 +1727,40 @@ export const receiveCommerceInventoryItem = createServerFn({ method: "POST" })
         salePrice: z.number(),
       })
       .parse(result);
+  });
+
+// REFONTE CAISSE + IMAGE ARTICLE : le jumeau exact de
+// updateCommerceLocationItemSalePrice -- "modifier l'image d'un article
+// existant" sans formulaire generique d'edition d'article (aucun n'existe,
+// confirme par audit). Pure metadonnee, jamais bloquant pour la vente.
+const updateCommerceInventoryItemImageSchema = z
+  .object({
+    inventoryItemId: z.string().uuid(),
+    imagePath: z.string().trim().max(500).nullable(),
+  })
+  .strict();
+export type UpdateCommerceInventoryItemImageInput = z.infer<
+  typeof updateCommerceInventoryItemImageSchema
+>;
+
+export const updateCommerceInventoryItemImage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(updateCommerceInventoryItemImageSchema)
+  .handler(async ({ context, data }) => {
+    const { data: result, error } = await context.supabase.rpc(
+      "update_commerce_inventory_item_image",
+      {
+        p_inventory_item_id: data.inventoryItemId,
+        // Le générateur de types Supabase type ce paramètre `string` sans le
+        // `| null` -- imprécision connue pour un paramètre scalaire sans
+        // DEFAULT explicite. La RPC accepte réellement NULL (vérifié par
+        // guaranteed-rollback contre la production avant déploiement) ; ce
+        // cast ne change rien à la valeur réellement envoyée.
+        p_image_path: data.imagePath as string,
+      },
+    );
+    if (error) throw error;
+    return z.object({ id: z.string().uuid(), imagePath: z.string().nullable() }).parse(result);
   });
 
 // Standalone stock write-off (perte/casse/peremption) -- deliberately the

@@ -6,13 +6,6 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-// wallets.parent_wallet_id and the convert_wallet_to_parent /
-// preview_wallet_parent_conversion RPCs below (search these two names) were
-// added by hand for supabase/migrations/20260823000000_add_wallet_parent_hierarchy.sql
-// -- there is no live database in this environment to regenerate from.
-// Re-run `supabase gen types` against a database that has actually applied
-// that migration (and any later one) and this whole file should be
-// replaced by the generated output rather than hand-patched further.
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -95,6 +88,7 @@ export type Database = {
           assigned_by: string | null
           assignment_role: string
           business_location_id: string
+          cash_register_id: string | null
           created_at: string
           end_date: string | null
           ended_by: string | null
@@ -108,6 +102,7 @@ export type Database = {
           assigned_by?: string | null
           assignment_role?: string
           business_location_id: string
+          cash_register_id?: string | null
           created_at?: string
           end_date?: string | null
           ended_by?: string | null
@@ -121,6 +116,7 @@ export type Database = {
           assigned_by?: string | null
           assignment_role?: string
           business_location_id?: string
+          cash_register_id?: string | null
           created_at?: string
           end_date?: string | null
           ended_by?: string | null
@@ -136,6 +132,13 @@ export type Database = {
             columns: ["business_location_id"]
             isOneToOne: false
             referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_location_assignments_cash_register_id_fkey"
+            columns: ["cash_register_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_cash_registers"
             referencedColumns: ["id"]
           },
         ]
@@ -418,6 +421,47 @@ export type Database = {
           validation_pattern?: string | null
         }
         Relationships: []
+      }
+      commerce_cash_registers: {
+        Row: {
+          business_location_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          business_location_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          business_location_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_cash_registers_business_location_id_fkey"
+            columns: ["business_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       commerce_cash_remittance_closures: {
         Row: {
@@ -941,6 +985,60 @@ export type Database = {
             columns: ["business_location_id"]
             isOneToOne: false
             referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_pos_cash_sessions: {
+        Row: {
+          business_location_id: string
+          cash_register_id: string | null
+          cash_session_id: string
+          cashier_user_id: string
+          closed_at_server: string | null
+          id: string
+          opened_at_device: string
+          opened_at_server: string
+          status: string
+          terminal_id: string
+        }
+        Insert: {
+          business_location_id: string
+          cash_register_id?: string | null
+          cash_session_id: string
+          cashier_user_id: string
+          closed_at_server?: string | null
+          id?: string
+          opened_at_device: string
+          opened_at_server?: string
+          status?: string
+          terminal_id: string
+        }
+        Update: {
+          business_location_id?: string
+          cash_register_id?: string | null
+          cash_session_id?: string
+          cashier_user_id?: string
+          closed_at_server?: string | null
+          id?: string
+          opened_at_device?: string
+          opened_at_server?: string
+          status?: string
+          terminal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_pos_cash_sessions_business_location_id_fkey"
+            columns: ["business_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_pos_cash_sessions_cash_register_id_fkey"
+            columns: ["cash_register_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_cash_registers"
             referencedColumns: ["id"]
           },
         ]
@@ -4983,6 +5081,7 @@ export type Database = {
           categorie: string | null
           created_at: string
           id: string
+          image_path: string | null
           nom: string
           notion_last_synced_at: string | null
           notion_page_id: string | null
@@ -4997,6 +5096,7 @@ export type Database = {
           categorie?: string | null
           created_at?: string
           id?: string
+          image_path?: string | null
           nom: string
           notion_last_synced_at?: string | null
           notion_page_id?: string | null
@@ -5011,6 +5111,7 @@ export type Database = {
           categorie?: string | null
           created_at?: string
           id?: string
+          image_path?: string | null
           nom?: string
           notion_last_synced_at?: string | null
           notion_page_id?: string | null
@@ -7447,6 +7548,13 @@ export type Database = {
             foreignKeyName: "wallets_parent_wallet_id_fkey"
             columns: ["parent_wallet_id"]
             isOneToOne: false
+            referencedRelation: "finance_wallet_reconciliation"
+            referencedColumns: ["wallet_id"]
+          },
+          {
+            foreignKeyName: "wallets_parent_wallet_id_fkey"
+            columns: ["parent_wallet_id"]
+            isOneToOne: false
             referencedRelation: "wallets"
             referencedColumns: ["id"]
           },
@@ -7745,6 +7853,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      _internal_commerce_pos_register_access: {
+        Args: { p_location_id: string; p_register_id: string }
+        Returns: boolean
+      }
       _internal_commerce_pos_session_commercial_totals: {
         Args: {
           p_business_location_id: string
@@ -7764,6 +7876,10 @@ export type Database = {
       }
       _internal_commerce_sale_refundable_credit: {
         Args: { p_sale_id: string }
+        Returns: number
+      }
+      _internal_commercial_invoice_net_ceiling: {
+        Args: { p_invoice_total: number; p_sale_id: string }
         Returns: number
       }
       _internal_configure_harvest_recurrence: {
@@ -8036,6 +8152,55 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "documents"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      _internal_create_finance_operation: {
+        Args: {
+          p_link_module?: string
+          p_link_record_id?: string
+          p_operation: Json
+        }
+        Returns: {
+          amount: number
+          attachment_url: string | null
+          category: string | null
+          client: string | null
+          contract_id: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          destination_wallet_id: string | null
+          driver_id: string | null
+          employee: string | null
+          employee_id: string | null
+          farm_id: string | null
+          harvest_id: string | null
+          id: string
+          inventory_item_id: string | null
+          maintenance_id: string | null
+          module: string | null
+          module_id: string | null
+          motorcycle_id: string | null
+          motorcycle_maintenance_id: string | null
+          notes: string | null
+          operation_date: string
+          origin: string | null
+          payment_method: string | null
+          payment_reference: string | null
+          project: string | null
+          reference: string | null
+          status: string | null
+          supplier: string | null
+          type: string
+          updated_at: string | null
+          vehicle_id: string | null
+          wallet_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "finance_operations"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -8423,6 +8588,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      _internal_plan_wallet_parent_conversion: {
+        Args: { p_allocations: Json; p_wallet_id: string }
+        Returns: Json
+      }
       _internal_record_harvest: {
         Args: { p_harvest_id: string; p_payload: Json }
         Returns: {
@@ -8702,6 +8871,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      _internal_terminal_id_as_register_id: {
+        Args: { p_terminal_id: string }
+        Returns: string
+      }
       _internal_update_harvest_with_finance: {
         Args: { p_harvest: Json }
         Returns: {
@@ -8936,6 +9109,10 @@ export type Database = {
         Args: { p_supplier: Json }
         Returns: undefined
       }
+      _internal_validate_wallet_parent_link: {
+        Args: { p_parent_wallet_id: string; p_wallet_id: string }
+        Returns: undefined
+      }
       archive_client: {
         Args: { p_client_id: string }
         Returns: {
@@ -9045,6 +9222,7 @@ export type Database = {
           module: string | null
           motorcycle_id: string | null
           name: string
+          parent_wallet_id: string | null
           type: string
           updated_at: string | null
           vehicle_id: string | null
@@ -9062,6 +9240,7 @@ export type Database = {
           assigned_by: string | null
           assignment_role: string
           business_location_id: string
+          cash_register_id: string | null
           created_at: string
           end_date: string | null
           ended_by: string | null
@@ -10388,6 +10567,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      convert_wallet_to_parent: {
+        Args: { p_allocations: Json; p_jeko_remap?: Json; p_wallet_id: string }
+        Returns: Json
+      }
       correct_transport_delivery: {
         Args: { p_correction: Json; p_mission_id: string }
         Returns: {
@@ -10525,6 +10708,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      create_commerce_cash_register: {
+        Args: { p_register: Json }
+        Returns: Json
       }
       create_commerce_cash_sale: { Args: { p_sale: Json }; Returns: Json }
       create_commerce_purchase: {
@@ -11738,6 +11925,10 @@ export type Database = {
           total_received: number
         }[]
       }
+      get_commerce_cash_registers: {
+        Args: { p_location_id: string }
+        Returns: Json
+      }
       get_commerce_cash_remittance_workspace: {
         Args: { p_location_id: string }
         Returns: Json
@@ -11751,6 +11942,10 @@ export type Database = {
         Returns: Json
       }
       get_commerce_management_dashboard: {
+        Args: { p_location_id: string }
+        Returns: Json
+      }
+      get_commerce_pos_available_registers: {
         Args: { p_location_id: string }
         Returns: Json
       }
@@ -11777,6 +11972,10 @@ export type Database = {
         Returns: Json
       }
       get_commerce_pos_locations: { Args: never; Returns: Json }
+      get_commerce_pos_open_sessions: {
+        Args: { p_location_id: string }
+        Returns: Json
+      }
       get_commerce_pos_workspace: {
         Args: { p_location_id: string }
         Returns: Json
@@ -12208,6 +12407,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      open_commerce_pos_cash_session: {
+        Args: { p_session: Json }
+        Returns: Json
+      }
       pay_commerce_store_planned_expense: {
         Args: { p_charge_id: string; p_wallet_id: string }
         Returns: {
@@ -12319,6 +12522,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      preview_wallet_parent_conversion: {
+        Args: { p_allocations: Json; p_wallet_id: string }
+        Returns: Json
+      }
       process_jeko_payment_event: {
         Args: { p_event_id: string }
         Returns: {
@@ -12380,6 +12587,7 @@ export type Database = {
           module: string | null
           motorcycle_id: string | null
           name: string
+          parent_wallet_id: string | null
           type: string
           updated_at: string | null
           vehicle_id: string | null
@@ -12986,6 +13194,7 @@ export type Database = {
           categorie: string | null
           created_at: string
           id: string
+          image_path: string | null
           nom: string
           notion_last_synced_at: string | null
           notion_page_id: string | null
@@ -13095,6 +13304,7 @@ export type Database = {
           module: string | null
           motorcycle_id: string | null
           name: string
+          parent_wallet_id: string | null
           type: string
           updated_at: string | null
           vehicle_id: string | null
@@ -13233,7 +13443,38 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      update_commerce_cash_register: {
+        Args: { p_register: Json }
+        Returns: Json
+      }
+      update_commerce_inventory_item_image: {
+        Args: { p_image_path: string; p_inventory_item_id: string }
+        Returns: Json
+      }
       update_commerce_location: { Args: { p_location: Json }; Returns: Json }
+      update_commerce_location_item_sale_price: {
+        Args: {
+          p_business_location_id: string
+          p_inventory_item_id: string
+          p_sale_price: number
+        }
+        Returns: {
+          business_location_id: string
+          created_at: string
+          id: string
+          inventory_item_id: string
+          quantity: number
+          reorder_level: number | null
+          sale_price: number | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "business_location_inventory_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       update_commercial_sale: {
         Args: { p_sale: Json; p_sale_id: string }
         Returns: {
@@ -13729,14 +13970,6 @@ export type Database = {
         Args: { p_permission_code: string }
         Returns: boolean
       }
-      convert_wallet_to_parent: {
-        Args: { p_allocations: Json; p_jeko_remap?: Json; p_wallet_id: string }
-        Returns: Json
-      }
-      preview_wallet_parent_conversion: {
-        Args: { p_allocations: Json; p_wallet_id: string }
-        Returns: Json
-      }
       wallet_create: {
         Args: { p_wallet: Json }
         Returns: {
@@ -13756,6 +13989,7 @@ export type Database = {
           module: string | null
           motorcycle_id: string | null
           name: string
+          parent_wallet_id: string | null
           type: string
           updated_at: string | null
           vehicle_id: string | null
@@ -13787,6 +14021,7 @@ export type Database = {
           module: string | null
           motorcycle_id: string | null
           name: string
+          parent_wallet_id: string | null
           type: string
           updated_at: string | null
           vehicle_id: string | null
@@ -13846,12 +14081,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -13875,11 +14110,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -13900,11 +14135,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -13925,11 +14160,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -13942,11 +14177,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

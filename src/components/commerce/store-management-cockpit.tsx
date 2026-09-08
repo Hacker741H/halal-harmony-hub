@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
+import {
+  CommerceItemImageField,
+  CommerceItemThumb,
+  commerceItemImageUrl,
+  removeCommerceItemImageObject,
+  uploadCommerceItemImage,
+} from "@/components/commerce/commerce-item-image";
 import { endOfMonth, format, startOfMonth, startOfYear, subDays, subMonths } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
@@ -62,6 +69,7 @@ import {
   getCommercePosControlReports,
   getCommerceStoreCockpit,
   payCommerceStorePlannedExpense,
+  updateCommerceInventoryItemImage,
   updateCommerceLocationItemSalePrice,
   type CommercePosControlReportSummary,
   type CommercePosLocation,
@@ -788,6 +796,7 @@ function StockSection({
   const { can } = usePermissions();
   const canEditPrice = can("commerce.stock.receive");
   const [priceEditItem, setPriceEditItem] = useState<StockLineItem | null>(null);
+  const [imageEditItem, setImageEditItem] = useState<StockLineItem | null>(null);
   const refreshAfterPriceChange = async () => {
     // Cockpit magasin, catalogue Caisse et le picker de réapprovisionnement
     // partagent tous business_location_inventory_items -- l'article doit
@@ -836,6 +845,7 @@ function StockSection({
                   <table className="w-full min-w-[980px] text-sm">
                     <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
                       <tr>
+                        <Th>Image</Th>
                         <Th>Référence</Th>
                         <Th>Désignation</Th>
                         <Th right>Quantité</Th>
@@ -849,6 +859,28 @@ function StockSection({
                     <tbody className="divide-y divide-border/60">
                       {cockpit.stock.items.map((item) => (
                         <tr key={item.id} className={item.isLow ? "bg-warning/[0.05]" : undefined}>
+                          <Td>
+                            {canEditPrice ? (
+                              <button
+                                type="button"
+                                title="Modifier l’image"
+                                onClick={() => setImageEditItem(item)}
+                                className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              >
+                                <CommerceItemThumb
+                                  imagePath={item.imagePath}
+                                  alt=""
+                                  className="size-8 rounded-md"
+                                />
+                              </button>
+                            ) : (
+                              <CommerceItemThumb
+                                imagePath={item.imagePath}
+                                alt=""
+                                className="size-8 rounded-md"
+                              />
+                            )}
+                          </Td>
                           <Td>{item.sku ?? "—"}</Td>
                           <Td strong>{item.name}</Td>
                           <Td right>
@@ -894,7 +926,94 @@ function StockSection({
         onSaved={refreshAfterPriceChange}
         locationId={locationId}
       />
+      <ItemImageEditDialog
+        item={imageEditItem}
+        onClose={() => setImageEditItem(null)}
+        onSaved={refreshAfterPriceChange}
+      />
     </>
+  );
+}
+
+// REFONTE CAISSE + IMAGE ARTICLE : le jumeau exact de SalePriceEditDialog
+// juste au-dessus -- même déclenchement (clic sur la cellule du tableau
+// Stock & valorisation), même dialogue minimal, même invalidation. Upload
+// immédiat ici (contrairement à CommerceQuickInventoryReceipt, où il est
+// différé jusqu'à la validation du formulaire de création) : il n'y a pas
+// d'autre étape à valider en même temps, donc rien à gagner à attendre.
+function ItemImageEditDialog({
+  item,
+  onClose,
+  onSaved,
+}: {
+  item: StockLineItem | null;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [pendingRemoval, setPendingRemoval] = useState(false);
+  useEffect(() => {
+    setPendingRemoval(false);
+  }, [item]);
+  const mutation = useMutation({
+    mutationFn: (imagePath: string | null) => {
+      if (!item) throw new Error("Article introuvable.");
+      return updateCommerceInventoryItemImage({ data: { inventoryItemId: item.id, imagePath } });
+    },
+    onSuccess: async () => {
+      toast.success("Image de l’article mise à jour.");
+      onClose();
+      await onSaved();
+    },
+    onError: (mutationError) => {
+      notifyMutationError(mutationError, "L’image n’a pas pu être enregistrée.");
+    },
+  });
+  const previousImagePath = item?.imagePath ?? null;
+  return (
+    <Dialog open={item !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Image de l’article</DialogTitle>
+          <DialogDescription>{item?.name}</DialogDescription>
+        </DialogHeader>
+        <CommerceItemImageField
+          previewUrl={pendingRemoval ? null : commerceItemImageUrl(previousImagePath)}
+          uploading={uploading}
+          disabled={mutation.isPending}
+          onFileSelected={async (file) => {
+            setUploading(true);
+            try {
+              const newPath = await uploadCommerceItemImage(file);
+              const oldPath = previousImagePath;
+              mutation.mutate(newPath, {
+                onSuccess: () => {
+                  if (oldPath) void removeCommerceItemImageObject(oldPath);
+                },
+              });
+            } catch (uploadError) {
+              notifyMutationError(uploadError, "L’image n’a pas pu être envoyée.");
+            } finally {
+              setUploading(false);
+            }
+          }}
+          onRemove={() => {
+            setPendingRemoval(true);
+            const oldPath = previousImagePath;
+            mutation.mutate(null, {
+              onSuccess: () => {
+                if (oldPath) void removeCommerceItemImageObject(oldPath);
+              },
+            });
+          }}
+        />
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose} disabled={mutation.isPending}>
+            Fermer
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
