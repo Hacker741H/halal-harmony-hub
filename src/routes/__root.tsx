@@ -88,9 +88,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      // Favicon Sharingan : favicon.ico reste le nom de fichier (certains
+      // navigateurs ignorent tout <link rel="icon"> et vont directement le
+      // chercher à cette URL fixe), mais son contenu est désormais l'oeil
+      // Sharingan -- plus le leaf/dégradé Lovable d'origine. Les variantes
+      // PNG explicites couvrent les navigateurs qui préfèrent une taille
+      // précise plutôt que de choisir eux-mêmes dans le .ico multi-tailles.
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { rel: "icon", href: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/pwa-icon.svg" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap" },
