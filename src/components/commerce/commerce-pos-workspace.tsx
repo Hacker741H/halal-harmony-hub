@@ -540,15 +540,20 @@ function ProductCard({
   );
 }
 
-// REFONTE CAISSE : la liste doit dominer visuellement le panneau (priorité
-// absolue de la demande) -- une carte par ligne (bordure + padding 3.5 +
-// coins arrondis) coûtait trop de hauteur pour tenir 15-20 lignes sans
-// scroll. Une vraie ligne de tableau dense, alignée sur CART_COLUMNS
-// (même gabarit que l'en-tête juste au-dessus de la liste), fait le même
-// travail en une fraction de la hauteur -- rien n'est retiré : prix
-// modifiable en place, +/-, sous-total, retirer, tout reste au même
-// endroit fonctionnel.
-const CART_GRID_COLUMNS = "grid-cols-[1.5rem_1.75rem_minmax(0,1fr)_4.5rem_4.75rem_4.75rem_1.75rem]";
+// REFONTE CAISSE (passe 2, densité) : la liste doit dominer visuellement le
+// panneau -- priorité absolue de la demande, et le vrai facteur limitant
+// n'était pas le padding mais les boutons eux-mêmes : Button size="icon-sm"
+// (h-8 w-8 = 32px, le plus petit préréglage du composant partagé) répété 4
+// fois par ligne (+/-, retirer) forçait chaque ligne à au moins ~40px --
+// ~4 lignes visibles seulement au lieu de 15-20. Remplacés ici par de
+// simples <button> à taille fixe (20px), le composant partagé restant
+// pensé pour des boutons autonomes, pas des contrôles denses en tableau.
+// Même gabarit que l'en-tête juste au-dessus de la liste (CART_GRID_COLUMNS)
+// -- rien n'est retiré : prix modifiable en place, +/-, sous-total,
+// retirer, tout reste au même endroit fonctionnel.
+const CART_GRID_COLUMNS = "grid-cols-[1.25rem_1.25rem_minmax(0,1fr)_3.75rem_3.5rem_3.75rem_1.25rem]";
+const CART_ROW_ICON_BUTTON =
+  "grid size-5 shrink-0 place-items-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40";
 
 function CartLineRow({
   index,
@@ -588,18 +593,18 @@ function CartLineRow({
   return (
     <div
       className={cn(
-        "grid items-center gap-x-1.5 border-b border-border/50 py-1 pr-0.5",
+        "grid min-w-0 items-center gap-x-1 border-b border-border/40 py-0.5",
         CART_GRID_COLUMNS,
       )}
     >
-      <span className="text-xs tabular-nums text-muted-foreground">{index}</span>
-      <CommerceItemThumb imagePath={imagePath} alt="" className="size-6 rounded-md" />
+      <span className="text-[11px] tabular-nums text-muted-foreground">{index}</span>
+      <CommerceItemThumb imagePath={imagePath} alt="" className="size-5 rounded" />
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium leading-tight" title={line.label}>
+        <p className="truncate text-xs font-medium leading-tight" title={line.label}>
           {line.label}
         </p>
         {isEditingPrice && priceError ? (
-          <p className="text-xs leading-tight text-destructive">{priceError}</p>
+          <p className="truncate text-[10px] leading-tight text-destructive">{priceError}</p>
         ) : null}
       </div>
       {isEditingPrice ? (
@@ -609,7 +614,7 @@ function CartLineRow({
             type="number"
             min="0"
             step="1"
-            className="h-7 w-20 px-1.5 text-xs"
+            className="h-6 w-16 px-1 text-[11px]"
             value={priceDraft}
             onChange={(event) => onPriceDraftChange(event.target.value)}
             onKeyDown={(event) => {
@@ -617,24 +622,22 @@ function CartLineRow({
               if (event.key === "Escape") onCancelPrice();
             }}
           />
-          <Button
+          <button
             type="button"
-            size="icon-sm"
-            variant="ghost"
             aria-label="Valider le prix"
             onClick={onCommitPrice}
+            className={CART_ROW_ICON_BUTTON}
           >
             <Check className="size-3" />
-          </Button>
-          <Button
+          </button>
+          <button
             type="button"
-            size="icon-sm"
-            variant="ghost"
             aria-label="Annuler"
             onClick={onCancelPrice}
+            className={CART_ROW_ICON_BUTTON}
           >
             <X className="size-3" />
-          </Button>
+          </button>
         </div>
       ) : (
         <button
@@ -642,55 +645,51 @@ function CartLineRow({
           disabled={disabled}
           onClick={onStartEditPrice}
           title="Modifier le prix"
-          className="truncate text-right text-xs font-semibold tabular-nums text-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none"
+          className="truncate text-right text-[11px] font-semibold tabular-nums text-foreground underline decoration-dotted decoration-muted-foreground/50 underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none"
         >
           {money(line.unitPrice)}
-          {surcharge > 0 ? <span className="ml-1 text-success">+{money(surcharge)}</span> : null}
+          {surcharge > 0 ? <span className="ml-0.5 text-success">+{money(surcharge)}</span> : null}
         </button>
       )}
       {isEditingPrice ? null : (
         <div className="flex items-center justify-center gap-0.5">
-          <Button
+          <button
             type="button"
-            variant="ghost"
-            size="icon-sm"
             aria-label={`Diminuer la quantité de ${line.label}`}
             disabled={disabled}
             onClick={onDecrease}
+            className={CART_ROW_ICON_BUTTON}
           >
-            <Minus className="size-3" />
-          </Button>
-          <span className="min-w-4 text-center text-xs font-semibold tabular-nums">
+            <Minus className="size-2.5" />
+          </button>
+          <span className="min-w-3.5 text-center text-[11px] font-semibold tabular-nums">
             {line.quantity}
           </span>
-          <Button
+          <button
             type="button"
-            variant="ghost"
-            size="icon-sm"
             aria-label={`Augmenter la quantité de ${line.label}`}
             disabled={disabled || !canIncrease}
             onClick={onIncrease}
+            className={CART_ROW_ICON_BUTTON}
           >
-            <Plus className="size-3" />
-          </Button>
+            <Plus className="size-2.5" />
+          </button>
         </div>
       )}
       {isEditingPrice ? null : (
-        <p className="truncate text-right text-sm font-bold tabular-nums">
+        <p className="truncate text-right text-xs font-bold tabular-nums">
           {money(line.quantity * line.unitPrice)}
         </p>
       )}
-      <Button
+      <button
         type="button"
-        size="icon-sm"
-        variant="ghost"
         aria-label={`Retirer ${line.label} du ticket`}
         disabled={disabled}
         onClick={onRemove}
-        className="justify-self-end"
+        className={cn(CART_ROW_ICON_BUTTON, "justify-self-end hover:text-destructive")}
       >
-        <Trash2 className="size-3.5 text-destructive" />
-      </Button>
+        <Trash2 className="size-3" />
+      </button>
     </div>
   );
 }
@@ -1621,7 +1620,9 @@ export function CommerceCashierWorkspace({
   // présentation déjà validée (updateDraft/update/addArticle/checkout...).
   const cartPanelBody = (
     <>
-      <div className="shrink-0 border-b border-border/75 p-3">
+      {/* REFONTE CAISSE (passe 2) : point 5 -- la liste doit commencer
+          juste sous cette ligne, donc elle aussi reste compacte. */}
+      <div className="shrink-0 border-b border-border/75 px-3 py-1.5">
         {showClient ? (
           <div className="flex items-center gap-2">
             <ClientSelect
@@ -1647,7 +1648,7 @@ export function CommerceCashierWorkspace({
           <button
             type="button"
             onClick={() => setShowClient(true)}
-            className="flex w-full items-center justify-between rounded-xl border border-dashed border-border/90 bg-surface/75 px-3 py-2 text-left text-sm transition-colors hover:border-primary/35 hover:bg-primary/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="flex w-full items-center justify-between rounded-lg border border-dashed border-border/90 bg-surface/75 px-2.5 py-1 text-left text-sm transition-colors hover:border-primary/35 hover:bg-primary/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <span className="font-semibold">
               {clientId ? "Ticket nominatif" : "Vente comptoir"}
@@ -1660,7 +1661,7 @@ export function CommerceCashierWorkspace({
       {cart.length > 0 ? (
         <div
           className={cn(
-            "grid shrink-0 items-center gap-x-1.5 border-b border-border bg-muted/40 py-1 pl-3 pr-[calc(0.125rem+0.75rem)] text-[10px] font-semibold uppercase tracking-wide text-muted-foreground",
+            "grid shrink-0 items-center gap-x-1 border-b border-border bg-muted/40 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground",
             CART_GRID_COLUMNS,
           )}
         >
@@ -1726,11 +1727,12 @@ export function CommerceCashierWorkspace({
         ) : null}
       </div>
 
-      {/* REFONTE CAISSE : point 3 -- la zone paiement ne doit plus dominer
-          verticalement. Puces de moyen de paiement plus fines, Reçu/Monnaie/
-          Total réunis sur une seule ligne compacte (plus de bloc "Total"
-          autonome en 3xl), bouton Encaisser plus fin (h-11, pas h-14). */}
-      <div className="shrink-0 space-y-2 border-t border-border/75 bg-muted/[0.10] p-2.5">
+      {/* REFONTE CAISSE (passe 2) : footer ramené à 2 petites lignes --
+          (1) puces de paiement, (2) Reçu (facultatif) + Monnaie (texte
+          inline, plus de case séparée) + Total + Encaisser, tous sur la
+          même ligne. Plus de gros bloc Total isolé, bouton Encaisser
+          aligné à la taille des autres contrôles (h-8) au lieu de h-11. */}
+      <div className="shrink-0 space-y-1 border-t border-border/75 bg-muted/[0.10] p-1.5">
         <div
           className="flex flex-wrap items-center gap-1"
           role="radiogroup"
@@ -1757,9 +1759,9 @@ export function CommerceCashierWorkspace({
                         ? "Saisie mobile manuelle : aucune API Wave directe"
                         : label
                 }
-                className={`flex h-8 min-w-[4rem] flex-1 items-center justify-center gap-1 rounded-lg border text-xs font-semibold transition-[background-color,border-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55 ${selected ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-surface text-muted-foreground hover:border-primary/35 hover:text-foreground"}`}
+                className={`flex h-6 min-w-[3.25rem] flex-1 items-center justify-center gap-1 rounded-md border text-[11px] font-semibold transition-[background-color,border-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55 ${selected ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-surface text-muted-foreground hover:border-primary/35 hover:text-foreground"}`}
               >
-                <Icon className="size-3.5" />
+                <Icon className="size-3" />
                 <span className="hidden sm:inline">
                   {jekoDisabled ? "Jèko" : value === "WAVE" ? "Mobile" : label}
                 </span>
@@ -1768,68 +1770,53 @@ export function CommerceCashierWorkspace({
           })}
         </div>
 
-        <div className="flex items-stretch gap-1.5">
+        <div className="flex items-center gap-1">
           {method === "CASH" ? (
-            <div className="flex w-24 flex-col gap-0.5">
-              <Label
-                htmlFor="commerce-pos-cash-received"
-                className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-              >
-                Reçu
-              </Label>
-              <Input
-                id="commerce-pos-cash-received"
-                className="h-9 px-2 text-right text-sm tabular-nums"
-                type="number"
-                min={total}
-                step="1"
-                disabled={checkoutState !== "READY"}
-                placeholder={money(total)}
-                value={cashReceived ?? ""}
-                onChange={(event) =>
-                  updateDraft((current) => ({
-                    ...current,
-                    cashReceived: event.target.value === "" ? null : Number(event.target.value),
-                  }))
-                }
-              />
-            </div>
+            <Input
+              aria-label="Montant reçu"
+              className="h-8 w-20 shrink-0 px-1.5 text-right text-xs tabular-nums"
+              type="number"
+              min={total}
+              step="1"
+              disabled={checkoutState !== "READY"}
+              placeholder="Reçu"
+              value={cashReceived ?? ""}
+              onChange={(event) =>
+                updateDraft((current) => ({
+                  ...current,
+                  cashReceived: event.target.value === "" ? null : Number(event.target.value),
+                }))
+              }
+            />
           ) : null}
           {method === "CASH" && cashReceived !== null ? (
-            <div className="flex w-20 flex-col gap-0.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Monnaie
-              </span>
-              <div className="flex h-9 items-center justify-end rounded-md border border-transparent px-2 text-sm font-semibold tabular-nums">
-                {money(cashChange)}
-              </div>
-            </div>
-          ) : null}
-          <div className="flex flex-1 flex-col items-end justify-center gap-0.5 rounded-lg bg-primary/[0.08] px-3 py-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Total à payer
+            <span className="shrink-0 text-[10px] font-medium text-muted-foreground">
+              rendu {money(cashChange)}
             </span>
-            <span className="text-lg font-bold tabular-nums text-foreground">{money(total)}</span>
+          ) : null}
+          <div className="flex flex-1 items-baseline justify-end gap-1.5 rounded-md bg-primary/[0.08] px-2 py-1">
+            <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Total
+            </span>
+            <span className="text-sm font-bold tabular-nums text-foreground">{money(total)}</span>
           </div>
+          <Button
+            className="h-8 shrink-0 px-3 text-xs"
+            loading={saleMutation.isPending}
+            loadingLabel="…"
+            disabled={!canCheckout}
+            onClick={checkout}
+          >
+            <WalletCards className="size-3.5" />
+            {saleMutation.isPending || checkoutState === "PROCESSING"
+              ? "…"
+              : posSession.networkStatus !== "ONLINE"
+                ? "Conserver"
+                : "Encaisser"}
+          </Button>
         </div>
-
-        <Button
-          className="h-11 w-full text-sm"
-          loading={saleMutation.isPending}
-          loadingLabel="Comptabilisation"
-          disabled={!canCheckout}
-          onClick={checkout}
-        >
-          <WalletCards />
-          {saleMutation.isPending || checkoutState === "PROCESSING"
-            ? "Comptabilisation…"
-            : posSession.networkStatus !== "ONLINE"
-              ? `Conserver ${money(total)}`
-              : `Encaisser ${money(total)}`}
-          <span className="ml-1 hidden text-xs font-normal opacity-75 2xl:inline">· F10</span>
-        </Button>
         {hasDraftInProgress ? (
-          <div className="flex justify-end gap-3 pt-0.5">
+          <div className="flex justify-end gap-3">
             <button
               type="button"
               disabled={checkoutState !== "READY" || cart.length === 0}
@@ -1839,7 +1826,7 @@ export function CommerceCashierWorkspace({
                   toast.success("Ticket suspendu : aucune opération n’a été comptabilisée.");
                 }
               }}
-              className="text-xs font-semibold text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+              className="text-[10px] font-semibold text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
             >
               Suspendre
             </button>
@@ -1847,7 +1834,7 @@ export function CommerceCashierWorkspace({
               type="button"
               disabled={checkoutState !== "READY"}
               onClick={() => setPendingDraftAction({ type: "DISCARD" })}
-              className="text-xs font-semibold text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
+              className="text-[10px] font-semibold text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
             >
               Abandonner
             </button>
@@ -2014,12 +2001,18 @@ export function CommerceCashierWorkspace({
             </div>
           ) : null}
 
-          <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,4fr)_minmax(480px,3fr)]">
-            {/* REFONTE CAISSE : ~57%/43% sur desktop (avant : ~67%/33%) --
-                le panier était trop étroit pour que sa liste domine
-                visuellement. Plein écran sur mobile : le panier vit dans le
-                tiroir fixe plus bas, jamais empilé au-dessus du rayon. */}
-            <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-sm">
+          <div className="grid min-h-0 w-full flex-1 gap-3 overflow-hidden lg:grid-cols-[3fr_2fr]">
+            {/* REFONTE CAISSE (passe 2) : 60%/40% sur desktop, en fr purs --
+                un plancher en pixels (minmax(480px,...)) pouvait forcer un
+                dépassement horizontal sur un écran plus étroit que prévu
+                (1366px avec sidebar) : deux fr sans plancher ne peuvent
+                mathématiquement jamais dépasser la largeur disponible.
+                min-w-0 sur les deux panneaux : sans lui, un enfant grid
+                garde par défaut un min-width:auto basé sur son contenu, ce
+                qui est exactement ce qui provoquait le débordement. Plein
+                écran sur mobile : le panier vit dans le tiroir fixe plus
+                bas, jamais empilé au-dessus du rayon. */}
+            <section className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-sm">
               <div className="shrink-0 space-y-2.5 border-b border-border/75 bg-muted/[0.16] p-3">
                 <div className="flex gap-2">
                   <form
@@ -2106,7 +2099,7 @@ export function CommerceCashierWorkspace({
 
               <div className="min-h-0 flex-1 overflow-auto p-3 pb-28 lg:pb-3">
                 {workspaceQuery.isPending && !isUsingOfflineCatalogue ? (
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                     <Skeleton className="h-28" />
                     <Skeleton className="h-28" />
                     <Skeleton className="h-28" />
@@ -2129,7 +2122,11 @@ export function CommerceCashierWorkspace({
                 {(!workspaceQuery.isPending || isUsingOfflineCatalogue) &&
                 (!workspaceQuery.isError || isUsingOfflineCatalogue) ? (
                   gridItems.length ? (
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+                    // REFONTE CAISSE (passe 2) : une carte de moins par
+                    // palier (avant : 3/4/5 -- après : 2/3/4) -- le panier
+                    // passant à 40% de large, forcer autant de colonnes
+                    // tronquait les noms d'article de façon excessive.
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                       {gridItems.map((item) => (
                         <ProductCard
                           key={item.id}
@@ -2152,10 +2149,10 @@ export function CommerceCashierWorkspace({
               </div>
             </section>
 
-            {/* ~43% sur desktop -- panier fixe, jamais un tiroir caché.
+            {/* ~40% sur desktop -- panier fixe, jamais un tiroir caché.
                 Masqué sur mobile : même contenu (cartPanelBody), affiché
                 dans le tiroir fixe en bas d'écran à la place. */}
-            <aside className="hidden min-h-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-sm lg:flex">
+            <aside className="hidden min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-sm lg:flex">
               {cartPanelBody}
             </aside>
           </div>
