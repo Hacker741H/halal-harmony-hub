@@ -551,21 +551,24 @@ function ProductCard({
 // Même gabarit que l'en-tête juste au-dessus de la liste (CART_GRID_COLUMNS)
 // -- rien n'est retiré : prix modifiable en place, +/-, sous-total,
 // retirer, tout reste au même endroit fonctionnel.
-// REFONTE CAISSE (passe 3, lisibilité Article) : # et delete réduits au
-// strict nécessaire (texte 1-2 chiffres / bouton 20px), thumb et Qté
-// gardés tels quels (planchers réels : thumb = size-5 = 1.25rem: en
-// dessous l'image est écrasée ; Qté = 2 boutons size-5 + le nombre + 2
-// gaps-0.5 = 3.625rem mesuré, donc 3.5rem est déjà le minimum jouable, pas
-// question de le resserrer encore). PU et Total rognés légèrement -- ce
-// sont de simples nombres avec un `truncate` déjà en place comme filet de
-// sécurité (jamais de coupure brutale, juste une ellipse sur un montant
-// extrême), donc rognables sans risque. Tout l'espace ainsi libéré va à la
-// colonne Article (minmax(0,1fr)), en plus du nouveau split 55/45 du
-// panneau entier : demande explicite "priorité de largeur à la colonne
-// Article", et "PU, Qté, Total très compacts".
-const CART_GRID_COLUMNS = "grid-cols-[1rem_1.25rem_minmax(0,1fr)_3.25rem_3.5rem_3.5rem_1.25rem]";
+// REFONTE CAISSE (passe 4, densité -- la passe 3 a corrigé la lisibilité du
+// nom mais au prix du critère principal : line-clamp-2 rendait la hauteur
+// de ligne variable, et la moyenne réelle a fait chuter 18/22 lignes
+// visibles à 11/13. Le nom repasse donc sur 1 ligne (voir plus bas) --
+// c'est la largeur de la colonne Article + le tooltip au survol qui
+// portent la lisibilité, pas la hauteur de ligne. En plus de ça, la ligne
+// est encore densifiée : boutons/miniature 20px -> 18px (size-[18px], en
+// dessous les cibles de clic deviennent difficiles -- limite volontaire),
+// padding vertical py-0.5 -> py-px, police secondaire (#, Qté) 11px ->
+// 10px. Qté peut donc se resserrer un peu (2 boutons 18px + le nombre + 2
+// petits gaps ~ 3.25rem mesuré). PU et Total NE sont PAS resserrés
+// davantage : ce sont des montants, une coupure y serait plus grave qu'une
+// ligne un peu moins dense ailleurs -- déjà validés sans troncature en
+// passe 3. Tout le reste de la largeur va à la colonne Article
+// (minmax(0,1fr)).
+const CART_GRID_COLUMNS = "grid-cols-[1rem_1.125rem_minmax(0,1fr)_3.25rem_3.25rem_3.5rem_1.125rem]";
 const CART_ROW_ICON_BUTTON =
-  "grid size-5 shrink-0 place-items-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40";
+  "grid size-[18px] shrink-0 place-items-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40";
 
 function CartLineRow({
   index,
@@ -605,22 +608,23 @@ function CartLineRow({
   return (
     <div
       className={cn(
-        "grid min-w-0 items-center gap-x-1 border-b border-border/40 py-0.5",
+        "grid min-w-0 items-center gap-x-1 border-b border-border/40 py-px",
         CART_GRID_COLUMNS,
       )}
     >
-      <span className="text-[11px] tabular-nums text-muted-foreground">{index}</span>
-      <CommerceItemThumb imagePath={imagePath} alt="" className="size-5 rounded" />
+      <span className="text-[10px] tabular-nums text-muted-foreground">{index}</span>
+      <CommerceItemThumb imagePath={imagePath} alt="" className="size-[18px] rounded" />
       <div className="min-w-0">
-        {/* REFONTE CAISSE (passe 3) : nom sur 2 lignes max (line-clamp-2,
-            même convention que ProductCard plus haut) au lieu d'une seule
-            ligne tronquée -- demande explicite "autorise le nom article sur
-            2 lignes maximum". Seuls les noms réellement longs grandissent à
-            2 lignes (chaque ligne panier a sa propre hauteur naturelle, ce
-            n'est pas une grille à rangées uniformes) ; les noms courts/
-            typiques restent sur 1 ligne, donc le nombre de lignes visibles
-            reste proche de la cible 15-20 pour un panier réaliste. */}
-        <p className="line-clamp-2 text-xs font-medium leading-snug" title={line.label}>
+        {/* REFONTE CAISSE (passe 4) : retour à 1 ligne (truncate + title)
+            -- la passe 3 était passée à line-clamp-2 pour la lisibilité,
+            mais une hauteur de ligne variable a fait chuter le nombre de
+            lignes visibles (18/22 -> 11/13), le critère prioritaire.
+            La lisibilité reste portée par : la largeur dédiée à cette
+            colonne (priorité de largeur depuis la passe 3, pas touchée
+            ici) + le tooltip natif du navigateur au survol (title, nom
+            complet même si tronqué à l'écran). Hauteur de ligne à nouveau
+            uniforme, quel que soit le nom. */}
+        <p className="truncate text-xs font-medium leading-tight" title={line.label}>
           {line.label}
         </p>
         {isEditingPrice && priceError ? (
@@ -682,7 +686,7 @@ function CartLineRow({
           >
             <Minus className="size-2.5" />
           </button>
-          <span className="min-w-3.5 text-center text-[11px] font-semibold tabular-nums">
+          <span className="min-w-3 text-center text-[10px] font-semibold tabular-nums">
             {line.quantity}
           </span>
           <button
