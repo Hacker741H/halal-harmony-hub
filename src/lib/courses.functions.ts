@@ -7,6 +7,13 @@ import { getPermissionCodesForClient } from "@/lib/permissions.functions";
 
 export type Course = Tables<"transport_missions">;
 export type CourseExpense = Tables<"transport_mission_expenses">;
+// CORRECTIF COURSES (wallet) : même forme que purchases.functions.ts
+// (payments avec walletName) et commercial-sales.functions.ts -- getCourse
+// enrichit chaque dépense d'un lookup batch sur wallets, jamais une requête
+// par ligne. null seulement si le wallet a été supprimé entre-temps (le
+// wallet_id reste toujours en base -- le fallback "Wallet <id court>" ne
+// sert qu'à ce cas résiduel côté UI).
+export type CourseExpenseWithWallet = CourseExpense & { walletName: string | null };
 export type CourseInvoice = Tables<"transport_invoices">;
 export type CoursePayment = Tables<"transport_invoice_payments">;
 
@@ -115,7 +122,7 @@ export type CourseFinancialSummary = {
 };
 export type CourseHistoryEntry = { id: string; source_type: string; source_id: string; action: string; created_at: string; performed_by: string | null; before_value: Json | null; after_value: Json | null };
 export type CourseListItem = Course & { clientName: string | null; vehicleLabel: string | null; vehicleStatus: string | null; driverName: string | null; driverStatus: string | null; actualExpenses: number | null; amountDue: number | null; grossResult: number | null; invoiceStatus: string | null };
-export type CourseDetail = { course: Course; clientName: string | null; vehicle: { id: string; registration: string; brand: string | null; model: string | null; kilometrage: number | null; status: string | null } | null; driver: { id: string; name: string; telephone: string | null; licenseExpiry: string | null } | null; expenses: CourseExpense[]; invoices: CourseInvoice[]; payments: CoursePayment[]; financial: CourseFinancialSummary | null };
+export type CourseDetail = { course: Course; clientName: string | null; vehicle: { id: string; registration: string; brand: string | null; model: string | null; kilometrage: number | null; status: string | null } | null; driver: { id: string; name: string; telephone: string | null; licenseExpiry: string | null } | null; expenses: CourseExpenseWithWallet[]; invoices: CourseInvoice[]; payments: CoursePayment[]; financial: CourseFinancialSummary | null };
 
 function valuesPayload(values: Partial<CourseValues>): Json {
   return {
@@ -173,9 +180,28 @@ export const getCourses = createServerFn({ method: "GET" }).middleware([requireS
   }), total: count ?? 0 };
 });
 
+// CORRECTIF COURSES (toast générique) : un throw error brut (objet
+// PostgrestError -- même s'il hérite d'Error côté serveur) ne survit pas de
+// façon fiable à la frontière serveur -> client d'un server function
+// TanStack Start ; router.tsx (QueryCache.onError) le traite alors comme
+// "!(error instanceof Error)" et affiche le message générique "Certaines
+// données n'ont pas pu être chargées." qui masque la cause réelle. Une
+// vraie Error native, elle, traverse correctement (seul .message survit --
+// error-classification.ts -- donc .code est glissé dans le message plutôt
+// que sur une propriété qui serait silencieusement perdue). Appliqué
+// seulement aux deux server functions de cette fiche consommées via
+// useQuery (getCourse, getCourseHistory) : le QueryCache global est
+// spécifiquement leur chemin d'erreur. Les mutations du fichier gardent
+// leur propre gestion résiliente côté appelant ($courseId.tsx,
+// notificationError/findCourseActionError), donc pas concernées ici.
+function toQueryError(error: { message: string; code?: string }, context: string): Error {
+  const suffix = error.code ? ` (code ${error.code})` : "";
+  return new Error(`${context} : ${error.message || "erreur inconnue"}${suffix}`);
+}
+
 export const getCourse = createServerFn({ method: "GET" }).middleware([requireSupabaseAuth]).validator(idSchema).handler(async ({ context, data }): Promise<CourseDetail> => {
   const { data: course, error } = await context.supabase.from("transport_missions").select("*").eq("id", data).maybeSingle();
-  if (error) throw error; if (!course) throw new Error("Course introuvable ou non autorisée.");
+  if (error) throw toQueryError(error, "Course -- fiche principale"); if (!course) throw new Error("Course introuvable ou non autorisée.");
   const permissionCodes = new Set(await getPermissionCodesForClient(context.supabase)); const canReadFinance = permissionCodes.has("missions.finance.read");
   const [clientResult, vehicleResult, driverResult, expensesResult, invoiceResult, paymentsResult, financialResult] = await Promise.all([
     context.supabase.from("transport_clients").select("display_name").eq("id", course.client_id).maybeSingle(),
@@ -186,9 +212,25 @@ export const getCourse = createServerFn({ method: "GET" }).middleware([requireSu
     canReadFinance ? context.supabase.from("transport_invoice_payments").select("*").eq("mission_id", data).order("payment_date", { ascending: false }) : Promise.resolve({ data: [], error: null }),
     canReadFinance ? context.supabase.rpc("get_transport_mission_financial_summary", { p_mission_id: data }) : Promise.resolve({ data: [], error: null }),
   ]);
-  for (const result of [clientResult, vehicleResult, driverResult, expensesResult, invoiceResult, paymentsResult, financialResult]) if (result.error) throw result.error;
+  const resultLabels = ["client", "véhicule", "chauffeur", "dépenses", "factures", "paiements", "résumé financier"] as const;
+  const results = [clientResult, vehicleResult, driverResult, expensesResult, invoiceResult, paymentsResult, financialResult];
+  for (let i = 0; i < results.length; i++) if (results[i].error) throw toQueryError(results[i].error as { message: string; code?: string }, `Course -- ${resultLabels[i]}`);
   const driver = driverResult.data;
-  return { course, clientName: clientResult.data?.display_name ?? null, vehicle: vehicleResult.data, driver: driver ? { id: driver.id, name: [driver.employees?.nom, driver.employees?.prenom].filter(Boolean).join(" ") || "Chauffeur", telephone: driver.employees?.telephone ?? null, licenseExpiry: driver.date_expiration_permis } : null, expenses: expensesResult.data ?? [], invoices: invoiceResult.data ?? [], payments: paymentsResult.data ?? [], financial: financialResult.data?.[0] ?? null };
+  // CORRECTIF COURSES (wallet) : même forme que purchases.functions.ts
+  // (payments avec walletName) -- lookup batch (1 requête, jamais une par
+  // dépense) plutôt qu'une jointure PostgREST imbriquée, pour rester
+  // cohérent avec le reste du fichier (mapRows/Map ci-dessus). walletName
+  // reste null seulement si le wallet a été supprimé depuis (wallet_id,
+  // lui, ne peut pas être null -- colonne NOT NULL) ; l'UI garde alors son
+  // repli existant sur l'identifiant court.
+  const expenseRows = expensesResult.data ?? [];
+  const walletIds = [...new Set(expenseRows.map((expense) => expense.wallet_id))];
+  const walletsResult = walletIds.length
+    ? await context.supabase.from("wallets").select("id, name").in("id", walletIds)
+    : { data: [], error: null };
+  if (walletsResult.error) throw toQueryError(walletsResult.error, "Course -- noms de wallet");
+  const walletNames = new Map((walletsResult.data ?? []).map((wallet) => [wallet.id, wallet.name]));
+  return { course, clientName: clientResult.data?.display_name ?? null, vehicle: vehicleResult.data, driver: driver ? { id: driver.id, name: [driver.employees?.nom, driver.employees?.prenom].filter(Boolean).join(" ") || "Chauffeur", telephone: driver.employees?.telephone ?? null, licenseExpiry: driver.date_expiration_permis } : null, expenses: expenseRows.map((expense) => ({ ...expense, walletName: walletNames.get(expense.wallet_id) ?? null })), invoices: invoiceResult.data ?? [], payments: paymentsResult.data ?? [], financial: financialResult.data?.[0] ?? null };
 });
 
 export const createCourse = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).validator(courseValuesSchema).handler(async ({ context, data }) => { const { data: course, error } = await context.supabase.rpc("create_transport_mission", { p_mission: valuesPayload(data) }); if (error) throw error; if (!course) throw new Error("La Course n’a pas été créée."); return course; });
@@ -239,4 +281,4 @@ export const getCourseDepartureReadiness = createServerFn({ method: "GET" }).mid
   if (error) throw error;
   return readiness ?? [];
 });
-export const getCourseHistory = createServerFn({ method: "GET" }).middleware([requireSupabaseAuth]).validator(idSchema).handler(async ({ context, data }): Promise<CourseHistoryEntry[]> => { const { data: history, error } = await context.supabase.rpc("get_transport_mission_history", { p_mission_id: data }); if (error) throw error; return history ?? []; });
+export const getCourseHistory = createServerFn({ method: "GET" }).middleware([requireSupabaseAuth]).validator(idSchema).handler(async ({ context, data }): Promise<CourseHistoryEntry[]> => { const { data: history, error } = await context.supabase.rpc("get_transport_mission_history", { p_mission_id: data }); if (error) throw toQueryError(error, "Course -- historique"); return history ?? []; });
