@@ -47,6 +47,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useShellPreferences } from "@/components/shell/shell-preferences";
+import { useCompanySettings } from "@/hooks/use-company-settings";
 import { usePermissions } from "@/hooks/use-permissions";
 import { getNotificationSummary } from "@/lib/notifications.functions";
 import { cn } from "@/lib/utils";
@@ -193,6 +194,12 @@ export function AppSidebar() {
   const { can, canAny } = usePermissions();
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (router) => router.location.pathname });
+  // SÉPARATION NOM APPLICATION / NOM ENTREPRISE : "HALAL ERP" juste
+  // au-dessus reste codé en dur (nom du logiciel) -- companyName est le
+  // nom de l'ENTREPRISE (organisation propriétaire/utilisatrice),
+  // alimenté par company_settings.nom via le hook partagé, jamais
+  // bloquant (repli "HALAL & CO" intégré si absent/en erreur).
+  const { companyName } = useCompanySettings();
   const { data: notificationSummary } = useQuery({
     queryKey: ["notification-summary"],
     queryFn: () => getNotificationSummary(),
@@ -214,7 +221,7 @@ export function AppSidebar() {
           {!collapsed ? (
             <div className="min-w-0 animate-fade-in">
               <p className="truncate text-sm font-semibold tracking-tight text-sidebar-foreground">HALAL ERP</p>
-              <p className="truncate text-overline text-sidebar-foreground/55">Famille Keita</p>
+              <p className="truncate text-overline text-sidebar-foreground/55">{companyName}</p>
             </div>
           ) : null}
         </div>
@@ -269,7 +276,7 @@ export function AppSidebar() {
           <div className="rounded-md bg-sidebar-accent/50 px-2.5 py-2 text-caption text-sidebar-foreground/60">
             <span className="font-medium text-sidebar-foreground/80">HALAL ERP</span>
             <span className="mx-1.5">·</span>
-            Famille Keita
+            {companyName}
           </div>
         ) : null}
       </SidebarFooter>

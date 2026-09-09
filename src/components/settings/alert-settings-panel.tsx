@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { resolveCompanyName } from "@/hooks/use-company-settings";
 import { NOTIFICATION_SEVERITY_LABELS } from "@/lib/notifications.functions";
 import {
   ALERT_SEVERITIES,
@@ -137,6 +138,22 @@ export function AlertSettingsPanel() {
             <CardDescription>Le fuseau de l’entreprise est la source de vérité pour les échéances.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
+            {/* SÉPARATION NOM APPLICATION / NOM ENTREPRISE : nom de
+                l'entreprise (public.company_settings.nom, pas "HALAL ERP"
+                qui désigne le logiciel) -- lecture seule ici, réutilise la
+                ligne déjà chargée par ce même getAlertSettings au lieu de
+                refaire un appel réseau (voir resolveCompanyName,
+                src/hooks/use-company-settings.ts, seule source du repli
+                "HALAL & CO" partagée avec le reste de l'app). */}
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Nom de l’entreprise</Label>
+              <p className="rounded-md border border-input bg-muted/40 px-3 py-2 text-sm text-foreground">
+                {resolveCompanyName(settings.company?.nom)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Le nom du logiciel (HALAL ERP) reste distinct de celui de l’entreprise qui l’utilise.
+              </p>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="notification-timezone">Fuseau horaire métier</Label>
               <Input
