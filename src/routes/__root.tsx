@@ -90,11 +90,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "stylesheet", href: appCss },
       // Favicon Sharingan : favicon.ico reste le nom de fichier (certains
       // navigateurs ignorent tout <link rel="icon"> et vont directement le
-      // chercher à cette URL fixe), mais son contenu est désormais l'oeil
-      // Sharingan -- plus le leaf/dégradé Lovable d'origine. Les variantes
-      // PNG explicites couvrent les navigateurs qui préfèrent une taille
-      // précise plutôt que de choisir eux-mêmes dans le .ico multi-tailles.
+      // chercher à cette URL fixe). Contenu remplacé une 2e fois -- toujours
+      // le même fichier source visuel (l'oeil Sharingan), mais recadré cette
+      // fois depuis l'image source exacte fournie plutôt que depuis
+      // Rick 3.png. Les variantes PNG explicites couvrent les navigateurs
+      // qui préfèrent une taille précise plutôt que de choisir eux-mêmes
+      // dans le .ico multi-tailles (16/32/48/256 embarqués).
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon-48x48.png", sizes: "48x48", type: "image/png" },
       { rel: "icon", href: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
       { rel: "icon", href: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
