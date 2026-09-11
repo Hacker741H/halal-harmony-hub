@@ -12,6 +12,7 @@ import {
   Plus,
   RefreshCw,
   Repeat,
+  Search,
   ShieldCheck,
   Sparkles,
   WalletCards,
@@ -24,11 +25,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
 import { OperationalHero } from "@/components/ui/operational-hero";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { WalletForm } from "@/components/wallet-form";
 import { WalletParentConversionDialog } from "@/components/wallet-parent-conversion-dialog";
-import { formatDate, formatXOF } from "@/lib/format";
+import { formatDateTimeMedium, formatXOF } from "@/lib/format";
 import { getCommercialSales } from "@/lib/commercial-sales.functions";
 import {
+  FINANCE_MODULE_LABELS,
+  FINANCE_OPERATION_STATUS_LABELS,
   FINANCE_OPERATION_TYPE_LABELS,
   getFinanceOperationsByWallet,
   getFinanceOperationsByWalletGroup,
@@ -42,6 +46,7 @@ export const Route = createFileRoute("/_authenticated/wallets/$walletId")({
 const format = formatXOF;
 const ALL_CHILDREN = "ALL";
 const RECEIVABLES = "RECEIVABLES";
+const ALL_TYPES = "ALL";
 
 const WALLET_TYPE_ICONS: Record<string, typeof WalletCards> = {
   CASH: Banknote,
@@ -59,6 +64,8 @@ function WalletDetailsPage() {
   const queryClient = useQueryClient();
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string>(ALL_TYPES);
   const [selectedChildId, setSelectedChildId] = useState<string>(ALL_CHILDREN);
   const [createOpen, setCreateOpen] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
@@ -89,11 +96,18 @@ function WalletDetailsPage() {
       ? ["wallet-operations-group", walletId, selectedChildId]
       : ["wallet-operations", walletId],
     queryFn: () => {
-      if (!hasChildren || selectedChildId === RECEIVABLES) return Promise.resolve([]);
+      // Un wallet simple (sans sous-wallet) doit toujours afficher ses
+      // propres opérations -- l'absence de sous-wallet ne doit jamais
+      // masquer l'historique. Seul un wallet PARENT avec au moins un enfant
+      // bascule vers la vue groupée (régression corrigée : cette condition
+      // renvoyait [] pour tout wallet sans enfant, quel que soit son
+      // historique réel).
+      if (selectedChildId === RECEIVABLES) return Promise.resolve([]);
+      if (!hasChildren) return getFinanceOperationsByWallet({ data: walletId });
       if (selectedChildId === ALL_CHILDREN) return getFinanceOperationsByWalletGroup({ data: [walletId, ...children.map((child) => child.id)] });
       return getFinanceOperationsByWallet({ data: selectedChildId });
     },
-    enabled: !hasChildren || selectedChildId !== RECEIVABLES,
+    enabled: selectedChildId !== RECEIVABLES,
   });
 
   if (walletQuery.isPending) {
@@ -146,20 +160,41 @@ function WalletDetailsPage() {
   // boundary counts. It still appears in the journal below, unchanged.
   const groupIds = hasChildren ? new Set<string>([walletId, ...children.map((child) => child.id)]) : null;
   const isInGroup = (id: string | null) => (id ? (groupIds ? groupIds.has(id) : id === walletId) : false);
-  const incoming = displayedOperations
-    .filter((operation) =>
-      operation.type === "TRANSFER"
-        ? isInGroup(operation.destination_wallet_id) && !isInGroup(operation.wallet_id)
-        : isInGroup(operation.wallet_id) && ["REVENUE", "DEPOSIT"].includes(operation.type),
-    )
-    .reduce((sum, operation) => sum + Number(operation.amount), 0);
-  const outgoing = displayedOperations
-    .filter((operation) =>
-      operation.type === "TRANSFER"
-        ? isInGroup(operation.wallet_id) && !isInGroup(operation.destination_wallet_id)
-        : isInGroup(operation.wallet_id) && operation.type === "EXPENSE",
-    )
-    .reduce((sum, operation) => sum + Number(operation.amount), 0);
+  // Une opération ANNULÉE reste visible dans le journal (avec son statut),
+  // mais ne doit jamais gonfler entrées/sorties -- elle ne s'est jamais
+  // vraiment produite.
+  function computeFlows(list: typeof operations) {
+    const incoming = list
+      .filter((operation) =>
+        operation.status !== "CANCELLED" &&
+        (operation.type === "TRANSFER"
+          ? isInGroup(operation.destination_wallet_id) && !isInGroup(operation.wallet_id)
+          : isInGroup(operation.wallet_id) && ["REVENUE", "DEPOSIT"].includes(operation.type)),
+      )
+      .reduce((sum, operation) => sum + Number(operation.amount), 0);
+    const outgoing = list
+      .filter((operation) =>
+        operation.status !== "CANCELLED" &&
+        (operation.type === "TRANSFER"
+          ? isInGroup(operation.wallet_id) && !isInGroup(operation.destination_wallet_id)
+          : isInGroup(operation.wallet_id) && operation.type === "EXPENSE"),
+      )
+      .reduce((sum, operation) => sum + Number(operation.amount), 0);
+    return { incoming, outgoing };
+  }
+  // Vue "à date" (jamais filtrée par période) : le résumé toujours visible
+  // juste sous le hero. La ligne période-filtrée plus bas, elle, reflète le
+  // filtre de date choisi juste au-dessus du journal.
+  const allTimeFlows = computeFlows(operations);
+  const { incoming, outgoing } = computeFlows(displayedOperations);
+  const searchTerm = search.trim().toLowerCase();
+  const visibleOperations = displayedOperations.filter((operation) => {
+    if (typeFilter !== ALL_TYPES && operation.type !== typeFilter) return false;
+    if (!searchTerm) return true;
+    return [operation.category, operation.description, operation.reference]
+      .filter(Boolean)
+      .some((field) => field!.toLowerCase().includes(searchTerm));
+  });
 
   function openCreateSubWallet() {
     // First sub-wallet of a still-funded wallet needs the explicit,
@@ -193,13 +228,7 @@ function WalletDetailsPage() {
         icon={WalletCards}
         eyebrow="Wallet"
         title={wallet.name}
-        description={
-          hasChildren
-            ? "Solde consolidé de ce wallet parent et de tous ses sous-wallets."
-            : "Le solde global et les écritures réellement rattachées à ce wallet, sans confondre les flux des autres activités."
-        }
-        primaryStat={{ label: hasChildren ? "Solde consolidé" : "Solde disponible", value: format(consolidatedBalance), tone: consolidatedBalance < 0 ? "danger" : "neutral" }}
-        secondaryStats={hasChildren ? [{ label: "Sous-wallets", value: children.length }] : [{ label: "Mouvements affichés", value: displayedOperations.length }]}
+        description={hasChildren ? `Wallet parent · consolidé avec ${children.length} sous-wallet${children.length > 1 ? "s" : ""}` : `Wallet principal · ${walletTypeLabel}`}
         actions={
           <>
             <Badge variant="success" appearance="soft" className="w-fit">
@@ -212,6 +241,25 @@ function WalletDetailsPage() {
           </>
         }
       />
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label={hasChildren ? "Solde consolidé" : "Solde disponible"}
+          value={format(consolidatedBalance)}
+          description="Toutes les opérations comprises"
+          icon={WalletCards}
+          tone={consolidatedBalance < 0 ? "danger" : "primary"}
+        />
+        <MetricCard icon={ArrowUpCircle} label="Entrées" value={format(allTimeFlows.incoming)} description="Depuis l’ouverture du wallet" tone="success" />
+        <MetricCard icon={ArrowDownCircle} label="Sorties" value={format(allTimeFlows.outgoing)} description="Depuis l’ouverture du wallet" tone="danger" />
+        <MetricCard
+          icon={Repeat}
+          label="Opérations"
+          value={operations.length}
+          description="Écritures au total pour ce wallet"
+          tone="info"
+        />
+      </div>
 
       {hasChildren ? (
         <div className="flex flex-wrap gap-2">
@@ -259,24 +307,7 @@ function WalletDetailsPage() {
             </span>
           </button>
         </div>
-      ) : (
-        <div className="grid gap-3 sm:max-w-xl sm:grid-cols-2">
-          <MetricCard
-            label="Solde disponible"
-            value={format(Number(wallet.balance ?? 0))}
-            description="Toutes les opérations comprises"
-            icon={WalletCards}
-            tone="primary"
-          />
-          <MetricCard
-            label="Mouvements affichés"
-            value={displayedOperations.length}
-            description={isPeriodFiltered ? "Sur la période sélectionnée" : "Depuis l’ouverture du wallet"}
-            icon={ListFilter}
-            tone="info"
-          />
-        </div>
-      )}
+      ) : null}
 
       {selectedChildId === RECEIVABLES ? (
         <Card variant="information" className="flex items-start gap-3 p-5">
@@ -390,10 +421,35 @@ function WalletDetailsPage() {
           </div>
 
           <Card variant="analytics">
-            <CardHeader>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle>{hasChildren && selectedChildId === ALL_CHILDREN ? "Journal consolidé" : "Journal du wallet"}</CardTitle>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                  <Input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Rechercher (libellé, référence)…"
+                    className="pl-8 sm:w-56"
+                  />
+                </div>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="h-10 sm:w-44">
+                    <span className="flex items-center gap-2">
+                      <ListFilter className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                      <SelectValue />
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_TYPES}>Tous les types</SelectItem>
+                    {Object.entries(FINANCE_OPERATION_TYPE_LABELS).map(([type, label]) => (
+                      <SelectItem key={type} value={type}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent>
               {operationsQuery.isPending ? (
                 <p className="text-muted-foreground">Chargement…</p>
               ) : operationsQuery.isError ? (
@@ -401,38 +457,61 @@ function WalletDetailsPage() {
                   <p className="font-medium text-destructive">Impossible de charger le journal.</p>
                   <p className="mt-1 text-sm text-muted-foreground">Réessayez dans un instant ou vérifiez votre connexion.</p>
                 </div>
-              ) : displayedOperations.length === 0 ? (
+              ) : visibleOperations.length === 0 ? (
                 <p className="py-8 text-center text-muted-foreground">
-                  {isPeriodFiltered ? "Aucune opération sur cette période." : "Aucune opération pour ce wallet."}
+                  {displayedOperations.length > 0
+                    ? "Aucune opération ne correspond à ce filtre."
+                    : isPeriodFiltered
+                      ? "Aucune opération sur cette période."
+                      : "Aucune opération pour ce wallet."}
                 </p>
               ) : (
-                displayedOperations.map((operation) => (
-                  <div
-                    key={operation.id}
-                    className="group flex flex-col justify-between gap-3 rounded-xl border border-border/75 bg-surface/70 p-4 transition-ui hover:border-primary/25 hover:shadow-xs sm:flex-row sm:items-center"
-                  >
-                    <div>
-                      <p className="font-medium">
-                        {operation.category || operation.description || FINANCE_OPERATION_TYPE_LABELS[operation.type as keyof typeof FINANCE_OPERATION_TYPE_LABELS]}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatDate(operation.operation_date)} · {FINANCE_OPERATION_TYPE_LABELS[operation.type as keyof typeof FINANCE_OPERATION_TYPE_LABELS] ?? operation.type}
-                        {isInGroup(operation.destination_wallet_id) ? " · transfert reçu" : ""}
-                      </p>
-                      <Badge className="mt-2 w-fit" variant="info" appearance="soft">
-                        Wallet concerné : {operation.wallet?.name ?? operation.destination_wallet?.name ?? wallet.name}
-                      </Badge>
-                    </div>
-                    <p
-                      className={`font-semibold ${isInGroup(operation.wallet_id) && ["EXPENSE", "TRANSFER"].includes(operation.type) ? "text-destructive" : "text-success"}`}
-                    >
-                      {isInGroup(operation.wallet_id) && ["EXPENSE", "TRANSFER"].includes(operation.type)
-                        ? "−"
-                        : "+"}
-                      {format(Number(operation.amount))}
-                    </p>
-                  </div>
-                ))
+                <div className="max-h-[36rem] space-y-3 overflow-y-auto pr-1">
+                  {visibleOperations.map((operation) => {
+                    const isOutflow = isInGroup(operation.wallet_id) && ["EXPENSE", "TRANSFER"].includes(operation.type);
+                    const isCancelled = operation.status === "CANCELLED";
+                    const statusLabel = FINANCE_OPERATION_STATUS_LABELS[operation.status ?? ""] ?? operation.status ?? "Validée";
+                    const moduleLabel = operation.module
+                      ? FINANCE_MODULE_LABELS[operation.module as keyof typeof FINANCE_MODULE_LABELS] ?? operation.module
+                      : null;
+                    return (
+                      <div
+                        key={operation.id}
+                        className={`flex flex-col justify-between gap-3 rounded-xl border p-4 transition-ui hover:shadow-xs sm:flex-row sm:items-start ${isCancelled ? "border-destructive/20 bg-destructive/[0.03]" : "border-border/75 bg-surface/70 hover:border-primary/25"}`}
+                      >
+                        <div className="min-w-0 space-y-1.5">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium text-foreground">
+                              {operation.category || operation.description || FINANCE_OPERATION_TYPE_LABELS[operation.type as keyof typeof FINANCE_OPERATION_TYPE_LABELS]}
+                            </p>
+                            <Badge variant={isCancelled ? "danger" : "success"} appearance="soft">{statusLabel}</Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {formatDateTimeMedium(operation.created_at)} · {FINANCE_OPERATION_TYPE_LABELS[operation.type as keyof typeof FINANCE_OPERATION_TYPE_LABELS] ?? operation.type}
+                            {isInGroup(operation.destination_wallet_id) ? " · transfert reçu" : ""}
+                          </p>
+                          {operation.reference ? (
+                            <p className="truncate text-xs text-muted-foreground">Réf. {operation.reference}</p>
+                          ) : null}
+                          <div className="flex flex-wrap gap-1.5">
+                            <Badge variant="info" appearance="soft">
+                              Wallet concerné : {operation.wallet?.name ?? operation.destination_wallet?.name ?? wallet.name}
+                            </Badge>
+                            {moduleLabel ? (
+                              <Badge variant="neutral" appearance="outline">{moduleLabel}</Badge>
+                            ) : null}
+                          </div>
+                        </div>
+                        <p
+                          className={`shrink-0 font-semibold tabular-nums ${isCancelled ? "text-muted-foreground line-through" : isOutflow ? "text-destructive" : "text-success"}`}
+                        >
+                          {isOutflow ? "−" : "+"}
+                          {format(Number(operation.amount))}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </CardContent>
           </Card>
