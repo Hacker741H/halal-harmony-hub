@@ -579,6 +579,7 @@ function CartLineRow({
   priceDraft,
   priceError,
   surcharge,
+  belowReference,
   canIncrease,
   onStartEditPrice,
   onPriceDraftChange,
@@ -596,6 +597,7 @@ function CartLineRow({
   priceDraft: string;
   priceError: string | null;
   surcharge: number;
+  belowReference: number;
   canIncrease: boolean;
   onStartEditPrice: () => void;
   onPriceDraftChange: (value: string) => void;
@@ -673,6 +675,16 @@ function CartLineRow({
         >
           {money(line.unitPrice)}
           {surcharge > 0 ? <span className="ml-0.5 text-success">+{money(surcharge)}</span> : null}
+          {/* OVERRIDE PRIX DE VENTE : indication discrète seulement --
+              n'apparaît que si le prix a réellement été baissé sous le prix
+              catalogue (donc seulement pour un utilisateur avec la
+              permission, la seule à pouvoir committer un tel prix). Jamais
+              bloquant : purement informatif. */}
+          {belowReference > 0 ? (
+            <span className="ml-0.5 text-warning" title="Prix inférieur au prix de référence">
+              −{money(belowReference)}
+            </span>
+          ) : null}
         </button>
       )}
       {isEditingPrice ? null : (
@@ -741,6 +753,12 @@ export function CommerceCashierWorkspace({
   const canManageLocations =
     can("locations.manage") && can("locations.wallets.manage") && can("locations.assign");
   const canSeeTodayRevenue = can("store.financial.read");
+  // OVERRIDE PRIX DE VENTE : règle par défaut inchangée (jamais en dessous
+  // du prix catalogue) -- seule une permission explicite (jamais un nom de
+  // rôle codé en dur) autorise la baisse. Le serveur revérifie cette même
+  // permission indépendamment (_internal_create_commerce_cash_sale_at) :
+  // ce drapeau ne sert qu'à l'UX, jamais la seule protection réelle.
+  const canOverridePrice = can("commerce.sales.price_override");
   const [cashierTab, setCashierTab] = useState<"CAISSE" | "VENTES" | "SESSION">("CAISSE");
   const navigate = useNavigate();
   const locationsQuery = useQuery({
@@ -1289,14 +1307,22 @@ export function CommerceCashierWorkspace({
   };
   const commitEditPrice = (line: CartLine) => {
     const parsed = Number(priceDraft);
-    if (!Number.isFinite(parsed) || parsed < 0) {
+    // OVERRIDE PRIX DE VENTE : le prix final doit toujours être strictement
+    // positif, avec ou sans permission -- 0 n'est plus toléré ici (c'était
+    // techniquement possible avant : `< 0` seul laissait passer 0).
+    if (!Number.isFinite(parsed) || parsed <= 0) {
       setPriceError("Saisissez un prix valide.");
       return;
     }
     const floor = catalogFloorFor(line);
-    if (floor !== null && parsed < floor) {
+    // Règle par défaut inchangée : jamais en dessous du prix catalogue.
+    // canOverridePrice (commerce.sales.price_override) est la SEULE
+    // exception -- jamais un nom de rôle codé en dur ici. Le serveur
+    // revérifie la même permission indépendamment ; ce contrôle ne sert
+    // qu'à guider l'utilisateur, jamais la seule protection réelle.
+    if (floor !== null && parsed < floor && !canOverridePrice) {
       setPriceError(
-        `Le prix de vente ne peut pas être inférieur au prix catalogue de ${money(floor)}.`,
+        `Le prix ne peut pas être inférieur au prix de vente configuré (${money(floor)}).`,
       );
       return;
     }
@@ -1714,6 +1740,7 @@ export function CommerceCashierWorkspace({
           const isEditingPrice = editingPriceLineId === line.lineId;
           const floor = catalogFloorFor(line);
           const surcharge = floor !== null && line.unitPrice > floor ? line.unitPrice - floor : 0;
+          const belowReference = floor !== null && line.unitPrice < floor ? floor - line.unitPrice : 0;
           return (
             <CartLineRow
               key={line.lineId}
@@ -1725,6 +1752,7 @@ export function CommerceCashierWorkspace({
               priceDraft={priceDraft}
               priceError={isEditingPrice ? priceError : null}
               surcharge={surcharge}
+              belowReference={belowReference}
               canIncrease={isService || line.quantity < availableQuantity}
               onStartEditPrice={() => startEditPrice(line)}
               onPriceDraftChange={setPriceDraft}

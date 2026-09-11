@@ -345,6 +345,21 @@ export const getCommercialSale = createServerFn({ method: "GET" })
     };
   });
 
+// OVERRIDE PRIX DE VENTE : un throw error brut (objet PostgrestError) ne
+// survit pas de façon fiable à la frontière serveur -> client d'un server
+// function TanStack Start -- router.tsx (QueryCache.onError) ou le
+// showError local d'un composant appelant le traitent alors comme
+// "!(error instanceof Error)" et affichent un message générique à la
+// place du vrai refus de prix (ex. "Le prix de vente ne peut pas être
+// inférieur au prix catalogue..."). Même correctif déjà appliqué à
+// courses.functions.ts (toQueryError) pour la même raison -- ici limité
+// aux trois fonctions dont le message peut désormais provenir de cette
+// nouvelle règle de prix (création, mise à jour, confirmation), pas un
+// balayage de tout le fichier.
+function toSaleError(error: { message: string }): Error {
+  return new Error(error.message || "Erreur inconnue lors de l’enregistrement de la vente.");
+}
+
 export const createCommercialSale = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator(commercialSaleValuesSchema)
@@ -352,7 +367,7 @@ export const createCommercialSale = createServerFn({ method: "POST" })
     const { data: sale, error } = await context.supabase.rpc("create_commercial_sale", {
       p_sale: commercialSalePayload(data),
     });
-    if (error) throw error;
+    if (error) throw toSaleError(error);
     if (!sale) throw new Error("La vente n’a pas été créée.");
     return sale;
   });
@@ -365,7 +380,7 @@ export const updateCommercialSale = createServerFn({ method: "POST" })
       p_sale_id: data.id,
       p_sale: commercialSalePayload(data.values),
     });
-    if (error) throw error;
+    if (error) throw toSaleError(error);
     if (!sale) throw new Error("La vente n’a pas été mise à jour.");
     return sale;
   });
@@ -375,7 +390,7 @@ export const confirmCommercialSale = createServerFn({ method: "POST" })
   .validator(z.object({ id: idSchema }).strict())
   .handler(async ({ context, data }) => {
     const { data: sale, error } = await context.supabase.rpc("confirm_commercial_sale", { p_sale_id: data.id });
-    if (error) throw error;
+    if (error) throw toSaleError(error);
     if (!sale) throw new Error("La vente n’a pas été confirmée.");
     return sale;
   });
